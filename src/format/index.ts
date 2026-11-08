@@ -40,3 +40,23 @@ export {
   type AgentSource,
   type UnrecognizedField,
 } from './agent-record.ts';
+export {
+  AGENT_COLORS,
+  AGENT_FIELDS,
+  AGENT_FIELD_NAMES,
+  AGENT_ISOLATIONS,
+  AGENT_MEMORY_SCOPES,
+  PLUGIN_IGNORED_FIELDS,
+  type AgentColor,
+  type AgentFieldName,
+  type AgentFieldSpec,
+  type AgentFieldValue,
+  type AgentIsolation,
+  type AgentMemoryScope,
+} from './agent-fields.ts';
+export {
+  AUTO_COMPACT_RANGE,
+  type AgentCoercer,
+  type AgentFieldRead,
+  type CacheTtl,
+} from './agent-scalars.ts';

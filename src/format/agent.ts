@@ -3,6 +3,8 @@ import { parseFrontmatter, type Frontmatter } from './frontmatter.ts';
 import { readText } from './frontmatter-values.ts';
 import { agentFileName, agentNameProblem, MAX_AGENT_NAME, scopedAgentName } from './agent-name.ts';
 import type { AgentOrigin, AgentReadResult, AgentRecord } from './agent-record.ts';
+import { readAgentFields, type AgentFieldsRead } from './agent-field-read.ts';
+import { unrecognizedFields } from './agent-unrecognized.ts';
 
 type FileOrigin = Extract<AgentOrigin, { plugin?: undefined }>;
 type PluginOrigin = Extract<AgentOrigin, { source: 'plugin' }>;
@@ -21,13 +23,22 @@ function parseProblem(front: Frontmatter): string {
   return `Frontmatter does not parse: ${front.problem ?? 'unknown problem'}${where}`;
 }
 
-/** The agent Claude Code would load, before any field other than `name` and `description`. */
+/** No field beyond `name` and `description`: the frontmatter did not parse. */
+const NO_FIELDS: AgentFieldsRead = { values: {}, ignored: [], issues: [] };
+
+/**
+ * The agent Claude Code would load. `fields` is what the registry read; `unknown` the top-level
+ * fields Claude Code does not recognize. A key of the official `AgentDefinition` goes into
+ * `definition`; the keys it has no place for are `extras` (and `hooks`).
+ */
 function record(
   origin: AgentOrigin,
-  name: string,
-  description: string,
-  prompt: string,
+  basics: { readonly name: string; readonly description: string; readonly prompt: string },
+  fields: AgentFieldsRead,
+  unknown: AgentRecord['unrecognized'],
 ): AgentRecord {
+  const { name, description, prompt } = basics;
+  const { color, isolation, experimental, hooks, ...official } = fields.values;
   const scopedName =
     origin.plugin === undefined
       ? name
@@ -37,11 +48,15 @@ function record(
     scopedName,
     source: origin.source,
     path: origin.path,
-    definition: { description, prompt },
-    extras: {},
-    hooks: undefined,
-    ignored: [],
-    unrecognized: [],
+    definition: { description, prompt, ...official },
+    extras: {
+      ...(color !== undefined && { color }),
+      ...(isolation !== undefined && { isolation }),
+      ...(experimental?.cacheTtl !== undefined && { cacheTtl: experimental.cacheTtl }),
+    },
+    hooks,
+    ignored: fields.ignored,
+    unrecognized: unknown,
   };
 }
 
@@ -64,10 +79,12 @@ function readFileAgent(front: Frontmatter, origin: FileOrigin): AgentReadResult 
   if (description.value === undefined) {
     return invalid(`Agent "${name.value}" has a name but no "description"`);
   }
+  const fields = readAgentFields(front.fields, { plugin: false, path: origin.path });
+  const basics = { name: name.value, description: description.value, prompt: front.body };
   return {
     outcome: 'loaded',
-    agent: record(origin, name.value, description.value, front.body),
-    issues: [],
+    agent: record(origin, basics, fields, unrecognizedFields(front.fields)),
+    issues: fields.issues,
   };
 }
 
@@ -103,7 +120,12 @@ function readPluginAgent(front: Frontmatter, origin: PluginOrigin): AgentReadRes
     const name = agentFileName(origin.path);
     return {
       outcome: 'loaded',
-      agent: record(origin, name, fallbackDescription, front.body),
+      agent: record(
+        origin,
+        { name, description: fallbackDescription, prompt: front.body },
+        NO_FIELDS,
+        [],
+      ),
       issues: [warning(origin.path, message)],
     };
   }
@@ -118,10 +140,16 @@ function readPluginAgent(front: Frontmatter, origin: PluginOrigin): AgentReadRes
       warning(origin.path, `Invalid "description": ${reason}; using "${fallbackDescription}"`),
     );
   }
+  const fields = readAgentFields(front.fields, { plugin: true, path: origin.path });
+  const basics = {
+    name,
+    description: description.value ?? fallbackDescription,
+    prompt: front.body,
+  };
   return {
     outcome: 'loaded',
-    agent: record(origin, name, description.value ?? fallbackDescription, front.body),
-    issues,
+    agent: record(origin, basics, fields, unrecognizedFields(front.fields)),
+    issues: [...issues, ...fields.issues],
   };
 }
 

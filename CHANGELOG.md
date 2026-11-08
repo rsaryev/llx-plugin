@@ -4,6 +4,13 @@
 
 ### Added
 
+- Agent frontmatter fields in `readAgent`: `model`, `effort`, `maxTurns`, `autoCompactWindow` (a
+  string such as `200k` reads as 200 and is dropped with `invalid autoCompactWindow`),
+  `background`, `omitClaudeMd`, `isolation`, `color`, `initialPrompt` and `experimental.cacheTtl`,
+  through a field registry typed over the 19 documented names (`AGENT_FIELDS`,
+  `AGENT_FIELD_NAMES`) with the plugin supported and ignored lists (`PLUGIN_IGNORED_FIELDS`); a
+  plugin agent reports the fields it ignores in `ignored`; fields Claude Code does not recognize
+  are named with a likely intended name in `unrecognized`.
 - `readAgent` for agent files (`name` and `description`): the files Claude Code skips (no name is
   documentation, a bad name, no description or YAML that does not parse), the plugin fallbacks
   (file name, `Agent from <plugin> plugin`), `<plugin>:<subfolder>:<name>` scoped names

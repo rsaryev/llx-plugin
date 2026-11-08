@@ -1,5 +1,7 @@
 import type { HooksSettings } from '../protocol/hook-config.ts';
 import type { AgentDefinition } from '../protocol/official.ts';
+import type { AgentColor, AgentIsolation } from './agent-fields.ts';
+import type { CacheTtl } from './agent-scalars.ts';
 import type { PluginIssue } from './issues.ts';
 
 /**
@@ -36,11 +38,12 @@ interface PluginOrigin {
   };
 }
 
-/** Fields the official `AgentDefinition` has no key for (filled field by field, SP-2). */
+/** Fields the official `AgentDefinition` has no key for (sub-agents.md, "Frontmatter reference"). */
 export interface AgentExtras {
-  readonly color?: 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'orange' | 'pink' | 'cyan';
-  readonly isolation?: 'worktree';
-  readonly cacheTtl?: '5m' | '1h';
+  readonly color?: AgentColor;
+  readonly isolation?: AgentIsolation;
+  /** `experimental.cacheTtl`. */
+  readonly cacheTtl?: CacheTtl;
 }
 
 export interface UnrecognizedField {
