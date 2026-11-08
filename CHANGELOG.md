@@ -115,6 +115,14 @@
   prompt a person typed, never for `-p`, a scheduled task, an unstamped SDK prompt or a relayed
   event) and `workflowSizeGuideline` as `size()` (agent count advice, precedence over the `/config`
   choice, the `Large workflow` threshold).
+- Channel keys (`settings/channels`): `createChannelSettingsPolicy(view, context)` answers
+  `channelsEnabled` as `gate()` (blocked on Team and Enterprise, and on Console with managed
+  settings, until managed `true`; open on Console without managed settings and on Pro, Max and
+  Ultra; `false` is unset; users cannot lift it) and `allowedChannelPlugins` as `allowlist()` and
+  `allowed(plugin, options)` (the managed list replaces the host's default and is taken whole, an
+  empty list blocks every plugin, an invalid value is an empty list, the string form equals the
+  object, the development flag skips the list but never a closed gate, and only in an interactive
+  session).
 
 ### Fixed
 

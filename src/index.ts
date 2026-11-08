@@ -55,3 +55,4 @@ export * from './settings/marketplaces/index.ts';
 export * from './settings/hooks/index.ts';
 export * from './settings/skills/index.ts';
 export * from './settings/workflows/index.ts';
+export * from './settings/channels/index.ts';
