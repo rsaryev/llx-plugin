@@ -14,7 +14,7 @@ import { enabledPlugin } from '../plugins/enabled-plugins.ts';
 import { parsePluginId } from '../plugins/plugin-id.ts';
 import { SCOPE_RANK } from '../layers.ts';
 import type { PolicyView } from '../view.ts';
-import { withoutHeadersHelper } from './headers-helper.ts';
+import { plannedSource } from './headers-helper.ts';
 import { registrationProblems } from './source-validate.ts';
 
 type Entry = NonNullable<Settings['extraKnownMarketplaces']>[string];
@@ -51,7 +51,7 @@ export interface Registration {
   readonly status: RegistrationStatus;
   /** The official marketplace declared by an `enabledPlugins` entry, not by an `extraKnownMarketplaces` one. */
   readonly implied: boolean;
-  /** A managed entry that sets `autoUpdate`: the user's `/plugin` toggle is refused. */
+  /** A registered managed entry that sets `autoUpdate`: the user's `/plugin` toggle is refused. */
   readonly autoUpdateFixed: boolean;
   readonly issues: readonly PluginIssue[];
 }
@@ -87,17 +87,6 @@ const TRUST: { readonly [S in PolicyScope]: (context: RegistryContext) => boolea
   addDir: (context) => context.isFolderTrusted('addDir'),
 };
 
-/** A `--add-dir` directory's `headersHelper` is ignored (settings-reference.md). */
-const IGNORES_HELPER: { readonly [S in PolicyScope]: boolean } = {
-  managed: false,
-  parent: false,
-  flag: false,
-  user: false,
-  project: false,
-  local: false,
-  addDir: true,
-};
-
 interface Declaration {
   readonly name: string;
   readonly entry: Entry;
@@ -114,10 +103,17 @@ const declarations = (view: PolicyView): Map<string, Declaration[]> => {
   return byName;
 };
 
+/**
+ * Official marketplaces the docs say do not auto-update by default, whatever the host lists
+ * (plugins/loading.md, "Which marketplaces and plugins auto-update", item 3).
+ */
+const OFFICIAL_BUT_OFF: readonly string[] = ['knowledge-work-plugins', 'first-party-plugins'];
+
 const autoUpdateOf = (declaration: Declaration, context: RegistryContext): boolean =>
   declaration.entry.autoUpdate ??
   (declaration.name === OFFICIAL_MARKETPLACE ||
-    context.officialMarketplaces.includes(declaration.name));
+    (context.officialMarketplaces.includes(declaration.name) &&
+      !OFFICIAL_BUT_OFF.includes(declaration.name)));
 
 function registration(
   declaration: Declaration,
@@ -129,13 +125,14 @@ function registration(
   return {
     name,
     entry: {
-      source: IGNORES_HELPER[from] ? withoutHeadersHelper(entry.source) : entry.source,
+      source: plannedSource(entry.source, from),
       autoUpdate: autoUpdateOf(declaration, context),
     },
     from,
     status,
     implied: false,
-    autoUpdateFixed: from === 'managed' && typeof entry.autoUpdate === 'boolean',
+    autoUpdateFixed:
+      status === 'register' && from === 'managed' && typeof entry.autoUpdate === 'boolean',
     issues,
   };
 }

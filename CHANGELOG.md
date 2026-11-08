@@ -91,6 +91,13 @@
 
 ### Fixed
 
+- Settings, marketplace registry: `autoUpdate` defaults off for `knowledge-work-plugins` and
+  `first-party-plugins` whatever the host lists as official; routing and identity headers (`Host`,
+  `Cookie`, `X-Forwarded-*`) are dropped from an inline plugin entry's `headers` in a project, local
+  or `--add-dir` file, `Authorization` kept; a `url` source that does not start with `https://`
+  loses its `headersHelper`; `autoUpdateFixed` is set only for a registered managed entry; the
+  inline plugin source kinds are typed over the SDK's union so a new kind fails to compile.
+
 - Settings, marketplace gate: the blocked-source message quotes the source (`Marketplace source
   '<source>' is blocked by enterprise policy`); an empty allowlist ends it with `No external
   marketplaces are allowed.`; the load-time messages carry the docs' guidance line; a `github`

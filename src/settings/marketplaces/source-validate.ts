@@ -7,7 +7,7 @@ import { error, type PluginIssue } from '../../format/issues.ts';
 import type { MarketplaceSource } from '../../protocol/official.ts';
 import { MARKETPLACE_SOURCE_KINDS } from '../../protocol/settings-keys.ts';
 import { isRecord } from '../record.ts';
-import { byKindWith, type Registry } from './source-kinds.ts';
+import { byKindWith, type Registry, type SourceOf } from './source-kinds.ts';
 
 type Problems = Registry<[name: string], readonly string[]>;
 
@@ -18,26 +18,35 @@ const NOT_A_PLACE = (source: MarketplaceSource): readonly string[] => [
   `source "${source.source}" belongs to the allowlist and blocklist and names no place a marketplace comes from`,
 ];
 
+type PluginSource = Exclude<SourceOf<'settings'>['plugins'][number]['source'], string>;
+
+/** The kinds of plugin source the SDK types for an inline plugin entry. */
+type PluginSourceKind = PluginSource['source'];
+
 /**
- * The plugin entry sources the SDK types for an inline plugin, and whether each is "external". The
- * docs say "external sources such as GitHub or npm" and the SDK says a relative path "has no marketplace
- * repository to resolve against"; `unsupported` is the placeholder for a source Claude Code cannot read
- * (spec/judgments.md: `command` counts as external).
+ * Whether each plugin source kind is "external". The docs say "external sources such as GitHub or npm"
+ * and the SDK says a relative path "has no marketplace repository to resolve against"; `unsupported`
+ * is the placeholder for a source Claude Code cannot read (spec/judgments.md: `command` counts as
+ * external). Typed over every kind, so a new SDK kind fails to compile.
  */
-const EXTERNAL: ReadonlyMap<string, boolean> = new Map([
-  ['npm', true],
-  ['url', true],
-  ['github', true],
-  ['git-subdir', true],
-  ['archive', true],
-  ['command', true],
-  ['unsupported', false],
-]);
+const EXTERNAL: { readonly [K in PluginSourceKind]: boolean } = {
+  npm: true,
+  url: true,
+  github: true,
+  'git-subdir': true,
+  archive: true,
+  command: true,
+  unsupported: false,
+};
+
+const isPluginSourceKind = (kind: unknown): kind is PluginSourceKind =>
+  typeof kind === 'string' && Object.hasOwn(EXTERNAL, kind);
 
 const isExternal = (plugin: unknown): boolean =>
   isRecord(plugin) &&
   isRecord(plugin.source) &&
-  EXTERNAL.get(String(plugin.source.source)) === true;
+  isPluginSourceKind(plugin.source.source) &&
+  EXTERNAL[plugin.source.source];
 
 const pluginName = (plugin: unknown, index: number): string =>
   isRecord(plugin) && typeof plugin.name === 'string' ? plugin.name : `#${index}`;

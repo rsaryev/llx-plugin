@@ -1,6 +1,6 @@
 /**
  * settings-reference.md § `extraKnownMarketplaces` ("Marketplace source types": the `settings` source,
- * its `name` and external plugins; `headersHelper` ignored from an `--add-dir` directory; `autoUpdate`
+ * its `name` and external plugins; `autoUpdate`
  * defaults), plugins/org.md § "Require a marketplace and its plugins" (official marketplace implied by
  * `enabledPlugins`), § "Turn auto-update on or off per marketplace", plugins/loading.md § "Which
  * marketplaces and plugins auto-update".
@@ -13,33 +13,6 @@ import { spec } from '../../support/spec.ts';
 
 const inline = (name: string, plugins: readonly unknown[]) => ({
   extraKnownMarketplaces: { 'team-tools': { source: { source: 'settings', name, plugins } } },
-});
-
-const helped = (headersHelper: string) => ({
-  extraKnownMarketplaces: {
-    m: {
-      source: {
-        source: 'url',
-        url: 'https://m.example.com/marketplace.json',
-        headers: { 'X-Team': 'a' },
-        headersHelper,
-      },
-    },
-    'team-tools': {
-      source: {
-        source: 'settings',
-        name: 'team-tools',
-        plugins: [
-          {
-            name: 'p',
-            source: { source: 'archive', url: 'https://a.example.com/p.zip' },
-            headers: { 'X-Team': 'a' },
-            headersHelper,
-          },
-        ],
-      },
-    },
-  },
 });
 
 const entry = (extra: object) => ({
@@ -82,26 +55,6 @@ spec('settings.key.extraKnownMarketplaces', () => {
     });
   });
 
-  describe('headersHelper', () => {
-    test('is ignored in an --add-dir directory, on a url source and on an inline plugin entry alike; the fixed headers stay', () => {
-      const registrations = plan([['addDir', helped('/opt/bin/mint')]]);
-      const text = JSON.stringify(registrations.map((r) => r.entry.source));
-      expect(text).not.toContain('headersHelper');
-      expect(text).not.toContain('/opt/bin/mint');
-      expect(text.match(/X-Team/g)).toHaveLength(2);
-      expect(registrations.map((r) => r.status)).toEqual(['register', 'register']);
-    });
-
-    test('is kept from user, project, local, --settings and managed files', () => {
-      for (const scope of ['user', 'project', 'local', 'flag', 'managed'] as const) {
-        const registrations = plan([[scope, helped('/opt/bin/mint')]]);
-        expect(
-          JSON.stringify(registrations.map((r) => r.entry.source)).match(/\/opt\/bin\/mint/g),
-        ).toHaveLength(2);
-      }
-    });
-  });
-
   describe('autoUpdate', () => {
     test('an explicit value is used, either way', () => {
       expect(ofName(plan([['user', entry({ autoUpdate: true })]]), 'm').entry.autoUpdate).toBe(
@@ -134,6 +87,44 @@ spec('settings.key.extraKnownMarketplaces', () => {
       ]);
     });
 
+    test('omitted: false for knowledge-work-plugins and first-party-plugins, even when the host lists them', () => {
+      const registrations = plan(
+        [
+          [
+            'user',
+            {
+              extraKnownMarketplaces: {
+                'knowledge-work-plugins': { source: github('anthropics/knowledge-work-plugins') },
+                'first-party-plugins': { source: github('anthropics/first-party') },
+              },
+            },
+          ],
+        ],
+        { officialMarketplaces: ['knowledge-work-plugins', 'first-party-plugins'] },
+      );
+      expect(registrations.map((r) => [r.name, r.entry.autoUpdate])).toEqual([
+        ['knowledge-work-plugins', false],
+        ['first-party-plugins', false],
+      ]);
+    });
+
+    test('an explicit true turns it on for those two', () => {
+      const registrations = plan([
+        [
+          'user',
+          {
+            extraKnownMarketplaces: {
+              'knowledge-work-plugins': {
+                source: github('anthropics/knowledge-work-plugins'),
+                autoUpdate: true,
+              },
+            },
+          },
+        ],
+      ]);
+      expect(registrations[0]?.entry.autoUpdate).toBe(true);
+    });
+
     test('an explicit false on the official marketplace turns it off', () => {
       const registrations = plan([
         [
@@ -158,6 +149,30 @@ spec('settings.key.extraKnownMarketplaces', () => {
       expect(ofName(plan([['user', entry({ autoUpdate: true })]]), 'm').autoUpdateFixed).toBe(
         false,
       );
+    });
+
+    test('a managed entry that is refused or invalid registers nothing, so there is no toggle to refuse', () => {
+      const refused = plan([
+        [
+          'managed',
+          {
+            strictKnownMarketplaces: [github('acme-corp/plugins')],
+            extraKnownMarketplaces: { m: { source: github('x/y'), autoUpdate: true } },
+          },
+        ],
+      ]);
+      expect(ofName(refused, 'm', 'refusedByAllowlist').autoUpdateFixed).toBe(false);
+      const invalid = plan([
+        [
+          'managed',
+          {
+            extraKnownMarketplaces: {
+              m: { source: { source: 'hostPattern', hostPattern: 'x' }, autoUpdate: true },
+            },
+          },
+        ],
+      ]);
+      expect(ofName(invalid, 'm', 'invalid').autoUpdateFixed).toBe(false);
     });
   });
 

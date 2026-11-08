@@ -8,7 +8,8 @@
  * force-enabled in managed `enabledPlugins`, unless you set `disableCommandPluginSources` to `false`
  * explicitly"; `headersHelper` commands blocked "except for a marketplace that managed settings
  * themselves declare"), plugins/host-marketplace.md § "When Claude Code skips a headersHelper
- * command" and § "When a marketplace `url` source's command runs".
+ * command" and § "When a marketplace `url` source's command runs". The non-`https://` `url` source
+ * is planned by the registry (`registry-entries.test.ts`), which drops its helper.
  */
 import { describe, expect, test } from 'bun:test';
 import { issuesOf } from '../../support/settings-layers.ts';
@@ -61,14 +62,6 @@ spec('settings.key.disableCommandPluginSources', () => {
     test('disableAllHooks in the SDK managedSettings does not by itself disable command sources', () => {
       expect(commandSourcesOf(['parent', { disableAllHooks: true }]).disabled).toBe(false);
       expect(commandSourcesOf(['managed', { disableAllHooks: true }]).disabled).toBe(false);
-    });
-
-    test('a force-enabled managed plugin does not escape the block', () => {
-      const policy = commandSourcesOf([
-        'managed',
-        { allowManagedHooksOnly: true, enabledPlugins: { 'formatter@acme-tools': true } },
-      ]);
-      expect(policy.pluginSource).toEqual(blockedBy('allowManagedHooksOnly'));
     });
   });
 

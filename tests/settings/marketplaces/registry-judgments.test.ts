@@ -5,7 +5,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { github } from '../../support/marketplace-sources.ts';
-import { inFolder, plan } from '../../support/marketplace-registry.ts';
+import { commandSourcesOf, inFolder, plan } from '../../support/marketplace-registry.ts';
 
 const acme = { source: github('acme-corp/claude-plugins') };
 const allowlist = { strictKnownMarketplaces: [github('acme-corp/plugins')] };
@@ -32,6 +32,13 @@ describe('what names a marketplace', () => {
     const unsupported = { name: 'u', source: { source: 'unsupported' } };
     expect(plan([['user', inline([command])]])[0]?.status).toBe('register');
     expect(plan([['user', inline([unsupported])]])[0]?.status).toBe('invalid');
+  });
+
+  test("an `npm` marketplace source registers: the docs' list omits it and only the SDK types it", () => {
+    const npm = {
+      extraKnownMarketplaces: { m: { source: { source: 'npm', package: '@acme/m' } } },
+    };
+    expect(plan([['user', npm]])[0]?.status).toBe('register');
   });
 
   test('a settings source with no plugin list registers; a plugin that is not an object makes it invalid, never a crash', () => {
@@ -124,5 +131,16 @@ describe('the official marketplace implied by enabledPlugins', () => {
       ['project', 'ignoredUntrusted', false],
       ['managed', 'register', true],
     ]);
+  });
+});
+
+describe('command-sourced plugins', () => {
+  test('the verdict does not read enabledPlugins, so a force-enabled managed plugin has no exception', () => {
+    const blocked = { allowManagedHooksOnly: true };
+    const forced = { ...blocked, enabledPlugins: { 'formatter@acme-tools': true } };
+    expect(commandSourcesOf(['managed', forced]).pluginSource).toEqual(
+      commandSourcesOf(['managed', blocked]).pluginSource,
+    );
+    expect(commandSourcesOf(['managed', forced]).pluginSource.run).toBe(false);
   });
 });
