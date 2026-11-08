@@ -24,6 +24,31 @@ export type {
 export type * from './protocol/official.ts';
 export type * from './ports/index.ts';
 export * from './loading/index.ts';
+export {
+  isRemoteMcpServer,
+  MCP_TRANSPORTS,
+  readMcpConfig,
+  readMcpServer,
+  type HttpMcpServer,
+  type McpConfigRead,
+  type McpServerRead,
+  type McpTransport,
+  type PluginMcpServer,
+  type RemoteMcpServer,
+  type SseMcpServer,
+  type WsMcpServer,
+} from './format/mcp-config.ts';
+export {
+  classifyMcpSource,
+  collectMcpServers,
+  MCP_SOURCE_KINDS,
+  MCPB_CACHE_DIR,
+  type CollectedMcpServers,
+  type CollectOptions,
+  type McpSource,
+  type McpSourceKind,
+} from './format/mcp-sources.ts';
+export type { McpLoadContext } from './format/mcp-bundles.ts';
 export * from './rules/index.ts';
 export {
   PERMISSION_BEHAVIORS,

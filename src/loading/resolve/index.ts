@@ -8,6 +8,14 @@ export { pluginDataId } from './data-id.ts';
 export { substituteDeep, type DeepSubstituted, type ValuePath } from './deep.ts';
 export { exportedEnvironment } from './exported-environment.ts';
 export {
+  headersHelperEnvironment,
+  mcpServerKey,
+  resolveMcpServer,
+  type McpResolution,
+  type ResolvedMcpServer,
+} from './mcp.ts';
+export { HEADERS_HELPER_GUARD, rejectUserConfigInShell, type ShellGuard } from './shell-guard.ts';
+export {
   OPTION_VARIABLES,
   VARIABLE_COMPONENTS,
   VARIABLE_FIELDS,

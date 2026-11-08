@@ -43,7 +43,8 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `readHooksFile(raw)`                | done    | `hooks/hooks.json` → official `HooksSettings`: events, matcher groups, every handler field; an error leaves no hooks, as Claude Code does |
 | `readHooksSettings(raw)`            | done    | the bare event map (inline `hooks`, skill frontmatter, `settings.json`) |
 | `matchesMatcher(matcher, value, mode?)` | done | a hook `matcher` against the field its event filters on: match-all, exact list, unanchored regex; `'narrow'` for FileChanged and StopFailure |
-| `readMcpConfig(raw)`                | planned | `.mcp.json` → official `McpServerConfig` map                          |
+| `readMcpConfig(raw, origin)`, `readMcpServer(name, raw, origin)` | done | `.mcp.json` (wrapper or bare map) → `PluginMcpServer` map; an entry Claude Code would drop is an error issue |
+| `collectMcpServers(files, manifestValue, options)`, `classifyMcpSource(value)` | done | the root `.mcp.json`, then each `mcpServers` source in order (`.json` file, inline map, `.mcpb` or `.dxt` bundle path or URL); a later name replaces an earlier one |
 | `readLspConfig(raw)`, `readMonitors(raw)`, `readOutputStyle(...)` | planned | the remaining component files |
 
 ## Loading (planned)
@@ -67,7 +68,7 @@ interface Plugin {
   readonly commands: readonly Command[];
   readonly agents: readonly PluginAgent[]; // official AgentDefinition + name and source
   readonly hooks: HooksSettings; // official
-  readonly mcpServers: Readonly<Record<string, McpServerConfig>>; // official
+  readonly mcpServers: Readonly<Record<string, PluginMcpServer>>; // official types plus `ws` and `headersHelper`
   readonly lspServers: Readonly<Record<string, LspServer>>;
   readonly monitors: readonly Monitor[];
   readonly outputStyles: readonly OutputStyle[];
@@ -117,6 +118,31 @@ Choosing the hook surface is the caller's: a command hook with `args` is `hook-e
 without Git Bash (hooks.md, "Exec form and shell form"), and the kit cannot tell the host's shell, so
 the caller passes `hook-powershell` there.
 
+### MCP servers (done: `format/mcp-*`, `loading/resolve/mcp`)
+
+```ts
+import { collectMcpServers, resolveMcpServer } from '@rsaryev/claude-plugin-kit';
+
+const { servers, issues } = await collectMcpServers(files, manifest.mcpServers, { bundles, bundleSettings });
+const { resolved, issues: more } = await resolveMcpServer('db', servers.db, scope);
+// resolved.server (substituted), resolved.key 'plugin:<plugin>:db', resolved.environment,
+// resolved.headersHelperEnvironment (CLAUDE_PLUGIN_ROOT, CLAUDE_CODE_MCP_SERVER_NAME, _URL)
+```
+
+| API | What it does |
+| --- | --- |
+| `PluginMcpServer` | the SDK's stdio, SSE and HTTP configs plus the two things the SDK does not type: the `ws` transport and `headersHelper` on every remote server (mcp.md, "Option 4") |
+| `collectMcpServers(files, manifestValue, { bundles?, bundleSettings?, signal? })` | root `.mcp.json` first, then each declared source in array order; sources load concurrently, merge in order |
+| `McpBundleReader` (port, optional) | the host opens a `.mcpb` or `.dxt` (extract into `.mcpb-cache`, or download) and returns `{ name, server, userConfig? }`; the kit never unzips or downloads, and never maps the MCPB manifest |
+| `resolveMcpServer(name, server, scope)` | stdio: `command`, `args`, `env` substituted, the three path variables in `environment`; http, sse and ws: `url`, `headers`, `headersHelper` substituted, credential variables read as empty in `url` and `headers`; a `headersHelper` that references `${user_config.*}` keeps the server from starting |
+| `rejectUserConfigInShell(guard, template, context, path)`, `HEADERS_HELPER_GUARD` | the shell-field check on the template, with the message errors.md quotes; monitors and shell-form hooks pass a guard of their own |
+
+A bundle whose own `user_config` has a required setting with no saved value is not started and
+reports `Bundled MCP server "<name>" was not started: it needs configuration`; the rest of the
+plugin loads. Without a `McpBundleReader` a bundle is a warning. Paths given to the reader are
+relative to the plugin root, like every `PluginFiles` path. The server's tool prefix is `rules`'
+`pluginMcpServerName`; `mcpServerKey` is the `plugin:<plugin>:<server>` name `/mcp` shows.
+
 ## Ports (done)
 
 Interfaces the host implements, in `src/ports/` (type-only, one file per port, all exported from the
@@ -131,6 +157,7 @@ absent file is `undefined`; an effect that did not happen is a `PortFailure` val
 | `HttpClient`     | `http` hooks, archive and marketplace downloads (text or `bytes`) | `fetch`                 | `fetch` behind an egress policy |
 | `ModelRunner`    | `prompt` and `agent` hooks, a mod's `$.model`                     | the host's model        | the host's model                |
 | `McpCaller`      | `mcp_tool` hooks                                                  | the host's MCP client   | the host's MCP client           |
+| `McpBundleReader` | opening an `.mcpb` or `.dxt` bundle named by `mcpServers` (optional)  | unzip into `.mcpb-cache` | extract in the sandbox or a service |
 | `Locations`      | `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_PROJECT_DIR`  | paths on the disk       | paths inside the sandbox        |
 | `Environment`    | `${VAR}` in configs, `allowedEnvVars`, the inherited environment  | the process environment | the sandbox's environment       |
 | `Clock`          | timeouts and timers (no `Date`, no `setTimeout` in `src/`)        | the system clock        | the system clock                |

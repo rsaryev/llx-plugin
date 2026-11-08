@@ -25,6 +25,14 @@
   `${VAR}` and `${VAR:-default}` in one pass (`substituteTemplate`, `substituteDeep`), the
   per-component policies (`SURFACE_POLICY`, `VARIABLE_FIELDS`), the environment a process receives
   (`exportedEnvironment`, `CLAUDE_PLUGIN_OPTION_<KEY>`) and Windows path rendering.
+- MCP servers of a plugin: `readMcpConfig` and `readMcpServer` (wrapper or bare `.mcp.json`; `ws` and
+  `headersHelper` on the official stdio, SSE and HTTP configs as `PluginMcpServer`),
+  `collectMcpServers` and `classifyMcpSource` (root `.mcp.json` first, then each `mcpServers` source
+  in order: `.json` file, inline map, `.mcpb`/`.dxt` bundle path or URL through the new optional
+  `McpBundleReader` port, "needs configuration" for a bundle with an unsatisfied required setting),
+  and `resolveMcpServer` (variables substituted per transport, credential variables read as empty,
+  `headersHelper` rejecting `${user_config.*}` with the documented error, its environment) with
+  the reusable `rejectUserConfigInShell` guard.
 - Permission rules (`rules`): `parseRule` and `formatRule` for `Tool` and `Tool(specifier)` (literal
   parentheses, `Bash(*)` as bare, `domain:` and `Tool(param:value)` specifiers, the malformed-rule
   message), `matchRule` for bare rules, tool-name globs (with the allow-glob anchoring rule) and
