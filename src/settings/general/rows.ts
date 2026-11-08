@@ -1,4 +1,5 @@
 import type { Settings } from '../../protocol/official.ts';
+import { EFFORT_LEVELS } from '../../protocol/effort.ts';
 import { PERMISSION_MODES } from '../../protocol/permission-modes.ts';
 import type { ValueSpec } from '../key-spec.ts';
 import { MERGES } from '../merge.ts';
@@ -63,7 +64,7 @@ const CROSS_SESSION: ManagedException<GeneralValues['crossSessionInbound']> = {
 
 /** `maxEffortLevel`: "When several scopes set a cap, the lowest applies"; `"max"` sets no cap. */
 const LOWEST_CAP: ManagedException<GeneralValues['maxEffortLevel']> = {
-  ladder: ['max', 'xhigh', 'high', 'medium', 'low'],
+  ladder: EFFORT_LEVELS.toReversed(),
   honoredFrom: ANY_SCOPE,
   onlyWhenStricter: [],
 };

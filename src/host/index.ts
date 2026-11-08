@@ -1,5 +1,10 @@
 /** The host and its sessions (layer 5, docs/API.md, "Host and sessions"). */
 export { createPluginHost, type HostedPlugin, type PluginHost } from './host.ts';
+export {
+  permissionRulesOf,
+  type PermissionRuleFacts,
+  type PermissionRulesOf,
+} from './permission-rules.ts';
 export type { PluginSession } from './session.ts';
 export type {
   ExpandOptions,

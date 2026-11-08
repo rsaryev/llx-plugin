@@ -2,6 +2,7 @@ import { warning, type PluginIssue } from '../format/issues.ts';
 import type { Settings } from '../protocol/official.ts';
 import { MARKETPLACE_KEY_ALIASES, POLICY_KEYS, type PolicyKey } from '../protocol/settings-keys.ts';
 import { brokenSource, SCOPE_LABEL } from './broken-file.ts';
+import { GENERAL_CHECKS } from './general/checks.ts';
 import { GENERAL_KEYS, type GeneralKey } from './general/keys.ts';
 import { GLOBAL_CONFIG_KEYS } from './general/global-config.ts';
 import { KEY_SPECS, admits, scopeCarries } from './key-spec.ts';
@@ -74,11 +75,20 @@ const dropNote = (scope: PolicyScope, name: string, why: string): Read => ({
   issues: [warning(`${scope}:${name}`, `"${name}" ${why}; the key is ignored`)],
 });
 
-/** A key with a row of its own but no repair: kept as written when its scope line admits it. */
+/**
+ * A key with a row of its own but no repair: read when its scope line admits it, with its value
+ * checked as `checks.ts` says (a wrong type is dropped with a warning, a malformed entry skipped).
+ */
 function readGeneralKey(scope: PolicyScope, name: GeneralKey, value: unknown): Read {
   if (!scopeCarries(scope, name)) return { issues: [] };
-  if (admits(name, scope, value)) return { entry: [name, value], issues: [] };
-  return dropNote(scope, name, `is not read from ${SCOPE_LABEL[scope]}`);
+  if (!admits(name, scope, value)) {
+    return dropNote(scope, name, `is not read from ${SCOPE_LABEL[scope]}`);
+  }
+  const checked = GENERAL_CHECKS[name](value, { name, scope, closed: FAILS_CLOSED[scope] });
+  return {
+    entry: checked.value === undefined ? undefined : [name, checked.value],
+    issues: checked.found.map((found) => warning(`${scope}:${name}${found.at}`, found.message)),
+  };
 }
 
 function readEntry(scope: PolicyScope, name: string, value: unknown): Read {
@@ -96,10 +106,13 @@ function readEntry(scope: PolicyScope, name: string, value: unknown): Read {
 export function readSettingsLayer(
   scope: PolicyScope,
   raw: unknown,
+  source?: string,
 ): { layer: PolicyLayer; issues: readonly PluginIssue[] } {
   const empty: Settings = {};
   if (raw === undefined) return { layer: { scope, settings: empty }, issues: [] };
-  if (!isRecord(raw)) return { layer: { scope, settings: empty }, issues: [brokenSource(scope)] };
+  if (!isRecord(raw)) {
+    return { layer: { scope, settings: empty }, issues: [brokenSource(scope, undefined, source)] };
+  }
   const reads = canonicalEntries(raw).map(([name, value]) => readEntry(scope, name, value));
   const entries = reads.flatMap((read) => (read.entry === undefined ? [] : [read.entry]));
   // `Object.fromEntries` defines own properties, so a JSON-parsed `__proto__` key stays a key.

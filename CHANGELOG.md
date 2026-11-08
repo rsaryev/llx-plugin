@@ -4,6 +4,18 @@
 
 ### Fixed
 
+- Settings merge core, review of the permission, effort, source and file-location findings. The
+  local file's allow rules and directories wait for trust only when it is tracked in git or `.claude`
+  is a symlink (`permissionRuleLists(view, trusted, local)`); a host's parent `Read(!...)` and
+  `Edit(!...)` deny and ask rules are dropped with and without the lock. A managed document that does
+  not parse is fatal (`loadSettingsLayers` returns `fatal` and no layer, and `SettingsSources.label`
+  names the source in the message). `effortLevel` and `modelSettings` take low, medium, high and xhigh
+  only (from the SDK type, no `max`); new `effectiveCap` and `capEffort` apply `maxEffortLevel` with
+  its per-model entry. General keys are value-checked (a wrong type, a malformed permission rule,
+  the telemetry export variables of a repository's `env`); `--permission-mode`, `--effort` for
+  `modelSettings` and the `availableModels` gate on `--model` join the session overrides;
+  `managedChangeAdvice` answers "A managed change hasn't reached you". New `permissionRulesOf`
+  (host) parses the lists with the source of each file.
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
   short label and the amounts of each row of the Limits table, not the page's sentences, so the
   repository holds facts and identifiers only.

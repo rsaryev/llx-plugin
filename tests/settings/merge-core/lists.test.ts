@@ -10,13 +10,8 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { effortLevelFor, permissionRuleLists } from '../../../src/settings/general/index.ts';
-import {
-  evaluateRules,
-  parseRule,
-  type PermissionRule,
-  type RuleSource,
-} from '../../../src/rules/index.ts';
-import type { PolicyScope } from '../../../src/settings/index.ts';
+import { permissionRulesOf } from '../../../src/host/index.ts';
+import { evaluateRules, type PermissionRule } from '../../../src/rules/index.ts';
 import { layerOf } from '../../support/settings-layers.ts';
 import { createGeneralView } from '../../support/settings-general.ts';
 import { matchContext } from '../../support/rule-context.ts';
@@ -159,28 +154,15 @@ describe('lists combine', () => {
   });
 });
 
-const SOURCE: { readonly [S in PolicyScope]: RuleSource } = {
-  managed: { kind: 'managed' },
-  parent: { kind: 'embedder-managed' },
-  flag: { kind: 'flag-settings', file: 'settings.json' },
-  local: { kind: 'local' },
-  project: { kind: 'project' },
-  user: { kind: 'user' },
-  addDir: { kind: 'project' },
-};
+const TRUSTED = () => true;
+const UNTRACKED = { tracked: false, claudeDirIsSymlink: false } as const;
+const FACTS = { trusted: TRUSTED, local: UNTRACKED, flagSettings: 'settings.json' } as const;
 
-/** The rules of the merged lists as the rules module reads them, each tagged with the source of its file. */
+/** The rules of the merged lists as the host API reads them, each tagged with the source of its file. */
 function rulesFrom(layers: Parameters<typeof createGeneralView>[0]): readonly PermissionRule[] {
-  const lists = permissionRuleLists(createGeneralView(layers), () => true);
-  return (['allow', 'ask', 'deny'] as const).flatMap((behavior) =>
-    lists[behavior].flatMap((entry) => {
-      const parsed = parseRule(entry.rule, { behavior, source: SOURCE[entry.scope] });
-      return parsed.rule === undefined ? [] : [parsed.rule];
-    }),
-  );
+  return permissionRulesOf(createGeneralView(layers), FACTS).rules;
 }
 
-const TRUSTED = () => true;
 const call = (command: string) => ({ toolName: 'Bash', input: { command } });
 
 describe('permission rules across settings files', () => {
@@ -192,6 +174,7 @@ describe('permission rules across settings files', () => {
           layerOf('user', { permissions: { allow: ['Bash(npm run lint)'] } }),
         ]),
         TRUSTED,
+        UNTRACKED,
       );
       expect(lists.allow.map((entry) => [entry.rule, entry.scope])).toEqual([
         ['Bash(git status)', 'managed'],
@@ -212,6 +195,7 @@ describe('permission rules across settings files', () => {
           layerOf('flag', { permissions: { allow: ['Bash(ls)'] } }),
         ]),
         TRUSTED,
+        UNTRACKED,
       );
       expect(lists.allow.map((entry) => entry.rule)).toEqual(['Bash(git status)']);
       expect(lists.deny.map((entry) => entry.rule)).toEqual(['Read(./.env)']);
@@ -223,12 +207,18 @@ describe('permission rules across settings files', () => {
         createGeneralView([
           layerOf('managed', { allowManagedPermissionRulesOnly: true }),
           layerOf('parent', {
-            permissions: { allow: ['Bash(ls)'], deny: ['Bash(rm *)'], ask: ['Bash(git push *)'] },
+            permissions: {
+              allow: ['Bash(ls)'],
+              deny: ['Bash(rm *)', 'Read(!./x)'],
+              ask: ['Bash(git push *)', 'Edit(!./y)'],
+            },
           }),
         ]),
         TRUSTED,
+        UNTRACKED,
       );
       expect(lists.allow).toEqual([]);
+      // A `!` rule of the host cannot carve paths out of the managed rules.
       expect(lists.deny.map((entry) => entry.rule)).toEqual(['Bash(rm *)']);
       expect(lists.ask.map((entry) => entry.rule)).toEqual(['Bash(git push *)']);
     });
@@ -271,6 +261,7 @@ describe('permission rules across settings files', () => {
           layerOf('local', { permissions: { allow: ['Bash(curl *)'] } }),
         ]),
         TRUSTED,
+        UNTRACKED,
       );
       expect(lists.deny).toEqual([{ rule: 'Bash(curl *)', scope: 'managed' }]);
       const rules = rulesFrom([
@@ -289,6 +280,7 @@ describe('permission rules across settings files', () => {
           layerOf('managed', { permissions: { deny: ['Bash(rm *)'] } }),
         ]),
         TRUSTED,
+        UNTRACKED,
       );
       expect(lists.allow).toEqual([{ rule: 'Bash(ls)', scope: 'parent' }]);
       expect(lists.deny).toEqual([{ rule: 'Bash(rm *)', scope: 'managed' }]);

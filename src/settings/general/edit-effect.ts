@@ -95,3 +95,32 @@ export const loadsFileCreatedMidSession = (
   scope: FileScope,
   folderExistedAtStart: boolean,
 ): boolean => LOADS_WHEN_CREATED[scope](folderExistedAtStart);
+
+export interface ManagedChangeFacts {
+  /** The session has restarted since the administrator changed the managed source. */
+  readonly restarted: boolean;
+  /** The managed source the administrator changed, as `/status` names sources. */
+  readonly changedSource: string;
+  /** The managed source `Setting sources` of `/status` names for the session. */
+  readonly statusSource: string;
+}
+
+/** What to tell a person whose managed change has not reached them. */
+export type ManagedChangeAdvice =
+  /** Managed sources "reach a running session on the schedule in the delivery table, so restart the session first". */
+  | 'restart'
+  /** `/status` names another source than the one changed: "a higher-priority source applies". */
+  | 'higher-source-applies'
+  /** The session runs the changed source: the change has reached it. */
+  | 'reached';
+
+/**
+ * settings.md, "A managed change hasn't reached you": restart first; "If `/status` then names a
+ * different source than the one your administrator changed, a higher-priority source applies" (the
+ * order among managed sources is managed-settings.md, "How Claude Code combines managed sources",
+ * the host's to show).
+ */
+export function managedChangeAdvice(facts: ManagedChangeFacts): ManagedChangeAdvice {
+  if (!facts.restarted) return 'restart';
+  return facts.statusSource === facts.changedSource ? 'reached' : 'higher-source-applies';
+}

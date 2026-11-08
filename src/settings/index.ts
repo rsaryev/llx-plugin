@@ -22,7 +22,7 @@ export {
 export { MERGE_KINDS, type MergeKind } from './merge.ts';
 export { readSettingsLayer } from './read-layer.ts';
 export { REPAIR_KINDS, type RepairKind } from './repair.ts';
-export { loadSettingsLayers, type SettingsSources } from './sources.ts';
+export { loadSettingsLayers, type LoadedSettings, type SettingsSources } from './sources.ts';
 export { createPolicyView, type PolicyView } from './view.ts';
 export {
   resolvePolicy,

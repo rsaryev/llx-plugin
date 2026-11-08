@@ -16,6 +16,7 @@ import { plan } from '../../support/marketplace-registry.ts';
 import { spec } from '../../support/spec.ts';
 
 const signal = new AbortController().signal;
+const UNTRACKED = { tracked: false, claudeDirIsSymlink: false } as const;
 const load = (sources: Partial<Record<PolicyScope, unknown>>) =>
   loadSettingsLayers({ read: (scope) => Promise.resolve(sources[scope]) }, signal);
 
@@ -120,16 +121,33 @@ spec(`${BROKEN}.Managed settings`, () => {
       expect(view.get('permissions')?.deny).toEqual(['Bash(rm *)']);
     });
 
-    test('a managed document that does not parse is the errors.md message, and nothing of it applies', async () => {
-      const { layers, issues } = await load({ managed: '{ nope', user: { model: 'opus' } });
-      expect(layers.map((layer) => layer.scope)).toEqual(['user']);
-      expect(issues[0]?.severity).toBe('error');
-      expect(issues[0]?.message).toStartWith(
-        'Managed settings document could not be parsed as a JSON object; none of its settings are in effect. Fix or remove it.',
+    test('a managed document that does not parse stops startup: the line names the source, and no layer is returned to run without the policy', async () => {
+      const MANAGED_FILE = '/Library/Application Support/ClaudeCode/managed-settings.json';
+      const result = await loadSettingsLayers(
+        {
+          read: (scope) => Promise.resolve(scope === 'managed' ? '{ nope' : { model: 'opus' }),
+          label: (scope) => (scope === 'managed' ? MANAGED_FILE : undefined),
+        },
+        signal,
       );
-      expect(
-        problemKind('managed', issues[0] ?? { severity: 'error', path: '', message: '' }),
-      ).toBe('Managed settings');
+      expect(result.fatal).toBe(true);
+      expect(result.layers).toEqual([]);
+      const [issue] = result.issues;
+      expect(issue?.severity).toBe('error');
+      expect(issue?.message).toStartWith(
+        `${MANAGED_FILE}: Managed settings document could not be parsed as a JSON object; none of its settings are in effect. Fix or remove it.`,
+      );
+      expect(problemKind('managed', issue ?? { severity: 'error', path: '', message: '' })).toBe(
+        'Managed settings',
+      );
+    });
+
+    test('a managed document that is JSON but not an object stops startup too, and a broken user file never does', async () => {
+      expect((await load({ managed: '[1, 2]' })).fatal).toBe(true);
+      expect((await load({ managed: [1, 2] })).fatal).toBe(true);
+      const skipped = await load({ user: '{ nope', managed: { model: 'opus' } });
+      expect(skipped.fatal).toBe(false);
+      expect(skipped.layers.map((layer) => layer.scope)).toEqual(['managed']);
     });
 
     test('an empty managed-settings.json counts as {} and is no problem', async () => {
@@ -244,12 +262,12 @@ spec(`settingsMerge.settings.A committed key doesn't reach teammates`, () => {
         },
       });
       const view = createGeneralView([project]);
-      const untrusted = permissionRuleLists(view, () => false);
+      const untrusted = permissionRuleLists(view, () => false, UNTRACKED);
       expect(untrusted.allow).toEqual([]);
       expect(untrusted.additionalDirectories).toEqual([]);
       expect(untrusted.deny.map((entry) => entry.rule)).toEqual(['Read(./.env)']);
       expect(untrusted.ask.map((entry) => entry.rule)).toEqual(['Bash(git push *)']);
-      const trusted = permissionRuleLists(view, () => true);
+      const trusted = permissionRuleLists(view, () => true, UNTRACKED);
       expect(trusted.allow.map((entry) => entry.rule)).toEqual(['Bash(make)']);
       expect(trusted.additionalDirectories).toEqual([{ directory: '../shared', scope: 'project' }]);
     });

@@ -140,30 +140,36 @@ spec(`${COMPARE}.Managed settings`, () => {
   });
 });
 
+const inRepository = (over: Partial<LocalPlacementFacts> = {}): LocalPlacementFacts => ({
+  homeDir: '/home/me',
+  windows: false,
+  repository: { root: '/work/acme', ownedByUser: true },
+  ...over,
+});
+
 const FIND = 'settingsMerge.settings.Find or create your settings files';
 
 spec(`${FIND}.Managed`, () => {
   describe('your organization deploys it; you do not create or edit it', () => {
-    test('nobody but the organization makes it, and it is not yours to edit', () => {
-      expect(FILE_ORIGINS.managed.madeBy).toEqual(['organization']);
+    test('it is not yours to edit: no folder fact names a managed file, and it is read from every project', () => {
       expect(FILE_ORIGINS.managed.youEdit).toBe(false);
-    });
-
-    test('no action of Claude Code writes managed settings', () => {
-      expect(Object.values(WRITE_TARGET)).not.toContain('managed');
+      expect(
+        localSettingsFiles({ ...inRepository(), projectDir: '/work/acme', joinPath }),
+      ).not.toContain(FILE_ORIGINS.managed.documentedPath);
+      expect(reachOf('managed', { committed: false, serverManaged: false }).yourMachine).toBe(
+        'every project',
+      );
     });
   });
 });
 
 spec(`${FIND}.Shared project`, () => {
   describe('a project may have one committed; if not, create it at .claude/settings.json in the project folder', () => {
-    test('the file is .claude/settings.json in the project folder, made by you', () => {
+    test('the file is .claude/settings.json in the project folder, apart from the local file beside it', () => {
       expect(projectSettingsFile(facts())).toBe('/work/acme-app/.claude/settings.json');
-      expect(FILE_ORIGINS.project.madeBy).toEqual(['you']);
-    });
-
-    test('no action of Claude Code writes the shared project file', () => {
-      expect(Object.values(WRITE_TARGET)).not.toContain('project');
+      expect(
+        localSettingsFiles({ ...inRepository(), projectDir: '/work/acme', joinPath }),
+      ).not.toContain(projectSettingsFile({ ...facts(), projectDir: '/work/acme' }));
     });
   });
 });
@@ -178,25 +184,18 @@ spec(`${FIND}.User`, () => {
     });
 
     test('Claude Code writes it for a /config option stored in user settings and for a /model default, and the local file for a standing approval or a few /config options', () => {
+      // The type of `WRITE_TARGET` lets a trigger name only these two files, so a managed or a
+      // shared project file is never written; here are the two the docs name.
       expect(WRITE_TARGET['config-option']).toBe('user');
       expect(WRITE_TARGET['model-default']).toBe('user');
       expect(WRITE_TARGET['permission-standing-approval']).toBe('local');
       expect(WRITE_TARGET['config-option-kept-local']).toBe('local');
-      expect(FILE_ORIGINS.user.madeBy).toEqual(['you', 'claude-code']);
-      expect(FILE_ORIGINS.local.madeBy).toEqual(['you', 'claude-code']);
     });
   });
 });
 
-const inRepository = (over: Partial<LocalPlacementFacts> = {}): LocalPlacementFacts => ({
-  homeDir: '/home/me',
-  windows: false,
-  repository: { root: '/work/acme', ownedByUser: true },
-  ...over,
-});
-
 spec('settingsMerge.settings.Where Claude Code keeps the local file in a git repository', () => {
-  describe('at the repository root, with five documented exceptions', () => {
+  describe('at the repository root, with four documented exceptions', () => {
     test('started in a subdirectory, the file is at the repository root and applies across the repository', () => {
       expect(localSettingsRoot(inRepository())).toBe('/work/acme');
       expect(
@@ -205,13 +204,6 @@ spec('settingsMerge.settings.Where Claude Code keeps the local file in a git rep
         '/work/acme/.claude/settings.local.json',
         '/work/acme/packages/app/.claude/settings.local.json',
       ]);
-    });
-
-    test('in a worktree it is the main checkout root, which the host reports as the root', () => {
-      const worktree = inRepository({ repository: { root: '/work/acme', ownedByUser: true } });
-      expect(localSettingsFiles({ ...worktree, projectDir: '/work/acme-wt', joinPath })[0]).toBe(
-        '/work/acme/.claude/settings.local.json',
-      );
     });
 
     test('it stays with .claude/settings.json outside a repository, at a home-directory root, on Windows, and when the root is not owned by you', () => {

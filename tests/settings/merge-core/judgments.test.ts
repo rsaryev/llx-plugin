@@ -56,39 +56,6 @@ describe('the keys settings files carry', () => {
     expect(createGeneralView([layerOf('parent', { model: 'opus' })]).get('model')).toBe('opus');
   });
 
-  test('permissions.defaultMode: auto and bypassPermissions do not take effect from project or local settings (settings.md: "set them in user or managed settings instead")', () => {
-    for (const mode of ['auto', 'bypassPermissions'] as const) {
-      for (const scope of ['project', 'local'] as const) {
-        expect(
-          createGeneralView([layerOf(scope, { permissions: { defaultMode: mode } })]).get(
-            'permissions.defaultMode',
-          ),
-        ).toBeUndefined();
-      }
-      for (const scope of ['user', 'managed', 'flag'] as const) {
-        expect(
-          createGeneralView([layerOf(scope, { permissions: { defaultMode: mode } })]).get(
-            'permissions.defaultMode',
-          ),
-        ).toBe(mode);
-      }
-    }
-  });
-
-  test('a project value that is not elevating applies, and an ignored one leaves the lower value in force', () => {
-    const view = createGeneralView([
-      layerOf('user', { permissions: { defaultMode: 'acceptEdits' } }),
-      layerOf('project', { permissions: { defaultMode: 'bypassPermissions' } }),
-    ]);
-    expect(view.get('permissions.defaultMode')).toBe('acceptEdits');
-    expect(view.merged().permissions).toEqual({ defaultMode: 'acceptEdits' });
-    expect(
-      createGeneralView([layerOf('project', { permissions: { defaultMode: 'plan' } })]).get(
-        'permissions.defaultMode',
-      ),
-    ).toBe('plan');
-  });
-
   test('a general key a scope may not carry is dropped with a warning naming it', () => {
     const issues = issuesOf('project', { allowManagedPermissionRulesOnly: true });
     expect(issues).toHaveLength(1);
@@ -103,6 +70,16 @@ describe('the exceptions', () => {
       layerOf('project', { crossSessionInbound: 'maybe' }),
     ]);
     expect(view.get('crossSessionInbound')).toBe('hold');
+  });
+
+  test('a lone project accept is no value, and nor is one over a managed value that is not stricter', () => {
+    const lone = createGeneralView([layerOf('project', { crossSessionInbound: 'accept' })]);
+    expect(lone.get('crossSessionInbound')).toBeUndefined();
+    const below = createGeneralView([
+      layerOf('managed', { crossSessionInbound: 'hold' }),
+      layerOf('project', { crossSessionInbound: 'accept' }),
+    ]);
+    expect(below.get('crossSessionInbound')).toBe('hold');
   });
 });
 

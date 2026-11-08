@@ -67,7 +67,7 @@ const FILES = ['managed', 'flag', 'local', 'project', 'addDir', 'user'] as const
  * take effect from them: "`auto` and `bypassPermissions` don't take effect from project or local
  * settings; set them in user or managed settings instead" (settings.md, "A value you set is ignored").
  */
-const REPOSITORY_FILES: readonly PolicyScope[] = ['project', 'local'];
+export const REPOSITORY_FILES: readonly PolicyScope[] = ['project', 'local'];
 const isElevated = (value: unknown): boolean => value === 'auto' || value === 'bypassPermissions';
 const isEmptyList = (value: unknown): boolean => Array.isArray(value) && value.length === 0;
 const fromFilesOrParent =

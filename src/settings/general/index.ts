@@ -3,12 +3,21 @@ export { readClaudeJson, type ClaudeJsonFacts, type ClaudeJsonOutcome } from './
 export {
   editEffect,
   loadsFileCreatedMidSession,
+  managedChangeAdvice,
   type Applies,
   type Arrival,
   type EditEffect,
+  type ManagedChangeAdvice,
+  type ManagedChangeFacts,
   type SettingsEdit,
 } from './edit-effect.ts';
-export { effortLevelFor, type ModelEffort, type ModelEffortFacts } from './effort.ts';
+export {
+  capEffort,
+  effectiveCap,
+  effortLevelFor,
+  type ModelEffort,
+  type ModelEffortFacts,
+} from './effort.ts';
 export {
   FILE_ORIGINS,
   LOCAL_FILE_IGNORE_ENTRY,
@@ -40,6 +49,7 @@ export {
 export {
   permissionRuleLists,
   type AddedDirectory,
+  type LocalFileFacts,
   type PermissionRuleLists,
   type RuleEntry,
   type ScopeTrust,

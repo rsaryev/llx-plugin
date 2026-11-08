@@ -59,7 +59,13 @@ export const WRITE_TRIGGERS = [
 ] as const;
 export type WriteTrigger = (typeof WRITE_TRIGGERS)[number];
 
-export const WRITE_TARGET: { readonly [T in WriteTrigger]: FileScope } = {
+/**
+ * The files Claude Code writes: only the user file and the local file. The shared project file is
+ * yours and a managed file is the organization's, so no trigger can name either: the type says it.
+ */
+export type WrittenScope = Extract<FileScope, 'user' | 'local'>;
+
+export const WRITE_TARGET: { readonly [T in WriteTrigger]: WrittenScope } = {
   'config-option': 'user',
   // "A few options, such as Show tips: .claude/settings.local.json"
   'config-option-kept-local': 'local',

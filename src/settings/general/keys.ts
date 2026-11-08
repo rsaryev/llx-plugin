@@ -38,7 +38,7 @@ export type SettingsKey = PolicyKey | GeneralKey;
 /** The value type of each general key, from the official `Settings`, never declared again (`undefined` as `Settings` has it: the key is optional). */
 export interface GeneralValues {
   readonly allowManagedPermissionRulesOnly: Settings['allowManagedPermissionRulesOnly'];
-  readonly 'autoMode.classifyAllShell': boolean | undefined;
+  readonly 'autoMode.classifyAllShell': NonNullable<Settings['autoMode']>['classifyAllShell'];
   readonly availableModels: Settings['availableModels'];
   readonly crossSessionInbound: Settings['crossSessionInbound'];
   readonly disableClaudeAiConnectors: Settings['disableClaudeAiConnectors'];
@@ -50,8 +50,12 @@ export interface GeneralValues {
   readonly model: Settings['model'];
   readonly modelPicker: Settings['modelPicker'];
   readonly permissions: Settings['permissions'];
-  readonly 'permissions.blockReadsOutsideWorkingDirectories': boolean | undefined;
-  readonly 'permissions.blockWritesOutsideWorkingDirectories': boolean | undefined;
+  readonly 'permissions.blockReadsOutsideWorkingDirectories': NonNullable<
+    Settings['permissions']
+  >['blockReadsOutsideWorkingDirectories'];
+  readonly 'permissions.blockWritesOutsideWorkingDirectories': NonNullable<
+    Settings['permissions']
+  >['blockWritesOutsideWorkingDirectories'];
   readonly 'permissions.defaultMode': NonNullable<Settings['permissions']>['defaultMode'];
   readonly remoteControlAtStartup: Settings['remoteControlAtStartup'];
   readonly sandbox: Settings['sandbox'];

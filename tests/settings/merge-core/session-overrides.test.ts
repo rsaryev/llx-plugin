@@ -19,6 +19,9 @@ const input = (over: Partial<SessionInput>): SessionInput => ({
   ...over,
 });
 
+const modelSession = (flag: string, availableModels?: readonly string[]) =>
+  input({ flags: { '--model': flag }, settingsValue: 'sonnet', availableModels });
+
 spec('settingsMerge.settings.Change a setting for one session.A flag for that key', () => {
   describe('some keys have their own flag', () => {
     test('--model overrides the model key and ANTHROPIC_MODEL, whichever file set the key', () => {
@@ -41,6 +44,56 @@ spec('settingsMerge.settings.Change a setting for one session.A flag for that ke
         value: 'high',
         from: 'settings files',
       });
+    });
+
+    test('--effort covers modelSettings too: the level saved for the model is overridden, and the variable still comes first', () => {
+      const saved = input({ flags: { '--effort': 'low' }, settingsValue: 'high' });
+      expect(resolveSessionValue('modelSettings', saved)).toEqual({
+        value: 'low',
+        from: '--effort',
+      });
+      expect(
+        resolveSessionValue(
+          'modelSettings',
+          input({ ...saved, env: { CLAUDE_CODE_EFFORT_LEVEL: 'xhigh' } }),
+        )?.value,
+      ).toBe('xhigh');
+    });
+
+    test('--permission-mode overrides permissions.defaultMode', () => {
+      expect(
+        resolveSessionValue(
+          'permissions.defaultMode',
+          input({ flags: { '--permission-mode': 'plan' }, settingsValue: 'acceptEdits' }),
+        ),
+      ).toEqual({ value: 'plan', from: '--permission-mode' });
+      expect(
+        resolveSessionValue('permissions.defaultMode', input({ settingsValue: 'acceptEdits' }))
+          ?.from,
+      ).toBe('settings files');
+    });
+
+    test('--model picks only from the models availableModels allows: a model outside it falls through to the next source', () => {
+      expect(resolveSessionValue('model', modelSession('opus', ['sonnet', 'haiku']))).toEqual({
+        value: 'sonnet',
+        from: 'settings files',
+      });
+      expect(
+        resolveSessionValue('model', modelSession('claude-sonnet-4-6', ['sonnet']))?.from,
+      ).toBe('--model');
+      expect(resolveSessionValue('model', modelSession('claude-opus-5-5', ['opus-5']))?.from).toBe(
+        '--model',
+      );
+      expect(resolveSessionValue('model', modelSession('opus'))?.from).toBe('--model');
+    });
+
+    test('with availableModels empty every named selection is blocked, the key in a file included', () => {
+      expect(
+        resolveSessionValue(
+          'model',
+          input({ flags: { '--model': 'opus' }, settingsValue: 'sonnet', availableModels: [] }),
+        ),
+      ).toBeUndefined();
     });
 
     test('an unset flag does not hide the key', () => {

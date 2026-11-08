@@ -9,7 +9,11 @@
  * reached you; managed-settings.md § Where and when a policy applies.
  */
 import { describe, expect, test } from 'bun:test';
-import { editEffect, loadsFileCreatedMidSession } from '../../../src/settings/general/index.ts';
+import {
+  editEffect,
+  loadsFileCreatedMidSession,
+  managedChangeAdvice,
+} from '../../../src/settings/general/index.ts';
 import { spec } from '../../support/spec.ts';
 
 spec('settingsMerge.settings.When edits take effect', () => {
@@ -92,6 +96,44 @@ spec('settingsMerge.settings.When edits take effect', () => {
     test('the project file is loaded even when the .claude folder is created in the same session', () => {
       expect(loadsFileCreatedMidSession('project', false)).toBe(true);
       expect(loadsFileCreatedMidSession('project', true)).toBe(true);
+    });
+  });
+});
+
+// An id with an apostrophe is a template literal: the SP2 gate cannot read it from a quoted string.
+spec(`settingsMerge.settings.A managed change hasn't reached you`, () => {
+  describe('restart first; then /status names the source that applies', () => {
+    test('managed sources reach a running session on a schedule, so the advice before a restart is to restart', () => {
+      expect(editEffect({ scope: 'managed', arrival: 'mdm', key: 'permissions' }).applies).toBe(
+        'on-schedule',
+      );
+      expect(
+        managedChangeAdvice({
+          restarted: false,
+          changedSource: 'managed-settings.json',
+          statusSource: 'server-managed settings',
+        }),
+      ).toBe('restart');
+    });
+
+    test('after a restart a /status that names another source than the changed one means a higher-priority source applies', () => {
+      expect(
+        managedChangeAdvice({
+          restarted: true,
+          changedSource: 'managed-settings.json',
+          statusSource: 'server-managed settings',
+        }),
+      ).toBe('higher-source-applies');
+    });
+
+    test('after a restart a /status that names the changed source means the change has reached the session', () => {
+      expect(
+        managedChangeAdvice({
+          restarted: true,
+          changedSource: 'managed-settings.json',
+          statusSource: 'managed-settings.json',
+        }),
+      ).toBe('reached');
     });
   });
 });
