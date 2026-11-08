@@ -280,7 +280,9 @@ const result = await chain.dispatch('tool.call', event, {
 | `createEventRules()`, `EVENT_SPECS`   | done    | what the chain knows of the tool, prompt, command, `/config`, turn, session and subagent events: documented input fields, the shapes a hook can answer with, refused changes, what Claude Code receives, the cut reason (`createModChain({ clock, rules })`) |
 | `eventResultProblem`, `eventInputProblem` | done | why a result or an input does not fit an event, or `undefined`; unknown events are not checked |
 | `clampReason`, `mergeToolCheck`, `skillPromptEvent`, `autocompleteRows` | done | the 4,096-character reason cut; the `tool.check` decision with plan mode (a mod can tighten a call that is not read-only, not approve it) and the organization's `ceiling: 'ask'` (an `allow` still asks); the `skill.prompt` event from a skill and its parsed frontmatter; Claude Code's autocomplete rows then the mods' |
-| API, UI, loading, test kit            | planned | the other parts of mods                                                               |
+| `createModsApi(options, plugin)`      | done    | the `$` of one mod: every namespace of the reference, each call an event through the chain and then a port; `engine.create` fires once and may add or withhold a namespace; `dispose()` stops its timers and forgets its registrations |
+| `createRegistries()`, `createStateStore()`, `readEngineSettings(options)`, `withApiRules(rules)`, `isValidModName`, `atom`, `read`, `update` | done | what mods registered (commands, tools as `mcp__<plugin>__<name>`, subagent types), `$.state`, Claude Code's own `settings.read`, the shape rule for API calls, the 64-character name rule, the state helpers |
+| UI, loading, test kit                 | planned | the other parts of mods                                                               |
 
 `register` takes the tier `prepend`, `user`, `append` or `builtin` (never `core`, which is Claude Code's own
 behaviour); the built-in guard `sec-default@builtin` registers first in `prepend`. It refuses a whole module (and adds none of its hooks) when `on("x")` is registered twice
@@ -302,6 +304,30 @@ throw, and Claude Code's own answer (`core`) is an object of the same shape. An 
 answer is `next(e)` takes any result. The fields the docs name are typed on an event's input, any
 other field is carried. The firing is the host's: the kit proves what it does with each answer, not
 when Claude Code raises the event.
+
+### The mods API
+
+```ts
+const chain = createModChain({ clock, rules: withApiRules(createEventRules()) });
+const scopes = new Map();
+const { api, dispose } = await createModsApi(
+  { chain, ports, registries: createRegistries(), state: createStateStore(), scopes, report, debug },
+  { name: 'my-mod', tier: 'user' },
+);
+chain.register({ name: 'my-mod', api }, 'user', hooks); // hooks see `api` as `$`
+```
+
+`ports` is a `ModHostPorts`: the shared `Clock`, `Locations`, `CommandRunner` and `McpCaller` and the
+mods ports `ModFs`, `ModSpawner`, `ModFetcher` (any method, and the kit judges each redirect),
+`ModModels`, `ModSession`, `ModPrompts`, `ModAgents`, `ModCommands`, `ModTools`, `ModTurns`,
+`ModConfig`, `ModSettingsReader`, `ModAudio`, `ModEnv`, `ModStore` and `TelemetrySink`. The kit owns
+what the docs say about a call (paths against the working directory, the 4 MiB limits, `isStdoutTruncated`,
+the redirect and header rules, prompt blocks and cache breakpoints, the newest 4,096 messages) and the
+port does the effect. A call fires the event named for it (`fs.read`, `store.get`...); a mod before the
+caller can rewrite it, answer `{ value }` or refuse with `{ deny }`, which rejects the call. A
+call whose result is its event's own (`tool.call`, `command.run`, `prompt.submit`, `session.send`...)
+resolves to that result. `$.ui` is built by the interface part of mods and passed as `options.ui`.
+Judgments are in `spec/judgments.md`.
 
 ## Testing kit (planned)
 

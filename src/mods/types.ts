@@ -45,14 +45,28 @@ export type NextOutput<N extends AnyModEventName> = N extends StreamEventName
   ? AsyncGenerator<ChunkOf<N>, ResultOf<N>>
   : Promise<ResultOf<N>>;
 
-/** A method of the mods API, until the part of mods that implements its namespace narrows its type. */
-export type ModsMember = (...args: readonly unknown[]) => unknown;
+/** A method of the mods API: every call is asynchronous, as it is an event through the chain and then a port. */
+export type ModsMember = (...args: readonly unknown[]) => Promise<unknown>;
+
+/** `$.process.spawn` streams the command's output, so it returns the stream and not a promise (api.md, "Reach files, processes, and the network"). */
+export type ModsStreamMember = (...args: readonly unknown[]) => AsyncGenerator<unknown, unknown>;
 
 /** `$`: the namespaces of the mods API, each holding its methods by name. */
 export type ModsNamespaceApi<N extends ModsNamespace> = {
-  readonly [M in ModsMethod<N>]: ModsMember;
+  readonly [M in ModsMethod<N>]: `${N}.${M}` extends StreamEventName
+    ? ModsStreamMember
+    : ModsMember;
 };
-export type ModsApi = { readonly [N in ModsNamespace]: ModsNamespaceApi<N> };
+
+/** `$.plugin`: this plugin's name and directory, which are values, not calls (reference.md, "Mods API methods"). */
+export interface PluginNamespace {
+  readonly name: string;
+  readonly root: string;
+}
+
+export type ModsApi = {
+  readonly [N in Exclude<ModsNamespace, 'plugin'>]: ModsNamespaceApi<N>;
+} & { readonly plugin: PluginNamespace };
 
 /**
  * The tiers a mod registers in. `core` is Claude Code's own behaviour at the end of the chain, not

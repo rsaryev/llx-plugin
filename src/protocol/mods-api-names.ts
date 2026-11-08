@@ -59,5 +59,20 @@ export const MODS_API = {
   telemetry: ['log', 'mark'],
 } as const satisfies Readonly<Record<string, readonly string[]>>;
 
+/**
+ * The `status` of each entry `$.agent.list()` returns (reference.md, "Mods API methods"); `idle`
+ * and `waiting` require Claude Code v2.1.289 or later, and the kit implements the current behaviour.
+ */
+export const AGENT_STATUSES = [
+  'pending',
+  'running',
+  'waiting',
+  'idle',
+  'completed',
+  'failed',
+  'killed',
+] as const;
+export type AgentStatus = (typeof AGENT_STATUSES)[number];
+
 export type ModsNamespace = keyof typeof MODS_API;
 export type ModsMethod<N extends ModsNamespace> = (typeof MODS_API)[N][number];

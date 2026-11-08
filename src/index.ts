@@ -41,7 +41,13 @@ export {
 export type * from './protocol/official-tools.ts';
 export * from './foundation/index.ts';
 export * from './mods/index.ts';
-export { MODS_API, type ModsMethod, type ModsNamespace } from './protocol/mods-api-names.ts';
+export {
+  AGENT_STATUSES,
+  MODS_API,
+  type AgentStatus,
+  type ModsMethod,
+  type ModsNamespace,
+} from './protocol/mods-api-names.ts';
 export {
   API_EVENT_NAMES,
   CLASSIC_EVENT_NAMES,

@@ -79,6 +79,20 @@
   characters), `eventResultProblem`, `eventInputProblem`, `clampReason`, `mergeToolCheck` (plan mode
   lets a mod tighten a call that is not read-only, not approve it), `skillPromptEvent` (source,
   plugin name, path, frontmatter and its problem) and `autocompleteRows`.
+- Mods API (`mods/api`): `createModsApi` builds the `$` of one mod from ports. Every call is an
+  event through the chain and then a port (`$.fs`, `$.process`, `$.http`, `$.model`, `$.store`,
+  `$.state`, `$.session`, `$.prompt`, `$.turn`, `$.config`, `$.settings`, `$.env`, `$.clock`,
+  `$.mcp`, `$.audio`, `$.telemetry`, `$.command`, `$.tool`, `$.agent`, `$.plugin`), with the
+  documented limits: 4 MiB for a file, a request body, a response, command output and the store,
+  `isStdoutTruncated` and `isStderrTruncated`, the 30 second and 10 minute timeouts, five redirects
+  and the dropped headers, `HEAD` and the `Content-Length` reason, `maxTokens` 1024 to 64,000 with
+  prompt blocks and cache breakpoints, the newest 4,096 messages, and names of up to 64 letters,
+  digits, `_` and `-` (`isValidModName`). `engine.create` adds or withholds a namespace and lends
+  its methods the caller's context; `settings.read` has layers, sources and the own-read versus
+  mod-read origin (`readEngineSettings`); registries of commands, tools (as `mcp__<plugin>__<name>`)
+  and subagent types; `$.state` with `atom`, `read` and `update`; `withApiRules` composes the shape
+  of API calls with `createEventRules()`; `AGENT_STATUSES`; and the ports behind it (`ModFs`,
+  `ModFetcher`, `ModSpawner`, `ModModels`, `ModSession`...).
 
 ### Fixed
 

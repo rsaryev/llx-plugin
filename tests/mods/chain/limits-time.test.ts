@@ -103,7 +103,7 @@ describe("a hook's own time (reference.md § Limits)", () => {
         'user',
         [
           fn('tool.call', async ($) => {
-            $.ui.log('x');
+            void $.ui.log('x');
             return await NEVER();
           }),
         ],
