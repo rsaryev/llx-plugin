@@ -97,3 +97,14 @@ the module's own tests do not notice: a weak or missing assertion. The report go
 `.cache/mutation/<module>.json`; the score is printed. It is heavy (minutes to an hour per module),
 so it runs by hand, never in hooks or CI. Run it on a module after changing its tests or code, and
 kill survivors by asserting the documented behaviour they change, never by testing the mutation.
+
+## Loading oracle
+
+`bun run corpus:load` compares what the kit LOADS with what Claude Code loads, plugin by plugin:
+whether the plugin loads, and the names of its skills (commands included, as multisets), agents,
+hook events, MCP servers and LSP servers. Claude Code's side comes from
+`claude --plugin-dir <dir> plugin details <name>`, run as a black box in a private config folder
+(`.cache/corpus/oracle-load/home`): the command is offline, reads no person's settings and calls no
+model. Results are cached per Claude Code version in `.cache/corpus/oracle-load/<version>/`; every
+difference is written to `.cache/corpus/load-report.json`. `validatePlugin` agreeing with
+`claude plugin validate` says nothing about loading; this does.

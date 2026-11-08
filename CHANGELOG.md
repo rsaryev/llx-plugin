@@ -4,6 +4,8 @@
 
 ### Added
 
+- `bun run corpus:load`: the kit's loading compared with Claude Code's own (`claude plugin
+  details` over `--plugin-dir`) on every corpus plugin, per component.
 - `bun run mutation <module>`: StrykerJS mutation testing of one module against its own tests,
   with a JSON report in `.cache/mutation/`.
 - `bun run bench`: times `loadPlugin` (from disk and from memory), host assembly, the skill

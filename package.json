@@ -44,6 +44,7 @@
     "corpus:fetch": "bun scripts/corpus/fetch.ts",
     "bench": "bun scripts/bench/run.ts",
     "mutation": "bun scripts/mutation/run.ts",
+    "corpus:load": "bun scripts/corpus/load-compare.ts",
     "corpus": "bun scripts/corpus/run.ts",
     "check": "bun run check:static && bun run compat --check",
     "check:static": "bun run format:check && bun run lint && bun run check:size && bun run check:layers && bun run check:test-layout && bun run check:tests && bun run check:spec && bun run check:docs && bun run check:deadcode && bun run typecheck",
