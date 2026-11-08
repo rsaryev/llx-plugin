@@ -1,4 +1,5 @@
 import type { SkillOrigin } from '../../format/skill-types.ts';
+import { projectDirectories } from '../../foundation/project-directories.ts';
 import type { FolderScan } from '../../ports/folder-scan.ts';
 import type { SkillsOrigin } from '../../settings/customization/sources.ts';
 
@@ -69,23 +70,6 @@ const COMMANDS = '.claude/commands';
 const only = (dir: string | undefined): Promise<readonly string[]> =>
   Promise.resolve(dir === undefined ? [] : [dir]);
 
-/**
- * The project's own folders: the working directory and every parent up to the repository root. In a
- * linked worktree whose top has no `.claude/skills`, the main checkout's project skills load instead
- * (v2.1.277 and later, skills.md, "Load skills in monorepos and subdirectories"). Judgment
- * (spec/judgments.md): worktrees.md titles that bullet "skills, agents, and commands", so the main
- * checkout's `.claude/commands` load too; it is never a base of a skill-folder plugin.
- */
-async function projectBases(context: ScanContext): Promise<readonly string[]> {
-  const { folders, request, signal } = context;
-  const chain = await folders.repository(request.cwd, signal);
-  const top = chain.directories.at(-1);
-  if (chain.mainCheckout === undefined || top === undefined) return chain.directories;
-  const folder = await folders.open(top, signal);
-  const has = folder !== undefined && (await folder.files.exists(SKILLS, signal));
-  return has ? chain.directories : [...chain.directories, chain.mainCheckout];
-}
-
 export const SCOPE_RULES: { readonly [S in ScanScope]: ScopeRule } = {
   managed: {
     rank: 0,
@@ -113,7 +97,7 @@ export const SCOPE_RULES: { readonly [S in ScanScope]: ScopeRule } = {
     watched: true,
     // "unlike plain skills and commands, [plugins don't] search parent directories" (loading.md).
     pluginsAt: (index) => index === 0,
-    bases: projectBases,
+    bases: ({ folders, request, signal }) => projectDirectories(folders, request.cwd, signal),
   },
   nested: {
     rank: 3,

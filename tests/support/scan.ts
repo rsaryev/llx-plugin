@@ -84,6 +84,7 @@ export interface FolderHostFixture {
   readonly session?: Partial<SessionOptions>;
   readonly runs?: readonly RunnerReply[];
   readonly withoutFolders?: boolean;
+  readonly env?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -97,7 +98,7 @@ export function folderHostOf(files: Record<string, DiskEntry>, fixture: FolderHo
     ports: {
       commands: runner,
       locations: locations({ home: HOME, project: PROJECT }),
-      environment: fakeEnvironment(),
+      environment: fakeEnvironment(fixture.env),
       ...(fixture.withoutFolders === true
         ? {}
         : { folders: folderScan(files, { managed: MANAGED, ...fixture.disk }) }),

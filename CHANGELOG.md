@@ -4,6 +4,16 @@
 
 ### Added
 
+- Sub-agents: the catalog. `scanAgents` reads the `.claude/agents/` folders of the managed directory, the
+  project and its parents, the added directories and `~` through `FolderScan`, skipping the files Claude
+  Code skips; `readFlagAgents` reads the `--agents` JSON; `builtinAgents` lists Explore, Plan, general-purpose
+  and the other built-ins with the switches that remove them; `resolveAgents` picks one definition per name
+  by the documented priority and applies `Agent(name)` deny rules; `resolveSubagentType`, `spawnableAgents`
+  (the `Agent(types)` allowlist), `spawnDepthLimit`/`nestingAt`, `namedSubagent`, `agentMentions`,
+  `selectSessionAgent` and `resumeSessionAgent` decide who runs, who may spawn whom and how a subagent is
+  named. A session gets `reloadAgents`, `agentCatalog`, `SessionOptions.agents` and `permissionRules`, and
+  `session.agents()` now lists every subagent (with `source`; `builtin: false` leaves the built-ins out).
+  The working-directory-to-repository-root rule is shared with the skills scan (`foundation/project-directories`).
 - Themes: `readTheme` reads a custom theme file (`~/.claude/themes/<slug>.json`, `themes/<slug>.json`
   in a plugin): `name` defaulting to the slug, `base` among the six presets (asserted against the SDK's
   `theme` setting), `overrides` over the documented tokens with `#rrggbb`, `#rgb`, `rgb()`, `ansi256()` and

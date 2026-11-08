@@ -14,9 +14,9 @@ import { layerOf } from '../support/settings-layers.ts';
 const CONFIGURED = { [FORMATTER]: { endpoint: 'https://svc.example', api_token: 's3cret' } };
 
 describe('session.agents()', () => {
-  test('gives the official AgentDefinition of each agent under <plugin>:<name>', async () => {
+  test('gives the official AgentDefinition of each plugin agent under <plugin>:<name>', async () => {
     const { host } = await hostOf();
-    const { resolved, issues } = await host.openSession(SESSION).agents();
+    const { resolved, issues } = await host.openSession(SESSION).agents({ builtin: false });
     expect(issues).toEqual([]);
     expect(resolved.map((agent) => agent.name)).toEqual(['formatter:reviewer']);
     expect(resolved[0]?.definition).toEqual({

@@ -2,7 +2,7 @@ import { error, warning, type PluginIssue } from './issues.ts';
 import { parseFrontmatter, type Frontmatter } from './frontmatter.ts';
 import { readText } from './frontmatter-values.ts';
 import { agentFileName, agentNameProblem, MAX_AGENT_NAME, scopedAgentName } from './agent-name.ts';
-import type { AgentOrigin, AgentReadResult, AgentRecord } from './agent-record.ts';
+import type { AgentOrigin, AgentReadResult, AgentRecord, FlagOrigin } from './agent-record.ts';
 import { readAgentFields, type AgentFieldsRead } from './agent-field-read.ts';
 import { unrecognizedFields } from './agent-unrecognized.ts';
 
@@ -31,8 +31,8 @@ const NO_FIELDS: AgentFieldsRead = { values: {}, ignored: [], issues: [] };
  * fields Claude Code does not recognize. A key of the official `AgentDefinition` goes into
  * `definition`; the keys it has no place for are `extras` (and `hooks`).
  */
-function record(
-  origin: AgentOrigin,
+export function agentRecord(
+  origin: AgentOrigin | FlagOrigin,
   basics: { readonly name: string; readonly description: string; readonly prompt: string },
   fields: AgentFieldsRead,
   unknown: AgentRecord['unrecognized'],
@@ -83,7 +83,7 @@ function readFileAgent(front: Frontmatter, origin: FileOrigin): AgentReadResult 
   const basics = { name: name.value, description: description.value, prompt: front.body };
   return {
     outcome: 'loaded',
-    agent: record(origin, basics, fields, unrecognizedFields(front.fields)),
+    agent: agentRecord(origin, basics, fields, unrecognizedFields(front.fields)),
     issues: fields.issues,
   };
 }
@@ -120,7 +120,7 @@ function readPluginAgent(front: Frontmatter, origin: PluginOrigin): AgentReadRes
     const name = agentFileName(origin.path);
     return {
       outcome: 'loaded',
-      agent: record(
+      agent: agentRecord(
         origin,
         { name, description: fallbackDescription, prompt: front.body },
         NO_FIELDS,
@@ -148,7 +148,7 @@ function readPluginAgent(front: Frontmatter, origin: PluginOrigin): AgentReadRes
   };
   return {
     outcome: 'loaded',
-    agent: record(origin, basics, fields, unrecognizedFields(front.fields)),
+    agent: agentRecord(origin, basics, fields, unrecognizedFields(front.fields)),
     issues: [...issues, ...fields.issues],
   };
 }

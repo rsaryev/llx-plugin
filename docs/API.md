@@ -872,7 +872,8 @@ host.issues: readonly PluginIssue[]              // what the format readers foun
 host.openSession(options: SessionOptions): PluginSession;
 // SessionOptions: { sessionId; cwd; permissionMode; transcriptPath; effort?: { level };
 //   interactive? (true); trusted? (true); additionalDirectories?; addedDirectories?;
-//   permissions?: ShellPermission }
+//   permissions?: ShellPermission; agents? (the parsed `--agents` value);
+//   permissionRules?: PermissionRule[] (`Agent(name)` deny rules switch subagents off) }
 // HostPorts adds `folders?: FolderScan` (docs/API.md, "Skills and commands of the folders")
 ```
 
@@ -889,7 +890,8 @@ The session:
 | `skillSources()` | Where each listed folder skill came from: `{ entries: { command, names, scope, origin, yielded }[], shadowed }` of the last read, for the `claude.ai sync` group and the note under it. |
 | `expandSkill(name, { arguments?, signal, invoker? })` | The `Expansion` of `expandSkill`: text with `$ARGUMENTS`, `${CLAUDE_PLUGIN_ROOT}` and the plugin's options substituted, shell placeholders run through the runner. `invoker` is `user` (default) or `model`. An unknown name, a skill of a disabled plugin or a refused invoker is `{ ok: false, issues }`. `disableSkillShellExecution` of the settings replaces the placeholders. Without `SessionOptions.permissions` a shell placeholder asks, which aborts the expansion. |
 | `dispatch(event, facts, { signal })` | The `HookOutcome<E>` of the engine. `facts` is the event's own fields (`EventFactsOf<E>`); the common fields come from the session. Handlers of every enabled plugin, then of the settings files, run with `if` read by the rules module and the policy of the settings: `disableAllHooks`, `allowManagedHooksOnly` (plugins force-enabled in managed `enabledPlugins` exempt), the `hooks` lock of `strictPluginOnlyCustomization`, `allowedHttpHookUrls`, `httpHookAllowedEnvVars`. A skill's `once` hook that ran is dropped after the dispatch. |
-| `agents(options?)` | `Resolved<SessionAgent>`: the official `AgentDefinition` of each plugin agent under `<plugin>:<name>`, its prompt with the plugin variables substituted, and `extras` (`color`, `isolation`, `cacheTtl`). |
+| `agents(options?)` | `Resolved<SessionAgent>`: every subagent of the session (docs/API.md, "Sub-agents: the catalog") as the official `AgentDefinition` under the name a call uses (`<plugin>:<name>` for a plugin agent), `extras` (`color`, `isolation`, `cacheTtl`) and its `source`. A plugin agent's prompt has the plugin variables substituted; any other prompt is as written. `builtin: false` leaves the built-ins out (their prompt is empty, so an SDK with its own built-ins gets only the rest). |
+| `reloadAgents({ signal })`, `agentCatalog()` | Reads the managed, project, personal and added `.claude/agents/` folders through `HostPorts.folders` (the first call lists them at all) and returns `{ issues, watch }`; `agentCatalog()` is the `AgentCatalog` of the last read: built-ins, the `--agents` flag (`SessionOptions.agents`, already parsed), the folders and the enabled plugins, minus what `SessionOptions.permissionRules` deny with `Agent(name)` or `Agent`. |
 | `mcpServers(options?)`, `lspServers(options?)`, `monitors(options?)` | `Resolved<ResolvedMcpServer>`, `Resolved<ResolvedLspServer>`, `Resolved<ResolvedMonitor>`: the substituted configs, with `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}` and `${user_config.*}` resolved. A server that cannot start is left out and its issue is in `issues`. |
 | `outputStyles()` | The `OutputStyle` of each enabled plugin, `id` `<plugin>:<name>`. |
 
@@ -1338,6 +1340,44 @@ skills package nor a process: the host knows `--strict-mcp-config`, `--bare` and
 whether the folder is trusted (a parent folder's trust and a `-p` session do not count). Loading the
 skill content, connecting servers, creating the memory directory, the memory instructions for the
 system prompt and merging `addTools` into the tool pool are the host's.
+
+## Sub-agents: the catalog (done: `agents/catalog`, `format/agent-flag`)
+
+Where a subagent comes from and which definition a name means (sub-agents.md, "Choose the subagent
+scope", "Built-in subagents", "Invoke subagents explicitly"). All pure over the folders a host lets the
+kit read and over facts it passes; the session wires them (`reloadAgents`, `agentCatalog`).
+
+```ts
+import { scanAgents, resolveAgents, builtinAgents, readFlagAgents, resolveSubagentType,
+  catalogAgentOf, agentMentions, selectSessionAgent, spawnableAgents } from '@rsaryev/claude-plugin-kit';
+
+const scanned = await scanAgents({ folders, request: { home, cwd, addedDirectories } });
+const catalog = resolveAgents({
+  builtin: builtinAgents({ interactive: true, disableExplorePlan: false, disableAll: false }),
+  flag: readFlagAgents(JSON.parse(agentsFlag)).agents.map(catalogAgentOf),
+  scanned: scanned.entries,
+  plugin: pluginRecords.map(catalogAgentOf),
+  denied: permissionRules, // `Agent(Explore)` deny rules disable that subagent, `Agent` all of them
+});
+const run = resolveSubagentType(catalog, call.subagent_type); // { ok, agent } or { ok: false, message }
+```
+
+| Function | What it does |
+| --- | --- |
+| `readFlagAgents(value)` | The parsed `--agents` JSON: each key an agent name, `prompt` the system prompt, the frontmatter fields read as a file reads them, `color` and `experimental` ignored, a name starting with `-` refused with `<name>: agent names must not start with '-'`. |
+| `builtinAgents(policy)` | Explore and Plan (Write and Edit denied, no CLAUDE.md or git status at start), general-purpose, claude, statusline-setup (Sonnet) and claude-code-guide (Haiku); `CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS` drops the first two, `CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS` all of them in non-interactive mode. |
+| `scanAgents(context)` | `{ entries, issues, watch }`: `.claude/agents/**.md` of the managed directory, the project and its parents (nearest first; a linked worktree may borrow the main checkout), each added directory and `~`, through `FolderScan`. A file with no name is documentation (skipped, silent); a name starting with `-`, containing `:` or over 256 characters, a name with no description, and YAML that does not parse skip the file with an error. `watch` lists the personal and project folders that exist (not the managed ones, not `--add-dir`'s), none for `watch: false` (`--disable-slash-commands`). `allows` applies `strictPluginOnlyCustomization`. |
+| `resolveAgents(sources)` | The `AgentCatalog`: one definition per name by the priority table (managed 1, `--agents` 2, project 3, user 4, plugin 5, built-in after them); among nested project folders the nearest wins; `shadowed` says who lost, `disabled` what a deny rule switched off, `delegation` is false when the `Agent` tool is denied. |
+| `resolveSubagentType(catalog, type)` | The agent an Agent call runs. Without `subagent_type` it is `general-purpose`, else `subagent_type is required: the general-purpose agent is not available in this session. Available agents: ...`. |
+| `spawnableAgents(catalog, spawnTypes)` | The catalog an agent sees through its Agent tool: the `Agent(worker, researcher)` allowlist (`spawnTypes` is what `resolveSubagentTools` returns). |
+| `spawnDepthLimit(env)`, `nestingAt({ layer, limit, fork })` | Three layers by default (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`); at the limit `Agent` is withheld from a subagent, and a fork keeps it but cannot spawn. |
+| `namedSubagent(facts)` | What a `name` on the Agent call does with agent teams on: addressable, and a teammate in an interactive session when the main conversation makes a non-fork call without `isolation`. |
+| `agentMentions(message, catalog)`, `agentTypeahead(catalog)` | `@"code-reviewer (agent)"` and `@agent-<name>` (scoped for plugin agents) select a subagent; the message goes to Claude unchanged; a name in prose selects nothing. |
+| `selectSessionAgent(catalog, { flag, setting })`, `resumeSessionAgent(catalog, name, searched)`, `sessionAgentLabel(agent)` | `--agent` over the `agent` setting; a plugin agent by its bare name when one plugin has it, else the scoped name; the resume warning of errors.md when the agent is gone (never for `claude`); the `@<name>` header. |
+
+`Agent(name)` deny rules are read by the permission rules module; the catalog only consumes
+`PermissionRule[]`. The prompt of a built-in is empty: Claude Code's own is not published. Prompts,
+launch decisions (model, effort, tools) and the memory of an agent stay in the sections above.
 
 ## Testing kit (done: `testing`)
 

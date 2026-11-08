@@ -3,6 +3,7 @@ import type { Plugin } from '../loading/index.ts';
 import type { HookPorts } from '../hooks/index.ts';
 import type { FolderScan } from '../ports/folder-scan.ts';
 import type { EffortLevel, PermissionMode } from '../protocol/official.ts';
+import type { PermissionRule } from '../rules/index.ts';
 import type { ParentSettingsContext } from '../settings/hooks/index.ts';
 import type { PolicyView } from '../settings/index.ts';
 import type { OptionValues } from '../settings/plugins/index.ts';
@@ -74,6 +75,16 @@ export interface SessionOptions {
   readonly takenCommands?: readonly string[];
   /** The answer for a skill's shell placeholder; absent, an `ask`, which aborts the expansion. */
   readonly permissions?: ShellPermission;
+  /**
+   * The `--agents` flag, already parsed from JSON: agent names to definitions (sub-agents.md, "Choose the
+   * subagent scope"). The host reads the flag, or the file `-p` takes; `readFlagAgents` reads the value.
+   */
+  readonly agents?: unknown;
+  /**
+   * The permission rules in force (settings and `--disallowedTools`): an `Agent(name)` deny rule switches
+   * that subagent off, a bare `Agent` deny rule all of them (sub-agents.md, "Disable specific subagents").
+   */
+  readonly permissionRules?: readonly PermissionRule[];
 }
 
 /** A resolved list and what was found wrong while resolving it. */
