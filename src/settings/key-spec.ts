@@ -1,5 +1,9 @@
 import type { Settings } from '../protocol/official.ts';
 import type { PolicyKey } from '../protocol/settings-keys.ts';
+import { FALSE_FROM_ANY_SCOPE, type ManagedException } from './general/exceptions.ts';
+import { GENERAL_SPECS } from './general/rows.ts';
+import { GLOBAL_CONFIG_KEYS } from './general/global-config.ts';
+import type { SettingsKey, ValueOf } from './general/keys.ts';
 import type { PolicyScope } from './layers.ts';
 import { MERGES, type Merge } from './merge.ts';
 import type { RepairKind } from './repair.ts';
@@ -11,10 +15,21 @@ import type { RepairKind } from './repair.ts';
  * (managed-settings.md, "Keys that fail closed"). The resolvers of each area read their key through
  * the view and never repeat these facts.
  */
-export interface KeySpec<K extends PolicyKey = PolicyKey> {
+export interface ValueSpec<V> {
   readonly scopes: ScopeRule;
-  /** Typed over the key's own value, so the view returns `Settings[K]` without a cast. */
-  readonly merge: Merge<Settings[K]>;
+  /** Typed over the key's own value, so the view returns the key's type without a cast. */
+  readonly merge: Merge<V>;
+  /** The key's managed value is not an override: a restrictive value of a lower scope stays (settings.md). */
+  readonly exception?: ManagedException<V>;
+  /** When managed settings define the key, that value applies as-is and no other scope adds to it (`availableModels`). */
+  readonly managedOwns?: boolean;
+  /** Where a key inside a block, or a key two spellings share, is read in a settings object; a top-level key needs none. */
+  readonly read?: (settings: Settings) => V | undefined;
+  /** The names down a block to a key inside it, so the merged settings carry the value this row decided. */
+  readonly path?: readonly string[];
+}
+
+export interface KeySpec<K extends PolicyKey = PolicyKey> extends ValueSpec<Settings[K]> {
   readonly repair: RepairKind;
 }
 
@@ -23,6 +38,8 @@ export interface KeySpec<K extends PolicyKey = PolicyKey> {
  * and `User, local, or managed` (plus `--settings`); the rest are the parent settings an embedding
  * host passes (agent-sdk/typescript.md, `managedSettings`), which only the keys the gateway page
  * names accept (claude-apps-gateway.md, "How hook and skill keys in parent settings take effect").
+ * `userManagedFlag` is "User or managed" plus `--settings`, for the keys whose entry says so, and
+ * `repositoryCannotElevate` admits any file except a repository's with an elevating value.
  */
 export const SCOPE_RULES = [
   'any',
@@ -31,7 +48,9 @@ export const SCOPE_RULES = [
   'managed',
   'managedAndParent',
   'userOrManaged',
+  'userManagedFlag',
   'userLocalManagedFlag',
+  'repositoryCannotElevate',
 ] as const;
 export type ScopeRule = (typeof SCOPE_RULES)[number];
 
@@ -43,6 +62,13 @@ const inScopes =
     scopes.includes(scope);
 
 const FILES = ['managed', 'flag', 'local', 'project', 'addDir', 'user'] as const;
+/**
+ * The files a checked-out repository controls, and the `permissions.defaultMode` values that do not
+ * take effect from them: "`auto` and `bypassPermissions` don't take effect from project or local
+ * settings; set them in user or managed settings instead" (settings.md, "A value you set is ignored").
+ */
+const REPOSITORY_FILES: readonly PolicyScope[] = ['project', 'local'];
+const isElevated = (value: unknown): boolean => value === 'auto' || value === 'bypassPermissions';
 const isEmptyList = (value: unknown): boolean => Array.isArray(value) && value.length === 0;
 const fromFilesOrParent =
   (parentValue: (value: unknown) => boolean): Admits =>
@@ -57,6 +83,9 @@ const ADMITS: { readonly [R in ScopeRule]: Admits } = {
   managed: inScopes('managed'),
   managedAndParent: inScopes('managed', 'parent'),
   userOrManaged: inScopes('user', 'managed'),
+  userManagedFlag: inScopes('user', 'managed', 'flag'),
+  repositoryCannotElevate: (scope, value) =>
+    inScopes(...FILES)(scope, value) && !(REPOSITORY_FILES.includes(scope) && isElevated(value)),
   userLocalManagedFlag: inScopes('user', 'local', 'managed', 'flag'),
 };
 
@@ -68,13 +97,18 @@ const ONLY_KEYS: Readonly<Partial<Record<PolicyScope, readonly string[]>>> = {
   addDir: ['enabledPlugins', 'extraKnownMarketplaces'],
 };
 
-/** Whether a scope carries any value of `key` at all, whatever the value (permissions.md). */
+/**
+ * Whether a scope carries any value of `key` at all, whatever the value: a `--add-dir` directory
+ * carries two keys (permissions.md), and a global config key is carried by no settings file, only by
+ * `~/.claude.json` (settings.md, "Change a setting for one session": `--settings` "can't set
+ * `Managed` or `Global config` keys").
+ */
 export const scopeCarries = (scope: PolicyScope, key: string): boolean =>
-  ONLY_KEYS[scope]?.includes(key) ?? true;
+  !GLOBAL_CONFIG_KEYS.includes(key) && (ONLY_KEYS[scope]?.includes(key) ?? true);
 
 /** Whether `key` read from `scope` with `value` is taken into account. */
-export const admits = (key: PolicyKey, scope: PolicyScope, value: unknown): boolean =>
-  scopeCarries(scope, key) && ADMITS[KEY_SPECS[key].scopes](scope, value);
+export const admits = (key: SettingsKey, scope: PolicyScope, value: unknown): boolean =>
+  scopeCarries(scope, key) && ADMITS[SPECS[key].scopes](scope, value);
 
 export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
   allowManagedHooksOnly: { scopes: 'managed', merge: MERGES.highestWins, repair: 'lockBoolean' },
@@ -143,13 +177,21 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
   syncClaudeAiPlugins: {
     scopes: 'userLocalManagedFlag',
     merge: MERGES.highestWins,
+    exception: FALSE_FROM_ANY_SCOPE,
     repair: 'boolean',
   },
   syncClaudeAiSkills: {
     scopes: 'userLocalManagedFlag',
     merge: MERGES.highestWins,
+    exception: FALSE_FROM_ANY_SCOPE,
     repair: 'boolean',
   },
   workflowKeywordTriggerEnabled: { scopes: 'any', merge: MERGES.highestWins, repair: 'boolean' },
   workflowSizeGuideline: { scopes: 'any', merge: MERGES.highestWins, repair: 'workflowSize' },
+};
+
+/** Every key the layers combine by name, with the row that says how. */
+export const SPECS: { readonly [K in SettingsKey]: ValueSpec<ValueOf<K>> } = {
+  ...KEY_SPECS,
+  ...GENERAL_SPECS,
 };

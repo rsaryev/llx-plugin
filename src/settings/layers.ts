@@ -1,6 +1,6 @@
 import type { Settings } from '../protocol/official.ts';
-import type { PolicyKey } from '../protocol/settings-keys.ts';
-import { admits } from './key-spec.ts';
+import type { SettingsKey, ValueOf } from './general/keys.ts';
+import { SPECS, admits } from './key-spec.ts';
 
 /**
  * Where a settings object comes from, highest precedence first (settings.md, "Settings
@@ -42,11 +42,22 @@ export const orderedLayers = (layers: readonly PolicyLayer[]): readonly PolicyLa
   layers.toSorted((a, b) => SCOPE_RANK[b.scope] - SCOPE_RANK[a.scope]);
 
 /** One layer's value of a key, with the layer it came from. */
-export interface KeyHolder<K extends PolicyKey> {
+export interface KeyHolder<K extends SettingsKey> {
   readonly scope: PolicyScope;
   /** Position among the ordered layers: two files of one scope have two positions. */
   readonly position: number;
-  readonly value: NonNullable<Settings[K]>;
+  readonly value: NonNullable<ValueOf<K>>;
+}
+
+/**
+ * The key's value in one settings object: where its row reads it (a key inside a block), else the
+ * key's own name. A row is typed over its key's value, so what it reads has that type.
+ */
+function valueIn<K extends SettingsKey>(settings: Settings, key: K): ValueOf<K> | undefined {
+  const { read } = SPECS[key];
+  // A top-level key has the type its `Settings` entry declares; TypeScript cannot relate the
+  // generic key to that entry through the open index signature, so the type is asserted here once.
+  return read ? read(settings) : (settings[key] as ValueOf<K> | undefined);
 }
 
 /**
@@ -54,12 +65,12 @@ export interface KeyHolder<K extends PolicyKey> {
  * does not carry the key (the key's scope line, or the `--add-dir` rule) is skipped even when the
  * layer was built by hand rather than read.
  */
-export function holdersOf<K extends PolicyKey>(
+export function holdersOf<K extends SettingsKey>(
   layers: readonly PolicyLayer[],
   key: K,
 ): readonly KeyHolder<K>[] {
   return orderedLayers(layers).flatMap((layer, position) => {
-    const value = layer.settings[key];
+    const value = valueIn(layer.settings, key);
     if (value === undefined || value === null || !admits(key, layer.scope, value)) return [];
     return [{ scope: layer.scope, position, value }];
   });

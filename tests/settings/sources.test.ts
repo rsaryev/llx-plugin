@@ -59,13 +59,13 @@ describe('loadSettingsLayers', () => {
     );
   });
 
-  test('a user file that does not parse is skipped with a warning, the rest continues', async () => {
+  test('a user file that does not parse is skipped with a Settings Error, the rest continues', async () => {
     const { layers, issues } = await loadSettingsLayers(
       host({ user: '{ nope', project: { enableWorkflows: true } }),
       signal,
     );
     expect(layers.map((layer) => layer.scope)).toEqual(['project']);
-    expect(issues.map((one) => one.severity)).toEqual(['warning']);
+    expect(issues.map((one) => one.severity)).toEqual(['error']);
   });
 
   test('only the scopes asked for are read', async () => {

@@ -60,6 +60,29 @@
 
 ### Added
 
+- Settings: the merge core. `createGeneralView(layers)` extends the policy view with `merged()`, the
+  whole of settings.md's precedence as one object: a block merges key by key, a list combines with the
+  duplicates removed (the highest file's entries first), any other value comes from the highest file,
+  and `fallbackModel`, `modelPicker` (user, managed and `--settings` only) and `availableModels` (a
+  managed list as-is) keep their own rules. The 12 keys whose managed value is not an override are rows
+  with a `ManagedException` (`disableClaudeAiConnectors`, `enableArtifact` and `disableArtifact`,
+  `isolatePeerMachines`, the two `block...Outside...` keys, `autoMode.classifyAllShell`,
+  `remoteControlAtStartup`, `crossSessionInbound`, `useAutoModeDuringPlan`, the two claude.ai sync keys
+  and `maxEffortLevel`); `get` applies one rule for all of them. `permissions.defaultMode` ignores
+  `auto` and `bypassPermissions` from project and local settings. `permissionRuleLists(view, trusted)`
+  adds up allow, ask and deny across scopes (a deny at any scope blocks, `allowManagedPermissionRulesOnly`
+  leaves managed rules only, a repository's allow rules and `additionalDirectories` wait for trust),
+  `effortLevelFor` resolves `modelSettings` one model at a time, `resolveSessionValue` orders a key's
+  flag, paired variable and settings value, `editEffect` and `loadsFileCreatedMidSession` say when an
+  edit reaches a running session, `reachOf`, `FILE_ORIGINS`, `WRITE_TARGET`, `userSettingsFile`,
+  `localSettingsFiles` and `globalGitExcludesFile` hold the scope and file-location facts of
+  settings.md, and `readClaudeJson` decides what a broken `~/.claude.json` costs. A global config key
+  is dropped from every settings file with a warning, and a source that does not parse is a Settings
+  Error (`problemKind`) naming the file.
+- Settings (changed): `unionArrays` drops duplicate entries, as managed-settings.md says of combined
+  lists; a user, project, local or `--settings` source that is not a JSON object is an error issue
+  ("Settings Error: ...") rather than a warning, and still skipped.
+
 - Spec: the requirement set now counts the docs' prose, not only their tables. Every heading of
   the plugin, mods, skills, subagents, hooks, MCP, managed MCP, settings, managed settings,
   permissions, environment, CLI, workflows, themes, output styles and channels pages is either

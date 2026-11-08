@@ -235,9 +235,9 @@ describe('a source that is not a JSON object', () => {
     }
   });
 
-  test('another source is skipped with a warning', () => {
+  test('another source is skipped with a Settings Error', () => {
     const { layer, issues } = readSettingsLayer('project', ['x']);
     expect(layer.settings).toEqual({});
-    expect(issues.map((one) => one.severity)).toEqual(['warning']);
+    expect(issues.map((one) => one.severity)).toEqual(['error']);
   });
 });

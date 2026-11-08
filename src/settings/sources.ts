@@ -1,4 +1,5 @@
-import { error, warning, type PluginIssue } from '../format/issues.ts';
+import type { PluginIssue } from '../format/issues.ts';
+import { brokenSource } from './broken-file.ts';
 import { POLICY_SCOPES, type PolicyScope, type PolicyLayer } from './layers.ts';
 import { readSettingsLayer } from './read-layer.ts';
 
@@ -13,15 +14,6 @@ export interface SettingsSources {
   read(scope: PolicyScope, signal: AbortSignal): Promise<unknown>;
 }
 
-/** A source that is present but whose text is not JSON (managed: errors.md, "could not be parsed"). */
-const unparsable = (scope: PolicyScope, reason: string): PluginIssue =>
-  scope === 'managed' || scope === 'parent'
-    ? error(
-        `${scope}:`,
-        `Managed settings document could not be parsed as a JSON object; none of its settings are in effect. Fix or remove it. (${reason})`,
-      )
-    : warning(`${scope}:`, `The settings could not be parsed and are skipped (${reason})`);
-
 function parseText(scope: PolicyScope, text: string): { value?: unknown; issue?: PluginIssue } {
   // An empty `managed-settings.json` counts as `{}` (errors.md).
   if (text.trim() === '') return { value: {} };
@@ -29,7 +21,7 @@ function parseText(scope: PolicyScope, text: string): { value?: unknown; issue?:
     return { value: JSON.parse(text) };
   } catch (failure) {
     return {
-      issue: unparsable(scope, failure instanceof Error ? failure.message : 'invalid JSON'),
+      issue: brokenSource(scope, failure instanceof Error ? failure.message : 'invalid JSON'),
     };
   }
 }
