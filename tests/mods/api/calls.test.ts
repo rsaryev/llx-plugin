@@ -74,6 +74,41 @@ describe('a mods API call is an event', () => {
     expect(reached).toBe(false);
   });
 
+  test('a hook only intercepts the calls of the mods that run after it', async () => {
+    const seen: string[] = [];
+    const watch = (name: string) =>
+      fn('store.get', (_$, e, next) => (seen.push(`${name}:${String(e.key)}`), next(e)));
+    const h = await apiHarness({ ports: { store: memoryStore({ a: 1 }) } });
+    await h.mod('earlier', 'prepend', [watch('earlier')]);
+    await h.mod('same-tier-before', 'user', [watch('same-tier-before')]);
+    const caller = await h.mod('caller', 'user', [watch('caller')]);
+    await h.mod('same-tier-after', 'user', [watch('same-tier-after')]);
+    await h.mod('later', 'append', [watch('later')]);
+    expect(await caller.api.store.get('a')).toBe(1);
+    expect(seen).toEqual(['earlier:a', 'same-tier-before:a']);
+  });
+
+  test('a mod outside the chain yet (still being built) is last in its tier: hooks of a later tier do not see its calls', async () => {
+    const seen: string[] = [];
+    const h = await apiHarness({ ports: { store: memoryStore({ a: 1 }) } });
+    await h.mod('earlier', 'prepend', [
+      fn('store.get', (_$, e, next) => (seen.push('earlier'), next(e))),
+    ]);
+    await h.mod('later', 'append', [
+      fn('store.get', (_$, e, next) => (seen.push('later'), next(e))),
+    ]);
+    expect(await h.api.store.get('a')).toBe(1);
+    expect(seen).toEqual(['earlier']);
+  });
+
+  test('a later mod cannot refuse or answer for a call of an earlier mod', async () => {
+    const h = await apiHarness({ ports: { store: memoryStore({ a: 1 }) } });
+    const caller = await h.mod('caller', 'user', []);
+    await h.mod('later', 'append', [fn('store.get', () => ({ deny: 'never reached' }))]);
+    await h.mod('same-tier', 'user', [fn('store.get', () => ({ value: 99 }))]);
+    expect(await caller.api.store.get('a')).toBe(1);
+  });
+
   test('a port that fails rejects the call with its error', async () => {
     const env = {
       get: () => {

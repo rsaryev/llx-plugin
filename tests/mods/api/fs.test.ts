@@ -87,6 +87,21 @@ spec('mods.api.$.fs', () => {
     ]);
   });
 
+  test('list and stat carry exactly the documented fields: nothing else the host puts on an entry reaches the mod', async () => {
+    const extra = { children: ['a'], mode: 0o644 };
+    const fs = {
+      ...fsPort(),
+      list: () =>
+        Promise.resolve([{ name: 'src', kind: 'directory', size: 0, isLink: false, ...extra }]),
+      stat: () => Promise.resolve({ kind: 'directory', size: 0, isLink: false, ...extra }),
+    };
+    const h = await apiHarness({ ports: { fs } });
+    expect(await h.api.fs.list('/work')).toEqual([
+      { name: 'src', kind: 'directory', size: 0, isLink: false },
+    ]);
+    expect(await h.api.fs.stat('/work/src')).toEqual({ kind: 'directory', size: 0, isLink: false });
+  });
+
   test('ancestors returns what the host knows above the path', async () => {
     const h = await apiHarness({ ports: { fs: fsPort() } });
     expect(await h.api.fs.ancestors('a/b')).toEqual(['/work/a', '/work', '/']);

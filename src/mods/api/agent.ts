@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { ModsNamespaceApi } from '../types.ts';
 import { call, parse, type Deps } from './call.ts';
 import { nameProblem } from './names.ts';
+import { AGENT_STATUSES } from '../../protocol/mods-api-names.ts';
 
 /**
  * The registration of `$.agent.register`: `name` is the subagent type, the rest is the SDK's
@@ -15,6 +16,9 @@ const registration = z.looseObject({
 });
 
 const spawnRequest = z.looseObject({});
+
+/** A row of `$.agent.list()`: each has a `status` the reference lists (reference.md, "Mods API methods"). */
+const listed = z.array(z.looseObject({ status: z.enum(AGENT_STATUSES) }));
 
 function register(deps: Deps, event: unknown): void {
   const { name, ...definition } = parse('$.agent.register', registration, event);
@@ -34,6 +38,10 @@ export function agentApi(deps: Deps): ModsNamespaceApi<'agent'> {
       call(deps, 'agent.spawn', parse('$.agent.spawn', spawnRequest, args[0]), (e) =>
         deps.ports.agents.spawn(parse('$.agent.spawn', spawnRequest, e), deps.signal),
       ),
-    list: async () => call(deps, 'agent.list', {}, () => deps.ports.agents.list()),
+    // Judgment: a row whose `status` the reference does not list is a host that drifted, so the call rejects.
+    list: async () =>
+      call(deps, 'agent.list', {}, async () =>
+        parse('$.agent.list', listed, await deps.ports.agents.list()),
+      ),
   };
 }

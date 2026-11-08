@@ -289,7 +289,7 @@ behaviour); the built-in guard `sec-default@builtin` registers first in `prepend
 without a matcher, when a hook's form does not fit its event, when a telemetry hook lacks
 `{ to: 'collector' }`, or when a matcher's expression does not compile. `dispatch` takes the
 `DispatchOptions`: `core` is what runs after the last hook, `report` receives the line for every
-hook skipped, `reentry` names the mod whose own API call fired the event (its hooks are skipped
+hook skipped, `caller` names the mod whose API call fired the event (only the hooks of the mods that run before it, and its own, handle the event), `reentry` names the mod whose own API call fired the event (its hooks are skipped
 as `re-entry`; the host passes the `rewritten` and `lent` flags and a handler's `next.error.cause` is `rewritten`, or `lent` unless `rewritten` also applies), and `groupMs` the time all `session.end`
 hooks share (default 1.5 s, counted from the first hook that has the floor; pass more when settings raise the SessionEnd budget). A hook's own
 time excludes `next` and mods API calls except `$.clock.sleep`; the chain wraps the mod's `$` to
@@ -321,12 +321,13 @@ chain.register({ name: 'my-mod', api }, 'user', hooks); // hooks see `api` as `$
 mods ports `ModFs`, `ModSpawner`, `ModFetcher` (any method, and the kit judges each redirect),
 `ModModels`, `ModSession`, `ModPrompts`, `ModAgents`, `ModCommands`, `ModTools`, `ModTurns`,
 `ModConfig`, `ModSettingsReader`, `ModAudio`, `ModEnv`, `ModStore` and `TelemetrySink`. The kit owns
-what the docs say about a call (paths against the working directory, the 4 MiB limits, `isStdoutTruncated`,
+what the docs say about a call (paths against the working directory, the 4 MiB limits, `isStdoutTruncated`, the 4 MiB cut of a fetch body,
 the redirect and header rules, prompt blocks and cache breakpoints, the newest 4,096 messages) and the
 port does the effect. A call fires the event named for it (`fs.read`, `store.get`...); a mod before the
 caller can rewrite it, answer `{ value }` or refuse with `{ deny }`, which rejects the call. A
 call whose result is its event's own (`tool.call`, `command.run`, `prompt.submit`, `session.send`...)
-resolves to that result. `$.ui` is built by the interface part of mods and passed as `options.ui`.
+resolves to that result. A hook on a call runs only for the mods after it (the chain's `caller`
+option). `$.clock.after` and `$.clock.every` return their timer at once, not a promise. `$.ui` is built by the interface part of mods and passed as `options.ui`.
 Judgments are in `spec/judgments.md`.
 
 ## Testing kit (planned)

@@ -186,6 +186,30 @@ spec('mods.api.$.telemetry', () => {
     ]);
   });
 
+  test('a hook with the { to: "collector" } filter sees the record and next(e) sends it', async () => {
+    const telemetry = sink();
+    const seen: unknown[] = [];
+    const h = await apiHarness({ plugin: 'sec-default', tier: 'builtin', ports: { telemetry } });
+    await h.mod('observer', 'prepend', [
+      fn('telemetry.mark', (_$, e, next) => (seen.push(e), next(e)), {
+        matcher: { to: 'collector' },
+      }),
+    ]);
+    await h.api.telemetry.mark('guard-used');
+    expect(seen).toEqual([{ to: 'collector', feature: 'guard-used' }]);
+    expect(telemetry.sent).toEqual([['mark', 'guard-used']]);
+  });
+
+  test('a telemetry hook that answers { deny } keeps the record from being sent', async () => {
+    const telemetry = sink();
+    const h = await apiHarness({ plugin: 'sec-default', tier: 'builtin', ports: { telemetry } });
+    await h.mod('privacy', 'prepend', [
+      fn('telemetry.log', () => ({ deny: 'no telemetry here' }), { matcher: { to: 'collector' } }),
+    ]);
+    expect(await rejection(h.api.telemetry.log({ event: 'x' }))).toContain('no telemetry here');
+    expect(telemetry.sent).toEqual([]);
+  });
+
   test('a call by any other mod sends nothing and does not reject', async () => {
     const telemetry = sink();
     for (const tier of ['prepend', 'user', 'append'] as const) {

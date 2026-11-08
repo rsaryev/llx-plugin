@@ -40,11 +40,27 @@ spec('mods.api.$.prompt', () => {
     ]);
   });
 
-  test('a refused submit resolves with { drop: reason } and queues no prompt', async () => {
+  test('asUser: false is a plain submit: the mod is named as the sender', async () => {
+    const seen: unknown[] = [];
+    const h = await apiHarness({ ports: { prompts: prompts(seen) } });
+    await h.api.prompt.submit({ text: 'checks failed', asUser: false });
+    expect(seen).toEqual([{ text: 'checks failed', from: 'my-mod' }]);
+  });
+
+  test('an asUser that is not a boolean rejects', async () => {
+    const h = await apiHarness({ ports: { prompts: prompts() } });
+    expect(await rejection(h.api.prompt.submit({ text: 'x', asUser: 'yes' }))).toContain(
+      '$.prompt.submit: asUser',
+    );
+  });
+
+  test('a hook refuses a submit by answering { drop: reason }: the call resolves to it and queues no prompt', async () => {
     const reason = 'the run reached its --max-turns limit';
-    const port = { ...prompts(), submit: () => Promise.resolve({ drop: reason }) };
-    const h = await apiHarness({ ports: { prompts: port } });
+    const seen: unknown[] = [];
+    const h = await apiHarness({ ports: { prompts: prompts(seen) } });
+    await h.mod('limit', 'prepend', [fn('prompt.submit', () => ({ drop: reason }))]);
     expect(await h.api.prompt.submit({ text: 'again' })).toEqual({ drop: reason });
+    expect(seen).toEqual([]);
   });
 
   test('read resolves to { text, cursor }; fill and suggest answer { isFilled } and { isShown }; compose lists the sections', async () => {

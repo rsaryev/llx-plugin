@@ -48,6 +48,17 @@ export type NextOutput<N extends AnyModEventName> = N extends StreamEventName
 /** A method of the mods API: every call is asynchronous, as it is an event through the chain and then a port. */
 export type ModsMember = (...args: readonly unknown[]) => Promise<unknown>;
 
+/** What `$.clock.after` and `$.clock.every` give back: `cancel()` stops the timer, also one whose event is still on its way through the chain. */
+export interface ModTimer {
+  readonly cancel: () => void;
+}
+
+/** `$.clock.after` and `$.clock.every` return their timer at once, as `setTimeout` does (api.md, "Run work in the background"). */
+export type ModsTimerMember = (...args: readonly unknown[]) => ModTimer;
+
+/** The calls that return a timer and not a promise. */
+type TimerEventName = 'clock.after' | 'clock.every';
+
 /** `$.process.spawn` streams the command's output, so it returns the stream and not a promise (api.md, "Reach files, processes, and the network"). */
 export type ModsStreamMember = (...args: readonly unknown[]) => AsyncGenerator<unknown, unknown>;
 
@@ -55,7 +66,9 @@ export type ModsStreamMember = (...args: readonly unknown[]) => AsyncGenerator<u
 export type ModsNamespaceApi<N extends ModsNamespace> = {
   readonly [M in ModsMethod<N>]: `${N}.${M}` extends StreamEventName
     ? ModsStreamMember
-    : ModsMember;
+    : `${N}.${M}` extends TimerEventName
+      ? ModsTimerMember
+      : ModsMember;
 };
 
 /** `$.plugin`: this plugin's name and directory, which are values, not calls (reference.md, "Mods API methods"). */
@@ -169,6 +182,12 @@ export interface DispatchOptions {
   readonly core: (e: unknown) => Promise<unknown> | AsyncGenerator<unknown, unknown>;
   readonly report: (report: HookReport) => void;
   readonly reentry?: ReentryInfo;
+  /**
+   * The mod whose mods API call fires the event: only the hooks of the mods that run before it
+   * handle the event, and its own are skipped as a re-entry (reference.md, "Mods API calls": "A hook
+   * on one intercepts calls from the mods that run after it").
+   */
+  readonly caller?: HookOrigin;
   /** The limit all the hooks of the event share, in milliseconds; `session.end` has one by default. */
   readonly groupMs?: number;
 }

@@ -3,6 +3,7 @@ import type { JsonObject, JsonValue } from '../../foundation/index.ts';
 /** The fields of an event or a call's argument: plain data a hook may have changed. */
 export type EventData = Readonly<Record<string, unknown>>;
 import type { Clock, CommandRunner, HttpFailure, Locations, McpCaller } from '../../ports/index.ts';
+import type { EffortLevel } from '../../protocol/official.ts';
 import type { ModStore, TelemetrySink } from '../ports.ts';
 
 /**
@@ -66,16 +67,16 @@ export interface FetchRequest {
   readonly headers: Readonly<Record<string, string>>;
   readonly body?: string;
   readonly timeoutMs: number;
-  /** Stop reading the body at this many bytes and say `truncated`. */
+  /** Stop reading the body at this many bytes; the kit cuts what a port sends past it. */
   readonly maxBytes: number;
   readonly signal: AbortSignal;
 }
 
 export interface FetchResponse {
   readonly status: number;
+  /** Header names should be lower case; the kit lower-cases them again. */
   readonly headers: Readonly<Record<string, string>>;
   readonly text: string;
-  readonly truncated: boolean;
 }
 
 export interface ModFetcher {
@@ -98,7 +99,7 @@ export interface ModelCall {
   readonly system?: readonly TextBlock[];
   readonly prompt: readonly TextBlock[];
   readonly maxTokens: number;
-  readonly effort?: string;
+  readonly effort?: EffortLevel;
   readonly timeoutMs?: number;
   readonly signal: AbortSignal;
 }

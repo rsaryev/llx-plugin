@@ -1,10 +1,19 @@
 import type { EventRules } from '../types.ts';
-import { API_EVENT_NAMES } from '../../protocol/mods-events.ts';
+import { API_EVENT_NAMES, STREAM_EVENTS } from '../../protocol/mods-events.ts';
 import { isEngineEvent, isEventAnswered, isRecord } from './call.ts';
 
-/** The calls answered by `{ value }` or `{ deny }` only: the mods API calls that no event of Claude Code's has the name of. */
+const STREAMS: ReadonlySet<string> = new Set(STREAM_EVENTS);
+
+/**
+ * The calls answered by `{ value }` or `{ deny }` only: the mods API calls that no event of Claude
+ * Code's has the name of, and that do not stream. A hook on a stream (`process.spawn`) returns what
+ * `next(e)` returns, the command's own result, and only its `{ deny }` is special (test.md, "Follow
+ * the test kit's rules").
+ */
 const VALUE_CALLS: ReadonlySet<string> = new Set(
-  API_EVENT_NAMES.filter((name) => !isEventAnswered(name) && !isEngineEvent(name)),
+  API_EVENT_NAMES.filter(
+    (name) => !isEventAnswered(name) && !isEngineEvent(name) && !STREAMS.has(name),
+  ),
 );
 
 /**

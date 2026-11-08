@@ -103,7 +103,7 @@ spec('mods.api.$.process', () => {
     expect(await rejection(h.api.process.run([]))).toContain('$.process.run');
   });
 
-  test('spawn streams the output the port produced through the hooks on process.spawn', async () => {
+  test('spawn streams the output the port produced', async () => {
     const spawner = {
       spawn: async function* () {
         yield { stream: 'stdout', text: 'one' } as const;
@@ -118,6 +118,48 @@ spec('mods.api.$.process', () => {
       { stream: 'stdout', text: 'two' },
     ]);
     expect(out.result).toEqual({ exitCode: 0 });
+  });
+
+  test('a hook on process.spawn that returns next(e) unchanged leaves the output and the result as they are', async () => {
+    const spawner = {
+      spawn: async function* () {
+        yield { stream: 'stdout', text: 'one' } as const;
+        return { exitCode: 3 };
+      },
+    };
+    const h = await apiHarness({ ports: { spawner } });
+    await h.mod('observer', 'prepend', [
+      gen('process.spawn', async function* (_$, e, next) {
+        return yield* next(e);
+      }),
+    ]);
+    const out = await consume(streamOf(h.api.process.spawn(['tail', '-f', 'log'])));
+    expect(out.chunks).toEqual([{ stream: 'stdout', text: 'one' }]);
+    expect(out.result).toEqual({ exitCode: 3 });
+    expect(h.reports).toEqual([]);
+  });
+
+  test('a hook on process.spawn can rewrite a chunk it forwards', async () => {
+    const spawner = {
+      spawn: async function* () {
+        yield { stream: 'stdout', text: 'token=abc' } as const;
+        return { exitCode: 0 };
+      },
+    };
+    const h = await apiHarness({ ports: { spawner } });
+    await h.mod('redactor', 'prepend', [
+      gen('process.spawn', async function* (_$, e, next) {
+        const stream = next(e);
+        for (let step = await stream.next(); ; step = await stream.next()) {
+          if (step.done) return step.value;
+          yield { stream: 'stdout', text: 'token=***' };
+        }
+      }),
+    ]);
+    const out = await consume(streamOf(h.api.process.spawn(['env'])));
+    expect(out.chunks).toEqual([{ stream: 'stdout', text: 'token=***' }]);
+    expect(out.result).toEqual({ exitCode: 0 });
+    expect(h.reports).toEqual([]);
   });
 
   test('a mod that refuses after reading the output to the end: "ran, and a plugin withheld its result:"', async () => {
@@ -157,6 +199,21 @@ spec('mods.limit.$.process.run', () => {
     await h.api.process.run(['a']);
     await h.api.process.run(['b'], { timeoutMs: 1000 });
     expect(runs.map((run) => run.timeoutMs)).toEqual([30_000, 1000]);
+  });
+
+  test('a timeout of exactly 10 minutes is used as given', async () => {
+    const runs: CommandRun[] = [];
+    const h = await apiHarness({ ports: { runner: runner(exited(), runs) } });
+    await h.api.process.run(['a'], { timeoutMs: MOD_LIMITS.runTimeoutMaxMs });
+    expect(runs.map((run) => run.timeoutMs)).toEqual([600_000]);
+  });
+
+  test('a timeout over 10 minutes never reaches the program as more than 10 minutes', async () => {
+    const runs: CommandRun[] = [];
+    const h = await apiHarness({ ports: { runner: runner(exited(), runs) } });
+    // Whether the call is cut or refused is the kit's judgment (judgments.test.ts); the limit holds either way.
+    await h.api.process.run(['a'], { timeoutMs: 3_600_000 }).catch(() => undefined);
+    expect(runs.every((run) => (run.timeoutMs ?? 0) <= MOD_LIMITS.runTimeoutMaxMs)).toBe(true);
   });
 });
 

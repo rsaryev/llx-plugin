@@ -11,7 +11,7 @@ import { expect, test } from 'bun:test';
 import type { FetchRequest } from '../../../src/mods/api/index.ts';
 import { MOD_LIMITS } from '../../../src/protocol/mods-limits.ts';
 import { flush } from '../../support/mods-chain.ts';
-import { apiHarness, reply, scripted } from '../../support/mods-api.ts';
+import { apiHarness, field, reply, scripted } from '../../support/mods-api.ts';
 import { rejection } from '../../support/rejection.ts';
 import { spec } from '../../support/spec.ts';
 
@@ -103,10 +103,64 @@ spec('mods.limit.$.http.fetch', () => {
   });
 
   test('the port is asked to read at most 4 MiB of the response', async () => {
-    const fetcher = scripted({ ...reply(200, 'first 4 MiB'), truncated: true });
+    const fetcher = scripted(reply(200, 'first 4 MiB'));
     const h = await apiHarness({ ports: { fetcher } });
-    expect(await h.api.http.fetch('https://example.com/x')).toMatchObject({ text: 'first 4 MiB' });
+    await h.api.http.fetch('https://example.com/x');
     expect(fetcher.requests[0]?.maxBytes).toBe(MOD_LIMITS.httpResponseBytes);
+  });
+
+  test('text holds the first 4 MiB, in bytes, even when the port sends more', async () => {
+    const four = MOD_LIMITS.httpResponseBytes;
+    const whole = apiHarness({
+      ports: { fetcher: scripted(reply(200, 'x'.repeat(four)), reply(200, 'x'.repeat(four + 10))) },
+    });
+    const h = await whole;
+    const exact = await h.api.http.fetch('https://example.com/x');
+    expect(field(exact, 'text')).toBe('x'.repeat(four));
+    const over = await h.api.http.fetch('https://example.com/x');
+    expect(field(over, 'text')).toBe('x'.repeat(four));
+  });
+
+  test('the cut counts UTF-8 bytes and leaves a character it would split out', async () => {
+    const four = MOD_LIMITS.httpResponseBytes;
+    // 'é' is two bytes: 4 MiB of bytes is half that many characters, so one more is cut
+    const text = 'é'.repeat(four / 2 + 1);
+    const h = await apiHarness({ ports: { fetcher: scripted(reply(200, text)) } });
+    expect(field(await h.api.http.fetch('https://example.com/x'), 'text')).toBe(
+      'é'.repeat(four / 2),
+    );
+  });
+
+  test('a Content-Length header in any case rejects when it declares more than 4 MiB', async () => {
+    const declared = String(MOD_LIMITS.httpResponseBytes + 1);
+    for (const name of ['Content-Length', 'CONTENT-LENGTH']) {
+      const h = await apiHarness({
+        ports: { fetcher: scripted(reply(200, 'x', { [name]: declared })) },
+      });
+      expect(await rejection(h.api.http.fetch('https://example.com/big'))).toMatch(
+        /is over the 4194304-byte limit$/,
+      );
+    }
+  });
+
+  test('the response header names reach the mod in lower case', async () => {
+    const h = await apiHarness({
+      ports: { fetcher: scripted(reply(200, 'x', { 'Content-Type': 'text/plain', ETag: '"a"' })) },
+    });
+    expect(field(await h.api.http.fetch('https://example.com/x'), 'headers')).toEqual({
+      'content-type': 'text/plain',
+      etag: '"a"',
+    });
+  });
+
+  test('a Location header in any case is followed', async () => {
+    const fetcher = scripted(reply(302, '', { Location: '/b' }), reply(200, 'done'));
+    const h = await apiHarness({ ports: { fetcher } });
+    expect(await h.api.http.fetch('https://example.com/a')).toMatchObject({ text: 'done' });
+    expect(fetcher.requests.map((request) => request.url)).toEqual([
+      'https://example.com/a',
+      'https://example.com/b',
+    ]);
   });
 
   test('a Content-Length over 4 MiB rejects with a reason that ends "is over the 4194304-byte limit"', async () => {

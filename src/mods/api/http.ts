@@ -3,6 +3,7 @@ import { MOD_LIMITS } from '../../protocol/mods-limits.ts';
 import type { ModsNamespaceApi } from '../types.ts';
 import { call, parse, type Deps } from './call.ts';
 import { followHop, type Hop } from './http-redirects.ts';
+import { cutOutput } from './output-cut.ts';
 import type { FetchResponse } from './ports.ts';
 
 const init = z
@@ -54,18 +55,20 @@ async function send(deps: Deps, first: Hop): Promise<FetchResponse & { readonly 
   try {
     for (let hop = first, redirects = 0; ; redirects += 1) {
       const left = Math.max(1, MOD_LIMITS.httpMs - (clock.now() - started));
-      const response = await fetcher.request({
+      const received = await fetcher.request({
         ...hop,
         timeoutMs: left,
         maxBytes: MOD_LIMITS.httpResponseBytes,
         signal,
       });
-      if ('failure' in response) {
+      if ('failure' in received) {
         const reason = deadline.signal.aborted
           ? `timed out after ${MOD_LIMITS.httpMs} ms`
-          : response.message;
+          : received.message;
         throw new Error(`$.http.fetch: ${reason}`);
       }
+      // Judgment: the port's header names are not trusted to be lower case, so `Content-Length` and `Location` are found whatever their case.
+      const response = { ...received, headers: lowerCased(received.headers) };
       const next = followHop(hop, response.status, response.headers.location);
       if (next === undefined) return { ...response, last: hop };
       if (redirects >= MOD_LIMITS.redirects) {
@@ -102,7 +105,8 @@ async function fetchUrl(deps: Deps, e: unknown): Promise<unknown> {
     status: response.status,
     ok: response.status >= 200 && response.status < 300,
     headers: response.headers,
-    text: response.text,
+    // The kit keeps the limit itself: the port is asked to stop at 4 MiB, and what it sends past that is cut.
+    text: cutOutput(response.text, MOD_LIMITS.httpResponseBytes).text,
   };
 }
 

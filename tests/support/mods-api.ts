@@ -159,18 +159,24 @@ export function memoryStore(initial: JsonObject = {}) {
   };
 }
 
-/** A stream a mods API call returned, or a failing test. */
-export function streamOf(value: unknown): AsyncGenerator<unknown, unknown> {
-  if (
+/** Whether `value` is a stream: an async generator, as a hook on `process.spawn` or `turn.step` is. */
+function isStream(value: unknown): value is AsyncGenerator<unknown, unknown> {
+  return (
     typeof value === 'object' &&
     value !== null &&
     Symbol.asyncIterator in value &&
     'next' in value &&
-    typeof value.next === 'function'
-  ) {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- checked above: an async iterator with `next`
-    return value as AsyncGenerator<unknown, unknown>;
-  }
+    typeof value.next === 'function' &&
+    'return' in value &&
+    typeof value.return === 'function' &&
+    'throw' in value &&
+    typeof value.throw === 'function'
+  );
+}
+
+/** A stream a mods API call returned, or a failing test. */
+export function streamOf(value: unknown): AsyncGenerator<unknown, unknown> {
+  if (isStream(value)) return value;
   throw new Error('not a stream');
 }
 
@@ -178,14 +184,6 @@ export function streamOf(value: unknown): AsyncGenerator<unknown, unknown> {
 export function expectMethods(namespace: unknown, methods: readonly string[]): void {
   if (typeof namespace !== 'object' || namespace === null) throw new Error('not a namespace');
   expect(Object.keys(namespace).toSorted()).toEqual(methods.toSorted());
-}
-
-/** The timer `$.clock.after` or `$.clock.every` resolved to. */
-export function timerOf(value: unknown): { cancel(): void } {
-  const cancel: unknown =
-    typeof value === 'object' && value !== null ? Reflect.get(value, 'cancel') : undefined;
-  if (typeof cancel !== 'function') throw new Error('not a timer');
-  return { cancel: () => void Reflect.apply(cancel, value, []) };
 }
 
 /** One field of a value a call resolved to, which a test knows is an object. */
@@ -203,7 +201,6 @@ export const reply = (
   status,
   headers,
   text,
-  truncated: false,
 });
 
 /** A fetcher that answers each request from the next scripted reply and records them. */

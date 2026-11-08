@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EFFORT_LEVELS } from '../../protocol/effort.ts';
 import { MOD_LIMITS } from '../../protocol/mods-limits.ts';
 import type { ModsNamespaceApi } from '../types.ts';
 import { call, isRecord, parse, type Deps } from './call.ts';
@@ -18,7 +19,7 @@ const request = z.looseObject({
   system: textOrBlocks.optional(),
   maxTokens: z.number().int().positive().optional(),
   timeoutMs: z.number().positive().optional(),
-  effort: z.string().optional(),
+  effort: z.enum(EFFORT_LEVELS).optional(),
 });
 
 /** The event: `prompt` and `system` as strings, `promptBlocks` and `systemBlocks` when the caller passed arrays. */
@@ -30,7 +31,7 @@ const event = z.looseObject({
   systemBlocks: blocksSchema.optional(),
   maxTokens: z.number().int().positive(),
   timeoutMs: z.number().positive().optional(),
-  effort: z.string().optional(),
+  effort: z.enum(EFFORT_LEVELS).optional(),
 });
 
 const fork = z.looseObject({ prompt: textOrBlocks });

@@ -123,18 +123,23 @@ spec('mods.api.$.session', () => {
     expect(targets).toEqual(['ag-1', 'peer@host']);
   });
 
-  test('when nothing was delivered the call resolves with { isDelivered: false, reason }', async () => {
+  test('a hook that delivers nothing answers { isDelivered: false, reason }: the call resolves to it and the host is never reached', async () => {
     const reason =
       'Agent "ag-1" was not resumed: the session was stopped and nobody has sent input since.';
+    const sent: string[] = [];
     const h = await apiHarness({
       ports: {
-        session: sessionPort({ send: () => Promise.resolve({ isDelivered: false, reason }) }),
+        session: sessionPort({
+          send: (to) => (sent.push(to), Promise.resolve({ isDelivered: true })),
+        }),
       },
     });
+    await h.mod('stopped', 'prepend', [fn('session.send', () => ({ isDelivered: false, reason }))]);
     expect(await h.api.session.send({ to: { agentId: 'ag-1' }, text: 'hi' })).toEqual({
       isDelivered: false,
       reason,
     });
+    expect(sent).toEqual([]);
   });
 
   test('a send without a target or text rejects', async () => {

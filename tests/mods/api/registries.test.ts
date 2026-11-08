@@ -9,7 +9,7 @@
  * and pane names: Letters, digits, `_`, and `-`, up to 64 characters"); plugins/mods/test.md §
  * Look up what a stub returns (`$.command.run({ command, args })`, `$.tool.call({ tool, ...args })`).
  */
-import { expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { isValidModName, toolFullName } from '../../../src/mods/api/index.ts';
 import { AGENT_STATUSES, MODS_API } from '../../../src/protocol/mods-api-names.ts';
 import { MOD_LIMITS } from '../../../src/protocol/mods-limits.ts';
@@ -181,6 +181,15 @@ spec('mods.api.$.agent', () => {
     expect(await h.api.agent.list()).toEqual(rows);
   });
 
+  test('a row whose status the reference does not list makes the call reject', async () => {
+    const agents = {
+      spawn: () => Promise.resolve({}),
+      list: () => Promise.resolve([{ agentId: 'a1', status: 'napping' }]),
+    };
+    const h = await apiHarness({ ports: { agents } });
+    expect(await rejection(h.api.agent.list())).toContain('$.agent.list');
+  });
+
   test('register adds a subagent type with its definition', async () => {
     const h = await apiHarness();
     await h.api.agent.register({
@@ -208,7 +217,8 @@ spec('mods.api.$.agent', () => {
   });
 });
 
-spec('mods.limit.Command, tool, subagent type, and pane names', () => {
+// Judgment territory until `$.ui.open` lands: the requirement also names pane names, which this stream cannot test, so the id is not credited.
+describe('command, tool and subagent type names (pane names wait for $.ui)', () => {
   const longest = 'a'.repeat(MOD_LIMITS.nameChars);
 
   test('letters, digits, _ and -, up to 64 characters, are valid', () => {

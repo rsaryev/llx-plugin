@@ -6,6 +6,7 @@
  */
 import { expect, test } from 'bun:test';
 import { MODS_API } from '../../../src/protocol/mods-api-names.ts';
+import { fn } from '../../support/mods-chain.ts';
 import { apiHarness, expectMethods, reply, scripted } from '../../support/mods-api.ts';
 import { rejection } from '../../support/rejection.ts';
 import { spec } from '../../support/spec.ts';
@@ -81,7 +82,10 @@ spec('mods.api.$.http', () => {
   test('a redirect is followed, and the hook on http.fetch sees one call, not one for each hop', async () => {
     const fetcher = scripted(reply(302, '', { location: '/final' }), reply(200, 'done'));
     const h = await apiHarness({ ports: { fetcher } });
+    const seen: unknown[] = [];
+    await h.mod('spy', 'prepend', [fn('http.fetch', (_$, e, next) => (seen.push(e), next(e)))]);
     expect(await h.api.http.fetch('https://example.com/start')).toMatchObject({ text: 'done' });
+    expect(seen).toEqual([{ url: 'https://example.com/start', method: 'GET', headers: {} }]);
     expect(fetcher.requests.map((request) => request.url)).toEqual([
       'https://example.com/start',
       'https://example.com/final',

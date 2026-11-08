@@ -96,6 +96,16 @@
 
 ### Fixed
 
+- Mods API: `$.clock.after` and `$.clock.every` return their timer at once (`timer.cancel()` needs
+  no `await`, and also stops a timer whose event is still in the chain); a hook on a mods API call
+  intercepts only the calls of the mods that run after it (`DispatchOptions.caller`); a pass-through
+  hook on `process.spawn` is no longer reported as failed; `$.http.fetch` lower-cases response header
+  names (a `Content-Length` in any case is honoured) and cuts `text` to 4 MiB of bytes itself;
+  `asUser: false` is a plain submit; `effort` is an SDK `EffortLevel`; `$.fs.list` and `stat`
+  carry only the documented fields; `$.agent.list` rows are checked against the reference's
+  statuses; casts on JSON data are replaced by parses. The maximum process timeout and `maxTokens`
+  are proven under `spec(...)`, the tests that only echoed a stub are now real, and the new
+  judgments are rows in `spec/judgments.md`.
 - Mods events: `mergeToolCheck` honours `e.ceiling` (`ask` caps a mod's `allow` at `ask`, as
   permissions.md says for connector tools an organization set to `ask`); `SESSION_END_REASONS` now
   lives in `src/protocol/exit-reasons.ts`, tied to the SDK's `ExitReason`; tests prove that a hook's

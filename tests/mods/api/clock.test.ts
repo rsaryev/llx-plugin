@@ -11,7 +11,7 @@
 import { expect, test } from 'bun:test';
 import { MODS_API } from '../../../src/protocol/mods-api-names.ts';
 import { flush, fn } from '../../support/mods-chain.ts';
-import { apiHarness, expectMethods, timerOf } from '../../support/mods-api.ts';
+import { apiHarness, expectMethods } from '../../support/mods-api.ts';
 import { rejection } from '../../support/rejection.ts';
 import { spec } from '../../support/spec.ts';
 
@@ -24,11 +24,12 @@ spec('mods.api.$.clock', () => {
     expect(await h.api.clock.now()).toBe(1234);
   });
 
-  test('after(5000, fn) calls fn once, five seconds from now, and returns a timer with cancel()', async () => {
+  test('after(5000, fn) calls fn once, five seconds from now, and returns a timer with cancel() at once', async () => {
     const h = await apiHarness();
     let calls = 0;
-    const timer = await h.api.clock.after(5000, () => (calls += 1));
-    expect(Object.keys(timerOf(timer))).toEqual(['cancel']);
+    const timer = h.api.clock.after(5000, () => (calls += 1));
+    expect(Object.keys(timer)).toEqual(['cancel']);
+    await flush();
     h.clock.advance(4999);
     expect(calls).toBe(0);
     h.clock.advance(1);
@@ -37,10 +38,11 @@ spec('mods.api.$.clock', () => {
     expect(calls).toBe(1);
   });
 
-  test('every(ms, fn) repeats until it is cancelled', async () => {
+  test('every(ms, fn) repeats until timer.cancel() is called, with no await in between (as test.md does)', async () => {
     const h = await apiHarness();
     let calls = 0;
-    const timer = timerOf(await h.api.clock.every(60_000, () => (calls += 1)));
+    const timer = h.api.clock.every(60_000, () => (calls += 1));
+    await flush();
     h.clock.advance(60_000);
     h.clock.advance(60_000);
     expect(calls).toBe(2);
@@ -53,20 +55,56 @@ spec('mods.api.$.clock', () => {
   test('a timer cancelled before it fires never fires', async () => {
     const h = await apiHarness();
     let calls = 0;
-    const timer = timerOf(await h.api.clock.after(100, () => (calls += 1)));
+    const timer = h.api.clock.after(100, () => (calls += 1));
+    await flush();
     timer.cancel();
     h.clock.advance(1000);
     expect(calls).toBe(0);
   });
 
+  test('a timer cancelled while its event is still in flight is never armed', async () => {
+    const h = await apiHarness();
+    let calls = 0;
+    const timer = h.api.clock.every(100, () => (calls += 1));
+    timer.cancel();
+    await flush();
+    expect(h.clock.pending()).toBe(0);
+    h.clock.advance(1000);
+    expect(calls).toBe(0);
+  });
+
+  test('a hook on clock.after sees the delay and can change it', async () => {
+    const h = await apiHarness();
+    await h.mod('slower', 'prepend', [fn('clock.after', (_$, e, next) => next({ ...e, ms: 400 }))]);
+    let calls = 0;
+    h.api.clock.after(100, () => (calls += 1));
+    await flush();
+    h.clock.advance(399);
+    expect(calls).toBe(0);
+    h.clock.advance(1);
+    expect(calls).toBe(1);
+  });
+
+  test('a hook that refuses the timer arms nothing and the reason goes to the debug log', async () => {
+    const h = await apiHarness();
+    await h.mod('policy', 'prepend', [fn('clock.every', () => ({ deny: 'no timers' }))]);
+    let calls = 0;
+    h.api.clock.every(100, () => (calls += 1));
+    await flush();
+    h.clock.advance(1000);
+    expect(calls).toBe(0);
+    expect(h.debug).toEqual(['my-mod: my-mod: $.clock.every: no timers']);
+  });
+
   test('a callback that throws goes to the debug log and the timer runs again at the next interval', async () => {
     const h = await apiHarness();
     let calls = 0;
-    await h.api.clock.every(1000, () => {
+    h.api.clock.every(1000, () => {
       calls += 1;
       if (calls === 1) throw new Error('boom');
       return Promise.reject(new Error('later'));
     });
+    await flush();
     h.clock.advance(1000);
     h.clock.advance(1000);
     await flush();
@@ -80,8 +118,9 @@ spec('mods.api.$.clock', () => {
   test('timers stop when the module is unloaded', async () => {
     const h = await apiHarness();
     let calls = 0;
-    await h.api.clock.every(1000, () => (calls += 1));
-    await h.api.clock.after(500, () => (calls += 10));
+    h.api.clock.every(1000, () => (calls += 1));
+    h.api.clock.after(500, () => (calls += 10));
+    await flush();
     h.handle.dispose();
     h.clock.advance(10_000);
     expect(calls).toBe(0);
@@ -101,8 +140,8 @@ spec('mods.api.$.clock', () => {
 
   test('a delay or a callback of the wrong kind rejects', async () => {
     const h = await apiHarness();
-    expect(await rejection(h.api.clock.after('soon', () => 1))).toContain('$.clock.after');
-    expect(await rejection(h.api.clock.every(1000, 'not a function'))).toContain('$.clock.every');
+    expect(() => h.api.clock.after('soon', () => 1)).toThrow('$.clock.after');
+    expect(() => h.api.clock.every(1000, 'not a function')).toThrow('$.clock.every');
     expect(await rejection(h.api.clock.sleep(-1))).toContain('$.clock.sleep');
   });
 

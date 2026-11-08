@@ -3,10 +3,23 @@ import { MOD_LIMITS } from '../../protocol/mods-limits.ts';
 import type { ModsNamespaceApi } from '../types.ts';
 import { call, parse, type Deps } from './call.ts';
 import { absolutePath } from './paths.ts';
+import type { FsEntry, FsStat } from './ports.ts';
 
 const pathEvent = z.looseObject({ path: z.string() });
 const writeEvent = z.looseObject({ path: z.string(), text: z.string() });
 const encoder = new TextEncoder();
+
+/** One entry as the docs name it: `{ name, kind, size, isLink }`, and nothing else the host may have put on it. */
+const entryOf = (entry: FsEntry): FsEntry => ({
+  name: entry.name,
+  kind: entry.kind,
+  size: entry.size,
+  isLink: entry.isLink,
+});
+
+/** What `stat` resolves to: the entry's fields without its name, or `undefined` when there is no such path. */
+const statOf = (stat: FsStat | undefined): FsStat | undefined =>
+  stat && { kind: stat.kind, size: stat.size, isLink: stat.isLink };
 
 const overLimit = (path: string, bytes: number): string =>
   `${path}: ${bytes} bytes is over the ${MOD_LIMITS.fileBytes}-byte limit`;
@@ -31,7 +44,7 @@ async function list(deps: Deps, e: unknown): Promise<unknown> {
   const { path } = parse('$.fs.list', pathEvent, e);
   const entries = await deps.ports.fs.list(path, deps.signal);
   if (entries === undefined) throw new Error(`${path}: no such directory`);
-  return entries;
+  return entries.map(entryOf);
 }
 
 /** `$.fs`: the event's `path` arrives absolute (test.md, "Look up what a stub returns"). */
@@ -56,8 +69,8 @@ export function fsApi(deps: Deps): ModsNamespaceApi<'fs'> {
         fs.exists(parse('$.fs.exists', pathEvent, e).path, deps.signal),
       ),
     stat: async (...args) =>
-      call(deps, 'fs.stat', await at('$.fs.stat', args[0]), (e) =>
-        fs.stat(parse('$.fs.stat', pathEvent, e).path, deps.signal),
+      call(deps, 'fs.stat', await at('$.fs.stat', args[0]), async (e) =>
+        statOf(await fs.stat(parse('$.fs.stat', pathEvent, e).path, deps.signal)),
       ),
     ancestors: async (...args) =>
       call(deps, 'fs.ancestors', await at('$.fs.ancestors', args[0]), (e) =>

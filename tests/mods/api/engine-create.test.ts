@@ -63,7 +63,8 @@ spec('mods.event.engine.create', () => {
     expect(await b.api.store.get('k')).toBe(1);
   });
 
-  test('a mod outside the user tier can withhold a namespace', async () => {
+  // The host says whether the answering mod is outside the `user` tier (`canWithhold`); the tier rule itself is the host's to apply (spec/judgments.md).
+  test('when the host says the answering mod may withhold, a namespace it leaves out is gone', async () => {
     const h = await apiHarness({ options: { canWithhold: true } });
     await h.mod('org-policy', 'prepend', [
       fn('engine.create', async (_$, e, next) => {

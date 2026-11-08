@@ -200,6 +200,14 @@ spec(['mods.limit.maxTokens', 'mods.limit.$.model.complete'], () => {
     expect(port.calls[0]?.maxTokens).toBe(64_000);
   });
 
+  test('a maxTokens above 64,000 never reaches the model as more than 64,000', async () => {
+    const port = models();
+    const h = await apiHarness({ ports: { models: port } });
+    // Whether the call is cut or refused is the kit's judgment (judgments.test.ts); the cap holds either way.
+    await h.api.model.complete({ model: 'haiku', prompt: 'x', maxTokens: 100_000 }).catch(() => 0);
+    expect(port.calls.every((call) => call.maxTokens <= 64_000)).toBe(true);
+  });
+
   test('a maxTokens that is not a positive whole number rejects', async () => {
     const h = await apiHarness({ ports: { models: models() } });
     for (const bad of [0, -1, 1.5, '20']) {

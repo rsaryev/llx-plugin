@@ -3,7 +3,7 @@ import type { ModsNamespaceApi } from '../types.ts';
 import { call, parse, type Deps } from './call.ts';
 
 /** `$.prompt.submit({ text, asUser })` (api.md, "Start a turn from a background job"). */
-const submit = z.looseObject({ text: z.string(), asUser: z.literal(true).optional() });
+const submit = z.looseObject({ text: z.string(), asUser: z.boolean().optional() });
 const textArg = z.union([z.string(), z.looseObject({ text: z.string() })]);
 const textEvent = z.looseObject({ text: z.string() });
 
@@ -16,7 +16,8 @@ export function promptApi(deps: Deps): ModsNamespaceApi<'prompt'> {
   const { prompts } = deps.ports;
   return {
     // Claude reads text after a sentence that names the mod as the sender; `asUser: true` sends the
-    // user's own words without it. The sentence is the host's: the port gets `from` or `asUser`.
+    // user's own words without it, and `asUser: false` is a plain submit. The sentence is the host's:
+    // the port gets `from` or `asUser`.
     submit: async (...args) => {
       const lent = deps.scope.current().lentTo;
       // Judgment: "`$.prompt.submit` rejects while the turn is waiting on that hook"; the docs give no message.

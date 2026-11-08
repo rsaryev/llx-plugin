@@ -1,4 +1,4 @@
-import type { JsonObject } from '../../foundation/index.ts';
+import { toJsonValue, type JsonObject, type JsonValue } from '../../foundation/index.ts';
 import { ENGINE_ORIGIN } from '../../protocol/mods-events.ts';
 import { sameData } from '../events/spec.ts';
 import type { HookReport, ModChain } from '../types.ts';
@@ -33,17 +33,19 @@ function applyAnswer(
   value: Readonly<Record<string, unknown>>,
   options: EngineReadOptions,
 ): JsonObject {
-  const kept: Record<string, unknown> = {};
+  const kept: Record<string, JsonValue> = {};
   for (const [key, answered] of Object.entries(value)) {
-    if (sameData(answered, merged[key]) || options.fits(key, answered)) {
-      kept[key] = answered;
+    // Judgment: settings are JSON, so an answer JSON cannot write leaves the key as merged.
+    const json = toJsonValue(answered);
+    if (json !== undefined && (sameData(answered, merged[key]) || options.fits(key, answered))) {
+      kept[key] = json;
       continue;
     }
     options.debug(noValueLine(key));
-    if (key in merged) kept[key] = merged[key];
+    const was = merged[key];
+    if (was !== undefined) kept[key] = was;
   }
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- every kept value came from the merged JSON or a hook's value that fits
-  return kept as JsonObject;
+  return kept;
 }
 
 /**

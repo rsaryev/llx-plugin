@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { jsonBytes, type JsonObject, type JsonValue } from '../../foundation/index.ts';
+import { jsonBytes, toJsonValue, type JsonObject, type JsonValue } from '../../foundation/index.ts';
 import { MOD_LIMITS } from '../../protocol/mods-limits.ts';
 import type { ModsNamespaceApi } from '../types.ts';
 import { call, parse, type Deps } from './call.ts';
@@ -9,9 +9,9 @@ const setEvent = z.looseObject({ key: z.string(), value: z.unknown() });
 
 /** `value` when it is JSON: the stringify the host's file does would take it. A cycle, a function or a bigint is not. */
 function jsonValue(label: string, value: unknown): JsonValue {
-  if (jsonBytes(value) === undefined) throw new Error(`${label}: the value is not JSON`);
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the check above is the one JSON itself makes
-  return value as JsonValue;
+  const json = toJsonValue(value);
+  if (json === undefined) throw new Error(`${label}: the value is not JSON`);
+  return json;
 }
 
 /**

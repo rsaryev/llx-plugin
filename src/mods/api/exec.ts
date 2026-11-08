@@ -3,6 +3,7 @@ import { MOD_LIMITS } from '../../protocol/mods-limits.ts';
 import type { CommandResult } from '../../ports/index.ts';
 import type { ModsNamespaceApi } from '../types.ts';
 import { call, isRecord, parse, type Deps } from './call.ts';
+import { cutOutput } from './output-cut.ts';
 import { workingDirectory } from './paths.ts';
 import type { SpawnChunk } from './ports.ts';
 
@@ -24,27 +25,13 @@ const SPAWN = `${NAMESPACE}.spawn` as const;
 const LABEL_RUN = `$.${RUN}`;
 const LABEL_SPAWN = `$.${SPAWN}`;
 
-const decoder = new TextDecoder();
-const encoder = new TextEncoder();
-
-/**
- * The first 4 MiB of `text`, in bytes (reference.md, "Limits"). A cut inside a character leaves the
- * characters before it whole.
- */
-function cutOutput(text: string): { readonly text: string; readonly isTruncated: boolean } {
-  const bytes = encoder.encode(text);
-  if (bytes.length <= MOD_LIMITS.outputBytes) return { text, isTruncated: false };
-  const cut = decoder.decode(bytes.subarray(0, MOD_LIMITS.outputBytes));
-  return { text: cut.endsWith('�') ? cut.slice(0, -1) : cut, isTruncated: true };
-}
-
 /** Resolves to `{ exitCode, stdout, stderr }` whatever the exit code; rejects if the program cannot start or is still running at the timeout. */
 function answerOf(program: string, timeoutMs: number, result: CommandResult): unknown {
   if (result.startError !== undefined) throw new Error(`${program}: ${result.startError}`);
   if (result.timedOut) throw new Error(`${program} was still running after ${timeoutMs} ms`);
   if (result.exitCode === null) throw new Error(`${program} was stopped before it exited`);
-  const stdout = cutOutput(result.stdout);
-  const stderr = cutOutput(result.stderr);
+  const stdout = cutOutput(result.stdout, MOD_LIMITS.outputBytes);
+  const stderr = cutOutput(result.stderr, MOD_LIMITS.outputBytes);
   return {
     exitCode: result.exitCode,
     stdout: stdout.text,
@@ -114,6 +101,7 @@ async function* spawn(deps: Deps, args: readonly unknown[]): AsyncGenerator<unkn
       signal: deps.signal,
       report: deps.report,
       reentry: context.reentry,
+      caller: context.origin,
       core,
     });
     if (isRecord(result) && typeof result.deny === 'string') {

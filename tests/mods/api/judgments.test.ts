@@ -64,6 +64,16 @@ describe('the model', () => {
     expect(calls[0]?.maxTokens).toBe(64_000);
   });
 
+  test('effort is one of the SDK levels: it reaches the host as given, and another word rejects', async () => {
+    const calls: ModelCall[] = [];
+    const h = await apiHarness({ ports: { models: port(calls) } });
+    await h.api.model.complete({ model: 'haiku', prompt: 'x', effort: 'xhigh' });
+    expect(calls[0]?.effort).toBe('xhigh');
+    expect(
+      await rejection(h.api.model.complete({ model: 'haiku', prompt: 'x', effort: 'thorough' })),
+    ).toContain('$.model.complete: effort');
+  });
+
   test('classify hands its one object to the host', async () => {
     const h = await apiHarness({ ports: { models: port([]) } });
     expect(await h.api.model.classify({ text: 'x', labels: ['a', 'b'] })).toEqual({

@@ -106,6 +106,7 @@ export async function call(
     signal: deps.signal,
     report: deps.report,
     reentry: context.reentry,
+    caller: context.origin,
     core: answered ? core : async (event) => ({ value: await core(event) }),
   });
   return answered ? answer : valueOf(deps, name, answer);

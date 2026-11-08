@@ -47,7 +47,7 @@ export function createModChain(options: ModChainOptions): ModChain {
       name,
       options: opts,
       clock: options.clock,
-      chain: registry.chainFor(name),
+      chain: registry.chainFor(name, opts.caller),
       input: frozen,
       rules,
       ...(groupMs === undefined
