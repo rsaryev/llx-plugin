@@ -117,3 +117,12 @@
   and the Agent, Skill and WebFetch matchers read behaviour and specifier form through a registry
   and a named guard, and their input fields are tied to the SDK's `AgentInput`, `WebFetchInput`
   and `ArtifactInput`.
+- Mods chain: a synchronous mods API call gives the hook's time budget back, so a hook's own
+  10 s, 50 ms or 1 s limit still fires after one; `walkPlainData` measures a sub-structure
+  reached twice at its deepest place, so a shared sub-tree can no longer slip past the 28,000-level
+  limits; a hook whose `.catch` handler fails too is reported with the hook's own reason, as if it
+  had no handler; the host passes `rewritten` and `lent` flags in `ReentryInfo` and the chain
+  picks `next.error.cause` (`rewritten` wins); `plugin.name` and `plugin.root` are values and no
+  longer events (`API_EVENT_NAMES`, `ApiEventName`); `register` no longer takes the `core` tier.
+  The speculative ports `ModSurface`, `ModEnv`, `ModWatcher`, `ModTurnPort` are removed, and the
+  mods name and limit tables are compared with the pulled reference.

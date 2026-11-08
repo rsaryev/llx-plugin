@@ -11,9 +11,6 @@ import type { ApiEventName, HookFailure, HookOrigin, ModMatcher } from '../proto
  * of mods that implements them.
  */
 
-/** The surface a mod draws on. */
-export type ModSurface = 'terminal' | 'desktop' | 'vscode';
-
 /** What a hook receives from the host's runtime to reach the kit: `$` calls, `next`, and its own signal. */
 export interface HookCall {
   /** The event, as frozen data. */
@@ -58,7 +55,8 @@ export interface ModRuntime {
       readonly entry: string;
       readonly code: string;
       readonly options: JsonObject;
-      readonly surface: ModSurface;
+      /** Where the mod draws, a word such as `terminal`, `desktop` or `vscode`: the docs give no closed list. */
+      readonly surface: string;
     },
     signal: AbortSignal,
   ): Promise<{ readonly module?: GuestModule; readonly issues: readonly PluginIssue[] }>;
@@ -78,26 +76,10 @@ export interface ModStore {
   write(plugin: string, data: JsonObject): Promise<void>;
 }
 
-/** The variables a mod reads and sets with `$.env`. */
-export interface ModEnv {
-  get(name: string): string | undefined;
-  set(name: string, value: string): void;
-}
-
 /** Where usage records go (reference.md, "Telemetry"). */
 export interface TelemetrySink {
   log(record: JsonObject): Promise<void>;
   mark(feature: string): Promise<void>;
-}
-
-/** Hot reload of a `--plugin-dir` directory. */
-export interface ModWatcher {
-  watch(dir: string, onChange: () => void): () => void;
-}
-
-/** Aborts the turn in progress. */
-export interface ModTurnPort {
-  abort(): Promise<void>;
 }
 
 /** The verdict of a deny rule on a tool call, from the permission rules; `unknown` when it cannot be told. */

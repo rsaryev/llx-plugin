@@ -36,6 +36,10 @@ interface Frame {
   readonly value: unknown;
   /** Arrays and objects strictly above this value. */
   readonly above: number;
+  /** The walk is leaving `value`: it is no longer on the path from the root. */
+  readonly leaving?: boolean;
+  /** `value` was measured before, now reached deeper: only its depth is new, so nothing is counted twice. */
+  readonly again?: boolean;
 }
 
 const limitProblem = (
@@ -48,36 +52,71 @@ const limitProblem = (
   return undefined;
 };
 
+interface Walk {
+  stats: PlainDataStats;
+  readonly stack: Frame[];
+  /** The deepest level each container was reached at so far. */
+  readonly deepest: Map<object, number>;
+  /** The containers between the root and the one being walked: reaching one of them again is a cycle. */
+  readonly path: Set<object>;
+}
+
+const keyChars = (container: object): number =>
+  Array.isArray(container) ? 0 : Object.keys(container).reduce((sum, key) => sum + key.length, 0);
+
+/** What a frame adds to the stats: its depth always, its node and characters only the first time `value` is reached. */
+function counted(stats: PlainDataStats, frame: Frame, own: number): PlainDataStats {
+  const repeat = frame.again === true;
+  return {
+    depth: Math.max(stats.depth, own),
+    nodes: stats.nodes + (repeat ? 0 : 1),
+    chars: stats.chars + (repeat || typeof frame.value !== 'string' ? 0 : frame.value.length),
+  };
+}
+
+/** Walks into a container reached at level `own`, unless it was reached as deep or deeper before. */
+function enter(walk: Walk, container: object, own: number): void {
+  const before = walk.deepest.get(container);
+  if (before !== undefined && before >= own) return;
+  walk.deepest.set(container, own);
+  walk.path.add(container);
+  walk.stack.push({ value: container, above: own, leaving: true });
+  const first = before === undefined;
+  if (first) walk.stats = { ...walk.stats, chars: walk.stats.chars + keyChars(container) };
+  for (const child of childrenOf(container)) {
+    walk.stack.push({ value: child, above: own, ...(first ? {} : { again: true }) });
+  }
+}
+
 /**
  * Walks `value` without recursion, so a structure tens of thousands of levels deep never
- * overflows the stack, and stops at the first limit it goes past. A container reached twice is
- * counted once, so a cycle ends the walk instead of looping. Returns the problem, or the stats of
- * the whole value.
+ * overflows the stack, and stops at the first limit it goes past. A container reached again is
+ * counted once, but walked again when this time it lies deeper than before, so a shared
+ * sub-structure is measured at its deepest place; a container that is its own ancestor (a cycle)
+ * ends the walk instead of looping. Returns the problem, or the stats of the whole value.
  */
 export function walkPlainData(
   value: unknown,
   limits: PlainDataLimits = {},
 ): { readonly problem: PlainDataProblem } | { readonly stats: PlainDataStats } {
-  const seen = new WeakSet<object>();
-  const stack: Frame[] = [{ value, above: 0 }];
-  let stats: PlainDataStats = { depth: 0, nodes: 0, chars: 0 };
-  for (let frame = stack.pop(); frame; frame = stack.pop()) {
-    const chars = typeof frame.value === 'string' ? frame.value.length : 0;
+  const walk: Walk = {
+    stats: { depth: 0, nodes: 0, chars: 0 },
+    stack: [{ value, above: 0 }],
+    deepest: new Map(),
+    path: new Set(),
+  };
+  for (let frame = walk.stack.pop(); frame; frame = walk.stack.pop()) {
+    if (frame.leaving === true) {
+      if (isContainer(frame.value)) walk.path.delete(frame.value);
+      continue;
+    }
     const own = frame.above + (isContainer(frame.value) ? 1 : 0);
-    stats = {
-      depth: Math.max(stats.depth, own),
-      nodes: stats.nodes + 1,
-      chars: stats.chars + chars,
-    };
-    const problem = limitProblem(stats, limits);
+    walk.stats = counted(walk.stats, frame, own);
+    const problem = limitProblem(walk.stats, limits);
     if (problem) return { problem };
-    if (!isContainer(frame.value) || seen.has(frame.value)) continue;
-    seen.add(frame.value);
-    const keys = Array.isArray(frame.value) ? [] : Object.keys(frame.value);
-    stats = { ...stats, chars: stats.chars + keys.reduce((sum, key) => sum + key.length, 0) };
-    for (const child of childrenOf(frame.value)) stack.push({ value: child, above: own });
+    if (isContainer(frame.value) && !walk.path.has(frame.value)) enter(walk, frame.value, own);
   }
-  return { stats };
+  return { stats: walk.stats };
 }
 
 /** The first limit `value` goes past, or `undefined` when it fits. */

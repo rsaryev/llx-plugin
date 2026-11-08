@@ -140,7 +140,7 @@ function report(site: Site, reason: string): void {
 
 /**
  * A hook failed (events.md, "Handle a hook that fails"): its `.catch` handler answers in its
- * place; with none, or when the handler fails too, the hook is skipped. A hook that had called
+ * place; with none, or when the handler fails too, the hook is skipped as if it had no handler. A hook that had called
  * `next` keeps that result and nothing runs a second time; one that had not lets the next handler
  * run in its place.
  */
@@ -149,8 +149,8 @@ async function* recover(site: Site, failure: Failure): Stream {
   const run = groupSpent ? undefined : catchRun(site, failure);
   const answered = run ? yield* attempt(site, run) : undefined;
   if (answered && 'value' in answered) return answered.value;
-  if (answered) report(site, `its .catch handler ${answered.failed.reason}`);
-  else if (REPORTED[failure.kind]) report(site, failure.reason);
+  // A handler that fails too leaves the hook skipped as if it had no handler: the hook's own reason is the line.
+  if (REPORTED[failure.kind]) report(site, failure.reason);
   const latest = site.downstream.latest();
   return latest ? yield* finish(latest) : yield* runFrom(site.ctx, site.index + 1, site.e);
 }

@@ -28,13 +28,15 @@ function guardedCall(method: Method, owner: object, label: string, budget: Budge
     budget.pause();
     try {
       const result = Reflect.apply(method, owner, args);
-      if (!isThenable(result)) return result;
-      return Promise.resolve(result).finally(() => budget.resume());
+      if (!isThenable(result)) {
+        budget.resume(); // a synchronous result is back: the hook has the floor again
+        return result;
+      }
+      return Promise.resolve(result).finally(() => budget.resume()); // a promise resumes when it settles
     } catch (error) {
       budget.resume();
       throw error;
     }
-    // A synchronous result resumes here; a promise resumes when it settles.
   };
 }
 

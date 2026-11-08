@@ -1,6 +1,6 @@
 import type { PluginIssue } from '../../format/issues.ts';
 import type { ModTier } from '../../protocol/mods-events.ts';
-import type { ModPluginInfo, RegisteredHook } from '../types.ts';
+import type { ModPluginInfo, RegisteredHook, RegisterTier } from '../types.ts';
 import type { CompiledMatcher } from './matcher.ts';
 import { TIER_RANK } from './tiers.ts';
 import { checkHooks } from './validate.ts';
@@ -19,7 +19,7 @@ export interface Registry {
   /** Adds a module's hooks, or none of them when it has an issue. A mod registered again replaces its earlier hooks (judgment). */
   register(
     plugin: ModPluginInfo,
-    tier: ModTier,
+    tier: RegisterTier,
     hooks: readonly RegisteredHook[],
   ): readonly PluginIssue[];
   unregister(plugin: string): void;

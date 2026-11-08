@@ -133,6 +133,50 @@ describe("the nesting depth of a mods API call's arguments", () => {
     });
   });
 
+  test('a synchronous mods API method rejects an over-nested argument too, and is not called (judgment)', async () => {
+    const h = harness();
+    let calls = 0;
+    const outcomes: string[] = [];
+    h.mod(
+      'my-mod',
+      'user',
+      [
+        fn('tool.call', async ($, e, next) => {
+          try {
+            await $.ui.log(levels(28_001));
+            outcomes.push('called');
+          } catch (error) {
+            outcomes.push(messageOf(error));
+          }
+          return next(e);
+        }),
+      ],
+      { 'ui.log': () => (calls += 1) },
+    );
+    await h.fire('tool.call');
+    expect(calls).toBe(0);
+    expect(outcomes[0]?.endsWith(MESSAGE_END)).toBe(true);
+  });
+
+  test('next.to rejects an over-nested event like next does, and nothing after it runs (judgment)', async () => {
+    const h = harness();
+    const outcomes: string[] = [];
+    h.mod('my-mod', 'prepend', [
+      fn('tool.call', async (_$, e, next) => {
+        try {
+          await next.to({ ...e, deep: levels(28_001) }, 'core');
+          outcomes.push('passed');
+        } catch (error) {
+          outcomes.push(messageOf(error));
+        }
+        return next(e);
+      }),
+    ]);
+    await h.fire('tool.call', {});
+    expect(outcomes[0]?.endsWith(MESSAGE_END)).toBe(true);
+    expect(h.coreSeen).toHaveLength(1);
+  });
+
   test('the message names the limit it was given (judgment: the boundary counts nested arrays and objects)', () => {
     expect(nestingMessage(5)).toBe('nesting deeper than 5 levels is not supported');
     expect(nestingProblem(levels(5), 5)).toBeNull();

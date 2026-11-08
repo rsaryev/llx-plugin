@@ -77,12 +77,24 @@ export const CLASSIC_EVENT_NAMES: readonly ClassicEventName[] = HOOK_EVENTS.map(
 );
 
 /** The event of a mods API call: `fs.read`, `model.complete`, `ui.open`. */
-export type ApiEventName = {
-  [N in ModsNamespace]: `${N}.${ModsMethod<N>}`;
-}[ModsNamespace];
-export const API_EVENT_NAMES: readonly string[] = Object.entries(MODS_API).flatMap(
-  ([namespace, methods]) => methods.map((method) => `${namespace}.${method}`),
-);
+/**
+ * The members of the table that are values, not calls: `$.plugin.name` and `$.plugin.root` are
+ * "this plugin's name and directory" (reference.md, "Mods API methods"). A value fires no event, so
+ * these are not events (judgment: the table lists them under "Methods", and the events are "every
+ * mods API method").
+ */
+type ApiValue = 'plugin.name' | 'plugin.root';
+const API_VALUES: ReadonlySet<string> = new Set<ApiValue>(['plugin.name', 'plugin.root']);
+
+export type ApiEventName = Exclude<
+  {
+    [N in ModsNamespace]: `${N}.${ModsMethod<N>}`;
+  }[ModsNamespace],
+  ApiValue
+>;
+export const API_EVENT_NAMES: readonly string[] = Object.entries(MODS_API)
+  .flatMap(([namespace, methods]) => methods.map((method) => `${namespace}.${method}`))
+  .filter((name) => !API_VALUES.has(name));
 
 export type AnyModEventName = ModEventName | ClassicEventName | ApiEventName;
 

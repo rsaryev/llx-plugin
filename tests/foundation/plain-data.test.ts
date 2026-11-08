@@ -29,4 +29,17 @@ describe('walkPlainData', () => {
     items.push(cycle);
     expect(plainDataProblem(cycle, { maxDepth: 5 })).toBeUndefined();
   });
+  test('measures a shared sub-structure at its deepest place, and counts it once', () => {
+    const shared = { leaf: ['x'] };
+    const dag = { near: shared, far: [[[shared]]] };
+    expect(stats(dag)).toEqual({ depth: 6, nodes: 8, chars: 3 + 4 + 4 + 1 });
+    expect(plainDataProblem(dag, { maxDepth: 5 })).toBe('depth');
+    expect(plainDataProblem(dag, { maxDepth: 6 })).toBeUndefined();
+  });
+  test('refuses a DAG whose shared sub-tree is only too deep through its second parent', () => {
+    let deep: unknown = 'leaf';
+    for (let level = 0; level < 27_999; level += 1) deep = [deep];
+    expect(plainDataProblem({ x: [[[deep]]], y: deep }, { maxDepth: 28_000 })).toBe('depth');
+    expect(plainDataProblem({ y: deep }, { maxDepth: 28_000 })).toBeUndefined();
+  });
 });

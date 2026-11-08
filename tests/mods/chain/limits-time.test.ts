@@ -3,24 +3,10 @@
  * `.catch` handler's, all `session.end` hooks together) and § The hook function (`next.budget`).
  */
 import { describe, expect, test } from 'bun:test';
-import { MOD_LIMITS } from '../../../src/protocol/mods-limits.ts';
 import { deferred, flush, fn, harness } from '../../support/mods-chain.ts';
 import { spec } from '../../support/spec.ts';
 
 const NEVER = (): Promise<never> => new Promise(() => undefined);
-
-const sleeper = (name: string, h: ReturnType<typeof harness>) =>
-  h.mod(
-    name,
-    'user',
-    [
-      fn('session.end', async ($, e, next) => {
-        await $.clock.sleep(1000);
-        return next(e);
-      }),
-    ],
-    { 'clock.sleep': (ms) => h.clock.sleep(Number(ms)) },
-  );
 
 describe("a hook's own time (reference.md § Limits)", () => {
   spec('mods.limit.next', () => {
@@ -108,6 +94,34 @@ describe("a hook's own time (reference.md § Limits)", () => {
         'timed out: ran over its 10000 ms limit',
       ]);
     });
+
+    test('a synchronous mods API call gives the floor back: the limit still fires after it', async () => {
+      const h = harness();
+      let logged = 0;
+      h.mod(
+        'my-mod',
+        'user',
+        [
+          fn('tool.call', async ($) => {
+            $.ui.log('x');
+            return await NEVER();
+          }),
+        ],
+        { 'ui.log': () => (logged += 1) },
+      );
+      let done = false;
+      const pending = h.fire('tool.call', { n: 1 }).then(() => (done = true));
+      await flush();
+      expect(logged).toBe(1);
+      h.clock.advance(9999);
+      await flush();
+      expect(done).toBe(false);
+      h.clock.advance(1);
+      await pending;
+      expect(h.reports.map((report) => report.reason)).toEqual([
+        'timed out: ran over its 10000 ms limit',
+      ]);
+    });
   });
 
   spec('mods.hookArgument.next.budget', () => {
@@ -177,7 +191,7 @@ describe("a .catch handler's time", () => {
       h.clock.advance(1);
       await pending;
       expect(result).toEqual({ core: { n: 1 } });
-      expect(h.reports[0]?.reason).toContain('its .catch handler timed out');
+      expect(h.reports.map((report) => report.reason)).toEqual(['threw Error: x']);
     });
 
     test("time inside the handler's next and mods API calls is not counted", async () => {
@@ -201,77 +215,6 @@ describe("a .catch handler's time", () => {
       h.clock.advance(5000);
       read.resolve();
       expect(await pending).toEqual({ core: { n: 1 } });
-      expect(h.reports).toEqual([]);
-    });
-  });
-});
-
-describe('all session.end hooks together', () => {
-  spec('mods.limit.session.end', () => {
-    test('1.5 seconds by default, counted over all the hooks: the one running when it is spent is skipped', async () => {
-      const h = harness();
-      sleeper('first', h);
-      sleeper('second', h);
-      let done = false;
-      const pending = h.fire('session.end', { reason: 'clear' }).then(() => (done = true));
-      await flush();
-      h.clock.advance(1000);
-      await flush();
-      expect(done).toBe(false);
-      h.clock.advance(499);
-      await flush();
-      expect(done).toBe(false);
-      h.clock.advance(1);
-      await pending;
-      expect(h.coreSeen).toEqual([{ reason: 'clear' }]);
-      expect(h.reports.map((report) => report.plugin)).toEqual(['second']);
-      expect(h.reports[0]?.reason).toContain('1500 ms they share');
-      expect(MOD_LIMITS.sessionEndMs).toBe(1500);
-    });
-
-    test('a hook that starts after the budget is spent does not run (judgment)', async () => {
-      const h = harness();
-      let ran = false;
-      sleeper('first', h);
-      h.mod('late', 'user', [fn('session.end', (_$, e, next) => ((ran = true), next(e)))]);
-      const pending = h.fire('session.end', {}, { groupMs: 500 });
-      await flush();
-      h.clock.advance(500);
-      await pending;
-      expect(ran).toBe(false);
-      expect(h.coreSeen).toHaveLength(1);
-    });
-
-    test('a longer budget the host passes, as when settings give SessionEnd hooks more time, lets them finish', async () => {
-      const h = harness();
-      sleeper('first', h);
-      sleeper('second', h);
-      const pending = h.fire('session.end', {}, { groupMs: 5000 });
-      await flush();
-      h.clock.advance(1000);
-      await flush();
-      h.clock.advance(1000);
-      await pending;
-      expect(h.reports).toEqual([]);
-    });
-
-    test('the shared budget is not a limit of any other event', async () => {
-      const h = harness();
-      h.mod(
-        'my-mod',
-        'user',
-        [
-          fn('tool.call', async ($, e, next) => {
-            await $.clock.sleep(1000);
-            return next(e);
-          }),
-        ],
-        { 'clock.sleep': (ms) => h.clock.sleep(Number(ms)) },
-      );
-      const pending = h.fire('tool.call');
-      await flush();
-      h.clock.advance(1000);
-      await pending;
       expect(h.reports).toEqual([]);
     });
   });

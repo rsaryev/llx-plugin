@@ -5,7 +5,6 @@
  */
 import { describe, expect, test } from 'bun:test';
 import type { HookFailure } from '../../../src/protocol/mods-events.ts';
-import { reentryCause } from '../../../src/mods/chain/index.ts';
 import { fn, flush, harness, record, type Ev } from '../../support/mods-chain.ts';
 import { spec } from '../../support/spec.ts';
 
@@ -50,7 +49,9 @@ describe('a hook that fails and has no handler (events.md § Handle a hook that 
     expect(h.reports).toHaveLength(1);
   });
 
-  test('a result of the wrong shape counts as a failure', async () => {
+  // The chain has no shape table of its own yet: the table of what each event answers lands with the
+  // events part of mods, so this test injects the check the chain takes (`shapeProblem`).
+  test('a result of the wrong shape counts as a failure (with an injected shape check until the events part lands)', async () => {
     const h = harness((event, result) =>
       typeof result === 'object' && result !== null && 'deny' in result
         ? undefined
@@ -174,8 +175,9 @@ describe('the .catch handler', () => {
     const h = harness();
     h.mod('my-mod', 'user', [fn('tool.call', failing(), { handler: failing('handler broke') })]);
     expect(await h.fire('tool.call', { n: 1 })).toEqual({ core: { n: 1 } });
-    expect(h.reports).toHaveLength(1);
-    expect(h.reports[0]?.reason).toContain('handler broke');
+    expect(h.reports.map((report) => report.line)).toEqual([
+      'my-mod: tool.call hook skipped: threw Error: boom',
+    ]);
   });
 });
 
@@ -199,22 +201,24 @@ describe('re-entry (reference.md § The hook function)', () => {
       expect(result).toEqual({ core: { tool: 'Bash' } });
     });
 
-    test('next.error.cause is rewritten or lent when set, and absent otherwise', async () => {
+    test('next.error.cause is lent unless rewritten also applies: rewritten wins, lent alone is lent, neither is none', async () => {
+      const flags = [
+        { rewritten: true, lent: true },
+        { rewritten: true, lent: false },
+        { rewritten: false, lent: true },
+        {},
+      ];
       const causes: unknown[] = [];
-      for (const cause of ['rewritten', 'lent', undefined] as const) {
+      for (const given of flags) {
         const h = harness();
         h.mod('my-mod', 'user', [
-          fn('tool.call', failing(), {
+          fn('tool.call', (_$, e, next) => next(e), {
             handler: (_$, e, next) => (causes.push(next.error.cause), next(e)),
           }),
         ]);
-        await h.fire(
-          'tool.call',
-          {},
-          { reentry: { plugin: 'my-mod', ...(cause ? { cause } : {}) } },
-        );
+        await h.fire('tool.call', {}, { reentry: { plugin: 'my-mod', ...given } });
       }
-      expect(causes).toEqual(['rewritten', 'lent', undefined]);
+      expect(causes).toEqual(['rewritten', 'rewritten', 'lent', undefined]);
     });
   });
 
@@ -223,15 +227,6 @@ describe('re-entry (reference.md § The hook function)', () => {
     h.mod('my-mod', 'user', [fn('tool.call', (_$, e, next) => next(e))]);
     await h.fire('tool.call', {}, { reentry: { plugin: 'my-mod' } });
     expect(h.reports).toEqual([]);
-  });
-
-  spec('mods.hookArgument.next.error.cause', () => {
-    test('lent unless rewritten also applies: rewritten wins, lent alone is lent, neither is none', () => {
-      expect(reentryCause({ rewritten: true, lent: true })).toBe('rewritten');
-      expect(reentryCause({ rewritten: true, lent: false })).toBe('rewritten');
-      expect(reentryCause({ rewritten: false, lent: true })).toBe('lent');
-      expect(reentryCause({ rewritten: false, lent: false })).toBeUndefined();
-    });
   });
 });
 

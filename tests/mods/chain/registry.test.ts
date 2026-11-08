@@ -64,6 +64,10 @@ describe('matchers (events.md § Filter which events a hook handles)', () => {
     await h.fire('tool.call', { n: '2', ok: true, name: 'no' });
     expect(seen).toEqual(['yes']);
   });
+  test('a field set to undefined is not a filter (judgment)', async () => {
+    expect(await run({ matcher: { tool: undefined } }, ['Bash', 'Edit'])).toEqual(['Bash', 'Edit']);
+    expect(await run({ matcher: { tool: undefined, n: 1 } }, ['Bash'])).toEqual([]);
+  });
   test('a global expression keeps no state between events', async () => {
     expect(await run({ matcher: { tool: /a/g } }, ['a', 'a', 'a'])).toEqual(['a', 'a', 'a']);
   });
@@ -137,6 +141,7 @@ describe('registering a module (events.md § Filter which events a hook handles)
       'on("session.start") is registered twice without a matcher',
     ]);
     expect(issues[0]?.severity).toBe('error');
+    expect(issues[0]?.path).toBe('hooks:session.start'); // judgment: the path names the event
     await h.fire('tool.call');
     expect(h.coreSeen).toHaveLength(1);
     expect(h.reports).toEqual([]);
@@ -191,6 +196,18 @@ describe('the order mods run in (events.md § The order mods run in)', () => {
     }
     await h.fire('tool.call', {}, { core: () => (ran.push('core'), Promise.resolve(0)) });
     expect(ran).toEqual(['prepend', 'user', 'append', 'builtin', 'core']);
+  });
+  test('the built-in guard sec-default@builtin is registered first in the prepend tier, so it runs before every other mod (judgment)', async () => {
+    const h = harness();
+    const ran: string[] = [];
+    const hook = (label: string) => fn('tool.call', (_$, e, next) => (ran.push(label), next(e)));
+    h.mod('sec-default@builtin', 'prepend', [hook('guard')]);
+    h.mod('org-prepend', 'prepend', [hook('prepend')]);
+    h.mod('installed', 'user', [hook('user')]);
+    h.mod('org-append', 'append', [hook('append')]);
+    h.mod('other-builtin', 'builtin', [hook('builtin')]);
+    await h.fire('tool.call');
+    expect(ran).toEqual(['guard', 'prepend', 'user', 'append', 'builtin']);
   });
   test('within a tier, in the order the mods were registered, and within one module in the order on was called', async () => {
     const h = harness();

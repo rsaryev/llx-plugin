@@ -275,18 +275,18 @@ const result = await chain.dispatch('tool.call', event, {
 | ------------------------------------- | ------- | ------------------------------------------------------------------------------------- |
 | `createModChain(options)`             | done    | middleware chain by tier, matchers, `*` and `classic.*`, `next`, `next.to`, `.catch`, time and nesting limits; streams for `turn.step` and `process.spawn` through `dispatchStream` |
 | `MOD_LIMITS`, `MOD_NAME_PATTERN`      | done    | every number of the reference's Limits table                                          |
-| `MOD_EVENT_NAMES`, `MODS_API`, `MOD_TIERS`, `CLASSIC_EVENT_NAMES`, `API_EVENT_NAMES` | done | the 48 events, the 21 namespaces, the tiers, and the names derived from them |
+| `MOD_EVENT_NAMES`, `MODS_API`, `MOD_TIERS`, `CLASSIC_EVENT_NAMES`, `API_EVENT_NAMES` | done | the 48 events, the 21 namespaces, the tiers, and the names derived from them (`plugin.name` and `plugin.root` are values, so not events) |
 | `createBudget`, `deepFreeze`, `plainDataProblem`, `jsonChars`, `jsonBytes` | done | `foundation`: a time budget on the `Clock` port that stops while code waits, in-place deep freeze, a stack-safe walk with depth, node and character limits, JSON sizes |
-| `reentryCause(flags)`                 | done    | `rewritten` wins over `lent` (reference.md, `next.error.cause`)                       |
 | Events, API, UI, loading, test kit    | planned | the other parts of mods                                                               |
 
-`register` refuses a whole module (and adds none of its hooks) when `on("x")` is registered twice
+`register` takes the tier `prepend`, `user`, `append` or `builtin` (never `core`, which is Claude Code's own
+behaviour); the built-in guard `sec-default@builtin` registers first in `prepend`. It refuses a whole module (and adds none of its hooks) when `on("x")` is registered twice
 without a matcher, when a hook's form does not fit its event, when a telemetry hook lacks
 `{ to: 'collector' }`, or when a matcher's expression does not compile. `dispatch` takes the
 `DispatchOptions`: `core` is what runs after the last hook, `report` receives the line for every
 hook skipped, `reentry` names the mod whose own API call fired the event (its hooks are skipped
-as `re-entry`, with a cause of `rewritten` or `lent`), and `groupMs` the time all `session.end`
-hooks share (default 1.5 s; pass more when settings raise the SessionEnd budget). A hook's own
+as `re-entry`; the host passes the `rewritten` and `lent` flags and a handler's `next.error.cause` is `rewritten`, or `lent` unless `rewritten` also applies), and `groupMs` the time all `session.end`
+hooks share (default 1.5 s, counted from the first hook that has the floor; pass more when settings raise the SessionEnd budget). A hook's own
 time excludes `next` and mods API calls except `$.clock.sleep`; the chain wraps the mod's `$` to
 meter that and to reject an argument nested past 28000 levels. The ports for mods that name
 `PluginIssue` live in `src/mods/ports.ts`, not `src/ports`.

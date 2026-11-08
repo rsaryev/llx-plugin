@@ -6,7 +6,6 @@ import type {
   HookOrigin,
   ModMatcher,
   ModTier,
-  ReentryCause,
   StreamEventName,
 } from '../protocol/mods-events.ts';
 import type { ModsMethod, ModsNamespace } from '../protocol/mods-api-names.ts';
@@ -54,6 +53,12 @@ export type ModsNamespaceApi<N extends ModsNamespace> = {
   readonly [M in ModsMethod<N>]: ModsMember;
 };
 export type ModsApi = { readonly [N in ModsNamespace]: ModsNamespaceApi<N> };
+
+/**
+ * The tiers a mod registers in. `core` is Claude Code's own behaviour at the end of the chain, not
+ * a tier a mod lives in: a hook there would be run by `next.to(e, 'core')` instead of being skipped.
+ */
+export type RegisterTier = Exclude<ModTier, 'core'>;
 
 /** The tiers a hook can skip to with `next.to`. */
 export type SkipTier = Extract<ModTier, 'append' | 'builtin' | 'core'>;
@@ -110,10 +115,17 @@ export interface HookReport {
   readonly line: string;
 }
 
-/** An event fired from inside a mods API call made by `plugin`: that mod's own hooks are skipped. */
+/**
+ * An event fired from inside a mods API call made by `plugin`: that mod's own hooks are skipped.
+ * The host says which of the two causes apply (reference.md, "The hook function", `next.error.cause`)
+ * and the chain picks the one a handler sees: `rewritten` wins over `lent`.
+ */
 export interface ReentryInfo {
   readonly plugin: string;
-  readonly cause?: ReentryCause;
+  /** A `tool.call` or `PreToolUse` hook changed the mods API call, or an `agent.spawn` hook changed the agent it started. */
+  readonly rewritten?: boolean;
+  /** A method another mod adds to the mods API fired the event. */
+  readonly lent?: boolean;
 }
 
 export interface DispatchOptions {
@@ -133,7 +145,7 @@ export interface ModChain {
   /** Adds a mod's hooks to the chains. Any issue refuses the whole module: none of its hooks is added. */
   register(
     plugin: ModPluginInfo,
-    tier: ModTier,
+    tier: RegisterTier,
     hooks: readonly RegisteredHook[],
   ): readonly PluginIssue[];
   unregister(plugin: string): void;

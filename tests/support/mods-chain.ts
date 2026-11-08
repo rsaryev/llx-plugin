@@ -1,10 +1,5 @@
 import { MODS_API } from '../../src/protocol/mods-api-names.ts';
-import {
-  ENGINE_ORIGIN,
-  type HookOrigin,
-  type ModMatcher,
-  type ModTier,
-} from '../../src/protocol/mods-events.ts';
+import { ENGINE_ORIGIN, type HookOrigin, type ModMatcher } from '../../src/protocol/mods-events.ts';
 import { createModChain } from '../../src/mods/chain/index.ts';
 import type { PluginIssue } from '../../src/format/index.ts';
 import type {
@@ -14,6 +9,8 @@ import type {
   ModChain,
   ModNext,
   ModsApi,
+  ReentryInfo,
+  RegisterTier,
   RegisteredHook,
 } from '../../src/mods/types.ts';
 import { fixedClock } from './clock.ts';
@@ -77,6 +74,12 @@ export type GenHook = (
   next: ModNext<Ev, AsyncGenerator<unknown, unknown>>,
 ) => unknown;
 
+export type GenCatchHook = (
+  $: ModsApi,
+  e: Ev,
+  next: ModCatchNext<Ev, AsyncGenerator<unknown, unknown>>,
+) => unknown;
+
 export interface HookOptions {
   readonly matcher?: ModMatcher;
   readonly handler?: CatchHook;
@@ -102,20 +105,31 @@ export const fn = (event: string, run: FnHook, options: HookOptions = {}): Regis
 export const gen = (
   event: string,
   run: GenHook,
-  options: { readonly matcher?: ModMatcher } = {},
+  options: { readonly matcher?: ModMatcher; readonly handler?: GenCatchHook } = {},
 ): RegisteredHook => ({
   event,
   isGenerator: true,
   ...(options.matcher ? { matcher: options.matcher } : {}),
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a generator hook's `next` gives streams; the chain hands it exactly that
   run: (api, e, next) => run(api, record(e), next as ModNext<Ev, AsyncGenerator<unknown, unknown>>),
+  ...(options.handler
+    ? {
+        catchRun: (api, e, next) =>
+          options.handler?.(
+            api,
+            record(e),
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the same, for a generator hook's handler
+            next as ModCatchNext<Ev, AsyncGenerator<unknown, unknown>>,
+          ),
+      }
+    : {}),
 });
 
 export interface FireOptions {
   readonly core?: (e: unknown) => Out;
   readonly origin?: HookOrigin;
   readonly signal?: AbortSignal;
-  readonly reentry?: { readonly plugin: string; readonly cause?: 'rewritten' | 'lent' };
+  readonly reentry?: ReentryInfo;
   readonly groupMs?: number;
 }
 
@@ -138,7 +152,7 @@ export function harness(shapeProblem?: (event: string, result: unknown) => strin
   const coreSeen: unknown[] = [];
   const mod = (
     name: string,
-    tier: ModTier,
+    tier: RegisterTier,
     hooks: readonly RegisteredHook[],
     api: Readonly<Record<string, Method>> = {},
   ): readonly PluginIssue[] => chain.register({ name, api: fakeApi(name, api) }, tier, hooks);
