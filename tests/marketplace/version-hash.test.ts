@@ -15,7 +15,7 @@ import {
   linkModeHash,
   subdirectoryPathHash,
 } from '../../src/marketplace/version-hash.ts';
-import type { PluginFiles } from '../../src/ports/files.ts';
+import type { DirectoryEntry, FileStat, PluginFiles } from '../../src/ports/files.ts';
 import { memoryFiles } from '../support/ports.ts';
 import { fakeSha256, realSha256 } from '../support/marketplace-ports.ts';
 import { spec } from '../support/spec.ts';
@@ -34,6 +34,40 @@ const reversed = (files: PluginFiles): PluginFiles => ({
   exists: (path, signal) => files.exists(path, signal),
   list: async (path, signal) => (await files.list(path, signal))?.toReversed(),
 });
+
+/**
+ * `files` with what `memoryFiles` cannot hold: empty directories (listed under the root, with
+ * nothing below) and links whose target the port does not report (`realPath` absent).
+ */
+const handmade = (
+  files: PluginFiles,
+  changes: { readonly emptyDirectories?: readonly string[]; readonly noTarget?: readonly string[] },
+): PluginFiles => {
+  const emptyDirectories = changes.emptyDirectories ?? [];
+  const noTarget = changes.noTarget ?? [];
+  const directory: FileStat = { isFile: false, isDirectory: true, isSymlink: false, size: 0 };
+  return {
+    ...files,
+    list: async (path, signal) => {
+      if (emptyDirectories.includes(path)) return [];
+      const listed = await files.list(path, signal);
+      if (path !== '.' || listed === undefined) return listed;
+      const extra: readonly DirectoryEntry[] = emptyDirectories.map((name) => ({
+        name,
+        isFile: false,
+        isDirectory: true,
+      }));
+      return [...listed, ...extra];
+    },
+    stat: async (path, signal) => {
+      if (emptyDirectories.includes(path)) return directory;
+      const found = await files.stat(path, signal);
+      if (found === undefined || !noTarget.includes(path)) return found;
+      const { realPath: _dropped, ...withoutTarget } = found;
+      return withoutTarget;
+    },
+  };
+};
 
 const copyHash = (tree: Record<string, string | Uint8Array | { symlink: string }>) =>
   copyModeHash(memoryFiles(tree), realSha256);
@@ -72,6 +106,48 @@ spec('updates.loading.How Claude Code computes the version', () => {
       const before = await copyHash({ 'a.md': 'one', 'b.md': 'two' });
       expect(await copyHash({ 'a.md': 'two', 'b.md': 'one' })).not.toBe(before);
       expect(await copyHash({ 'x/a.md': 'one', 'b.md': 'two' })).not.toBe(before);
+    });
+
+    describe('a link is hashed by where it points, never followed', () => {
+      const base = { 'x.md': 'one', 'y.md': 'two' };
+
+      test('a link to x.md and a link to y.md are two versions', async () => {
+        const toX = await copyHash({ ...base, 'link.md': { symlink: 'x.md' } });
+        const toY = await copyHash({ ...base, 'link.md': { symlink: 'y.md' } });
+        expect(toX).not.toBe(toY);
+      });
+
+      test('adding a link is a new version', async () => {
+        const before = await copyHash(base);
+        expect(await copyHash({ ...base, 'link.md': { symlink: 'x.md' } })).not.toBe(before);
+      });
+
+      test('the bytes behind a link are never read, so a link out of the folder pulls nothing in', async () => {
+        const files = memoryFiles({
+          ...base,
+          'inside.md': { symlink: 'x.md' },
+          'outside.md': { symlink: '../secret.md' },
+        });
+        await copyModeHash(files, realSha256);
+        expect(files.reads).toEqual(['x.md', 'y.md']);
+      });
+
+      test('judgment: a link whose target the port does not report is hashed with an empty target', async () => {
+        const tree = { ...base, 'link.md': { symlink: 'x.md' } };
+        const files = handmade(memoryFiles(tree), { noTarget: ['link.md'] });
+        const hashed = await copyModeHash(files, realSha256);
+        expect(hashed).not.toBe(await copyHash(base));
+        expect(hashed).not.toBe(await copyHash(tree));
+        const other = handmade(memoryFiles({ ...base, 'link.md': { symlink: 'y.md' } }), {
+          noTarget: ['link.md'],
+        });
+        expect(await copyModeHash(other, realSha256)).toBe(hashed);
+      });
+    });
+
+    test('an empty directory contributes nothing', async () => {
+      const files = handmade(memoryFiles(PLUGIN), { emptyDirectories: ['empty'] });
+      expect(await copyModeHash(files, realSha256)).toBe(await copyHash(PLUGIN));
     });
 
     test('the bytes of every file go through the port, and nothing else is read', async () => {
@@ -132,16 +208,16 @@ spec('updates.loading.How Claude Code computes the version', () => {
   });
 });
 
+const hash = (path: string) => subdirectoryPathHash(path, realSha256);
+
 spec('updates.loading.How Claude Code computes the version.github', () => {
   test('the hash of a git-subdir path is the same for the same path and differs for another', async () => {
-    const hash = (path: string) => subdirectoryPathHash(path, realSha256);
     expect(await hash('plugins/formatter')).toBe(await hash('plugins/formatter'));
     expect(await hash('plugins/formatter')).not.toBe(await hash('plugins/linter'));
     expect(await hash('plugins/formatter')).toMatch(/^[0-9a-f]{8}$/u);
   });
 
   test('a leading ./ and a trailing slash name the same directory', async () => {
-    const hash = (path: string) => subdirectoryPathHash(path, realSha256);
     expect(await hash('./plugins/formatter/')).toBe(await hash('plugins/formatter'));
   });
 });

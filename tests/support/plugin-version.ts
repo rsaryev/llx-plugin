@@ -1,0 +1,20 @@
+/** Inputs for `computePluginVersion` tests (tests/marketplace/plugin-version*.test.ts). */
+import {
+  computePluginVersion,
+  type VersionInput,
+  type VersionSource,
+} from '../../src/marketplace/plugin-version.ts';
+import { realSha256 } from './marketplace-ports.ts';
+
+/** A real-looking 40-digit commit, so a test can tell a 12-character cut from the whole. */
+export const SHA = '0123456789abcdef0123456789abcdef01234567';
+
+type Changes = Partial<Omit<VersionInput, 'sourceKind' | 'subdir'>> & VersionSource;
+
+/** A source that reports nothing: every field a test does not name is absent or false. */
+const input = (changes: Changes): VersionInput => ({
+  inGitRepository: false,
+  enclosingRepoIgnored: false,
+  ...changes,
+});
+export const versionOf = (changes: Changes) => computePluginVersion(input(changes), realSha256);

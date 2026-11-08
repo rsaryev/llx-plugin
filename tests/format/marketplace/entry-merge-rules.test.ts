@@ -131,12 +131,15 @@ spec('marketplace.rule.How entry fields combine with plugin.json', () => {
   });
 
   test('no plugin.json: hooks given as a file path or an array are an error and do not load', () => {
-    for (const hooks of ['./hooks/hooks.json', [{ hooks: [] }]]) {
-      const result = merge({ hooks });
-      expect(result.manifest?.hooks).toBeUndefined();
-      expect(result.issues).toHaveLength(1);
-      expect(result.issues[0]?.severity).toBe('error');
-      expect(result.issues[0]?.message).toContain('not yet supported in a marketplace entry');
+    // "the entry is the manifest, regardless of `strict`"
+    for (const strict of [true, false, undefined]) {
+      for (const hooks of ['./hooks/hooks.json', [{ hooks: [] }]]) {
+        const result = merge({ hooks, ...(strict === undefined ? {} : { strict }) });
+        expect(result.manifest?.hooks).toBeUndefined();
+        expect(result.issues).toHaveLength(1);
+        expect(result.issues[0]?.severity).toBe('error');
+        expect(result.issues[0]?.message).toContain('not yet supported in a marketplace entry');
+      }
     }
   });
 
@@ -165,6 +168,23 @@ spec('marketplace.rule.How entry fields combine with plugin.json', () => {
       outputStyles: ['./a/', './b/'],
       themes: ['./a/', './b/'],
     });
+  });
+
+  test('plugin.json present, strict unset: the entry matchers of an event replace the manifest ones for that event', () => {
+    const result = merge(
+      { hooks: { PreToolUse: [{ matcher: 'Write', hooks: [] }] } },
+      manifestOf({
+        hooks: {
+          PreToolUse: [{ matcher: 'Bash', hooks: [] }],
+          Stop: [{ hooks: [] }],
+        },
+      }),
+    );
+    expect(result.manifest?.hooks).toEqual({
+      PreToolUse: [{ matcher: 'Write', hooks: [] }],
+      Stop: [{ hooks: [] }],
+    });
+    expect(result.replacedHookEvents).toEqual(['PreToolUse']);
   });
 
   test('plugin.json present, strict unset: events only the manifest declares keep their matchers', () => {

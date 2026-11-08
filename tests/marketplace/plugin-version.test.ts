@@ -7,41 +7,43 @@
  * 12-character cut from the whole.
  */
 import { describe, expect, test } from 'bun:test';
-import { computePluginVersion, type VersionInput } from '../../src/marketplace/plugin-version.ts';
-import { shortHash12 } from '../../src/marketplace/version-hash.ts';
-import { PLUGIN_SOURCE_KINDS } from '../../src/format/marketplace/types.ts';
+import type { VersionSource } from '../../src/marketplace/plugin-version.ts';
+import { shortHash12, subdirectoryPathHash } from '../../src/marketplace/version-hash.ts';
 import { realSha256 } from '../support/marketplace-ports.ts';
+import { SHA, versionOf } from '../support/plugin-version.ts';
 import { spec } from '../support/spec.ts';
 
-const SHA = '0123456789abcdef0123456789abcdef01234567';
 const DIGEST = 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
 
-/** A source that reports nothing: every field a test does not name is absent or false. */
-const input = (
-  changes: Partial<VersionInput> & Pick<VersionInput, 'sourceKind'>,
-): VersionInput => ({
-  inGitMarketplace: false,
-  enclosingRepoIgnored: false,
-  ...changes,
-});
-const versionOf = (changes: Partial<VersionInput> & Pick<VersionInput, 'sourceKind'>) =>
-  computePluginVersion(input(changes), realSha256);
+/** Every source type but `command`, a `git-subdir` with its path. */
+const NOT_COMMAND: readonly VersionSource[] = [
+  { sourceKind: 'relative' },
+  { sourceKind: 'github' },
+  { sourceKind: 'url' },
+  { sourceKind: 'git-subdir', subdir: 'plugins/x' },
+  { sourceKind: 'npm' },
+  { sourceKind: 'archive' },
+];
 
-const NOT_COMMAND = PLUGIN_SOURCE_KINDS.filter((kind) => kind !== 'command');
+/** The version of a `git-subdir` plugin at `SHA`, whose path is `subdir`. */
+const subdirVersion = (subdir: string) =>
+  versionOf({ sourceKind: 'git-subdir', commitSha: SHA, subdir });
+
+/** A pinned `github` plugin at a given commit. */
+const at = (commitSha: string) =>
+  versionOf({ sourceKind: 'github', manifestVersion: '1.0.0', commitSha });
 
 spec('updates.loading.How Claude Code computes the version', () => {
   test('the manifest version comes first, then the entry version, for every source type but command', async () => {
-    for (const sourceKind of NOT_COMMAND) {
-      const both = { sourceKind, manifestVersion: '2.0.0', entryVersion: '1.0.0', commitSha: SHA };
+    for (const source of NOT_COMMAND) {
+      const both = { ...source, manifestVersion: '2.0.0', entryVersion: '1.0.0', commitSha: SHA };
       expect(await versionOf(both)).toEqual({ version: '2.0.0', origin: 'manifest' });
-      const entryOnly = { sourceKind, entryVersion: '1.0.0', commitSha: SHA };
+      const entryOnly = { ...source, entryVersion: '1.0.0', commitSha: SHA };
       expect(await versionOf(entryOnly)).toEqual({ version: '1.0.0', origin: 'entry' });
     }
   });
 
   test('a manifest that pins a version keeps it however many commits land', async () => {
-    const at = (commitSha: string) =>
-      versionOf({ sourceKind: 'github', manifestVersion: '1.0.0', commitSha });
     expect(await at(SHA)).toEqual(await at('f'.repeat(40)));
   });
 
@@ -83,10 +85,13 @@ spec('updates.loading.How Claude Code computes the version', () => {
     });
   });
 
-  test('a relative path inside a Git-hosted marketplace is the commit of the installed directory', async () => {
+  test('a relative path whose directory or marketplace is a Git repository is the commit of the installed directory', async () => {
+    // The table row is "neither the plugin directory nor its marketplace is a git repository":
+    // either one being a repository gives a commit, so the host's one flag stands for both, and a
+    // plugin directory that is a repository inside a marketplace that is not takes this path.
     const result = await versionOf({
       sourceKind: 'relative',
-      inGitMarketplace: true,
+      inGitRepository: true,
       commitSha: SHA,
     });
     expect(result).toEqual({ version: SHA.slice(0, 12), origin: 'sha' });
@@ -94,10 +99,10 @@ spec('updates.loading.How Claude Code computes the version', () => {
 
   test('a commit read from a repository that encloses the install path is not a version', async () => {
     // "such as a git-managed ~/.claude": the host found a repository above the install path.
-    for (const inGitMarketplace of [true, false]) {
+    for (const inGitRepository of [true, false]) {
       const result = await versionOf({
         sourceKind: 'relative',
-        inGitMarketplace,
+        inGitRepository,
         commitSha: SHA,
         enclosingRepoIgnored: true,
       });
@@ -117,7 +122,7 @@ spec('updates.loading.How Claude Code computes the version', () => {
 });
 
 spec('updates.loading.How Claude Code computes the version.github', () => {
-  test('a github, url or git-subdir source with no version field is the commit SHA shortened to 12', async () => {
+  test('a github or url source with no version field is the commit SHA shortened to 12', async () => {
     for (const sourceKind of ['github', 'url'] as const) {
       expect(await versionOf({ sourceKind, commitSha: SHA })).toEqual({
         version: '0123456789ab',
@@ -137,20 +142,20 @@ spec('updates.loading.How Claude Code computes the version.github', () => {
     ).toBe('abcdef012345');
   });
 
-  test('a git-subdir version also carries a hash of the subdirectory path', async () => {
-    const at = (subdir: string) => versionOf({ sourceKind: 'git-subdir', commitSha: SHA, subdir });
-    const frontend = await at('packages/frontend');
-    const backend = await at('packages/backend');
-    expect(frontend.origin).toBe('sha');
-    expect(frontend.version.startsWith('0123456789ab-')).toBe(true);
-    expect(frontend.version).not.toBe('0123456789ab');
+  test('a git-subdir version is the commit shortened to 12, a dash and the path hash', async () => {
+    const frontend = await subdirVersion('packages/frontend');
+    const backend = await subdirVersion('packages/backend');
+    const pathHash = await subdirectoryPathHash('packages/frontend', realSha256);
+    expect(frontend).toEqual({ version: `0123456789ab-${pathHash}`, origin: 'sha' });
     expect(frontend.version).not.toBe(backend.version);
-    expect(backend.version.startsWith('0123456789ab-')).toBe(true);
+    expect(backend.version).toBe(
+      `0123456789ab-${await subdirectoryPathHash('packages/backend', realSha256)}`,
+    );
   });
 
   test('two plugins in one commit and one subdirectory spelled two ways share a version', async () => {
-    const a = await versionOf({ sourceKind: 'git-subdir', commitSha: SHA, subdir: 'plugins/x' });
-    const b = await versionOf({ sourceKind: 'git-subdir', commitSha: SHA, subdir: './plugins/x/' });
+    const a = await subdirVersion('plugins/x');
+    const b = await subdirVersion('./plugins/x/');
     expect(a).toEqual(b);
   });
 });
@@ -189,7 +194,7 @@ spec('updates.loading.How Claude Code computes the version.npm', () => {
       sourceKind: 'npm',
       commitSha: SHA,
       archiveDigest: DIGEST,
-      inGitMarketplace: true,
+      inGitRepository: true,
     });
     expect(result).toEqual({ version: 'unknown', origin: 'unknown' });
   });
@@ -203,7 +208,7 @@ spec(
       expect(await versionOf({ sourceKind: 'github' })).toEqual(unknown);
       expect(await versionOf({ sourceKind: 'url' })).toEqual(unknown);
       expect(await versionOf({ sourceKind: 'git-subdir', subdir: 'p' })).toEqual(unknown);
-      expect(await versionOf({ sourceKind: 'relative', inGitMarketplace: true })).toEqual(unknown);
+      expect(await versionOf({ sourceKind: 'relative', inGitRepository: true })).toEqual(unknown);
     });
 
     test('once the commit can be read the version is a 12-character commit ID', async () => {

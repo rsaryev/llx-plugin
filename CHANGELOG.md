@@ -11,6 +11,13 @@
 
 ### Fixed
 
+- Plugin versions (review fixes): a stated or computed version that is not one folder name (`../x`,
+  `a/b`) no longer reaches the cache path (`isVersionSegment`; it is skipped for the next source of a
+  version, else `unknown`); a `git-subdir` input always carries its `subdir`; `inGitMarketplace` is
+  now `inGitRepository` (the plugin directory or its marketplace); `unknownVersionSteps` takes
+  `{ name, marketplace }` and reruns each scope once; the SP2 gate reads ids that hold quotes, so the
+  folder-collision section is proven; links, empty directories, `strict` and same-event hook
+  replacement gained tests.
 - Install records and plans (review fixes): a `__proto__` key in `installed_plugins.json` or
   `known_marketplaces.json` is kept like any other (it was dropped); the default plugins root honours
   `CLAUDE_CONFIG_DIR`; a session prints `✔ Updated N marketplaces` where a shell prints `Successfully

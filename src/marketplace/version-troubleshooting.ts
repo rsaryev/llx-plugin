@@ -22,28 +22,33 @@ export interface UnknownVersionPlan {
 /** "v2.1.302 or later, which clones in a format it can read the commit from". */
 const MINIMUM_CLAUDE_CODE = '2.1.302';
 
-/** The marketplace of a `<name>@<marketplace>` id: what follows the last `@`. */
-const marketplaceOf = (pluginId: string): string => pluginId.slice(pluginId.lastIndexOf('@') + 1);
+/** A plugin as `<name>@<marketplace>`: the two parts the commands use, never split out of one string. */
+export interface PluginRef {
+  readonly name: string;
+  readonly marketplace: string;
+}
 
 /**
- * The steps for a plugin id as `claude plugin list` prints it, and the scopes of the blocks that
- * still show `unknown` afterwards. Judgment: a managed scope gets no rerun, as the user cannot
- * update it.
+ * The steps for a plugin and the scopes of the blocks that still show `unknown` afterwards. The
+ * plugin is given as its two parts, so the marketplace of step 2 is always the plugin's own.
+ * Judgments: a managed scope gets no rerun, as the user cannot update it; a scope listed twice is
+ * rerun once.
  */
 export function unknownVersionSteps(
-  pluginId: string,
+  plugin: PluginRef,
   unknownScopes: readonly InstallScope[],
 ): UnknownVersionPlan {
+  const id = `${plugin.name}@${plugin.marketplace}`;
   return {
     steps: [
       { command: 'claude update', minimumClaudeCode: MINIMUM_CLAUDE_CODE },
-      { command: `claude plugin marketplace update ${marketplaceOf(pluginId)}` },
-      { command: `claude plugin update ${pluginId}` },
+      { command: `claude plugin marketplace update ${plugin.marketplace}` },
+      { command: `claude plugin update ${id}` },
       { command: 'claude plugin list' },
     ],
-    rerun: unknownScopes.filter(isWritableScope).map((scope) => ({
+    rerun: [...new Set(unknownScopes)].filter(isWritableScope).map((scope) => ({
       scope,
-      command: `claude plugin update ${pluginId} --scope ${scope}`,
+      command: `claude plugin update ${id} --scope ${scope}`,
     })),
   };
 }

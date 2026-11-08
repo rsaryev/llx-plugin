@@ -3,12 +3,15 @@ export {
   UNKNOWN_VERSION,
   computePluginVersion,
   type PluginVersion,
+  isVersionSegment,
   type VersionInput,
+  type VersionSource,
   type VersionOrigin,
 } from './plugin-version.ts';
 export { copyModeHash, linkModeHash, shortHash12, subdirectoryPathHash } from './version-hash.ts';
 export {
   unknownVersionSteps,
+  type PluginRef,
   type UnknownVersionPlan,
   type VersionStep,
 } from './version-troubleshooting.ts';

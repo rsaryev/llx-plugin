@@ -8,10 +8,12 @@ import { expect, test } from 'bun:test';
 import { unknownVersionSteps } from '../../src/marketplace/version-troubleshooting.ts';
 import { spec } from '../support/spec.ts';
 
+const FORMATTER = { name: 'formatter', marketplace: 'my-marketplace' };
+
 spec(
   'install.troubleshooting.A plugin installed from a git repository shows version unknown',
   () => {
-    const plan = unknownVersionSteps('formatter@my-marketplace', ['user']);
+    const plan = unknownVersionSteps(FORMATTER, ['user']);
 
     test('step 1 updates Claude Code to v2.1.302 or later, which reads the commit', () => {
       expect(plan.steps[0]).toEqual({ command: 'claude update', minimumClaudeCode: '2.1.302' });
@@ -31,7 +33,7 @@ spec(
     });
 
     test('a block still showing unknown is updated again with its own scope', () => {
-      const rerun = unknownVersionSteps('formatter@my-marketplace', ['user', 'project']).rerun;
+      const rerun = unknownVersionSteps(FORMATTER, ['user', 'project']).rerun;
       expect(rerun).toEqual([
         { scope: 'user', command: 'claude plugin update formatter@my-marketplace --scope user' },
         {
@@ -43,14 +45,22 @@ spec(
 
     test('judgment: no rerun is offered for the managed scope, which the user cannot change', () => {
       expect(
-        unknownVersionSteps('formatter@m', ['managed', 'local']).rerun.map((one) => one.scope),
+        unknownVersionSteps({ name: 'formatter', marketplace: 'm' }, [
+          'managed',
+          'local',
+        ]).rerun.map((one) => one.scope),
       ).toEqual(['local']);
     });
 
-    test('the marketplace is what follows the last @ of the id', () => {
-      expect(unknownVersionSteps('a@b@c', []).steps[1]?.command).toBe(
-        'claude plugin marketplace update c',
-      );
+    test("the plugin is given as its name and marketplace, so step 2 is the marketplace's own", () => {
+      const nested = unknownVersionSteps({ name: 'a@b', marketplace: 'c' }, []);
+      expect(nested.steps[1]?.command).toBe('claude plugin marketplace update c');
+      expect(nested.steps[2]?.command).toBe('claude plugin update a@b@c');
+    });
+
+    test('judgment: a scope listed twice is rerun once, in the order first listed', () => {
+      const rerun = unknownVersionSteps(FORMATTER, ['project', 'user', 'project', 'user']).rerun;
+      expect(rerun.map((one) => one.scope)).toEqual(['project', 'user']);
     });
   },
 );
