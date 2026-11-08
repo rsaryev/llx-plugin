@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
+  short label and the amounts of each row of the Limits table, not the page's sentences, so the
+  repository holds facts and identifiers only.
 - Format: Claude Code's own leniency about frontmatter and hooks, found by running `claude plugin
   validate` on real plugins. A block plain YAML refuses is retried with the value of each top-level
   line quoted when it holds a character plain YAML cannot (`description: Does X: then Y`,

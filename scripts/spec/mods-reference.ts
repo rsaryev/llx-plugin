@@ -89,7 +89,11 @@ export const snapshotSchema = z.strictObject({
   apiMethods: z.array(z.strictObject({ namespace: z.string(), methods: z.array(z.string()) })),
   /** The `status` values the `$.agent` row lists. */
   agentStatuses: z.array(z.string()),
-  /** § Limits: each row's two cells. */
+  /**
+   * § Limits: each row as a short label (the first words of its first cell) and the amounts its
+   * second cell writes (`10 seconds`, `4 MiB`, `28,000 levels`). Facts and labels only, never the
+   * page's sentences: the snapshot is committed (docs/SPEC.md, "Requirements").
+   */
   limits: z.array(z.strictObject({ limit: z.string(), value: z.string() })),
   /** § Elements: each element, the props its row names and the apps that draw it. */
   elements: z.array(
@@ -114,6 +118,18 @@ export const snapshotSchema = z.strictObject({
   settings: z.array(z.string()),
 });
 export type DocsTables = z.infer<typeof snapshotSchema>;
+
+/** The first words of a row's first cell: enough to tell the rows apart, not the page's sentence. */
+const LABEL_WORDS = 5;
+const labelOf = (cell: string): string => cell.split(/\s+/).slice(0, LABEL_WORDS).join(' ');
+
+/** A number, and the unit or phrase the page writes right after it. */
+const AMOUNT =
+  /\d[\d,]*(?:\.\d+)?(?: (?:MiB|seconds?|milliseconds|minutes|characters|levels|entries|terminal columns|a second|in the terminal|after|by default))?/g;
+const amountsOf = (cell: string): string =>
+  [...cell.replaceAll(/\(https?:[^)]*\)|v\d+\.\d+\.\d+/g, '').matchAll(AMOUNT)]
+    .map((match) => match[0])
+    .join('; ');
 
 const firstToken = (cell: string | undefined): string => codeTokens(cell ?? '')[0] ?? '';
 const levelTwo = (page: string, heading: string): readonly string[] =>
@@ -158,8 +174,8 @@ export function readDocsTables(modsReference: string): DocsTables {
     })),
     agentStatuses: [...listed.matchAll(/`([a-z]+)`/g)].flatMap((m) => (m[1] ? [m[1]] : [])),
     limits: tableRows(levelTwo(modsReference, 'Limits'), 'Limit').map((cells) => ({
-      limit: cells[0] ?? '',
-      value: cells[1] ?? '',
+      limit: labelOf(cells[0] ?? ''),
+      value: amountsOf(cells[1] ?? ''),
     })),
     elements: tableRows(levelTwo(modsReference, 'Elements'), 'Element').map((cells) => ({
       name: firstToken(cells[0]),

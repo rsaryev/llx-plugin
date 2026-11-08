@@ -133,7 +133,7 @@ const LIMIT_ROWS: Readonly<Record<keyof typeof MOD_LIMITS, readonly [string, str
   paneColumnsAfterOpen: ['A pane opened', '110 after'],
   nameChars: ['Command, tool, subagent type', '64 characters'],
   scopes: ['Scopes, such as', '2,000'],
-  nesting: ["Nesting depth of a mods API call's arguments", '28,000 levels'],
+  nesting: ['Nesting depth of a mods', '28,000 levels'],
   testMs: ['`claude plugin test` test', '5 seconds'],
 };
 
