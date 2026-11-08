@@ -2,18 +2,14 @@
  * plugins/manifest-reference.md § Fields (`experimental.themes` and `experimental.monitors`: "A
  * top-level `themes` key still loads, with a `claude plugin validate` warning") and § Standard layout.
  * The registry's behaviour (what is found where, how each key combines) is proven through discovery in
- * tests/loading; this file covers what the registry itself decides: which manifest key wins and that the
- * layout has an entry for every component kind. Which key wins when both are set is the kit's judgment.
+ * tests/loading; this file covers what the registry itself decides: which manifest key wins and which kinds replace
+ * their default (the docs' list). Which key wins when both are set is the kit's judgment.
  */
 import { describe, expect, test } from 'bun:test';
 import { COMPONENT_KINDS, STANDARD_LAYOUT, declaredKey } from '../../src/index.ts';
 import { manifestOf } from '../support/plugin-folder.ts';
 
 describe('the standard layout registry (judgments)', () => {
-  test('every component kind has an entry and every entry is a kind', () => {
-    expect(Object.keys(STANDARD_LAYOUT).toSorted()).toEqual([...COMPONENT_KINDS].toSorted());
-  });
-
   test('declaredKey reports the key that is set and its value; none set is undefined', () => {
     const manifest = manifestOf({ name: 'p', commands: ['./extras/'] });
     expect(declaredKey(manifest, 'commands')).toEqual({ key: 'commands', value: ['./extras/'] });

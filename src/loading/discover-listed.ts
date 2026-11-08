@@ -6,6 +6,7 @@ import { COMBINE } from './combine.ts';
 import type { DiscoverContext, DiscoveredFile, Found } from './discovered.ts';
 import { ignoredFolderIssues } from './ignored-folder.ts';
 import { locate, rootRelative } from './locate.ts';
+import { DECLARED_SHAPE } from './declared-shape.ts';
 import { WALKERS, type ListedKind } from './walk.ts';
 
 /** The `commands` object map of a manifest, when it uses one. */
@@ -86,6 +87,8 @@ async function walkOne(
       written === undefined ? [] : [error(kind, pathNotFound(kind, written))];
     return { found: [], issues: missing };
   }
+  const wrong = written === undefined ? undefined : DECLARED_SHAPE[kind](located.stat, written);
+  if (wrong !== undefined) return { found: [], issues: [error(kind, wrong)] };
   return { found: await WALKERS[kind](context, path, located.stat), issues: [] };
 }
 

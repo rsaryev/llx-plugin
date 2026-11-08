@@ -26,6 +26,21 @@ type Item = { readonly path: string; readonly written: string } | { readonly inl
 const itemOf = (value: unknown): Item =>
   typeof value === 'string' ? { path: rootRelative(value), written: value } : { inline: value };
 
+/**
+ * A file that is already a source loads once, so a manifest `hooks` path that names the default
+ * `hooks/hooks.json` does not run its hooks twice (judgment: the docs merge what the manifest declares
+ * with the default file and give no de-duplication rule).
+ */
+function withoutRepeatedFiles(order: readonly Item[]): Item[] {
+  const seen = new Set<string>();
+  return order.filter((item) => {
+    if ('inline' in item) return true;
+    const repeated = seen.has(item.path);
+    seen.add(item.path);
+    return !repeated;
+  });
+}
+
 async function resolveItem(
   kind: ConfigKind,
   item: Item,
@@ -61,7 +76,7 @@ export async function discoverConfig(
     context,
   );
   const defaults: readonly Item[] = [{ path: entry.location, written: entry.location }];
-  const order = COMBINE[entry.combine ?? 'replace'](defaults, items);
+  const order = withoutRepeatedFiles(COMBINE[entry.combine ?? 'replace'](defaults, items));
   const resolved = await Promise.all(
     order.map((item) => resolveItem(kind, item, items?.includes(item) === true, context)),
   );

@@ -129,7 +129,14 @@ spec('manifest.field.lspServers', () => {
       'lsp/ok.json': json({ go: go('gopls') }),
     });
     expect(Object.keys(plugin?.lspServers ?? {})).toEqual(['go']);
-    expect(issues.length).toBeGreaterThan(0);
+    expect(issues).toEqual([
+      {
+        severity: 'error',
+        path: '.lsp.json',
+        message:
+          'Invalid LSP server config for ".lsp.json": bad: command: must not contain spaces unless it starts with "/"; put arguments in "args"',
+      },
+    ]);
   });
 });
 
@@ -173,6 +180,26 @@ spec('manifest.field.experimental.monitors', () => {
       'p',
     );
     expect(plugin?.monitors).toEqual([]);
-    expect(issues[0]?.severity).toBe('error');
+    expect(issues).toEqual([
+      {
+        severity: 'error',
+        path: 'monitors/monitors.json[0]',
+        message: 'Invalid monitor at monitors/monitors.json[0]: Unrecognized key: "extra"',
+      },
+    ]);
+  });
+
+  test('a valid sibling entry in the same file still loads when one entry is rejected (judgment: each entry stands alone)', async () => {
+    const { plugin, issues } = await load(
+      {
+        'monitors/monitors.json': json([
+          { name: 'a', command: 'c', description: 'd', extra: true },
+          entry('b'),
+        ]),
+      },
+      'p',
+    );
+    expect(namesOf(plugin?.monitors ?? [])).toEqual(['b']);
+    expect(issues.map((found) => found.path)).toEqual(['monitors/monitors.json[0]']);
   });
 });

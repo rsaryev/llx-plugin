@@ -15,6 +15,14 @@ export const pathEscapes = (component: string, path: string, resolvesTo?: string
 export const pathNotFound = (component: string, path: string): string =>
   `${component} path not found: ${path}`;
 
+/** The error for a `skills` entry that is not a directory ("Path-only fields": "`skills` entries must be directories"). */
+export const skillsEntryNotDirectory = (path: string): string =>
+  `skills entries must be directories: ${path}`;
+
+/** The error for an `agents` entry that is not a file ("Path-only fields": "`agents` entries must be `.md` files"). */
+export const agentsEntryNotFile = (path: string): string =>
+  `agents entries must be .md files: ${path}`;
+
 /** The warning for a default folder a replacing manifest key leaves unscanned. */
 export const defaultFolderIgnored = (folder: string, key: string): string =>
   `Default ${folder}/ folder is ignored because the manifest sets "${key}"`;

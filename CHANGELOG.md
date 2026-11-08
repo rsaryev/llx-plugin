@@ -93,6 +93,14 @@
 
 ### Fixed
 
+- Layout discovery: a `skills` entry that is a file and an `agents` entry that is a directory are
+  now errors instead of being dropped or scanned silently (manifest-reference, "Path-only fields");
+  a manifest `hooks` path that names `hooks/hooks.json` no longer loads the file twice, so its hooks
+  run once; the symlinked-folder, duplicate-file and path-shape decisions are recorded in
+  `spec/judgments.md`. New tests cover the `bin/` decisions, the depth cap with a really looping
+  folder, single-file `workflows` and `experimental.themes`, the symlink escape of default
+  `monitors/monitors.json`, `settings.json` and a root `SKILL.md`, and exact issues for invalid LSP,
+  monitor and settings files.
 - Skill, command and agent content: the `user_config` policy applied to a command body is now
   recorded as the kit's reading (the page words it for skill and agent content and lists commands
   only in the one table row) in `spec/judgments.md` and the `substituteContent` doc comment.

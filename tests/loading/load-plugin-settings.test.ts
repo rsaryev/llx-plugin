@@ -54,7 +54,22 @@ spec('manifest.field.settings', () => {
       'settings.json': '{',
     });
     expect(plugin?.settings).toEqual({ agent: 'from-manifest' });
-    expect(issues[0]?.severity).toBe('error');
+    expect(issues).toEqual([
+      {
+        severity: 'error',
+        path: 'settings.json',
+        message: expect.stringMatching(/^settings\.json is not valid JSON: /),
+      },
+    ]);
+  });
+
+  test('when settings.json wins, the ignored manifest settings stays silent, a dropped key included', async () => {
+    const { plugin, issues } = await load({
+      '.claude-plugin/plugin.json': manifest({ agent: 'from-manifest', model: 'opus' }),
+      'settings.json': json({ agent: 'from-file' }),
+    });
+    expect(plugin?.settings).toEqual({ agent: 'from-file' });
+    expect(issues).toEqual([]);
   });
 });
 
