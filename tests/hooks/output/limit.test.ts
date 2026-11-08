@@ -129,7 +129,7 @@ describe('the cap on the other strings', () => {
     expect(
       first !== undefined &&
         'systemMessage' in first &&
-        String(first.systemMessage).includes('Full output saved to'),
+        first.systemMessage.includes('Full output saved to'),
     ).toBe(true);
   });
 
@@ -223,5 +223,25 @@ describe('through the engine', () => {
     expect(outcome.additionalContext).toHaveLength(1);
     expect(outcome.additionalContext[0]).toContain('Full output saved to');
     expect(outcome.issues).toEqual([]);
+  });
+});
+
+describe('a field the event discards is not spilled (judgment)', () => {
+  test.each(['Setup', 'Notification', 'SessionEnd', 'PostCompact'] as const)(
+    '%s: an oversized systemMessage writes no file and is left as it is',
+    async (event) => {
+      const scratch = memoryScratch();
+      const text = over();
+      const { outputs, issues } = await limit(event, [{ systemMessage: text }], scratch);
+      expect(scratch.files.size).toBe(0);
+      expect(issues).toEqual([]);
+      expect(outputs[0]?.output).toMatchObject({ systemMessage: text });
+    },
+  );
+
+  test('an event that keeps the field still spills it', async () => {
+    const scratch = memoryScratch();
+    await limit('PostToolUse', [{ systemMessage: over() }], scratch);
+    expect(scratch.files.size).toBe(1);
   });
 });

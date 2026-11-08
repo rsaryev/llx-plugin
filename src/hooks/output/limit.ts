@@ -3,7 +3,7 @@ import type { ScratchFiles } from '../../ports/scratch-files.ts';
 import type { HookEvent } from '../../protocol/official.ts';
 import type { LimitedOutputs, TaggedOutput } from '../verdict/types.ts';
 import { stringIn } from './fields.ts';
-import { checkOutput } from './parse.ts';
+import { OUTPUT_CAPS, type CappedField } from './caps.ts';
 import type { CheckedOutput } from './schemas.ts';
 import { cutText, limitText } from './text-cap.ts';
 
@@ -21,12 +21,15 @@ export interface LimitRequest {
 /** One capped string of a JSON output: how to read it and how to put a replacement back. */
 interface Slot {
   readonly field: string;
+  /** The event's cap that must accept the field: a field the event discards is never written out. */
+  readonly cap: CappedField;
   read(output: CheckedOutput): string | undefined;
   write(output: CheckedOutput, text: string): CheckedOutput;
 }
 
 const specificSlot = (key: string): Slot => ({
   field: key,
+  cap: 'specific',
   read: (output) => stringIn(output.hookSpecificOutput, key),
   write: (output, text) => ({
     ...output,
@@ -37,6 +40,7 @@ const specificSlot = (key: string): Slot => ({
 const SLOTS: readonly Slot[] = [
   {
     field: 'systemMessage',
+    cap: 'systemMessage',
     read: (output) => output.systemMessage,
     write: (output, text) => ({ ...output, systemMessage: text }),
   },
@@ -51,12 +55,13 @@ async function limitJson(
   event: HookEvent,
   tagged: TaggedOutput,
   request: LimitRequest,
-): Promise<{ output: object; issues: PluginIssue[] }> {
-  const checked = tagged.output === undefined ? undefined : checkOutput(event, tagged.output).data;
-  if (checked === undefined) return { output: tagged.output ?? {}, issues: [] };
-  let current = checked;
+): Promise<{ output: CheckedOutput | undefined; issues: PluginIssue[] }> {
+  if (tagged.output === undefined) return { output: undefined, issues: [] };
+  let current = tagged.output;
   const issues: PluginIssue[] = [];
   for (const slot of SLOTS) {
+    // "Some events discard" the field ("JSON output"): spilling it would only write a file nobody reads.
+    if (!OUTPUT_CAPS[event].accepts.has(slot.cap)) continue;
     const value = slot.read(current);
     if (value === undefined) continue;
     const limited = await limitText(
@@ -104,7 +109,7 @@ export async function limitOutputs(
     issues.push(...json.issues, ...plain.issues);
     limited.push({
       ...tagged,
-      ...(tagged.output === undefined ? {} : { output: json.output }),
+      ...(json.output === undefined ? {} : { output: json.output }),
       ...(plain.plainText === undefined ? {} : { plainText: plain.plainText }),
     });
   }

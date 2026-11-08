@@ -88,10 +88,15 @@ export const mergePreCompact: Merger = (reads) => {
 
 /**
  * `Stop` and `SubagentStop` (hooks.md, "Stop decision control"): `additionalContext` is "non-error
- * feedback for Claude. The conversation continues so Claude can act on it".
+ * feedback for Claude. The conversation continues so Claude can act on it". Judgment
+ * (spec/judgments.md): a hook that also returns `continue: false` stops instead, since that "takes
+ * precedence over any event-specific decision fields" (hooks.md, "JSON output").
  */
 export const mergeStop: Merger = (reads) => {
-  const feedback = reads.some((read) => textIn(read.specific, 'additionalContext') !== undefined);
+  const feedback = reads.some(
+    (read) =>
+      read.output?.continue !== false && textIn(read.specific, 'additionalContext') !== undefined,
+  );
   return feedback ? { effects: { continuesTurn: true }, issues: [] } : NOTHING;
 };
 

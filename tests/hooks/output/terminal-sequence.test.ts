@@ -57,7 +57,7 @@ spec(['hooks.output.common.terminalSequence', 'hooks.output.JSON.terminalSequenc
     ['an OSC that smuggles an escape into its text', `${ESC}]9;a${ESC}[2Jb${BEL}`],
     ['an OSC with no number', `${ESC}]${BEL}`],
     ['an OSC number that only starts like an allowed one', osc('90', 'x')],
-    ['a C1 control', `\u009b31m`],
+    ['text that starts with a C1 control instead of an ESC', `\u009b31m`],
     ['an empty value', ''],
   ])('%s: the field is ignored', (_name, value) => {
     expect(allowedTerminalSequence(value)).toBeUndefined();
@@ -98,5 +98,20 @@ describe('terminalSequence on the events that discard their JSON (judgment)', ()
     for (const event of ['Setup', 'SessionEnd', 'WorktreeRemove'] as const) {
       expect(merged(event, [{ terminalSequence: BEL }]).terminalSequences).toEqual([BEL]);
     }
+  });
+});
+
+describe('judgment: control characters inside an OSC body', () => {
+  test.each([
+    ['a C1 control', `${ESC}]9;a\u009bb${BEL}`],
+    ['a newline', `${ESC}]9;a\nb${BEL}`],
+    ['a C0 control', `${ESC}]9;a\u0001b${BEL}`],
+    ['a DEL', `${ESC}]9;a\u007fb${BEL}`],
+  ])('%s inside an allowed OSC body: the field is ignored', (_name, value) => {
+    expect(allowedTerminalSequence(value)).toBeUndefined();
+  });
+
+  test('the same body without the control character passes', () => {
+    expect(allowedTerminalSequence(osc('9', 'ab'))).toBe(osc('9', 'ab'));
   });
 });

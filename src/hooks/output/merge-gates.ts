@@ -65,10 +65,12 @@ function winnerOf(gates: readonly Gate[]): Gate | undefined {
 function mergeGates(event: 'PreToolUse' | 'PreModelSwitch', reads: readonly Read[]): Merged {
   const gates = reads.map((read) => gateOf(read, event));
   const winner = winnerOf(gates);
-  // `updatedInput` is "ignored" for `defer`; the last hook's replacement wins (spec/judgments.md).
-  const updatedInput = lastOf(
-    gates.filter((gate) => gate.decision !== 'defer').map((gate) => gate.updatedInput),
-  );
+  // `updatedInput` is "ignored" for `defer`, and a `deny` runs nothing, as for an exit-2 deny
+  // (`finalize.ts`); the last hook's replacement wins (spec/judgments.md).
+  const updatedInput =
+    winner?.decision === 'deny'
+      ? undefined
+      : lastOf(gates.filter((gate) => gate.decision !== 'defer').map((gate) => gate.updatedInput));
   const rewrite = updatedInput === undefined ? {} : { updatedInput };
   if (winner?.decision === undefined) return { effects: rewrite, issues: [] };
   const { reason } = winner;

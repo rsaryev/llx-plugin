@@ -43,7 +43,7 @@ const fakeParse: ParseOutput = (_event, json) => {
 };
 
 const field = (tagged: TaggedOutput, key: string): unknown =>
-  isRecord(tagged.output) ? tagged.output[key] : undefined;
+  Object.entries(tagged.output ?? {}).find(([name]) => name === key)?.[1];
 
 function contextOf(tagged: TaggedOutput): string[] {
   const specific = field(tagged, 'hookSpecificOutput');

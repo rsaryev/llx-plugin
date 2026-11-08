@@ -7,22 +7,24 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { parseHookOutput } from '../../../src/hooks/index.ts';
-import { merged, specific } from '../../support/hooks-output.ts';
+import { HOOK_EVENTS, type HookSpecificOutputOf } from '../../../src/protocol/hook-events.ts';
+import { merged, specific, viaEngine } from '../../support/hooks-output.ts';
 import { spec } from '../../support/spec.ts';
 
 const pre = (fields: object, top: object = {}) => ({ ...top, ...specific('PreToolUse', fields) });
-type Decision = 'allow' | 'ask' | 'defer' | 'deny';
+type Decision = NonNullable<HookSpecificOutputOf<'PreToolUse'>['permissionDecision']>;
 const decide = (permissionDecision: string, more: object = {}) =>
   pre({ permissionDecision, ...more });
 
 spec('hooks.output.PreToolUse.permissionDecision', () => {
-  test('the documented deny: the call is held back and Claude is given the reason', () => {
-    const outcome = merged('PreToolUse', [
+  test('the documented deny: the call is held back and Claude is given the reason', async () => {
+    const outcome = await viaEngine('PreToolUse', [
       decide('deny', { permissionDecisionReason: 'Database writes are not allowed' }),
     ]);
     expect(outcome.effects.permissionDecision).toBe('deny');
     expect(outcome.block).toMatchObject({
       via: 'decision',
+      to: 'claude',
       reason: 'Database writes are not allowed',
     });
   });
@@ -86,6 +88,14 @@ spec('hooks.output.PreToolUse.permissionDecision', () => {
       permissionDecisionReason: 'old style',
     });
     expect(blocked.block).toMatchObject({ reason: 'old style' });
+  });
+
+  test('approve is a PreToolUse value only: every other event fails validation on it', () => {
+    for (const event of HOOK_EVENTS) {
+      const failure = parseHookOutput(event, { decision: 'approve' }).failure;
+      if (event === 'PreToolUse') expect(failure).toBeUndefined();
+      else expect(failure).toContain('decision');
+    }
   });
 
   test('hookSpecificOutput wins over the deprecated fields of the same hook', () => {
@@ -169,6 +179,16 @@ spec('hooks.output.PreToolUse.updatedInput', () => {
     expect(merged('PreToolUse', [pre({ updatedInput: { a: 1 } })]).effects.updatedInput).toEqual({
       a: 1,
     });
+  });
+
+  test('a deny holds the call back, so no hook rewrites it, as for an exit-2 deny', () => {
+    const outcome = merged('PreToolUse', [
+      decide('deny', { permissionDecisionReason: 'no' }),
+      decide('allow', { updatedInput: { a: 1 } }),
+    ]);
+    expect(outcome.effects.permissionDecision).toBe('deny');
+    expect(outcome.effects.updatedInput).toBeUndefined();
+    expect(outcome.block).toMatchObject({ reason: 'no' });
   });
 
   test('for defer it is ignored', () => {

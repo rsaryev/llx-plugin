@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import type { ToolOutputSchemas } from '../../protocol/official.ts';
+import type {
+  BashOutput as OfficialBash,
+  GlobOutput as OfficialGlob,
+  GrepOutput as OfficialGrep,
+  WebFetchOutput as OfficialWebFetch,
+  WebSearchOutput as OfficialWebSearch,
+} from '../../protocol/official.ts';
 import { optional } from '../input/facts-shared.ts';
 
 /**
@@ -13,12 +19,6 @@ import { optional } from '../input/facts-shared.ts';
  * unchecked and the kit does not claim to have validated it.
  */
 
-/** The official output type that has `Fields`, narrowed to the `Keys` the mirror checks. */
-type Shape<Fields, Keys extends keyof Extract<ToolOutputSchemas, Fields>> = Pick<
-  Extract<ToolOutputSchemas, Fields>,
-  Keys
->;
-
 const strings = z.array(z.string());
 
 const BashOutput = z.object({
@@ -28,7 +28,7 @@ const BashOutput = z.object({
   interrupted: z.boolean(),
   isImage: optional(z.boolean()),
 }) satisfies z.ZodType<
-  Shape<{ stdout: string; interrupted: boolean }, 'stdout' | 'stderr' | 'interrupted'>
+  Pick<OfficialBash, 'stdout' | 'stderr' | 'rawOutputPath' | 'interrupted' | 'isImage'>
 >;
 
 const GlobOutput = z.object({
@@ -36,19 +36,14 @@ const GlobOutput = z.object({
   numFiles: z.number(),
   filenames: strings,
   truncated: z.boolean(),
-}) satisfies z.ZodType<
-  Shape<
-    { filenames: string[]; truncated: boolean },
-    'durationMs' | 'numFiles' | 'filenames' | 'truncated'
-  >
->;
+}) satisfies z.ZodType<Pick<OfficialGlob, 'durationMs' | 'numFiles' | 'filenames' | 'truncated'>>;
 
 const GrepOutput = z.object({
   mode: optional(z.enum(['content', 'files_with_matches', 'count'])),
   numFiles: z.number(),
   filenames: strings,
   content: optional(z.string()),
-}) satisfies z.ZodType<Shape<{ numFiles: number; filenames: string[] }, 'numFiles' | 'filenames'>>;
+}) satisfies z.ZodType<Pick<OfficialGrep, 'mode' | 'numFiles' | 'filenames' | 'content'>>;
 
 const WebFetchOutput = z.object({
   bytes: z.number(),
@@ -58,7 +53,7 @@ const WebFetchOutput = z.object({
   durationMs: z.number(),
   url: z.string(),
 }) satisfies z.ZodType<
-  Shape<{ codeText: string }, 'bytes' | 'code' | 'codeText' | 'result' | 'durationMs' | 'url'>
+  Pick<OfficialWebFetch, 'bytes' | 'code' | 'codeText' | 'result' | 'durationMs' | 'url'>
 >;
 
 const WebSearchOutput = z.object({
@@ -75,9 +70,7 @@ const WebSearchOutput = z.object({
     ]),
   ),
   durationSeconds: z.number(),
-}) satisfies z.ZodType<
-  Shape<{ query: string; durationSeconds: number }, 'query' | 'durationSeconds'>
->;
+}) satisfies z.ZodType<Pick<OfficialWebSearch, 'query' | 'results' | 'durationSeconds'>>;
 
 const MIRRORS: ReadonlyMap<string, z.ZodType> = new Map<string, z.ZodType>([
   ['Bash', BashOutput],

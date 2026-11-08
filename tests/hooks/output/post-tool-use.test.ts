@@ -8,7 +8,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { CHECKED_TOOL_OUTPUTS, parseHookOutput } from '../../../src/hooks/index.ts';
-import { merged, specific } from '../../support/hooks-output.ts';
+import { merged, specific, viaEngine } from '../../support/hooks-output.ts';
 import { spec } from '../../support/spec.ts';
 
 const post = (fields: object, top: object = {}) => ({ ...top, ...specific('PostToolUse', fields) });
@@ -24,27 +24,24 @@ const onTool = (tool: string, hooks: readonly unknown[]) =>
 const BASH = { stdout: '[redacted]', stderr: '', interrupted: false, isImage: false };
 
 spec('hooks.output.PostToolUse.decision', () => {
-  test('block adds the reason next to the tool result: the outcome carries it for Claude, and the output is not replaced', () => {
-    const outcome = merged('PostToolUse', [{ decision: 'block', reason: 'Tests failed' }]);
-    expect(outcome.block).toMatchObject({ via: 'decision', reason: 'Tests failed' });
+  test('block adds the reason next to the tool result: the reason goes to Claude, and the output is not replaced', async () => {
+    const outcome = await viaEngine('PostToolUse', [{ decision: 'block', reason: 'Tests failed' }]);
+    expect(outcome.block).toMatchObject({ via: 'decision', to: 'claude', reason: 'Tests failed' });
     expect(outcome.effects.updatedToolOutput).toBeUndefined();
   });
 
-  test('the only value is block: "approve" is not a PostToolUse decision, and none lets the result be', () => {
-    expect(merged('PostToolUse', [{ decision: 'approve' }]).block).toBeUndefined();
+  test('the only value is block: none lets the result be, and "approve" or any other value fails validation', () => {
     expect(merged('PostToolUse', [{}]).block).toBeUndefined();
-  });
-
-  test('a value other than approve and block fails validation', () => {
-    expect(parseHookOutput('PostToolUse', { decision: 'deny' }).failure).toContain('decision');
+    for (const value of ['approve', 'deny']) {
+      expect(parseHookOutput('PostToolUse', { decision: value }).failure).toContain('decision');
+    }
   });
 });
 
 spec('hooks.output.PostToolUse.reason', () => {
-  test('is the explanation Claude gets when decision is block', () => {
-    expect(
-      merged('PostToolUse', [{ decision: 'block', reason: 'lint errors' }]).block?.reason,
-    ).toBe('lint errors');
+  test('is the explanation Claude gets when decision is block', async () => {
+    const outcome = await viaEngine('PostToolUse', [{ decision: 'block', reason: 'lint errors' }]);
+    expect(outcome.block).toMatchObject({ to: 'claude', reason: 'lint errors' });
   });
 
   test('alone, without a decision, it blocks nothing', () => {
@@ -272,9 +269,13 @@ spec('hooks.output.PostToolBatch.additionalContext', () => {
     ]);
   });
 
-  test('decision: block stops the loop before the next model call; the reason is the message', () => {
-    const outcome = merged('PostToolBatch', [{ decision: 'block', reason: 'stop here' }]);
-    expect(outcome.block).toMatchObject({ via: 'decision', reason: 'stop here' });
+  test('decision: block stops the loop before the next model call; the reason is the message, shown to the user and Claude', async () => {
+    const outcome = await viaEngine('PostToolBatch', [{ decision: 'block', reason: 'stop here' }]);
+    expect(outcome.block).toMatchObject({
+      via: 'decision',
+      to: 'user-and-claude',
+      reason: 'stop here',
+    });
   });
 });
 

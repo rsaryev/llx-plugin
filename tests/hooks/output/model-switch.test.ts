@@ -3,7 +3,7 @@
  * the switch and showing the confirmation are the host's; the kit proves the decision, the reason
  * and the context the merge hands it.
  */
-import { expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { parseHookOutput } from '../../../src/hooks/index.ts';
 import { merged, specific } from '../../support/hooks-output.ts';
 import { spec } from '../../support/spec.ts';
@@ -93,5 +93,16 @@ spec('hooks.output.PostModelSwitch.additionalContext', () => {
 
   test('there is no decision control: a block is dropped', () => {
     expect(merged('PostModelSwitch', [{ decision: 'block', reason: 'x' }]).block).toBeUndefined();
+  });
+});
+
+describe('judgment: the reason of an allow', () => {
+  test('"Ignored for allow" is the host\'s: the merge hands the reason on and blocks nothing', () => {
+    const outcome = merged('PreModelSwitch', [decide('allow', { permissionDecisionReason: 'ok' })]);
+    expect(outcome.effects).toEqual({
+      permissionDecision: 'allow',
+      permissionDecisionReason: 'ok',
+    });
+    expect(outcome.block).toBeUndefined();
   });
 });

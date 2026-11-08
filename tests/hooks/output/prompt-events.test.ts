@@ -27,8 +27,10 @@ describe.each(['UserPromptSubmit', 'UserPromptExpansion'] as const)('%s', (event
       expect(merged(event, [{}, { decision: 'block', reason: 'r' }]).block?.reason).toBe('r');
     });
 
-    test('a value outside approve and block fails validation', () => {
-      expect(parseHookOutput(event, { decision: 'deny' }).failure).toContain('decision');
+    test('a value other than block, approve included, fails validation', () => {
+      for (const value of ['deny', 'approve']) {
+        expect(parseHookOutput(event, { decision: value }).failure).toContain('decision');
+      }
     });
   });
 
@@ -152,10 +154,9 @@ spec('hooks.output.Stop.decision', () => {
 });
 
 spec('hooks.output.Stop.reason', () => {
-  test('tells Claude why it should continue', () => {
-    expect(
-      merged('Stop', [{ decision: 'block', reason: 'run the tests first' }]).block?.reason,
-    ).toBe('run the tests first');
+  test('tells Claude why it should continue', async () => {
+    const outcome = await viaEngine('Stop', [{ decision: 'block', reason: 'run the tests first' }]);
+    expect(outcome.block).toMatchObject({ to: 'claude', reason: 'run the tests first' });
   });
 });
 

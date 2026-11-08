@@ -177,8 +177,11 @@ spec('hooks.output.MessageDisplay.displayContent', () => {
     );
   });
 
-  test('omitting it displays the original: no effect; an empty string is a replacement', () => {
+  test('omitting it displays the original: no effect', () => {
     expect(merged('MessageDisplay', [{}]).effects.displayContent).toBeUndefined();
+  });
+
+  test('judgment: an empty string is a replacement, not an omission', () => {
     expect(merged('MessageDisplay', [display('')]).effects.displayContent).toBe('');
   });
 

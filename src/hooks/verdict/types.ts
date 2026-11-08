@@ -2,6 +2,7 @@ import type { PluginIssue } from '../../format/issues.ts';
 import type { HookEvent } from '../../protocol/official.ts';
 import type { RegisteredHandler } from '../contracts.ts';
 import type { EventEffects } from '../output/effects.ts';
+import type { CheckedOutput } from '../output/schemas.ts';
 import type { StartObserver } from '../handlers/status.ts';
 
 /** The host's window onto a dispatch: `started` is the run stage's, the others the engine's. */
@@ -19,10 +20,11 @@ export interface HookObserver extends StartObserver {
 // ---- verdict stage: what a run came to (hooks.md, "Exit code output") ----
 
 /**
- * A hook's parsed JSON output, as the output stage (`hooks/output`) types it per event. The verdict
- * stage never reads a field of it: it only decides whether the output counts, and hands it on.
+ * A hook's parsed JSON output, as the output stage (`hooks/output`) checked it for its event. The
+ * verdict stage never reads a field of it: it only decides whether the output counts, and hands it
+ * on, so the merge and the cap need not check it again.
  */
-export type ParsedOutput = object;
+export type ParsedOutput = CheckedOutput;
 
 /** The output stage's reading of one JSON value (`parseHookOutput`): the output, or why it failed. */
 export interface ParseResult {

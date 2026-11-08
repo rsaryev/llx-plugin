@@ -122,6 +122,16 @@
   with the timeout and the discarded output; a `continue: false` block no longer replaces an exit-2
   reason; tests assert the route per event against the docs, the `<Event> hook error` notice of
   `SessionStart`, `SubagentStart` and `PostModelSwitch`, and the judgments of assembling blocks.
+- Hook output: a `Stop` or `SubagentStop` hook that returns `continue: false` with
+  `additionalContext` stops instead of keeping the turn going; `decision` is `block` on every event,
+  and the deprecated `approve` is valid on `PreToolUse` only (any other value fails validation); a
+  `PreToolUse` `deny` from one hook drops another hook's `updatedInput`, as an exit-2 deny does; the
+  10,000-character cap no longer spills a `systemMessage` or specific field the event discards; the
+  merge and the cap use the checked output instead of parsing it again; the tool output mirrors and
+  `GateEffects` are bound to more of the official types; tests assert where a block's text goes
+  (`block.to`) per event, the `WorktreeCreate` path, the `PreCompact`, `TaskCreated` and
+  `PostToolUseFailure` blocks, the `TeammateIdle`, `TaskCompleted` and `SubagentStart` rows, and the
+  control characters in an OSC body; the judgments behind those rules are recorded.
 - Remote hook handlers: an `http` hook now honours the two settings allowlists through
   `RunContext.httpPolicy` (`allowedHttpHookUrls` skips a hook whose URL matches no `*` pattern, with a
   warning at `hooks.<Event>.url`; `httpHookAllowedEnvVars` narrows `allowedEnvVars` to the names on

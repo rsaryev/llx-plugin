@@ -54,6 +54,13 @@ const DISCARDS_SYSTEM_MESSAGE: readonly HookEvent[] = [
 const honouring = (discarding: readonly HookEvent[]) =>
   HOOK_EVENTS.filter((event) => !discarding.includes(event));
 
+const response = (tool_response: object) => ({
+  tool_name: 'Bash',
+  tool_input: {},
+  tool_response,
+  tool_use_id: 't1',
+});
+
 spec(['hooks.output.common.continue', 'hooks.output.JSON.continue'], () => {
   test('{"continue": false, "stopReason": ...} stops processing and carries the reason', () => {
     const outcome = merged('PostToolUse', [
@@ -79,17 +86,25 @@ spec(['hooks.output.common.continue', 'hooks.output.JSON.continue'], () => {
     expect(outcome.block).toBeUndefined();
   });
 
-  test('"For PreToolUse and PostToolUse hooks, the stop applies even when the tool call fails"', () => {
+  test.each(['Stop', 'SubagentStop'] as const)(
+    'it takes precedence over a %s additionalContext too: the hook stops instead of keeping the turn going',
+    (event) => {
+      const feedback = specific(event, { additionalContext: 'x' });
+      expect(merged(event, [feedback]).effects.continuesTurn).toBe(true);
+      const outcome = merged(event, [{ continue: false, ...feedback }]);
+      expect(outcome.continue).toBe(false);
+      expect(outcome.effects.continuesTurn).toBeUndefined();
+    },
+  );
+
+  test('"For PreToolUse and PostToolUse hooks, the stop applies even when the tool call fails": the result does not depend on the tool response', () => {
+    const failed = merged('PostToolUse', [{ continue: false }], response({ error: 'exit 1' }));
+    const succeeded = merged('PostToolUse', [{ continue: false }], response({ stdout: 'ok' }));
+    expect(failed.continue).toBe(false);
+    expect(failed).toEqual(succeeded);
     for (const event of ['PreToolUse', 'PostToolUse'] as const) {
       expect(OUTPUT_CAPS[event].accepts.has('continue')).toBe(true);
     }
-    const failed = merged('PostToolUse', [{ continue: false }], {
-      tool_name: 'Bash',
-      tool_input: {},
-      tool_response: { error: 'exit 1' },
-      tool_use_id: 't1',
-    });
-    expect(failed.continue).toBe(false);
   });
 
   test('a PostToolBatch stop also holds the loop back, like decision: block', () => {

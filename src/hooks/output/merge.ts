@@ -6,7 +6,6 @@ import type { MergedBlock, MergedOutput, TaggedOutput } from '../verdict/types.t
 import { OUTPUT_CAPS } from './caps.ts';
 import { textIn } from './fields.ts';
 import { routeMessages } from './messages.ts';
-import { checkOutput } from './parse.ts';
 import { mergePermissionRequest, mergePreModelSwitch, mergePreToolUse } from './merge-gates.ts';
 import { NOTHING, eventSet, type Merger, type Read } from './merge-rules.ts';
 import {
@@ -122,7 +121,7 @@ const SYSTEM_REMINDER_TAG = /<(\/?system-reminder>)/g;
 const escapeReminderTags = (text: string): string => text.replace(SYSTEM_REMINDER_TAG, '&lt;$1');
 
 function readOf(event: HookEvent, tagged: TaggedOutput): Read {
-  const checked = tagged.output === undefined ? undefined : checkOutput(event, tagged.output).data;
+  const checked = tagged.output;
   return {
     handler: tagged.handler,
     output: checked,

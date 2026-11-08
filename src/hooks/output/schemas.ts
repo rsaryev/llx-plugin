@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { HOOK_EVENTS } from '../../protocol/hook-events.ts';
 import type { HookEvent } from '../../protocol/official.ts';
-import { commonFields } from './schemas-common.ts';
+import { commonFieldsOf } from './schemas-common.ts';
 import { ElicitationResultSpecific, ElicitationSpecific } from './schemas-elicitation.ts';
 import {
   CwdChangedSpecific,
@@ -80,7 +80,10 @@ const SPECIFIC_SCHEMAS: { readonly [E in HookEvent]: z.ZodType<object> } = {
 };
 
 const outputSchemaOf = (event: HookEvent) =>
-  z.object({ ...commonFields, hookSpecificOutput: SPECIFIC_SCHEMAS[event].exactOptional() });
+  z.object({
+    ...commonFieldsOf(event),
+    hookSpecificOutput: SPECIFIC_SCHEMAS[event].exactOptional(),
+  });
 
 /** A hook's JSON output after validation: known fields only, typed. */
 export type CheckedOutput = z.infer<ReturnType<typeof outputSchemaOf>>;
