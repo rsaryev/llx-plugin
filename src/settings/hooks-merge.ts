@@ -1,17 +1,17 @@
 import type { HookHandler, HookMatcherGroup, HooksSettings } from '../protocol/hook-config.ts';
-import { holdersOf, type SettingsLayer } from './layers.ts';
+import { isRecord } from './record.ts';
 
 /**
  * The `hooks` key across settings files (settings-reference.md, `hooks`: "Hooks merge across files
  * rather than replacing each other, and hooks from managed settings can't be removed from other
  * files"; hooks.md, "Hook locations"). Every file's matcher groups are kept, per event, so a file
  * adds hooks and never takes one away. A handler defined in more than one file runs once (hooks.md,
- * "Hook handler fields"): the copy from the lower file is dropped. Running the hooks is the hooks
- * engine's; this only combines what the files define.
+ * "Hook handler fields"): the copy from the lower file is dropped from a group with the same
+ * matcher. The same handler under two matchers is kept: which groups match one occurrence is known
+ * only when an event fires, so dropping that repeat is the hooks engine's (an open requirement,
+ * spec/judgments.md). Only settings files come here; a plugin's or skill's copy stays separate.
+ * Running the hooks is the hooks engine's; this only combines what the files define.
  */
-
-const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** A value that has the shape of an event map (an object of arrays); the reader checks the rest. */
 export const isHooksSettings = (value: unknown): value is HooksSettings =>
@@ -72,7 +72,3 @@ export function mergeHookSettings(files: readonly HooksSettings[]): HooksSetting
   // `Object.fromEntries` defines own properties, so a JSON-parsed `__proto__` event stays an event.
   return Object.fromEntries(merged);
 }
-
-/** The hooks every settings layer defines, combined; empty when no layer sets any. */
-export const mergeHooks = (layers: readonly SettingsLayer[]): HooksSettings =>
-  mergeHookSettings(holdersOf(layers, 'hooks').map((holder) => holder.value));

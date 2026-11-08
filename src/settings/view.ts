@@ -2,7 +2,6 @@ import type { Settings } from '../protocol/official.ts';
 import type { PolicyKey } from '../protocol/settings-keys.ts';
 import { KEY_SPECS } from './key-spec.ts';
 import { holdersOf, orderedLayers, type KeyHolder, type SettingsLayer } from './layers.ts';
-import { MERGERS } from './merge.ts';
 
 /**
  * Typed questions over the ordered layers, the one thing every area resolver asks (docs/API.md,
@@ -26,11 +25,7 @@ export function createPolicyView(layers: readonly SettingsLayer[]): PolicyView {
     get: (key) => {
       const holders = holdersOf(layers, key);
       if (holders.length === 0) return undefined;
-      const merged = MERGERS[KEY_SPECS[key].merge](holders.map((holder) => holder.value));
-      // The merge kind of a key keeps the shape of the key's type (a list of lists is a list, a map of
-      // maps is a map), but the registry returns `unknown`.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see above: the row of KEY_SPECS decides the merge, not the caller
-      return merged as Settings[typeof key];
+      return KEY_SPECS[key].merge.combine(holders.map((holder) => holder.value));
     },
     winner: (key) => holdersOf(layers, key)[0],
     eachFromHighest: (key) => holdersOf(layers, key),

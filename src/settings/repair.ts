@@ -5,11 +5,11 @@ import {
   stringList,
   strictSources,
 } from './repair-lists.ts';
+import { hooks } from './repair-hooks.ts';
 import type { Repair } from './repair-support.ts';
 import {
   boolean,
   enabledPlugins,
-  hooks,
   lockBoolean,
   marketplaceMap,
   pluginOnly,

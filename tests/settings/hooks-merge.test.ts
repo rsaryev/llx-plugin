@@ -120,7 +120,7 @@ spec('settings.key.hooks', () => {
     expect(plain(merged.Stop?.[0]?.hooks)).toEqual(handlers);
   });
 
-  test('the same handler in more than one settings file runs once', () => {
+  test('the same handler under the same matcher in more than one settings file is kept once', () => {
     const merged = mergeHooks([
       layerOf('project', preToolUse('Bash', 'shared.sh')),
       layerOf('user', preToolUse('Bash', 'shared.sh')),
@@ -193,17 +193,6 @@ describe('hooks merge: judgments (spec/judgments.md)', () => {
         ]),
       ),
     ).toEqual(['managed.sh', 'project.sh', 'user.sh']);
-  });
-
-  test('the same handler is dropped only from a group with the same matcher', () => {
-    expect(
-      plain(
-        commands([
-          ['project', preToolUse('Bash', 'shared.sh')],
-          ['user', preToolUse('Edit', 'shared.sh')],
-        ]),
-      ),
-    ).toEqual(['shared.sh', 'shared.sh']);
   });
 
   test('an omitted matcher, "" and "*" are one group: they all match every occurrence', () => {

@@ -22,9 +22,6 @@ export interface Repaired {
 
 export type Repair = (value: unknown, at: RepairAt) => Repaired;
 
-export const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
 /** `<scope>:<field>`: the source and the field a report names (errors.md: `<source> (<field>)`). */
 export const where = (at: RepairAt, field = ''): string => `${at.scope}:${at.key}${field}`;
 

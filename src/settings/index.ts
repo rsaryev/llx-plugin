@@ -1,6 +1,5 @@
 /** Settings layers and the policy keys, pure over data (docs/API.md, "Settings"). */
-export type { PolicyContext } from './context.ts';
-export { mergeHooks } from './hooks-merge.ts';
+export { mergeHooks } from './hooks-policy.ts';
 export { KEY_SPECS, SCOPE_RULES, admits, type KeySpec, type ScopeRule } from './key-spec.ts';
 export {
   POLICY_SCOPES,

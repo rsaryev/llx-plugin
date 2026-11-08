@@ -4,7 +4,8 @@ import { MARKETPLACE_KEY_ALIASES, POLICY_KEYS, type PolicyKey } from '../protoco
 import { KEY_SPECS, admits, scopeCarries } from './key-spec.ts';
 import type { PolicyScope, SettingsLayer } from './layers.ts';
 import { REPAIRS } from './repair.ts';
-import { isRecord, where } from './repair-support.ts';
+import { isRecord } from './record.ts';
+import { where } from './repair-support.ts';
 
 /**
  * Turns the JSON of one settings source into a layer every resolver can trust: aliases rewritten to

@@ -274,8 +274,9 @@ mergeHooks(view.layers); // every file's hooks, managed ones never removable
 | `SettingsSources`, `loadSettingsLayers` | done    | the host's optional port for its sources (an object or JSON text per scope) and the helper that reads them all |
 | `createPolicyView(layers)`              | done    | `get`, `winner`, `eachFromHighest` over the layers, one merge rule per key               |
 | `KEY_SPECS`, `admits`                   | done    | per key: its scope rule, merge kind and repair kind, from the key's entry in settings-reference.md |
-| `mergeHooks(layers)`                    | done    | the `hooks` key: groups concatenated per event, the same handler in two files once        |
-| `PolicyContext`                         | done    | the account, plan and trust facts a host supplies as data (type)                          |
+| `mergeHooks(layers)`                    | done    | the `hooks` key: groups concatenated per event, the same handler under the same matcher in two files once |
+| hooks engine: one run of the same handler across the groups that matched an event | planned | hooks.md, "Hook handler fields": a handler defined in more than one settings file runs once whatever its matcher; a plugin's or skill's copy stays separate. `mergeHooks` keeps both groups when the matchers differ |
+| `PolicyContext` (account, plan, trust, channel allowlist facts a host supplies as data) | planned | to be declared by the resolver stream with a judgment row naming each field's docs source |
 | `resolvePolicy` and the per-area resolvers (plugins, marketplaces, hooks, skills, workflows, channels, customization) | planned | read their keys through the view |
 
 Scopes, highest first: `managed`, `parent` (the SDK `managedSettings`), `flag` (`--settings`),

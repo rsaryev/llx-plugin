@@ -1,9 +1,12 @@
-import { mergeHookSettings, isHooksSettings } from './hooks-merge.ts';
+import type { HooksSettings } from '../protocol/hook-config.ts';
+import { isHooksSettings, mergeHookSettings } from './hooks-merge.ts';
+import { isRecord } from './record.ts';
 
 /**
- * How the layers that set one key combine into its value. `values` is the key's value in every
- * layer that sets it, highest precedence first. One strategy per kind, so what differs per key is
- * a row of `KEY_SPECS`, never a branch.
+ * How the layers that set one key combine into its value. A strategy is typed over the key's own
+ * value type `V`: `combine` takes the key's value in every layer that sets it, highest precedence
+ * first, and returns a `V`. So a row of `KEY_SPECS` cannot name a merge that returns another shape,
+ * and the policy view needs no cast. One strategy per kind, never a branch.
  */
 export const MERGE_KINDS = [
   'highestWins',
@@ -13,33 +16,48 @@ export const MERGE_KINDS = [
 ] as const;
 export type MergeKind = (typeof MERGE_KINDS)[number];
 
-type Merger = (values: readonly unknown[]) => unknown;
+export interface Merge<V> {
+  readonly kind: MergeKind;
+  readonly combine: (values: readonly NonNullable<V>[]) => V;
+}
 
-const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+/** What every strategy has, whatever value type it is typed over. */
+interface AnyMerge {
+  readonly kind: MergeKind;
+  readonly combine: (values: readonly never[]) => unknown;
+}
 
 /** settings.md, "Settings precedence": the value from the highest level that sets the key. */
-const highestWins: Merger = (values) => values[0];
+const highestWins = {
+  kind: 'highestWins',
+  combine: <T>(values: readonly T[]): T | undefined => values[0],
+} as const satisfies AnyMerge;
 
 /** settings.md, "Lists merge instead of overriding": every file adds its entries, none removes. */
-const unionArrays: Merger = (values) =>
-  values.flatMap((value) => (Array.isArray(value) ? value : []));
+const unionArrays = {
+  kind: 'unionArrays',
+  combine: <E>(values: readonly (readonly E[])[]): E[] =>
+    values.flatMap((value) => (Array.isArray(value) ? value : [])),
+} as const satisfies AnyMerge;
 
 /** An object keyed by name: per name the highest level that sets it wins, whole. */
-const perKeyHighestWins: Merger = (values) => {
-  const merged = new Map<string, unknown>();
-  for (const value of values.toReversed()) {
-    if (isRecord(value)) for (const [name, entry] of Object.entries(value)) merged.set(name, entry);
-  }
-  // `Object.fromEntries` defines own properties, so a JSON-parsed `__proto__` name stays a name.
-  return Object.fromEntries(merged);
-};
+const perKeyHighestWins = {
+  kind: 'perKeyHighestWins',
+  combine: <T>(values: readonly Readonly<Record<string, T>>[]): Record<string, T> => {
+    const merged = new Map<string, T>();
+    for (const value of values.toReversed()) {
+      if (isRecord(value))
+        for (const [name, entry] of Object.entries(value)) merged.set(name, entry);
+    }
+    // `Object.fromEntries` defines own properties, so a JSON-parsed `__proto__` name stays a name.
+    return Object.fromEntries(merged);
+  },
+} as const satisfies AnyMerge;
 
-const hookGroups: Merger = (values) => mergeHookSettings(values.filter(isHooksSettings));
+const hookGroups = {
+  kind: 'hookGroups',
+  combine: (values: readonly HooksSettings[]): HooksSettings =>
+    mergeHookSettings(values.filter(isHooksSettings)),
+} as const satisfies AnyMerge;
 
-export const MERGERS: { readonly [M in MergeKind]: Merger } = {
-  highestWins,
-  unionArrays,
-  perKeyHighestWins,
-  hookGroups,
-};
+export const MERGES = { highestWins, unionArrays, perKeyHighestWins, hookGroups } as const;

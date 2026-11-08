@@ -1,6 +1,7 @@
+import type { Settings } from '../protocol/official.ts';
 import type { PolicyKey } from '../protocol/settings-keys.ts';
 import type { PolicyScope } from './layers.ts';
-import type { MergeKind } from './merge.ts';
+import { MERGES, type Merge } from './merge.ts';
 import type { RepairKind } from './repair.ts';
 
 /**
@@ -10,9 +11,10 @@ import type { RepairKind } from './repair.ts';
  * (managed-settings.md, "Keys that fail closed"). The resolvers of each area read their key through
  * the view and never repeat these facts.
  */
-export interface KeySpec {
+export interface KeySpec<K extends PolicyKey = PolicyKey> {
   readonly scopes: ScopeRule;
-  readonly merge: MergeKind;
+  /** Typed over the key's own value, so the view returns `Settings[K]` without a cast. */
+  readonly merge: Merge<Settings[K]>;
   readonly repair: RepairKind;
 }
 
@@ -74,60 +76,80 @@ export const scopeCarries = (scope: PolicyScope, key: string): boolean =>
 export const admits = (key: PolicyKey, scope: PolicyScope, value: unknown): boolean =>
   scopeCarries(scope, key) && ADMITS[KEY_SPECS[key].scopes](scope, value);
 
-export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec } = {
-  allowManagedHooksOnly: { scopes: 'managed', merge: 'highestWins', repair: 'lockBoolean' },
-  allowedChannelPlugins: { scopes: 'managed', merge: 'highestWins', repair: 'channelAllowlist' },
+export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
+  allowManagedHooksOnly: { scopes: 'managed', merge: MERGES.highestWins, repair: 'lockBoolean' },
+  allowedChannelPlugins: {
+    scopes: 'managed',
+    merge: MERGES.highestWins,
+    repair: 'channelAllowlist',
+  },
   allowedHttpHookUrls: {
     scopes: 'anyAndEmptyListFromParent',
-    merge: 'unionArrays',
+    merge: MERGES.unionArrays,
     repair: 'closedStringList',
   },
-  appendPlugins: { scopes: 'userOrManaged', merge: 'highestWins', repair: 'stringList' },
+  appendPlugins: { scopes: 'userOrManaged', merge: MERGES.highestWins, repair: 'stringList' },
   blockedMarketplaces: {
     scopes: 'managedAndParent',
-    merge: 'unionArrays',
+    merge: MERGES.unionArrays,
     repair: 'blockedSources',
   },
-  channelsEnabled: { scopes: 'managed', merge: 'highestWins', repair: 'boolean' },
-  disableAllHooks: { scopes: 'anyAndParent', merge: 'highestWins', repair: 'boolean' },
-  disableBundledSkills: { scopes: 'any', merge: 'highestWins', repair: 'lockBoolean' },
-  disableCommandPluginSources: { scopes: 'managed', merge: 'highestWins', repair: 'lockBoolean' },
-  disableSkillShellExecution: {
-    scopes: 'anyAndParent',
-    merge: 'highestWins',
+  channelsEnabled: { scopes: 'managed', merge: MERGES.highestWins, repair: 'boolean' },
+  disableAllHooks: { scopes: 'anyAndParent', merge: MERGES.highestWins, repair: 'boolean' },
+  disableBundledSkills: { scopes: 'any', merge: MERGES.highestWins, repair: 'lockBoolean' },
+  disableCommandPluginSources: {
+    scopes: 'managed',
+    merge: MERGES.highestWins,
     repair: 'lockBoolean',
   },
-  disableWorkflows: { scopes: 'any', merge: 'highestWins', repair: 'lockBoolean' },
-  enableWorkflows: { scopes: 'any', merge: 'highestWins', repair: 'boolean' },
-  enabledPlugins: { scopes: 'any', merge: 'perKeyHighestWins', repair: 'enabledPlugins' },
+  disableSkillShellExecution: {
+    scopes: 'anyAndParent',
+    merge: MERGES.highestWins,
+    repair: 'lockBoolean',
+  },
+  disableWorkflows: { scopes: 'any', merge: MERGES.highestWins, repair: 'lockBoolean' },
+  enableWorkflows: { scopes: 'any', merge: MERGES.highestWins, repair: 'boolean' },
+  enabledPlugins: { scopes: 'any', merge: MERGES.perKeyHighestWins, repair: 'enabledPlugins' },
   extraKnownMarketplaces: {
     scopes: 'any',
-    merge: 'perKeyHighestWins',
+    merge: MERGES.perKeyHighestWins,
     repair: 'marketplaceMap',
   },
-  hooks: { scopes: 'any', merge: 'hookGroups', repair: 'hooks' },
+  hooks: { scopes: 'any', merge: MERGES.hookGroups, repair: 'hooks' },
   httpHookAllowedEnvVars: {
     scopes: 'anyAndEmptyListFromParent',
-    merge: 'unionArrays',
+    merge: MERGES.unionArrays,
     repair: 'closedStringList',
   },
-  pluginConfigs: { scopes: 'userOrManaged', merge: 'perKeyHighestWins', repair: 'record' },
-  pluginSuggestionMarketplaces: { scopes: 'managed', merge: 'highestWins', repair: 'stringList' },
-  pluginTrustMessage: { scopes: 'managed', merge: 'highestWins', repair: 'string' },
-  prependPlugins: { scopes: 'userOrManaged', merge: 'highestWins', repair: 'stringList' },
-  skillOverrides: { scopes: 'any', merge: 'perKeyHighestWins', repair: 'skillOverrides' },
+  pluginConfigs: { scopes: 'userOrManaged', merge: MERGES.perKeyHighestWins, repair: 'record' },
+  pluginSuggestionMarketplaces: {
+    scopes: 'managed',
+    merge: MERGES.highestWins,
+    repair: 'stringList',
+  },
+  pluginTrustMessage: { scopes: 'managed', merge: MERGES.highestWins, repair: 'string' },
+  prependPlugins: { scopes: 'userOrManaged', merge: MERGES.highestWins, repair: 'stringList' },
+  skillOverrides: { scopes: 'any', merge: MERGES.perKeyHighestWins, repair: 'skillOverrides' },
   strictKnownMarketplaces: {
     scopes: 'managedAndParent',
-    merge: 'highestWins',
+    merge: MERGES.highestWins,
     repair: 'strictSources',
   },
   strictPluginOnlyCustomization: {
     scopes: 'managedAndParent',
-    merge: 'highestWins',
+    merge: MERGES.highestWins,
     repair: 'pluginOnly',
   },
-  syncClaudeAiPlugins: { scopes: 'userLocalManagedFlag', merge: 'highestWins', repair: 'boolean' },
-  syncClaudeAiSkills: { scopes: 'userLocalManagedFlag', merge: 'highestWins', repair: 'boolean' },
-  workflowKeywordTriggerEnabled: { scopes: 'any', merge: 'highestWins', repair: 'boolean' },
-  workflowSizeGuideline: { scopes: 'any', merge: 'highestWins', repair: 'workflowSize' },
+  syncClaudeAiPlugins: {
+    scopes: 'userLocalManagedFlag',
+    merge: MERGES.highestWins,
+    repair: 'boolean',
+  },
+  syncClaudeAiSkills: {
+    scopes: 'userLocalManagedFlag',
+    merge: MERGES.highestWins,
+    repair: 'boolean',
+  },
+  workflowKeywordTriggerEnabled: { scopes: 'any', merge: MERGES.highestWins, repair: 'boolean' },
+  workflowSizeGuideline: { scopes: 'any', merge: MERGES.highestWins, repair: 'workflowSize' },
 };

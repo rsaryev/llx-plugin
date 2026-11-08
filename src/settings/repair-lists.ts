@@ -1,15 +1,8 @@
 import { warning } from '../format/issues.ts';
 import { MARKETPLACE_SOURCE_KINDS } from '../protocol/settings-keys.ts';
 import type { MarketplaceSource } from '../protocol/official.ts';
-import {
-  dropped,
-  failedClosed,
-  isRecord,
-  kept,
-  stripInvalid,
-  where,
-  type Repair,
-} from './repair-support.ts';
+import { dropped, failedClosed, kept, stripInvalid, where, type Repair } from './repair-support.ts';
+import { isRecord } from './record.ts';
 
 const readString = (entry: unknown): string | undefined =>
   typeof entry === 'string' ? entry : undefined;

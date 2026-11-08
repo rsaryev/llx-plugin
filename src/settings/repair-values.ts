@@ -1,15 +1,7 @@
-import { readHooksSettings } from '../format/hooks-settings.ts';
-import { blocksLoading, warning, type PluginIssue } from '../format/issues.ts';
+import { warning, type PluginIssue } from '../format/issues.ts';
 import { SKILL_OVERRIDE_STATES, WORKFLOW_SIZES } from '../protocol/settings-keys.ts';
-import {
-  dropped,
-  entryDropped,
-  failedClosed,
-  isRecord,
-  kept,
-  where,
-  type Repair,
-} from './repair-support.ts';
+import { dropped, entryDropped, failedClosed, kept, where, type Repair } from './repair-support.ts';
+import { isRecord } from './record.ts';
 
 /** A Boolean: anything else is dropped with a warning, even the text `"true"` (the docs' `disableAllHooks` case). */
 export const boolean: Repair = (value, at) =>
@@ -113,14 +105,3 @@ export const workflowSize: Repair = (value, at) =>
   WORKFLOW_SIZES.some((size) => size === value)
     ? kept(value)
     : dropped(at, `"${at.key}" must be one of ${WORKFLOW_SIZES.join(', ')}`);
-
-/**
- * `hooks`: read with the hooks reader, so a settings file and a plugin's `hooks.json` agree on
- * what loads. An error leaves the key out ("the source's `hooks` field is ignored", errors.md,
- * "Managed settings contain invalid entries"), a warning keeps the hooks. Each issue names the scope.
- */
-export const hooks: Repair = (value, at) => {
-  const read = readHooksSettings(value);
-  const issues = read.issues.map((issue) => ({ ...issue, path: `${at.scope}:${issue.path}` }));
-  return blocksLoading(read.issues) ? { value: undefined, issues } : kept(read.hooks, issues);
-};

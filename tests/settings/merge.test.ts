@@ -28,13 +28,13 @@ describe('the table of keys', () => {
     for (const key of POLICY_KEYS) {
       const spec = KEY_SPECS[key];
       expect(SCOPE_RULES).toContain(spec.scopes);
-      expect(MERGE_KINDS).toContain(spec.merge);
+      expect(MERGE_KINDS).toContain(spec.merge.kind);
       expect(REPAIR_KINDS).toContain(spec.repair);
     }
   });
 
   test('the docs name lists that merge, and the rest of the keys take the highest value', () => {
-    const merging = POLICY_KEYS.filter((key) => KEY_SPECS[key].merge === 'unionArrays');
+    const merging = POLICY_KEYS.filter((key) => KEY_SPECS[key].merge.kind === 'unionArrays');
     expect(merging.toSorted()).toEqual([
       'allowedHttpHookUrls',
       'blockedMarketplaces',

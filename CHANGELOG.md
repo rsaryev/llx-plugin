@@ -72,6 +72,12 @@
 
 ### Fixed
 
+- Settings: the policy view returns each key's value through a merge strategy typed over the key,
+  with no cast; the `hooks` of a user, project, local or `--settings` file drop only the entries
+  that fail (a bad handler, group or event) and keep the rest, while a managed source still ignores
+  the whole field; the same handler under two matchers is recorded as an open requirement of the
+  hooks engine instead of being presented as proven; the unused `PolicyContext` type is removed
+  until the resolvers need it; one shared `isRecord` guard.
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
   parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
   (and `skill`) read `name:value` as a parameter.
