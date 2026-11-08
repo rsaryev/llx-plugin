@@ -1,4 +1,4 @@
-import type { CommandRun, CommandRunner } from '../../../ports/index.ts';
+import type { CommandResult, CommandRun, CommandRunner } from '../../../ports/index.ts';
 import type { BackgroundResult, ForegroundRun } from '../context.ts';
 
 /**
@@ -44,17 +44,21 @@ function wakeMessage(run: ForegroundRun): string | undefined {
 }
 
 /**
- * The host's runner may report what the `CommandRunner` port does not type: "Claude Code finishes
- * reading the hook's output shortly after the hook's own process exits", and a process the hook
- * started that still holds its output open makes the capture suspect (`outputHeldOpen`, an optional
- * field of a runner's answer; docs/API.md, "Ports").
+ * What a runner answers when it can tell that a process the hook started still holds the output
+ * open: "Claude Code finishes reading the hook's output shortly after the hook's own process
+ * exits", and such a capture is suspect (docs/API.md, "Ports"). The `CommandRunner` port does not
+ * type the field (`src/ports` is not this stream's), so a runner declares its answer as this type
+ * and the compiler checks the name.
  */
-const heldOpen = (result: object): boolean =>
-  'outputHeldOpen' in result && result.outputHeldOpen === true;
+export interface HeldOpenResult extends CommandResult {
+  readonly outputHeldOpen?: boolean;
+}
+
+const heldOpen = (result: HeldOpenResult): boolean => result.outputHeldOpen === true;
 
 /** The port's answer as the run the interpreter reads. */
 export async function settle(runner: CommandRunner, request: CommandRun): Promise<ForegroundRun> {
-  const result = await runner.run(request);
+  const result: HeldOpenResult = await runner.run(request);
   if (result.startError !== undefined) return { kind: 'not-started', message: result.startError };
   if (result.timedOut) return { kind: 'timed-out' };
   if (result.exitCode === null) return { kind: 'cancelled' };

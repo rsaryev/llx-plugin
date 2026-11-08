@@ -19,7 +19,7 @@ import type { DispatchRequest, HookOutcome } from './outcome.ts';
 import { createOutputStage } from './output/stage.ts';
 import type { IfEvaluator } from './select/if-guard.ts';
 import { selectHandlers } from './select/select.ts';
-import { createStopBlockCap } from './verdict/stop-block-cap.ts';
+import { createStopBlockCap, type StopBlockCap } from './verdict/stop-block-cap.ts';
 import type { HookObserver, OutputStage } from './verdict/types.ts';
 
 /** The ports the engine runs handlers through: each handler type needs its own (docs/API.md, "Ports"). */
@@ -63,7 +63,17 @@ export interface HookEngineOptions {
   readonly settingsEnv?: DispatchConfig['settingsEnv'];
   /** `CLAUDE_ENV_FILE` for the events that have one (`createEnvFiles`). */
   readonly envFiles?: DispatchConfig['envFiles'];
-  /** Plugin command hooks first check that their plugin's directory exists. */
+  /**
+   * The counter of consecutive Stop blocks (`createStopBlockCap`). By default each engine has its
+   * own, which is gone with it; a host that builds an engine per run passes one that outlives the
+   * runs, owns its lifetime and calls its `reset` when the session ends.
+   */
+  readonly stopCap?: StopBlockCap;
+  /**
+   * Plugin command hooks first check that their plugin's directory exists, so a plugin that is gone
+   * from disk fails with the documented notice. On by default; a host that never re-reads its
+   * plugins mid-session and wants no lookup per hook run sets `false`.
+   */
   readonly checkPluginDirectories?: DispatchConfig['checkPluginDirectories'];
 }
 
@@ -95,7 +105,7 @@ const hostOf = (options: HookEngineOptions) => ({
   ...(options.processId === undefined ? {} : { processId: options.processId }),
   ...(options.settingsEnv === undefined ? {} : { settingsEnv: options.settingsEnv }),
   ...(options.envFiles === undefined ? {} : { envFiles: options.envFiles }),
-  ...(options.checkPluginDirectories === true ? { checkPluginDirectories: true } : {}),
+  ...(options.checkPluginDirectories === false ? {} : { checkPluginDirectories: true }),
 });
 
 /** The engine over the real stages: select, build, run through the ports, read, merge. */
@@ -108,7 +118,7 @@ export function createHookEngine(ports: HookPorts, options: HookEngineOptions = 
       output: options.output ?? createOutputStage(scratchOf(ports)),
     },
     ports: runPortsOf(ports),
-    stopCap: createStopBlockCap(),
+    stopCap: options.stopCap ?? createStopBlockCap(),
     windows: options.windows ?? false,
     defaultShell: options.defaultShell ?? 'bash',
     ...(ports.observer === undefined ? {} : { observer: ports.observer }),

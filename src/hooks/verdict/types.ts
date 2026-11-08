@@ -12,6 +12,8 @@ export interface HookObserver extends StartObserver {
     readonly event: HookEvent;
     readonly handlerId: string;
     readonly status: HandlerStatus;
+    /** The exit code of a command hook whose process ran to the end; absent for the other runs. */
+    readonly exitCode?: number;
   }): void;
   /** A `<hook name> hook error` notice for the transcript. */
   notice?(notice: HookNotice): void;
@@ -108,6 +110,8 @@ export interface HandlerVerdict {
   readonly status: HandlerStatus;
   /** The run counts as a success for `once`: no block, no error, no timeout. */
   readonly succeeded: boolean;
+  /** The exit code of a run that ended with one (a `command` hook's process). */
+  readonly exitCode?: number;
   readonly block?: BlockInfo;
   /** The turn ends with this reason (`ok: false` of a prompt or agent hook that ends the turn). */
   readonly stop?: { readonly reason: string };

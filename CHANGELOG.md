@@ -29,6 +29,14 @@
 
 ### Fixed
 
+- Hooks (review of the runtime outcomes): the `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` count resets when
+  Claude calls a tool (`PreToolUse`, `PostToolUse`, `PostToolUseFailure`, with or without a hook) and
+  when a Stop holds nothing, no longer on `stop_hook_active`; `StopBlockCap.reset` and
+  `HookEngineOptions.stopCap` let a host that rebuilds its engine keep the counter; `Ctrl+Enter`'s
+  10-second cap kills command hooks only; `HookObserver.finished` carries `exitCode`; `HeldOpenResult`
+  types a runner's `outputHeldOpen`; `checkPluginDirectories` is on by default; the plugin sentence is
+  left off a block whose stderr is not the message, and a plugin is named by its manifest name, else
+  its id, everywhere.
 - Hooks: `onFailure: "block"` blocked on a failure of a hook with only `asyncRewake` set, which is a
   background hook like one with `async`.
 - Hooks and settings (review of the exec stream): the scrub keeps `http_proxy` and `https_proxy` in lower

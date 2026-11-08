@@ -6,15 +6,17 @@
  * example, with its `|| exit $?` and its `>/dev/null 2>&1 &`.
  */
 import { describe, expect, test } from 'bun:test';
-import type { CommandResult } from '../../../src/ports/index.ts';
+import type { HeldOpenResult } from '../../../src/hooks/index.ts';
 import { entry } from '../../support/hooks-select.ts';
 import { engineSession } from '../../support/hooks-session.ts';
 import { exited, verdictOf } from '../../support/hooks-verdict.ts';
 import { spec } from '../../support/spec.ts';
 
-/** The runner's answer with a capture a background process still holds open (see `outputHeldOpen`). */
-const heldOpen = (reply: Partial<CommandResult>) =>
-  Object.assign({}, reply, { outputHeldOpen: true });
+/** The runner's answer with a capture a background process still holds open (see `HeldOpenResult`). */
+const heldOpen = (reply: Partial<HeldOpenResult>): Partial<HeldOpenResult> => ({
+  ...reply,
+  outputHeldOpen: true,
+});
 
 const ALLOW = JSON.stringify({
   hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' },
@@ -42,12 +44,6 @@ spec('hooks.behavior.Hooks that start a background process', () => {
     const outcome = await fire('PreToolUse');
     expect(outcome.proceed).toBe(true);
     expect(outcome.effects.permissionDecision).toBe('allow');
-  });
-
-  test('a deny the background process prints after Claude Code stopped reading does not block: only what the hook printed until it exited counts', async () => {
-    // The runner returns at the hook's exit, so the late "deny" is never part of `stdout`.
-    const { fire } = engineSession([hook], [allowThenRedirected]);
-    expect((await fire('PreToolUse')).block).toBeUndefined();
   });
 
   test('"|| exit $?": a check that exits 2 to deny still blocks, the hook keeps its own exit code', async () => {

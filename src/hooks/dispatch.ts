@@ -15,7 +15,7 @@ import type { IfEvaluator } from './select/if-guard.ts';
 import { interruptPlan, withInterrupt, type InterruptPlan } from './interrupt.ts';
 import { withOriginalPrompt } from './verdict/blocked-prompt.ts';
 import { interpretRun } from './verdict/interpret.ts';
-import type { StopBlockCap } from './verdict/stop-block-cap.ts';
+import { isToolCall, type StopBlockCap } from './verdict/stop-block-cap.ts';
 import type { HandlerVerdict, HookObserver, OutputStage, TaggedOutput } from './verdict/types.ts';
 
 /**
@@ -105,7 +105,12 @@ function report(
   verdicts: readonly HandlerVerdict[],
 ) {
   for (const verdict of verdicts) {
-    observer?.finished?.({ event, handlerId: verdict.handler.id, status: verdict.status });
+    observer?.finished?.({
+      event,
+      handlerId: verdict.handler.id,
+      status: verdict.status,
+      ...(verdict.exitCode === undefined ? {} : { exitCode: verdict.exitCode }),
+    });
     if (verdict.notice !== undefined) observer?.notice?.(verdict.notice);
   }
 }
@@ -127,6 +132,16 @@ function finished<E extends HookEvent>(
   const interrupted = withInterrupt(quoted, request.signal.aborted);
   const where = { sessionId: request.session.sessionId, facts: request.facts };
   return config.stopCap?.apply(interrupted, where, config.ports.environment) ?? interrupted;
+}
+
+/** A dispatch with nothing to run holds nothing back: a Stop like that ends the run of blocks. */
+function finishedIdle<E extends HookEvent>(
+  outcome: HookOutcome<E>,
+  request: DispatchRequest<E>,
+  config: DispatchConfig,
+): HookOutcome<E> {
+  const where = { sessionId: request.session.sessionId, facts: request.facts };
+  return config.stopCap?.apply(outcome, where, config.ports.environment) ?? outcome;
 }
 
 interface Planned {
@@ -172,6 +187,8 @@ export async function dispatchEvent<E extends HookEvent>(
 ): Promise<HookOutcome<E>> {
   const { event, facts, session } = request;
   const { stages } = config;
+  // "The count of consecutive continuations resets each time Claude calls a tool": hook or no hook.
+  if (isToolCall(event)) config.stopCap?.reset(session.sessionId, session.agent?.id);
   // "until the next CwdChanged event, when Claude Code clears them": whether or not a hook is there.
   await config.envFiles?.beforeEvent(event, request.signal);
   const selection = stages.select(registry, {
@@ -184,7 +201,7 @@ export async function dispatchEvent<E extends HookEvent>(
   const built = stages.build(event, facts, session);
   const issues: readonly PluginIssue[] = [...selection.issues, ...built.issues];
   if (built.input === undefined || selection.selected.length === 0)
-    return idleOutcome(event, issues);
+    return finishedIdle(idleOutcome(event, issues), request, config);
   const plan = interruptPlan(event, request.interrupt, config.ports.environment);
   const verdicts = await runAll(request, config, { selection, plan, input: built.input });
   report(config.observer, event, verdicts);

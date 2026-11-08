@@ -32,6 +32,16 @@ spec('hooks.behavior.Exit code output', () => {
     expect(blocksCall(verdict)).toBe(false);
   });
 
+  test('for a hook whose failure blocks the action, exit 1 with valid JSON counts as a failure instead', () => {
+    const guard = { type: 'command', command: './g.sh', onFailure: 'block' } as const;
+    const verdict = verdictOf('PreToolUse', exited(1, 'ignored', VALID), { hook: guard });
+    expect(verdict.status).toBe('blocked');
+    expect(verdict.block).toMatchObject({ via: 'failure', to: 'claude' });
+    expect(verdict.output).toBeUndefined();
+    // The same exit with valid JSON on the default hook is a success, as the test above says.
+    expect(pre(1, VALID, 'ignored').status).toBe('success');
+  });
+
   test('the notice of a non-blocking error is the hook error line of the event and tool', () => {
     expect(pre(1, '', 'boom').notice?.message).toBe(
       'PreToolUse:Bash hook error: [./hook.sh]: Failed with non-blocking status code: boom',

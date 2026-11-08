@@ -20,6 +20,19 @@ const DEFAULT_SECONDS: { readonly [T in HookHandlerType]: number } = {
 /** The types whose default an event lowers: "the `command`, `http`, and `mcp_tool` default". */
 const LOWERED_TYPES: ReadonlySet<HookHandlerType> = new Set(['command', 'http', 'mcp_tool']);
 
+/**
+ * "Claude Code kills a command hook that is still running" when the 10 seconds after `Ctrl+Enter`
+ * are up (hooks.md, "PostToolUse after an interrupt"): only a command hook. Judgment
+ * (spec/judgments.md): the other types keep their own `timeout`.
+ */
+const INTERRUPT_KILLS: { readonly [T in HookHandlerType]: boolean } = {
+  command: true,
+  http: false,
+  mcp_tool: false,
+  prompt: false,
+  agent: false,
+};
+
 /** "30 on UserPromptSubmit, PreModelSwitch, and PostModelSwitch, and to 10 on MessageDisplay". */
 const EVENT_DEFAULT_SECONDS: { readonly [E in HookEvent]?: number } = {
   UserPromptSubmit: 30,
@@ -139,6 +152,8 @@ export function handlerTimeoutMs(entry: RegisteredHandler, plan: TimeoutPlan): n
   const own = seconds(entry.handler.timeout);
   const limit = own === undefined ? defaultMs(entry, plan) : toMs(own);
   const budget = plan.sessionEnd === undefined ? limit : Math.min(limit, plan.sessionEnd.budgetMs);
-  // "kills a command hook that is still running, whatever its `timeout`".
-  return plan.interruptCapMs === undefined ? budget : Math.min(budget, plan.interruptCapMs);
+  // "kills a command hook that is still running, whatever its `timeout`": the other types keep theirs.
+  return plan.interruptCapMs === undefined || !INTERRUPT_KILLS[entry.handler.type]
+    ? budget
+    : Math.min(budget, plan.interruptCapMs);
 }

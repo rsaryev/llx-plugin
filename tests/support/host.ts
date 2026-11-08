@@ -160,7 +160,9 @@ export async function hostOf(fixture: HostFixture = {}) {
     ports: {
       commands: runner,
       http: web,
-      locations: locations(),
+      locations: locations({
+        directories: [FORMATTER, AUDIT, DORMANT].map((id) => `/plugins/${id}`),
+      }),
       environment: fakeEnvironment(fixture.env),
     },
     ...(fixture.settings === undefined ? {} : { settings: fixture.settings }),

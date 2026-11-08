@@ -30,7 +30,17 @@ spec('hooks.behavior.PostToolUse after an interrupt.Ctrl+Enter', () => {
   });
 
   test('a command hook still running at 10 seconds is killed: the run is a timeout', async () => {
-    const { fire } = engineSession([afterWrite()], [{ timedOut: true, exitCode: null }]);
+    // The runner times a process out only at the limit the kit gave it, so 10 seconds is the only
+    // limit that produces a timeout here (the default is 600).
+    const { fire } = engineSession(
+      [afterWrite()],
+      [
+        (run) =>
+          run.timeoutMs === 10_000
+            ? { timedOut: true, exitCode: null }
+            : { exitCode: 0, stdout: 'finished in time' },
+      ],
+    );
     const outcome = await fire('PostToolUse', { interrupt: { key: 'ctrl-enter' } });
     expect(outcome.runs[0]?.status).toBe('timed-out');
   });
@@ -112,6 +122,17 @@ spec('hooks.behavior.PostToolUse after an interrupt.Esc', () => {
   });
 });
 
+describe('Ctrl+Enter kills a command hook only (judgment)', () => {
+  test('an http hook keeps its own timeout: the docs say "kills a command hook"', async () => {
+    const web = entry('PostToolUse', {
+      handler: { type: 'http', url: 'https://hooks.example.com/post', timeout: 120 },
+    });
+    const { fire, http } = engineSession([web], [], { http: [{ status: 200, body: '' }] });
+    await fire('PostToolUse', { interrupt: { key: 'ctrl-enter' } });
+    expect(http.requests[0]?.timeoutMs).toBe(120_000);
+  });
+});
+
 describe('an interrupt leaves the hooks of other events alone (judgment)', () => {
   test('PreToolUse hooks keep their limit under Ctrl+Enter', async () => {
     const { fire, runner } = engineSession(
@@ -172,11 +193,23 @@ spec('hooks.behavior.Esc during a prompt check', () => {
     expect(outcome.interrupted).toBeUndefined();
   });
 
-  test('a prompt checked again after the resend is judged afresh', async () => {
-    const { fire } = engineSession([check()], [{ exitCode: 2, stderr: 'again' }]);
-    const outcome = await fire('UserPromptSubmit', submitted);
-    expect(outcome.block?.reason).toBe('again');
-    expect(outcome.interrupted).toBeUndefined();
+  test('nothing carries over after an interrupted check: the resent prompt is judged afresh on the same engine', async () => {
+    const controller = new AbortController();
+    const { fire } = engineSession(
+      [check()],
+      [
+        () => {
+          controller.abort();
+          return { exitCode: null };
+        },
+        { exitCode: 2, stderr: 'again' },
+      ],
+    );
+    const first = await fire('UserPromptSubmit', { ...submitted, signal: controller.signal });
+    expect(first.interrupted).toEqual({ restoreInput: true });
+    const resent = await fire('UserPromptSubmit', submitted);
+    expect(resent.block?.reason).toBe('again');
+    expect(resent.interrupted).toBeUndefined();
   });
 });
 

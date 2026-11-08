@@ -10,3 +10,13 @@ const PLUGIN_SOURCES: { readonly [K in HookSourceKind]: boolean } = {
 };
 
 export const isPluginSource = (source: HookSource): boolean => PLUGIN_SOURCES[source.kind];
+
+/**
+ * The name a plugin hook's notices give its plugin: the manifest name, else the plugin id. One
+ * rule for the block error ("This hook comes from the <plugin> plugin.") and the missing
+ * directory notice.
+ */
+export const pluginLabel = (entry: {
+  readonly pluginId?: string | undefined;
+  readonly source: HookSource;
+}): string | undefined => entry.source.pluginName ?? entry.pluginId;

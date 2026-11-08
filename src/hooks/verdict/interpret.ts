@@ -127,5 +127,6 @@ export function interpretRun(
     effectsIgnored: context.effectsIgnored === true,
     gitBashMissing: context.gitBashMissing === true,
   };
-  return READERS[run.kind](subject, run);
+  const verdict = READERS[run.kind](subject, run);
+  return isRunOf('exited', run) ? { ...verdict, exitCode: run.exitCode } : verdict;
 }

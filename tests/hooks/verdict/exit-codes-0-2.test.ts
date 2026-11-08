@@ -4,6 +4,8 @@
  * (the `Failed with non-blocking status code:` notice and its examples).
  */
 import { expect, test } from 'bun:test';
+import { entry } from '../../support/hooks-select.ts';
+import { engineSession } from '../../support/hooks-session.ts';
 import { exited, verdictOf } from '../../support/hooks-verdict.ts';
 import { spec } from '../../support/spec.ts';
 
@@ -125,6 +127,25 @@ spec('hooks.behavior.Exit code 2', () => {
     expect(verdict.status).toBe('blocked');
     expect(verdict.block?.reason).toBe('because');
     expect(verdict.output).toBeUndefined();
+  });
+
+  test('"If your hook also printed JSON that makes a blocking decision, Claude Code uses that decision\'s reason instead" of the stderr', async () => {
+    const decision = JSON.stringify({ decision: 'block', reason: 'b' });
+    for (const event of ['Stop', 'PostToolUse'] as const) {
+      const { fire } = engineSession(
+        [entry(event, { handler: { type: 'command', command: './h.sh' } })],
+        [{ exitCode: 2, stderr: 'a', stdout: decision }],
+      );
+      const outcome = await fire(event);
+      expect(outcome.block?.reason).toBe('b');
+      expect(outcome.block?.message).not.toContain('a');
+    }
+    // Without the JSON the stderr is the reason.
+    const { fire } = engineSession(
+      [entry('Stop', { handler: { type: 'command', command: './h.sh' } })],
+      [{ exitCode: 2, stderr: 'a' }],
+    );
+    expect((await fire('Stop')).block?.reason).toBe('a');
   });
 
   test('on Elicitation and ElicitationResult the hookSpecificOutput of an exit-2 hook is ignored', () => {

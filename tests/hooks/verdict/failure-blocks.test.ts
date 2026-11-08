@@ -7,6 +7,8 @@
 import { expect, test } from 'bun:test';
 import type { RawRun } from '../../../src/hooks/handlers/index.ts';
 import type { HookHandler } from '../../../src/protocol/hook-config.ts';
+import { entry } from '../../support/hooks-select.ts';
+import { engineSession } from '../../support/hooks-session.ts';
 import { exited, verdictOf } from '../../support/hooks-verdict.ts';
 import { spec } from '../../support/spec.ts';
 
@@ -58,9 +60,21 @@ spec('hooks.behavior.Block the action when a hook fails', () => {
     expect(prompt.status).toBe('blocked');
   });
 
-  test('except on PermissionRequest, where it denies the request (exit 2 itself is not honored there)', () => {
-    expect(blocks(exited(1, 'x'), guard(BLOCK), 'PermissionRequest')).toBe(true);
+  test('except on PermissionRequest, where it denies the request (exit 2 itself is not honored there)', async () => {
+    const verdict = verdictOf('PermissionRequest', exited(1, 'x'), { hook: guard(BLOCK) });
+    expect(verdict.block).toMatchObject({ via: 'failure', to: 'claude' });
     expect(blocks(exited(2, 'x'), guard(BLOCK), 'PermissionRequest')).toBe(false);
+    // The host is handed the deny, with the failure text as its message.
+    const { fire } = engineSession(
+      [entry('PermissionRequest', { handler: { type: 'command', command: './g.sh', ...BLOCK } })],
+      [{ exitCode: 1, stderr: 'x' }],
+    );
+    const outcome = await fire('PermissionRequest');
+    expect(outcome.proceed).toBe(false);
+    expect(outcome.effects.permissionRequest).toEqual({
+      behavior: 'deny',
+      message: 'failed; blocking because onFailure is "block"\nx',
+    });
   });
 
   test('where exit 2 only shows stderr (PostToolUse) a failure shows it too and blocks nothing', () => {

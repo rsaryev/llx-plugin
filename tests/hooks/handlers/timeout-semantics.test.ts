@@ -9,6 +9,7 @@ import { describe, expect, test } from 'bun:test';
 import type { RunnerReply } from '../../support/ports.ts';
 import { entry, pluginSource, settingsSource } from '../../support/hooks-select.ts';
 import { engineSession } from '../../support/hooks-session.ts';
+import { fakeMcp } from '../../support/ports.ts';
 import { spec } from '../../support/spec.ts';
 
 const DENY = JSON.stringify({
@@ -22,6 +23,16 @@ const preTool = (more: object = {}, type: 'command' | 'http' = 'command') =>
       type === 'command'
         ? { type: 'command', command: './gate.sh', ...more }
         : { type: 'http', url: 'http://h/x', ...more },
+  });
+
+const mcpGate = (more: object = {}) =>
+  entry('PreToolUse', {
+    handler: { type: 'mcp_tool', server: 's', tool: 'gate', timeout: 9, ...more },
+  });
+const slowServer = () =>
+  fakeMcp({
+    connected: ['s'],
+    tools: { 's/gate': { failure: 'timeout', message: 'late' } },
   });
 
 spec('hooks.behavior.Timeouts', () => {
@@ -60,6 +71,18 @@ spec('hooks.behavior.Timeouts', () => {
     const guarded = engineSession([preTool({ timeout: 7, onFailure: 'block' }, 'http')], [], {
       http: [{ failure: 'timeout', message: 'timed out' }],
     });
+    expect((await guarded.fire('PreToolUse')).proceed).toBe(false);
+  });
+
+  test('an mcp_tool hook that reaches its timeout is canceled the same way: output discarded, the tool call goes ahead', async () => {
+    const mcp = slowServer();
+    const open = engineSession([mcpGate()], [], { mcp });
+    const outcome = await open.fire('PreToolUse');
+    expect(mcp.calls[0]?.timeoutMs).toBe(9000);
+    expect(outcome.runs[0]?.status).toBe('timed-out');
+    expect(outcome.proceed).toBe(true);
+    expect(outcome.effects.permissionDecision).toBeUndefined();
+    const guarded = engineSession([mcpGate({ onFailure: 'block' })], [], { mcp: slowServer() });
     expect((await guarded.fire('PreToolUse')).proceed).toBe(false);
   });
 

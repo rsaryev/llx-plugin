@@ -11,9 +11,12 @@ import type { HookOutcome } from '../outcome.ts';
  * input and the 8-consecutive-continuation cap", for `additionalContext` that keeps the
  * conversation going too, so both kinds of continuation count.
  *
- * The count is the engine's state: one counter per session (and per subagent for `SubagentStop`),
- * which a Stop that does not hold the turn back, and a Stop that starts a fresh turn
- * (`stop_hook_active` is not `true`), reset.
+ * The count is the host's state: one counter per session (and per subagent for `SubagentStop`).
+ * hooks.md ("Stop input"): "The count of consecutive continuations resets each time Claude calls a
+ * tool", so the engine calls `reset` when a `PreToolUse`, `PostToolUse` or `PostToolUseFailure`
+ * event is dispatched; a Stop that does not hold the turn back ends the run of blocks too. A host
+ * that builds an engine per run injects a counter that outlives it (`HookEngineOptions.stopCap`)
+ * and owns its lifetime: it calls `reset` when the session ends.
  *
  * Judgments (spec/judgments.md): a value that is not a whole number of at least 0 is the default;
  * the block that exceeds the cap is the one overridden (the first 8 count), and the override leaves
@@ -37,12 +40,22 @@ const textOf = (facts: object, key: string): string | undefined => {
   return typeof found === 'string' ? found : undefined;
 };
 
-/** One counter per session; a subagent's stops are counted apart from the main agent's. */
-const counterKey = (event: HookEvent, sessionId: string, facts: object): string =>
-  `${event}:${sessionId}:${textOf(facts, 'agent_id') ?? ''}`;
+/** The events after which a Stop starts counting again: "each time Claude calls a tool". */
+const TOOL_EVENTS: ReadonlySet<HookEvent> = new Set<HookEvent>([
+  'PreToolUse',
+  'PostToolUse',
+  'PostToolUseFailure',
+]);
 
-const isFreshTurn = (facts: object): boolean =>
-  !Object.entries(facts).some(([name, value]) => name === 'stop_hook_active' && value === true);
+/** Whether this event is a tool call, which ends the run of consecutive blocks. */
+export const isToolCall = (event: HookEvent): boolean => TOOL_EVENTS.has(event);
+
+/** One counter per session; a subagent's stops are counted apart from the main agent's. */
+const counterKey = (sessionId: string, agentId: string | undefined): string =>
+  `${sessionId}:${agentId ?? ''}`;
+
+/** The subagent a `SubagentStop`'s facts name (`agent_id`); a tool event's subagent is the session's. */
+const agentOf = (facts: object): string | undefined => textOf(facts, 'agent_id');
 
 const holdsTurn = (outcome: HookOutcome<HookEvent>): boolean =>
   outcome.block !== undefined || outcome.effects.continuesTurn === true;
@@ -67,6 +80,8 @@ export interface StopBlockCap {
     where: { readonly sessionId: string; readonly facts: object },
     environment: Environment,
   ): HookOutcome<E>;
+  /** Starts the count again for a session (and a subagent): Claude called a tool, or the session ended. */
+  reset(sessionId: string, agentId?: string): void;
 }
 
 export function createStopBlockCap(): StopBlockCap {
@@ -74,19 +89,22 @@ export function createStopBlockCap(): StopBlockCap {
   return {
     apply(outcome, { sessionId, facts }, environment) {
       if (!GUARDED.has(outcome.event)) return outcome;
-      const key = counterKey(outcome.event, sessionId, facts);
+      const key = counterKey(sessionId, agentOf(facts));
       if (!holdsTurn(outcome)) {
         counts.delete(key);
         return outcome;
       }
       const cap = stopBlockCap(environment);
-      const count = (isFreshTurn(facts) ? 0 : (counts.get(key) ?? 0)) + 1;
+      const count = (counts.get(key) ?? 0) + 1;
       if (cap === 0 || count <= cap) {
         counts.set(key, count);
         return outcome;
       }
       counts.delete(key);
       return overridden(outcome, cap);
+    },
+    reset(sessionId, agentId) {
+      counts.delete(counterKey(sessionId, agentId));
     },
   };
 }

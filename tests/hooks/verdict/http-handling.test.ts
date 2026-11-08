@@ -7,6 +7,8 @@
 import { expect, test } from 'bun:test';
 import type { RawRun } from '../../../src/hooks/handlers/index.ts';
 import type { HookEvent } from '../../../src/protocol/official.ts';
+import { entry } from '../../support/hooks-select.ts';
+import { engineSession } from '../../support/hooks-session.ts';
 import { verdictOf } from '../../support/hooks-verdict.ts';
 import { spec } from '../../support/spec.ts';
 
@@ -27,6 +29,23 @@ spec('hooks.behavior.HTTP response handling', () => {
     expect(verdict.output).toMatchObject({
       hookSpecificOutput: { permissionDecision: 'deny' },
     });
+  });
+
+  test('and the deny reaches the engine outcome: the tool call does not proceed', async () => {
+    const deny = JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason: 'policy says no',
+      },
+    });
+    const { fire } = engineSession([entry('PreToolUse', { handler: hook })], [], {
+      http: [{ status: 200, body: deny }],
+    });
+    const outcome = await fire('PreToolUse');
+    expect(outcome.proceed).toBe(false);
+    expect(outcome.effects.permissionDecision).toBe('deny');
+    expect(outcome.block?.reason).toBe('policy says no');
   });
 
   test('a request that fails or answers non-2xx blocks nothing by itself; onFailure "block" does', () => {

@@ -11,6 +11,7 @@ export type {
   RunPorts,
   SkippedRun,
 } from './context.ts';
+export type { HeldOpenResult } from './command/async.ts';
 export { HANDLERS, runHandler } from './registry.ts';
 export { scrubEnvironment, scrubRequested } from './command/scrub.ts';
 export {

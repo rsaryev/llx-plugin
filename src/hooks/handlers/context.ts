@@ -79,7 +79,7 @@ export interface RunContext {
   readonly envFiles?: HookEnvFiles;
   /**
    * A plugin's command hook whose plugin directory is gone does not run and reports `Failed to run:
-   * Plugin directory does not exist` (plugins/troubleshooting.md). Off unless the host sets it.
+   * Plugin directory does not exist` (plugins/troubleshooting.md). The engine turns it on unless the host sets `checkPluginDirectories: false`.
    */
   readonly checkPluginDirectory?: boolean;
   /** The merged `allowedHttpHookUrls` and `httpHookAllowedEnvVars` of the settings; unset: no limit. */

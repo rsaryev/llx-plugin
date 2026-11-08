@@ -1,7 +1,7 @@
 import type { PluginIssue } from '../../../format/issues.ts';
 import type { CommandRun, CommandSpec } from '../../../ports/index.ts';
 import type { CommandRawRun, HandlerEntry, HandlerResult, RunContext } from '../context.ts';
-import { isPluginSource } from '../../source-kind.ts';
+import { isPluginSource, pluginLabel } from '../../source-kind.ts';
 import { handlerTimeoutMs } from '../timeouts.ts';
 import { MODES, modeOf, settle, startInBackground } from './async.ts';
 import { workingDirectory } from './cwd-fallback.ts';
@@ -61,9 +61,9 @@ async function request(
  * "A plugin's hook fails with `Failed to run: Plugin directory does not exist: <path> (<plugin> — run
  * /plugin to reinstall)`, and the hook doesn't run, when the directory your session loaded the
  * plugin's hooks from is gone from disk" (plugins/troubleshooting.md). Judgment (spec/judgments.md):
- * the check costs a directory lookup per plugin hook run, so the host turns it on
- * (`checkPluginDirectory`); the docs' "shown once per session for each hook event and command" is
- * the host's to do, since it holds the session.
+ * the engine turns the check on (`checkPluginDirectory`) and a host that never re-reads its plugins
+ * can turn it off, since it costs a directory lookup per plugin hook run; the docs' "shown once per
+ * session for each hook event and command" is the host's to do, since it holds the session.
  */
 async function missingPluginDirectory(
   entry: HandlerEntry<'command'>,
@@ -76,7 +76,7 @@ async function missingPluginDirectory(
   const root = locations.pluginRoot(pluginId);
   const found = await locations.existingDirectory([root], context.signal);
   return found === undefined
-    ? `Failed to run: Plugin directory does not exist: ${root} (${source.pluginName ?? pluginId} — run /plugin to reinstall)`
+    ? `Failed to run: Plugin directory does not exist: ${root} (${pluginLabel(entry) ?? pluginId} — run /plugin to reinstall)`
     : undefined;
 }
 

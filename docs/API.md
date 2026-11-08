@@ -704,18 +704,21 @@ Outcomes that need the host's facts:
   even when the session is idle. `async` is only a field of command hooks, and its `timeout` is not
   enforced (it is on `asyncRewake`).
 - **A runner that tells a capture is held open.** The answer of a `CommandRunner` may carry
-  `outputHeldOpen: true` when the hook's own process ended while a process it started still held its
+  `outputHeldOpen: true` (declare the answer as `HeldOpenResult`, exported from `hooks`, so the
+  compiler checks the name; the `CommandRunner` port itself does not type it) when the hook's own process ended while a process it started still held its
   stdout or stderr. The run is then refused with `refusing to honor the suspect capture`, as a block
   where exit 2 blocks and a non-blocking error elsewhere; an exit 2 stays an exit 2. Output printed
   after the hook's own process exited is never part of the run: the runner returns at that exit.
 - **An interrupt.** `DispatchRequest.interrupt` is the key the user pressed while a tool ran
   (`{ key: 'esc' | 'enter' | 'ctrl-enter', queuedShellCommand? }`), read for `PostToolUse`:
-  `ctrl-enter` caps every hook that has a limit at 10 seconds whatever its `timeout`, `enter` changes
+  `ctrl-enter` caps every command hook that has a limit at 10 seconds whatever its `timeout`, `enter` changes
   nothing, `esc` cancels the hooks at once (none runs) and `ctrl-enter` acts as `esc` with a queued
   `!` command or `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`. An aborted `signal` that cancelled a
   `UserPromptSubmit` hook makes `HookOutcome.interrupted`: the prompt did not go ahead
   (`proceed: false`) and `restoreInput` says whether its text returns to the input (it does not when
   a hook blocked the prompt at the same moment).
+- **The observer.** `HookObserver.finished` reports each run's `status` and, for a command hook whose
+  process ran to the end, its `exitCode` (the debug log's "hook ran with its exit code").
 - **A blocked prompt.** The block message of `UserPromptSubmit` ends with `Original prompt:` and the
   submitted text unless a hook printed `suppressOriginalPrompt: true` (a decision block and an exit 2
   alike). The host still writes the text wherever it keeps its transcript.
@@ -723,10 +726,14 @@ Outcomes that need the host's facts:
   `SubagentStop`): an exit 2, a `decision: "block"` or an `additionalContext` that keeps Claude
   working. After `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` of them (default 8, `0` for none) the next hold is
   lifted: `proceed` is `true`, `effects.continuesTurn` is dropped and a warning issue says so. A Stop
-  that holds nothing, or with `stop_hook_active` not `true`, starts the count again.
+  that holds nothing, and any `PreToolUse`, `PostToolUse` or `PostToolUseFailure` dispatched for the
+  session (or the subagent, by `agent_id`), start the count again ("resets each time Claude calls a
+  tool"), also when no hook is registered. The counter is `HookEngineOptions.stopCap`
+  (`createStopBlockCap()`); an engine built per run passes one that outlives it, owns its lifetime
+  and calls `reset(sessionId, agentId?)` when the session ends.
 - **A plugin that blocks.** An exit-2 block of a plugin's hook ends with `This hook comes from the
-  <plugin> plugin.`; with `checkPluginDirectories` a plugin command hook whose directory is gone does
-  not run and reports `Failed to run: Plugin directory does not exist: <path> (<plugin> — run /plugin
+  <plugin> plugin.`; a plugin command hook whose directory is gone does not run (on unless the engine
+  gets `checkPluginDirectories: false`) and reports `Failed to run: Plugin directory does not exist: <path> (<plugin> — run /plugin
   to reinstall)`.
 
 `buildHookInput` puts `session_id`, `prompt_id` (absent until the first prompt), `transcript_path`,

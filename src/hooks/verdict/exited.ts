@@ -7,7 +7,7 @@ import {
   type ExitClass,
   type StdoutClass,
 } from './exit-codes.ts';
-import { isPluginSource } from '../source-kind.ts';
+import { isPluginSource, pluginLabel } from '../source-kind.ts';
 import { EXIT2_RULES, type Exit2Rule } from './exit2.ts';
 import {
   NO_STDERR,
@@ -131,9 +131,21 @@ function unblockable(read: Read): HandlerVerdict {
   return common;
 }
 
-/** The plugin whose hook this is, when it is one: the error names it. */
+/**
+ * The plugin whose hook this is, when it is one: the error names it, the same way the missing
+ * directory notice does (`pluginLabel`).
+ */
 const pluginOf = (subject: Subject): string | undefined =>
-  isPluginSource(subject.entry.source) ? subject.entry.source.pluginName : undefined;
+  isPluginSource(subject.entry.source) ? pluginLabel(subject.entry) : undefined;
+
+/**
+ * "When a plugin's hook blocks this way and its stderr is the blocking message": a hook that
+ * printed nothing to stderr has no message to end, so the sentence is left out.
+ */
+const stderrMessage = (subject: Subject, reason: string): string =>
+  reason === ''
+    ? lineFor(subject, reason)
+    : fromPlugin(lineFor(subject, reason), pluginOf(subject));
 
 function blocked(read: Read): HandlerVerdict {
   const { subject, run } = read;
@@ -141,7 +153,7 @@ function blocked(read: Read): HandlerVerdict {
   const block = routedBlock(
     subject.event,
     'exit2',
-    { reason, message: fromPlugin(lineFor(subject, reason), pluginOf(subject)) },
+    { reason, message: stderrMessage(subject, reason) },
     read.rule.blocksUnlessDirectoryGone === true ? 'worktree-directory-remains' : undefined,
   );
   const output = appliedOutput(read, 'two');

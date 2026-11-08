@@ -105,6 +105,24 @@ spec('hooks.behavior.Configure an async hook', () => {
     expect(await outcome.background[0]).toMatchObject({ outcome: 'cancelled' });
   });
 
+  test('an asyncRewake hook that reaches its timeout is finalized with outcome timed-out', async () => {
+    const { runner, outcome } = await dispatch({
+      command: './r.sh',
+      asyncRewake: true,
+      timeout: 5,
+    });
+    runner.finish(0, { exitCode: null, timedOut: true });
+    expect(await outcome.background[0]).toMatchObject({ outcome: 'timed-out' });
+  });
+
+  test('a hook whose process did not start is finalized with outcome failed', async () => {
+    const { runner, outcome } = await dispatch();
+    runner.finish(0, { exitCode: null, startError: 'spawn ./run-tests.sh ENOENT' });
+    const delivery = await outcome.background[0];
+    expect(delivery).toMatchObject({ outcome: 'failed' });
+    expect(delivery).not.toHaveProperty('wake');
+  });
+
   test('a hook that finishes normally is completed', async () => {
     const { runner, outcome } = await dispatch();
     runner.finish(0, { stdout: '' });
@@ -187,6 +205,30 @@ spec('hooks.behavior.How async hooks execute', () => {
     expect(delivery).not.toHaveProperty('systemMessage');
   });
 
+  test('a hookSpecificOutput.additionalContext of the wrong type is dropped, and a systemMessage beside it kept', async () => {
+    const { runner, outcome } = await dispatch();
+    runner.finish(0, {
+      stdout: JSON.stringify({
+        systemMessage: 'kept',
+        hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: ['no'] },
+      }),
+    });
+    const delivery = await outcome.background[0];
+    expect(delivery).toMatchObject({ systemMessage: 'kept' });
+    expect(delivery).not.toHaveProperty('additionalContext');
+  });
+
+  test('a response with a hookSpecificOutput that is not an object loses it; both wrong types leave a bare completion', async () => {
+    const { runner, outcome } = await dispatch();
+    runner.finish(0, {
+      stdout: JSON.stringify({ systemMessage: false, hookSpecificOutput: 'additionalContext' }),
+    });
+    expect(await outcome.background[0]).toEqual({
+      handlerId: expect.any(String),
+      outcome: 'completed',
+    });
+  });
+
   test('response fields that would control the action have no effect: it already completed', async () => {
     const { runner, outcome } = await dispatch();
     runner.finish(0, {
@@ -207,5 +249,26 @@ spec('hooks.behavior.How async hooks execute', () => {
     const plain = await dispatch();
     plain.runner.finish(0, { exitCode: 2, stderr: 'deploy failed' });
     expect(await plain.outcome.background[0]).not.toHaveProperty('wake');
+  });
+
+  test('"stderr, or stdout if stderr is empty": an asyncRewake exit 2 with an empty stderr wakes Claude with its stdout', async () => {
+    const { runner, outcome } = await dispatch({ command: './r.sh', asyncRewake: true });
+    runner.finish(0, { exitCode: 2, stderr: '', stdout: 'tests are red' });
+    expect(await outcome.background[0]).toMatchObject({ wake: 'tests are red' });
+  });
+
+  test('a stderr of only whitespace is empty (judgment): stdout wakes Claude; a blank stdout too means nothing to say', async () => {
+    const spaces = await dispatch({ command: './r.sh', asyncRewake: true });
+    spaces.runner.finish(0, { exitCode: 2, stderr: ' \n\t', stdout: 'from stdout' });
+    expect(await spaces.outcome.background[0]).toMatchObject({ wake: 'from stdout' });
+    const blank = await dispatch({ command: './r.sh', asyncRewake: true });
+    blank.runner.finish(0, { exitCode: 2, stderr: '  ', stdout: '\n' });
+    expect(await blank.outcome.background[0]).not.toHaveProperty('wake');
+  });
+
+  test('an asyncRewake exit other than 2 does not wake Claude, even with stderr', async () => {
+    const { runner, outcome } = await dispatch({ command: './r.sh', asyncRewake: true });
+    runner.finish(0, { exitCode: 1, stderr: 'warning' });
+    expect(await outcome.background[0]).not.toHaveProperty('wake');
   });
 });
