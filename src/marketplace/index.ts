@@ -92,3 +92,28 @@ export {
   type InstalledPlugin,
   type RemovedPlugin,
 } from './removal.ts';
+export {
+  checkDependency,
+  checkInstalledDependency,
+  dependencyId,
+  normalizeDependency,
+  type DependencyCopies,
+  type InstalledDependency,
+} from './dependencies.ts';
+export {
+  combineRanges,
+  parseReleaseTag,
+  releaseTag,
+  resolveDependencyVersion,
+  selectTag,
+  type DependencyResolution,
+  type ReleaseTag,
+  type ResolvedVersion,
+} from './dependency-tags.ts';
+export {
+  crossMarketplaceDecision,
+  type CrossMarketplaceDecision,
+  type CrossMarketplaceQuestion,
+  type DeclaredIn,
+  type RefusalEffect,
+} from './cross-marketplace.ts';

@@ -106,6 +106,17 @@
   `migrateSettingsScopes` follow the chain from the oldest name and rewrite or drop the old keys of
   `enabledPlugins` and `pluginConfigs` (managed settings are left and their notice recurs);
   `removedPlugins` decides what `forceRemoveDeletedPlugins` uninstalls and flags.
+- Marketplace dependencies (`marketplace`): `normalizeDependency` reads a `dependencies` item
+  (`"name"`, `"name@marketplace"` or an object with `name`, `marketplace` and a node-semver
+  `version`), `releaseTag`, `parseReleaseTag`, `selectTag` and `combineRanges` resolve ranges against
+  `<name>--v<version>` tags (pre-releases only with `^2.0.0-0`, conflicts reported as `has
+  conflicting version requirements`), `resolveDependencyVersion` applies the source-kind rules (own
+  repository fails with `has no git tag satisfying`, relative path falls back to the current copy,
+  `npm`, `archive` and `command` check the plugin.json version), `checkInstalledDependency` and
+  `checkDependency` give the quoted `is not installed`, `is disabled` and `Requires "<dep>" <range>,
+  installed <version>` messages (local copies skip the range; claude.ai plugins meet a dependency
+  only for `@synced` plugins), and `crossMarketplaceDecision` applies the root marketplace's
+  `allowCrossMarketplaceDependenciesOn`. Adds the `semver` dependency.
 
 ### Fixed
 
