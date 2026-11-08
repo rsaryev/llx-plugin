@@ -1,6 +1,8 @@
 import { error, type PluginIssue } from '../format/issues.ts';
+import type { MarketplaceEntry, MarketplaceSource } from '../format/marketplace/types.ts';
 import {
   helperAllowed,
+  type AcceptedCommand,
   filtersRouting,
   type HeaderLayer,
   type HeaderOrigin,
@@ -29,13 +31,10 @@ export interface DownloadHeaderPorts extends HeadersHelperPorts {
 }
 
 /** The `url` source of a marketplace, declared in a settings file. */
-export interface UrlSourceHeaders {
-  readonly url: string;
-  readonly headers?: Readonly<Record<string, string>>;
-  readonly headersHelper?: string;
+export type UrlSourceHeaders = Extract<MarketplaceSource, { kind: 'url' }> & {
   /** Unset on the first fetch after a user adds a marketplace by URL: that fetch supplies the name. */
   readonly name?: string | undefined;
-}
+};
 
 export function urlSourceLayer(source: UrlSourceHeaders, origin: HeaderOrigin): HeaderLayer {
   return {
@@ -52,17 +51,13 @@ export function urlSourceLayer(source: UrlSourceHeaders, origin: HeaderOrigin): 
 }
 
 /** A plugin entry's fields (`MarketplaceEntry`, or an inline entry in settings). */
-export interface EntryHeaders {
-  readonly name: string;
-  readonly headers?: Readonly<Record<string, string>>;
-  readonly headersHelper?: string;
-}
+export type EntryHeaders = Pick<MarketplaceEntry, 'name' | 'headers' | 'headersHelper'>;
 
 export interface EntryDeclaration {
   readonly origin: HeaderOrigin;
   readonly operation: PluginOperation;
-  /** The user accepted the command and archive URL they were shown. */
-  readonly accepted: boolean;
+  /** The command and archive URL the user accepted; unset when they accepted nothing. */
+  readonly accepted?: AcceptedCommand | undefined;
 }
 
 export function entryLayer(
@@ -80,7 +75,8 @@ export function entryLayer(
       CLAUDE_CODE_PLUGIN_ARCHIVE_URL: archiveUrl,
     },
     operation: declared.operation,
-    accepted: declared.accepted,
+    archiveUrl,
+    ...(declared.accepted === undefined ? {} : { accepted: declared.accepted }),
   };
 }
 

@@ -126,15 +126,25 @@ spec('marketplace.entry.headersHelper', () => {
     expect(headersOf(await result)).toEqual({ authorization: 'Bearer t' });
   });
 
-  test('a command that is not accepted, or runs in a bulk install, refuses the download and never runs', async () => {
-    for (const declared of [
-      { accepted: false },
-      { operation: 'bulk-install' as const },
-      { operation: 'background-update' as const },
-    ]) {
+  test('a command that is not accepted, or meets an operation that refuses it, stops the download and never runs, with its reason', async () => {
+    const refusals = [
+      { declared: { accepted: undefined }, reason: 'has not accepted it' },
+      {
+        declared: { accepted: { command: '/opt/bin/other.sh', archiveUrl: ARCHIVE_URL } },
+        reason: 'has not accepted it',
+      },
+      { declared: { operation: 'bulk-install' as const }, reason: 'from its own view in /plugin' },
+      { declared: { operation: 'suggestion' as const }, reason: 'from its own view in /plugin' },
+      { declared: { operation: 'dependency' as const }, reason: 'from its own view in /plugin' },
+      { declared: { operation: 'background-update' as const }, reason: 'Errors tab' },
+      { declared: { operation: 'session-start' as const }, reason: 'Errors tab' },
+    ];
+    for (const { declared, reason } of refusals) {
       const entry = layerOfEntry({ headers: { A: 'b' }, headersHelper: helper }, declared);
       const { result, runner } = download({ entry });
-      expect(issueOf(await result).severity).toBe('error');
+      const issue = issueOf(await result);
+      expect(issue.severity).toBe('error');
+      expect(issue.message).toContain(reason);
       expect(runner.calls).toEqual([]);
     }
   });

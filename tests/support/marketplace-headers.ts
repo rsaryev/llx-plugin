@@ -24,7 +24,8 @@ type SourceInput = Parameters<typeof urlSourceLayer>[0];
 export const sourceLayer = (
   rest: Partial<SourceInput> = {},
   origin: HeaderLayer['origin'] = 'user',
-): HeaderLayer => urlSourceLayer({ url: MARKETPLACE_URL, name: 'acme', ...rest }, origin);
+): HeaderLayer =>
+  urlSourceLayer({ kind: 'url', url: MARKETPLACE_URL, name: 'acme', ...rest }, origin);
 
 type EntryInput = Parameters<typeof entryLayer>[0];
 type EntryDeclaration = Parameters<typeof entryLayer>[2];
@@ -35,7 +36,7 @@ export const layerOfEntry = (
   entryLayer({ name: 'formatter', ...rest }, ARCHIVE_URL, {
     origin: 'catalog',
     operation: 'install',
-    accepted: true,
+    accepted: { command: rest.headersHelper ?? '', archiveUrl: ARCHIVE_URL },
     ...declared,
   });
 

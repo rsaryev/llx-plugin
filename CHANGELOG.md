@@ -93,6 +93,11 @@
 
 ### Fixed
 
+- Archive download headers: a `headersHelper` command runs only for the command and archive URL
+  the user accepted (`AcceptedCommand`, replacing a bare flag; a change in the query string alone
+  does not count unless the host sets `queryCounts`); an empty `CLAUDE_CONFIG_DIR` is unset;
+  concurrent downloads on one origin share one command run; the entry and `url` source header
+  types are taken from `MarketplaceEntry` and `MarketplaceSource`.
 - Plugin sources and fetch plans: the archive compression ratio is judged against the length of
   the zip the kit downloaded and not against a size the host reports; a local plan carries a
   `submodules` rule (`none`, `plugin-subtree`, `whole-repository`) with `selectSubmodules` and

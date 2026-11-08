@@ -136,6 +136,51 @@ spec('marketplace.sourceField.headersHelper', () => {
     expect(headersOf(await result)).toEqual({ authorization: 'Bearer new', 'x-team': 'infra' });
   });
 
+  test('a command in --add-dir settings is ignored on a url source: only that file headers are sent', async () => {
+    const layer = sourceLayer(
+      { headers: { Authorization: 'Bearer fixed' }, headersHelper: helper },
+      'add-dir',
+    );
+    const fakes = portsWith([]);
+    const result = await resolveHeaders(
+      layer,
+      setting({ folderTrusted: true }),
+      fakes.ports,
+      signal,
+    );
+    expect(headersOf(result)).toEqual({ authorization: 'Bearer fixed' });
+    expect(fakes.runner.calls).toEqual([]);
+  });
+
+  test('a command in project settings of an untrusted folder does not run: its headers are sent', async () => {
+    const layer = sourceLayer({ headers: { 'X-Team': 'infra' }, headersHelper: helper }, 'project');
+    const fakes = portsWith([]);
+    const result = await resolveHeaders(layer, setting(), fakes.ports, signal);
+    expect(headersOf(result)).toEqual({ 'x-team': 'infra' });
+    expect(fakes.runner.calls).toEqual([]);
+  });
+
+  test('a managed-settings block skips the command and sends the headers, unless managed settings declare the marketplace', async () => {
+    const layer = sourceLayer({ headers: { 'X-Team': 'infra' }, headersHelper: helper });
+    const blocked = portsWith([]);
+    const skipped = await resolveHeaders(
+      layer,
+      setting({ allowManagedHooksOnly: true }),
+      blocked.ports,
+      signal,
+    );
+    expect(headersOf(skipped)).toEqual({ 'x-team': 'infra' });
+    expect(blocked.runner.calls).toEqual([]);
+    const declared = portsWith([prints({ Authorization: 'Bearer minted' })]);
+    const ran = await resolveHeaders(
+      layer,
+      setting({ allowManagedHooksOnly: true, managedMarketplace: true }),
+      declared.ports,
+      signal,
+    );
+    expect(headersOf(ran)).toEqual({ authorization: 'Bearer minted', 'x-team': 'infra' });
+  });
+
   test('a failing command means the fetch does not happen', async () => {
     const { result } = download({ marketplace: sourceLayer({ headersHelper: helper }) }, [
       { exitCode: 1 },

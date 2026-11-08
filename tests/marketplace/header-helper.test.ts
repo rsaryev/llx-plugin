@@ -49,6 +49,12 @@ spec(['marketplace.entry.headersHelper', 'marketplace.sourceField.headersHelper'
     expect(fakes.runner.calls[0]?.cwd).toBe('/etc/claude');
   });
 
+  test('an empty CLAUDE_CONFIG_DIR is unset: the working directory is ~/.claude (judgment)', async () => {
+    const fakes = portsWith([prints({})], { env: { CLAUDE_CONFIG_DIR: '' } });
+    await runHeadersHelper(layer(), fakes.ports, setting(), signal);
+    expect(fakes.runner.calls[0]?.cwd).toBe('/home/user/.claude');
+  });
+
   test('on Windows the command goes through cmd.exe', async () => {
     const { result, runner } = run([prints({})], layer(), setting({ platform: 'windows' }));
     await result;
@@ -220,6 +226,16 @@ spec('marketplace.sourceField.headersHelper', () => {
     const { second, runs } = await twice(61_000);
     expect(runs).toBe(2);
     expect(headersOf(second)).toEqual({ authorization: 'Bearer 2' });
+  });
+
+  test('concurrent downloads on one origin share the run in flight (judgment)', async () => {
+    const fakes = portsWith([prints({ A: 'b' })]);
+    const key = layer();
+    const remember = () =>
+      fakes.ports.cache.remember(key, () => runHeadersHelper(key, fakes.ports, setting(), signal));
+    const [first, second] = await Promise.all([remember(), remember()]);
+    expect(fakes.runner.calls).toHaveLength(1);
+    expect(headersOf(second)).toEqual(headersOf(first));
   });
 
   test('a failed run is not reused', async () => {

@@ -37,10 +37,10 @@ const problem = (message: string): PluginIssue => error('headersHelper', message
 
 /** "The working directory is the configuration directory, which is `~/.claude` or `CLAUDE_CONFIG_DIR`." */
 function configDirectory(ports: HeadersHelperPorts): string {
-  return (
-    ports.environment.get('CLAUDE_CONFIG_DIR') ??
-    ports.locations.joinPath(ports.locations.homeDir(), '.claude')
-  );
+  const configured = ports.environment.get('CLAUDE_CONFIG_DIR');
+  return configured !== undefined && configured !== ''
+    ? configured
+    : ports.locations.joinPath(ports.locations.homeDir(), '.claude');
 }
 
 function runIssue(result: CommandResult): PluginIssue | undefined {
@@ -115,16 +115,33 @@ const keyOf = (layer: HeaderLayer): string =>
 
 /** A cache of command runs over the clock (`Clock.now`); keep one per host session. */
 export function helperCache(clock: Clock): HelperCache {
-  const kept = new Map<string, { readonly at: number; readonly found: ResolvedHeaders }>();
+  const kept = new Map<
+    string,
+    { readonly at: number; readonly found: Promise<ResolvedHeaders | PluginIssue> }
+  >();
   return {
-    async remember(layer, produce) {
+    remember(layer, produce) {
       if (!REUSED[layer.place]) return produce();
       const key = keyOf(layer);
       const found = kept.get(key);
       if (found !== undefined && clock.now() - found.at < CACHE_MS) return found.found;
-      const produced = await produce();
-      if (!('severity' in produced)) kept.set(key, { at: clock.now(), found: produced });
-      return produced;
+      // A run still in flight is shared too: concurrent downloads on one origin run the command once.
+      const run = produce();
+      const own = { at: clock.now(), found: run };
+      kept.set(key, own);
+      const forgetFailure = (produced: ResolvedHeaders | PluginIssue): void => {
+        if ('severity' in produced && kept.get(key) === own) kept.delete(key);
+      };
+      return run.then(
+        (produced) => {
+          forgetFailure(produced);
+          return produced;
+        },
+        (reason: unknown) => {
+          if (kept.get(key) === own) kept.delete(key);
+          return Promise.reject(reason);
+        },
+      );
     },
   };
 }

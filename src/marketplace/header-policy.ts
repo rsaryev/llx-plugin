@@ -40,6 +40,16 @@ export const PLUGIN_OPERATIONS = [
 ] as const;
 export type PluginOperation = (typeof PLUGIN_OPERATIONS)[number];
 
+/**
+ * The command and archive URL the user was shown and accepted. `queryCounts` is set for the VS Code
+ * extension and `--accept-command`, where a change in the query string is a change too.
+ */
+export interface AcceptedCommand {
+  readonly command: string;
+  readonly archiveUrl: string;
+  readonly queryCounts?: boolean;
+}
+
 /** One `headers`/`headersHelper` declaration, with what the policy needs to know about it. */
 export interface HeaderLayer {
   readonly place: HeaderPlace;
@@ -50,9 +60,11 @@ export interface HeaderLayer {
   readonly variables: Readonly<Record<string, string>>;
   /** A `url` source: the marketplace URL the command is declared for. */
   readonly marketplaceUrl?: string;
-  /** An entry: what the user is doing, and whether they accepted the command it showed. */
+  /** An entry: the archive URL its command runs for. */
+  readonly archiveUrl?: string;
+  /** An entry: what the user is doing, and the command and archive URL they accepted. */
   readonly operation?: PluginOperation;
-  readonly accepted?: boolean;
+  readonly accepted?: AcceptedCommand;
 }
 
 /** What the host knows when it asks. */
@@ -209,7 +221,26 @@ const OPERATION_REASONS: { readonly [O in PluginOperation]: HelperReason | undef
 const operationCheck: Check = (layer) =>
   layer.operation === undefined ? 'not-accepted' : OPERATION_REASONS[layer.operation];
 
-const acceptedCheck: Check = (layer) => (layer.accepted === true ? undefined : 'not-accepted');
+/** The URL without its query string (and what follows it), or the text as written when it is no URL. */
+const withoutQuery = (url: string): string => {
+  try {
+    const parsed = new URL(url);
+    parsed.search = '';
+    return parsed.href;
+  } catch {
+    return url;
+  }
+};
+
+/** "Claude Code runs only the command it showed, for the archive URL it showed." */
+const acceptedCheck: Check = (layer) => {
+  const { accepted } = layer;
+  if (accepted === undefined || accepted.command !== layer.headersHelper) return 'not-accepted';
+  const [shown, now] = [accepted.archiveUrl, layer.archiveUrl ?? ''];
+  const same =
+    accepted.queryCounts === true ? shown === now : withoutQuery(shown) === withoutQuery(now);
+  return same ? undefined : 'not-accepted';
+};
 
 /**
  * "disableCommandPluginSources to true blocks headersHelper commands, and allowManagedHooksOnly

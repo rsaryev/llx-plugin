@@ -7,7 +7,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { helperAllowed } from '../../src/marketplace/header-policy.ts';
-import { layerOfEntry, setting, sourceLayer } from '../support/marketplace-headers.ts';
+import { ARCHIVE_URL, layerOfEntry, setting, sourceLayer } from '../support/marketplace-headers.ts';
 import { spec } from '../support/spec.ts';
 
 const helper = './mint.sh';
@@ -34,15 +34,13 @@ spec('marketplace.sourceField.headersHelper', () => {
   });
 
   test('project settings run it only after the folder is trusted', () => {
-    for (const origin of ['project'] as const) {
-      const layer = sourceLayer({ headersHelper: helper }, origin);
-      expect(helperAllowed(layer, setting())).toMatchObject({
-        allowed: false,
-        reason: 'folder-not-trusted',
-        effect: 'skip-helper',
-      });
-      expect(helperAllowed(layer, setting({ folderTrusted: true }))).toEqual({ allowed: true });
-    }
+    const layer = sourceLayer({ headersHelper: helper }, 'project');
+    expect(helperAllowed(layer, setting())).toMatchObject({
+      allowed: false,
+      reason: 'folder-not-trusted',
+      effect: 'skip-helper',
+    });
+    expect(helperAllowed(layer, setting({ folderTrusted: true }))).toEqual({ allowed: true });
   });
 
   test('server-managed settings run it only after the user approves them', () => {
@@ -116,13 +114,50 @@ spec('marketplace.entry.headersHelper', () => {
 
   test('without the user accepting the command it does not run and the archive is not downloaded', () => {
     const verdict = helperAllowed(
-      layerOfEntry({ headersHelper: helper }, { accepted: false }),
+      layerOfEntry({ headersHelper: helper }, { accepted: undefined }),
       setting(),
     );
     expect(verdict).toMatchObject({
       allowed: false,
       reason: 'not-accepted',
       effect: 'refuse-download',
+    });
+  });
+
+  test('only the command and archive URL the user was shown run: a changed command or path refuses', () => {
+    const changedCommand = layerOfEntry(
+      { headersHelper: helper },
+      { accepted: { command: '/opt/bin/other.sh', archiveUrl: ARCHIVE_URL } },
+    );
+    const changedPath = layerOfEntry(
+      { headersHelper: helper },
+      {
+        accepted: {
+          command: helper,
+          archiveUrl: 'https://plugins.example.com/p/formatter-1.0.0.zip',
+        },
+      },
+    );
+    for (const layer of [changedCommand, changedPath]) {
+      expect(helperAllowed(layer, setting())).toMatchObject({
+        allowed: false,
+        reason: 'not-accepted',
+        effect: 'refuse-download',
+      });
+    }
+  });
+
+  test('a change in the query string alone does not count, unless the host says it does', () => {
+    const accepted = { command: helper, archiveUrl: `${ARCHIVE_URL}?sig=old` };
+    const drifted = layerOfEntry({ headersHelper: helper }, { accepted });
+    expect(helperAllowed(drifted, setting())).toEqual({ allowed: true });
+    const strict = layerOfEntry(
+      { headersHelper: helper },
+      { accepted: { ...accepted, queryCounts: true } },
+    );
+    expect(helperAllowed(strict, setting())).toMatchObject({
+      allowed: false,
+      reason: 'not-accepted',
     });
   });
 
@@ -175,7 +210,7 @@ describe('where a refused command leaves the fixed headers (judgment)', () => {
         setting({ disableCommandPluginSources: true }),
       ),
       helperAllowed(sourceLayer({ headersHelper: helper }, 'project'), setting()),
-      helperAllowed(layerOfEntry({ headersHelper: helper }, { accepted: false }), setting()),
+      helperAllowed(layerOfEntry({ headersHelper: helper }, { accepted: undefined }), setting()),
     ].map((verdict) => ('effect' in verdict ? verdict.effect : 'ran'));
     expect(effects).toEqual(['skip-helper', 'skip-helper', 'refuse-download']);
   });
