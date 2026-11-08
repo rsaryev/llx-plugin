@@ -41,6 +41,8 @@ export {
 export type * from './protocol/official-tools.ts';
 export * from './foundation/index.ts';
 export * from './mods/index.ts';
+// The mods test kit and its fakes; the host's `claude-code/testing` module is bound to `createTestKit()`.
+export * as modsTesting from './testing/mods/index.ts';
 export {
   AGENT_STATUSES,
   MODS_API,

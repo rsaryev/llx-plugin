@@ -2,6 +2,7 @@ import type { JsonObject } from '../foundation/index.ts';
 import type { PluginIssue } from '../format/issues.ts';
 import type { PluginFiles } from '../ports/index.ts';
 import type { ApiEventName, HookFailure, HookOrigin, ModMatcher } from '../protocol/mods-events.ts';
+import type { ModNext, ModsApi } from './types.ts';
 
 /**
  * The ports a host implements for mods, beyond the shared ones (`Clock`, `PluginFiles`,
@@ -22,6 +23,16 @@ export interface HookCall {
   readonly signal: AbortSignal;
   readonly origin: HookOrigin;
   budget(): { readonly ms: number; readonly remainingMs: number };
+  /**
+   * For a runtime that evaluates in this process (the test kit's `inlineRuntime`): the mod's own `$`
+   * and the chain's own `next`, so the hook runs exactly as the chain calls it and keeps the
+   * synchronous members (`$.ui.resolve`). A runtime in another isolate marshals through `api` and
+   * `next` instead and ignores this.
+   */
+  readonly direct?: {
+    readonly $: ModsApi;
+    readonly next: ModNext<unknown, Promise<unknown> | AsyncGenerator<unknown, unknown>>;
+  };
 }
 
 /** One hook a hooks module registered, as the runtime hands it back: a stand-in the kit can call. */

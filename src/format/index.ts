@@ -23,3 +23,12 @@ export {
   type ListOptions,
 } from './frontmatter-values.ts';
 export { readHooksFile, readHooksSettings, type HooksRead } from './hooks-settings.ts';
+export {
+  DEFAULT_TYPES_PATH,
+  HOOKS_MODULE_EXTENSIONS,
+  isHooksModuleName,
+  isModTestFile,
+  readHooksJsonModules,
+  resolveTypesPath,
+  type HooksModules,
+} from './mod-files.ts';

@@ -252,7 +252,7 @@ out of the rules before it in the same source and list; `evaluateRules` applies 
 `Glob(...)`, `Grep(...)` and `NotebookEdit(...)` rules with a path never match; write `Edit(...)` or
 `Read(...)`. A host asks `readsNetworkPath` before it trusts any allow rule, hook or classifier.
 
-## Mods (in progress: the hook chain, the events, the API and the interface)
+## Mods (in progress: the hook chain, the events, the API, the interface, loading and the test kit)
 
 A mod is a plugin whose hooks module registers event handlers (plugins/mods/overview.md). The kit
 never runs a module's source: the host evaluates it in an isolate it chooses through the
@@ -286,7 +286,14 @@ const result = await chain.dispatch('tool.call', event, {
 | `defaultElementTable(surface)`, `treeProblem`, `sizeProblem`, `foldRender`, `renderEvent`, `decideSite` | done | the 12 elements an app draws, why a tree is not valid for a site and app, which size limit refuses it, what a site shows once the chain settled (tree, Claude Code's own drawing, refused), and the `ui.render` event for a site |
 | `routeControl`, `hotkeyTable`, `digitButton`, `actionButtons`, `collectControls` | done | a press, typing or a pick routed to a control by its key through `ui.press`, `ui.input`, `ui.select` before its callback; hotkeys (later duplicate wins, none in VS Code or a collapsed band), the band's digit hotkey, `action` bindings |
 | `placePane`, `createPaneRegistry`, `parseOpen`, `createRedrawGate`, `createToastBoard` | done | where a pane appears (any width for the user, 144 or 110 columns for a mod), `ui.close` origins, the `ui.open` fields, redraws throttled and coalesced, toasts by renderer |
-| Loading, test kit                     | planned | the other parts of mods                                                               |
+| `createModsHost(options)`             | done    | the mods runtime of one session: `load(plugins)` decides which hooks modules load and in which tier (policy), runs each through manifest, `hooks.json`, compile, scan, options, `plugin.register` and `runtime.load`, and returns every refusal as a line (`hooks module <id> not loaded: <reason>`, `<mod>: refused by <mod>: <reason>`); `reload()` for `/reload-plugins`; `fire`, `fireStream`, `registerBuiltIn`, `active()` |
+| `decideModLoad`, `orderMods`, `hooksModulesOff`, `parsePluginDirs`, `sideloadRefusal`, `modOptions` | done | policy over plain settings data: `disableAllHooks`, `allowManagedHooksOnly`, `disableSideloadFlags`, `prependPlugins`, `appendPlugins`, `pluginConfigs`, `CLAUDE_CODE_PLUGIN_DIRS` and `_DIR_WATCH`, the built-in guard `sec-default@builtin` and its two options |
+| `scanHooksModule(source, file, options)`, `validateMod(input, options)`, `activeModsLine(mods)` | done | the static scan (events handled, `$` calls, env and state use, the 2,000-scope limit) behind `plugin.register`'s `e.uses` and `claude plugin validate`; the `/plugin` line `1 mod active · first-mod` |
+| `readHooksJsonModules(raw)`, `isHooksModuleName`, `isModTestFile`, `resolveTypesPath` | done | `hooks/hooks.json` `modules`, the hooks module and `.test.ts` file names, the `types/index.d.ts` path |
+| `modsTesting.*` (`runModTests`, `createTestKit`, `inlineTests`, `inlineRuntime`, `fakePorts`, `mock`, `expect`) | done | `claude plugin test [directory]` and the `claude-code/testing` module: the host binds `claude-code/testing` to `createTestKit()` per test file and evaluates the compiled file through `ModTestRuntime.loadTests`; the kit builds each test's world (fake ports, stubs, mock clock), runs it under the 5 s limit and prints what Bun's runner prints |
+
+`ModRuntime` and `ModTestRuntime` are the only places a hooks module or a test file runs. `HookCall.direct`
+lets a runtime that evaluates in this process (the kit's `inlineRuntime`) call a hook with the mod's own `$` and the chain's own `next`.
 
 `register` takes the tier `prepend`, `user`, `append` or `builtin` (never `core`, which is Claude Code's own
 behaviour); the built-in guard `sec-default@builtin` registers first in `prepend`. It refuses a whole module (and adds none of its hooks) when `on("x")` is registered twice
