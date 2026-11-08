@@ -1,4 +1,6 @@
 import type { PermissionBehavior } from '../protocol/official.ts';
+import { matchBashRule } from './bash/bash.ts';
+import { matchPowerShellRule } from './bash/powershell.ts';
 import type { RuleFormatId } from './specifier-formats.ts';
 import type { MatchContext, PermissionRule, PreparedCall } from './types.ts';
 
@@ -31,8 +33,8 @@ const COVERS_WHEN_UNWRITTEN: { readonly [B in PermissionBehavior]: boolean } = {
 const failsClosed: SpecifierMatcher = (rule) => COVERS_WHEN_UNWRITTEN[rule.behavior];
 
 export const SPECIFIER_MATCHERS: SpecifierMatchers = {
-  command: failsClosed,
-  'powershell-command': failsClosed,
+  command: matchBashRule,
+  'powershell-command': matchPowerShellRule,
   'read-path': failsClosed,
   'edit-path': failsClosed,
   'skill-name': failsClosed,

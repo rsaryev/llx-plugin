@@ -1,6 +1,7 @@
 import { warning, type PluginIssue } from '../format/issues.ts';
 import type { PermissionBehavior } from '../protocol/official.ts';
 import { REMOVED_TOOLS } from '../protocol/tool-names.ts';
+import { wildcardBeforeSubcommand } from './bash/wildcard-warning.ts';
 import type { PermissionRule } from './types.ts';
 
 type RuleCheck = (rule: PermissionRule, knownTools: ReadonlySet<string>) => readonly PluginIssue[];
@@ -38,7 +39,7 @@ const matchesNoTool: RuleCheck = (rule, knownTools) => {
 };
 
 /** Every check of a rule that is a startup warning rather than a reason to skip it. */
-const RULE_CHECKS: readonly RuleCheck[] = [matchesNoTool];
+const RULE_CHECKS: readonly RuleCheck[] = [matchesNoTool, wildcardBeforeSubcommand];
 
 /** The startup warnings of a rule list (errors.md, "Configuration warnings"). */
 export function ruleIssues(

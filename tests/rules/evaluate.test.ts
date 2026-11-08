@@ -146,11 +146,9 @@ describe('matchRule dispatches a specifier to the matcher of its tool format', (
 });
 
 describe('the default matchers fail closed (spec/judgments.md)', () => {
-  // The matchers of the Bash, path, domain, skill and agent formats are written by their own
-  // sub-packages. Until they exist a deny or ask rule must not silently let a call through.
+  // The matchers of the path, domain, skill and agent formats are written by their own
+  // sub-packages (the command formats' are in src/rules/bash). Until they exist a deny or ask rule must not silently let a call through.
   const cases = [
-    ['Bash(rm *)', 'Bash', { command: 'rm -rf /' }],
-    ['PowerShell(Remove-Item *)', 'PowerShell', { command: 'Remove-Item x' }],
     ['Read(./.env)', 'Read', { file_path: '/work/app/.env' }],
     ['Edit(src/**)', 'Edit', { file_path: '/work/app/src/a.ts' }],
     ['WebFetch(domain:example.com)', 'WebFetch', { url: 'https://example.com' }],
@@ -177,8 +175,8 @@ describe('the default matchers fail closed (spec/judgments.md)', () => {
   });
 
   test('a rule for another tool is still not covered', () => {
-    expect(verdict([parsed('Bash(rm *)', 'deny')], 'Read', { file_path: '/a' }).behavior).toBe(
-      undefined,
-    );
+    expect(
+      verdict([parsed('Read(./.env)', 'deny')], 'Bash', { command: 'cat .env' }).behavior,
+    ).toBe(undefined);
   });
 });

@@ -26,6 +26,14 @@
   input-parameter rules, `evaluateRules` in deny, ask, allow order, and `ruleIssues` for the
   matches-no-tool warning. `PERMISSION_MODES`, `PERMISSION_BEHAVIORS`, `normalizePermissionMode`
   (`manual` is `default`), `DOCUMENTED_TOOLS`, and the SDK's tool input and output types.
+- Bash and PowerShell rules: the wildcard patterns of permissions.md (the `*` anywhere, the bare
+  command before a trailing ` *`, the `:*` suffix), compound commands (every subcommand for an
+  allow rule, any for deny and ask, including `$()`, backticks, subshells and loop bodies),
+  the fixed wrapper list and safe environment assignments, exec wrappers and `find` actions that
+  a prefix rule cannot approve, PowerShell aliases and case-insensitive matching, the
+  wildcard-before-subcommand startup warning, and `evaluateIf` for the `if` field of hooks.
+  `splitCommand`, `stripWrappers`, `matchBashPattern` and `requiresPromptDespitePrefixRule` are
+  exported.
 
 ### Fixed
 
