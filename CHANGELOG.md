@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- Format: Claude Code's own leniency about frontmatter and hooks, found by running `claude plugin
+  validate` on real plugins. A block plain YAML refuses is retried with the value of each top-level
+  line quoted when it holds a character plain YAML cannot (`description: Does X: then Y`,
+  `argument-hint: [a] [b]`, `tools: *`), a duplicate key loads with the later value, and plugin
+  hooks drop an entry they cannot read with a warning (an error under `PreToolUse` and
+  `PermissionRequest`, where a missing guard fails the file) instead of failing the whole file;
+  `settings.json` hooks keep failing whole, as settings.md says.
 - Agents: one subagent tool resolution. `resolveCatalogSubagentTools` is gone; `resolveSubagentTools`
   keeps what it did that the other did not (`ExitWorktree` withheld from a subagent in its own working
   directory, the `Glob` and `Grep` a `tools` list names without `Bash`), and the `tools.tool.*` tests

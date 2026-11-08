@@ -102,7 +102,7 @@ describe.each(FILES)('files Claude Code skips: %s agents directory', (source) =>
 
   spec(['agents.frontmatter.name', 'agents.frontmatter.description'], () => {
     test('YAML that does not parse: no fields are read, the file is skipped, the error is kept', () => {
-      const result = readAgent(file('name: reviewer\ndescription: [unclosed'), at(source));
+      const result = readAgent(file('name: reviewer\ndescription: "unclosed'), at(source));
       expect(result).toMatchObject({ outcome: 'skipped', reason: 'invalid', agent: undefined });
       expect(result.issues).toHaveLength(1);
       expect(result.issues[0]).toMatchObject({ severity: 'error', path: 'agents/reviewer.md' });
@@ -179,7 +179,7 @@ spec(['agents.frontmatter.name', 'agents.frontmatter.description'], () => {
 
     test('frontmatter that does not parse: the agent still loads, named after the file', () => {
       const result = readAgent(
-        file('name: reviewer\ndescription: [unclosed\nmodel: sonnet', 'Prompt body.\n'),
+        file('name: reviewer\ndescription: "unclosed\nmodel: sonnet', 'Prompt body.\n'),
         plugin('review/security.md', 'agents/review/security.md'),
       );
       const agent = loaded(result);

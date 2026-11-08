@@ -40,7 +40,7 @@ describe('parseFrontmatter', () => {
   });
 
   test('YAML that does not parse: no fields, the body is kept, a problem is named', () => {
-    const result = parseFrontmatter('---\nname: [unclosed\n---\nkept');
+    const result = parseFrontmatter('---\nname: "unclosed\n---\nkept');
     expect(result.state).toBe('invalid-yaml');
     expect(result.present).toBe(true);
     expect(result.fields).toEqual({});
@@ -49,14 +49,12 @@ describe('parseFrontmatter', () => {
   });
 
   test('a YAML problem is located in the file: the opening marker is line 1', () => {
-    const lines = ['---', 'a: 1', 'b: c: d', '---', ''];
+    const lines = ['---', 'a: 1', 'b: "c', '---', ''];
     for (const text of [lines.join('\n'), lines.join('\r\n'), `\uFEFF${lines.join('\n')}`]) {
       const result = parseFrontmatter(text);
-      expect(result.problem).toBe('Nested mappings are not allowed in compact mappings');
-      expect([result.line, result.column]).toEqual([3, 4]);
+      expect(result.problem).toBe('Missing closing "quote');
+      expect([result.line, result.column]).toEqual([3, 6]);
     }
-    const duplicate = parseFrontmatter('---\na: 1\na: 2\n---\n');
-    expect([duplicate.line, duplicate.column]).toEqual([3, 1]);
   });
 
   test('a list or scalar block points at the first line of the block; ok and none have no location', () => {
@@ -66,8 +64,9 @@ describe('parseFrontmatter', () => {
     expect(parseFrontmatter('plain').line).toBeUndefined();
   });
 
-  test('a duplicate key does not parse', () => {
-    expect(parseFrontmatter('---\na: 1\na: 2\n---\n').state).toBe('invalid-yaml');
+  test('a duplicate key loads and the later value wins (oracle 2.1.319)', () => {
+    const result = parseFrontmatter('---\na: 1\na: 2\n---\n');
+    expect([result.state, result.fields]).toEqual(['ok', { a: 2 }]);
   });
 
   test('a list or a scalar is not a table', () => {

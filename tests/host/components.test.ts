@@ -130,7 +130,7 @@ describe('host.issues', () => {
   test('carries what the format readers found wrong in an enabled plugin', async () => {
     const plugin = await loaded({
       '.claude-plugin/plugin.json': JSON.stringify({ name: 'sloppy' }),
-      'agents/odd.md': '---\ndescription: [unclosed\n---\nBody',
+      'agents/odd.md': '---\ndescription: "unclosed\n---\nBody',
     });
     const { host } = await hostOf({ plugins: [{ id: 'sloppy@acme-tools', plugin }] });
     expect(host.issues.map((found) => found.path)).toEqual(['agents/odd.md']);

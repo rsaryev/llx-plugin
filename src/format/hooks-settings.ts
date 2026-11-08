@@ -63,6 +63,33 @@ function matcherIssues(matcher: unknown, path: string, ignored: boolean): Plugin
 
 const GROUP_KEYS = new Set(['matcher', 'hooks']);
 
+/** How a hooks object treats an entry it cannot read. */
+export interface HooksReadOptions {
+  /**
+   * Drop the entry with a warning instead of failing the whole object, except under the guarded
+   * events: a guard that silently went missing could leave what it protected open. Plugin hooks
+   * load this way (oracle 2.1.319, docs/SPEC.md "Sources of truth"); `settings.json` hooks do not
+   * (settings.md: a managed event that is not a list ignores the whole field).
+   */
+  readonly lenient?: boolean;
+}
+
+const GUARDED_EVENTS: ReadonlySet<string> = new Set(['PreToolUse', 'PermissionRequest']);
+
+/** What an entry's problems amount to under its event: the entry is dropped, with a warning unless it guards. */
+function entryIssues(
+  event: string,
+  issues: readonly PluginIssue[],
+  options: HooksReadOptions,
+): PluginIssue[] {
+  if (options.lenient !== true || GUARDED_EVENTS.has(event)) return [...issues];
+  return issues.map((found) =>
+    found.severity === 'error'
+      ? warning(found.path, `${found.message}; the entry is ignored`)
+      : found,
+  );
+}
+
 function readGroup(
   raw: unknown,
   path: string,
@@ -70,6 +97,8 @@ function readGroup(
 ): { group?: HookMatcherGroup; issues: PluginIssue[] } {
   if (!isRecord(raw)) return { issues: [error(path, 'A matcher group must be an object')] };
   const issues = matcherIssues(raw.matcher, `${path}.matcher`, ignoresMatcher);
+  // A group whose matcher cannot be read is dropped: loaded without it, it would match everything.
+  if (blocksLoading(issues)) return { issues };
   for (const key of Object.keys(raw).filter((found) => !GROUP_KEYS.has(found))) {
     issues.push(warning(`${path}.${key}`, `Unknown field "${key}" is ignored`));
   }
@@ -91,30 +120,36 @@ function readGroup(
 function readEvent(
   event: string,
   raw: unknown,
+  options: HooksReadOptions,
 ): { groups?: HookMatcherGroup[]; issues: PluginIssue[] } {
   const path = `hooks.${event}`;
   // Judgment (spec/judgments.md): an unknown event name is kept and warned about, not an error.
   const issues = EVENTS.has(event) ? [] : [warning(path, `"${event}" is not a hook event`)];
   if (!Array.isArray(raw)) {
-    return {
-      issues: [...issues, error(path, `Invalid "${event}": expected an array of matcher groups`)],
-    };
+    const invalid = error(path, `Invalid "${event}": expected an array of matcher groups`);
+    return { issues: [...issues, ...entryIssues(event, [invalid], options)] };
   }
   const ignoresMatcher = NO_MATCHER_EVENTS.has(event);
   const read = raw.map((group, index) => readGroup(group, `${path}[${index}]`, ignoresMatcher));
-  issues.push(...read.flatMap((one) => one.issues));
+  issues.push(
+    ...entryIssues(
+      event,
+      read.flatMap((one) => one.issues),
+      options,
+    ),
+  );
   return { groups: read.flatMap((one) => (one.group === undefined ? [] : [one.group])), issues };
 }
 
 /** Reads an event map: the `hooks` object of `settings.json`, or an inline `hooks` object. */
-export function readHooksSettings(raw: unknown): HooksRead {
+export function readHooksSettings(raw: unknown, options: HooksReadOptions = {}): HooksRead {
   if (!isRecord(raw)) {
     return { hooks: {}, issues: [error('hooks', 'The hooks configuration must be an object')] };
   }
   const entries: [string, HookMatcherGroup[]][] = [];
   const issues: PluginIssue[] = [];
   for (const [event, value] of Object.entries(raw)) {
-    const read = readEvent(event, value);
+    const read = readEvent(event, value, options);
     issues.push(...read.issues);
     if (read.groups !== undefined) entries.push([event, read.groups]);
   }
@@ -129,7 +164,7 @@ export function readHooksSettings(raw: unknown): HooksRead {
  * Other top-level keys are ignored: `modules` belongs to the mods reader (components.md, "Hooks"),
  * and a file with `modules` alone holds no hooks.
  */
-export function readHooksFile(raw: unknown): HooksRead {
+export function readHooksFile(raw: unknown, options: HooksReadOptions = {}): HooksRead {
   if (!isRecord(raw)) {
     return { hooks: {}, issues: [error('hooks', 'The hooks file must be a JSON object')] };
   }
@@ -146,5 +181,5 @@ export function readHooksFile(raw: unknown): HooksRead {
       ],
     };
   }
-  return readHooksSettings(raw.hooks);
+  return readHooksSettings(raw.hooks, options);
 }

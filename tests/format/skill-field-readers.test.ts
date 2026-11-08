@@ -156,15 +156,14 @@ describe('argument-hint written without quotes (judgment)', () => {
     expect(messages(issues)).toEqual(['argument-hint has an item that is not text']);
   });
 
-  test('`[filename] [format]` is not YAML: the skill loads with no fields and says why', () => {
+  test('`[filename] [format]` is not YAML but loads as the text written (oracle 2.1.319)', () => {
     const { skill, issues } = readFields(
-      'argument-hint: [filename] [format]\ndescription: lost',
+      'argument-hint: [filename] [format]\ndescription: kept',
       'Body',
     );
-    expect(skill.argumentHint).toBeUndefined();
-    expect(skill.description).toBe('Body');
-    expect(issues).toHaveLength(1);
-    expect(issues[0]?.severity).toBe('warning');
+    expect(skill.argumentHint).toBe('[filename] [format]');
+    expect(skill.description).toBe('kept');
+    expect(issues).toEqual([]);
   });
 
   test('an empty list is no hint', () => {

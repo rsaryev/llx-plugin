@@ -1,4 +1,4 @@
-import { LineCounter, parseDocument } from 'yaml';
+import { LineCounter, parseDocument, type Document } from 'yaml';
 import { NOT_A_TABLE } from './frontmatter-values.ts';
 
 /**
@@ -28,6 +28,8 @@ export interface Frontmatter {
    */
   readonly line?: number;
   readonly column?: number;
+  /** What the block parsed to when `state` is `not-a-table` (a list or a single value). */
+  readonly value?: unknown;
 }
 
 interface Where {
@@ -66,6 +68,13 @@ const failed = (
   column,
 });
 
+function relaxed(yaml: string, strict: Document): Document {
+  const quoted = quotePlainScalars(yaml);
+  if (quoted === yaml) return strict;
+  const retry = parseDocument(quoted, { prettyErrors: false, uniqueKeys: false });
+  return retry.errors.length === 0 ? retry : strict;
+}
+
 /** The YAML text between the markers and the body after them, or `undefined` without a block. */
 function splitBlock(text: string): { yaml: string; body: string } | undefined {
   const lines = text.split('\n');
@@ -82,6 +91,32 @@ function splitBlock(text: string): { yaml: string; body: string } | undefined {
   };
 }
 
+/**
+ * Claude Code retries a block its YAML parser refuses with the value of each top-level `key: value`
+ * line quoted when it holds a character plain YAML cannot (oracle 2.1.319: `description: Does X:
+ * then Y`, `argument-hint: "<a>" [--b]`, `tools: *`, `metadata: {"a": 1}` read as the text written).
+ * What the retry does not touch stays an error: an indented line, a value already wrapped in one
+ * kind of quote (`"a" or "b"`), a value with no such character (`"a" b`), and a block scalar
+ * marker, which the retry does quote and so breaks the lines that follow it.
+ */
+const TOP_LEVEL = /^([A-Za-z_][\w-]*:[ \t]+)(\S.*)$/;
+const SPECIAL = /[{}[\]*&#!|>%@`]|: /;
+
+/** A value that opens and closes with one kind of quote: the retry takes it as quoted already. */
+const wrapped = (value: string): boolean =>
+  value.length > 1 &&
+  (value.startsWith('"') || value.startsWith("'")) &&
+  value.endsWith(value.charAt(0));
+
+function quoteRefused(line: string): string {
+  const match = TOP_LEVEL.exec(line);
+  const value = match?.[2]?.trimEnd();
+  if (!match || value === undefined || wrapped(value) || !SPECIAL.test(value)) return line;
+  return `${match[1]}'${value.replaceAll("'", "''")}'`;
+}
+
+const quotePlainScalars = (yaml: string): string => yaml.split('\n').map(quoteRefused).join('\n');
+
 function isTable(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -96,7 +131,8 @@ export function parseFrontmatter(text: string): Frontmatter {
   const block = splitBlock(source);
   if (!block) return none(text);
   const lineCounter = new LineCounter();
-  const document = parseDocument(block.yaml, { prettyErrors: false, lineCounter });
+  const strict = parseDocument(block.yaml, { prettyErrors: false, lineCounter, uniqueKeys: false });
+  const document = strict.errors.length === 0 ? strict : relaxed(block.yaml, strict);
   const [first] = document.errors;
   if (first) {
     const { line, col } = lineCounter.linePos(first.pos[0]);
@@ -107,7 +143,9 @@ export function parseFrontmatter(text: string): Frontmatter {
     if (value === null || value === undefined) {
       return { state: 'ok', present: true, fields: {}, body: block.body };
     }
-    if (!isTable(value)) return failed('not-a-table', block.body, NOT_A_TABLE);
+    if (!isTable(value)) {
+      return { ...failed('not-a-table', block.body, NOT_A_TABLE), value };
+    }
     return { state: 'ok', present: true, fields: value, body: block.body };
   } catch (thrown) {
     // `toJS` refuses an alias bomb by throwing: that is a document that does not parse.

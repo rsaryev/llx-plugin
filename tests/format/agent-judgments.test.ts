@@ -104,7 +104,7 @@ describe('judgments the docs leave open (spec/judgments.md)', () => {
   });
 
   test('a parse issue names the line of the YAML problem', () => {
-    const result = readAgent('---\nname: a\nb: c: d\n---\n', at('user'));
+    const result = readAgent('---\nname: a\nb: "c\n---\n', at('user'));
     expect(result.issues[0]?.message).toContain('line 3');
   });
 

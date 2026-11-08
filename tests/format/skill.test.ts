@@ -66,7 +66,7 @@ describe('readSkill', () => {
 
   test('YAML that does not parse: the skill loads with its body and no fields, and a warning says where', () => {
     const text =
-      '---\nname: broken\ndescription: [unclosed\nallowed-tools: Read\n---\nUse this when asked.\n';
+      '---\nname: broken\ndescription: "unclosed\nallowed-tools: Read\n---\nUse this when asked.\n';
     const { skill, issues } = readSkill('skills/broken/SKILL.md', text, PROJECT_LAYOUT);
     expect(skill.body).toBe('Use this when asked.\n');
     expect(skill.name).toBe('my-skill');
@@ -80,7 +80,7 @@ describe('readSkill', () => {
   });
 
   test('with no fields set the description is the first body line, as for an omitted one (judgment)', () => {
-    const text = '---\ndescription: [unclosed\n---\nUse this when asked.\n';
+    const text = '---\ndescription: "unclosed\n---\nUse this when asked.\n';
     expect(readSkill('s/SKILL.md', text, PROJECT_LAYOUT).skill.description).toBe(
       'Use this when asked.',
     );

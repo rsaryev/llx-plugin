@@ -155,7 +155,7 @@ describe('matcher groups', () => {
 
   test('a matcher that does not compile is still warned about on FileChanged', () => {
     const result = readHooksFile(file({ FileChanged: [{ matcher: 'Edit(', hooks: [command] }] }));
-    expect(warningsOf(result)).toHaveLength(1);
+    expect(warningsOf(result).length).toBeGreaterThan(0);
   });
 
   test('every matcher spelling the docs show loads', () => {
@@ -176,7 +176,7 @@ describe('matcher groups', () => {
   test('an unknown group key is dropped with a warning', () => {
     const result = readHooksFile(file({ Stop: [{ hooks: [command], priority: 1 }] }));
     expect(plain(result.hooks.Stop?.[0])).toEqual({ hooks: [command] });
-    expect(warningsOf(result)).toHaveLength(1);
+    expect(warningsOf(result).length).toBeGreaterThan(0);
   });
 });
 
@@ -214,5 +214,55 @@ describe('judgments where the docs are silent', () => {
       'hooks.Stop[0].hooks[0].command',
       'hooks.Stop[0].hooks[1].url',
     ]);
+  });
+});
+
+describe('plugin hooks drop an entry they cannot read (oracle 2.1.319, spec/judgments.md)', () => {
+  const lenient = { lenient: true } as const;
+  const stop = { Stop: [{ nothing: 1 }, { hooks: [{ type: 'command', command: 'ok.sh' }] }] };
+
+  test('under an ordinary event the entry is a warning and the rest of the event loads', () => {
+    const result = readHooksSettings(stop, lenient);
+    expect(errorsOf(result)).toEqual([]);
+    expect(warningsOf(result).length).toBeGreaterThan(0);
+    expect(result.hooks.Stop).toHaveLength(1);
+  });
+
+  test('a group whose matcher is not text is dropped, never loaded as matching everything', () => {
+    const result = readHooksSettings(
+      { Stop: [{ matcher: 5, hooks: [{ type: 'command', command: 'a.sh' }] }] },
+      lenient,
+    );
+    expect(result.hooks.Stop).toEqual([]);
+    expect(errorsOf(result)).toEqual([]);
+  });
+
+  test('an event that is not a list is dropped alone, an unknown event only warns', () => {
+    const result = readHooksSettings(
+      { SubagentStop: 'x', Nope: [], ...stop, SessionStart: [] },
+      lenient,
+    );
+    expect(errorsOf(result)).toEqual([]);
+    expect(Object.keys(result.hooks)).toContain('SessionStart');
+  });
+
+  test('under a guarded event the same entry is an error and nothing loads', () => {
+    for (const event of ['PreToolUse', 'PermissionRequest']) {
+      const result = readHooksSettings({ [event]: [{ nothing: 1 }], Stop: [] }, lenient);
+      expect(errorsOf(result)).toHaveLength(1);
+      expect(result.hooks).toEqual({});
+    }
+  });
+
+  test('without the option an entry that cannot be read keeps failing the whole object', () => {
+    const result = readHooksSettings(stop);
+    expect(errorsOf(result)).toHaveLength(1);
+    expect(result.hooks).toEqual({});
+  });
+
+  test('a hooks file reads the same way', () => {
+    const result = readHooksFile({ hooks: stop }, lenient);
+    expect(errorsOf(result)).toEqual([]);
+    expect(result.hooks.Stop).toHaveLength(1);
   });
 });

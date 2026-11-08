@@ -65,7 +65,7 @@ spec('outputStyles.frontmatter.name', () => {
   });
 
   test('YAML that does not parse: the style still loads under its file name with no fields set', () => {
-    const text = '---\nname: [unclosed\nkeep-coding-instructions: true\n---\nStay formal.';
+    const text = '---\nname: "unclosed\nkeep-coding-instructions: true\n---\nStay formal.';
     const { style } = readOutputStyle('output-styles/formal.md', text, { plugin: 'p' });
     expect(style.name).toBe('formal');
     expect(style.id).toBe('p:formal');
@@ -137,12 +137,12 @@ spec('outputStyles.frontmatter.force-for-plugin', () => {
 
 describe('judgments (spec/judgments.md)', () => {
   test('a YAML error is a warning that names the file, the line and the parse error', () => {
-    const { issues } = readOutputStyle('output-styles/bad.md', '---\na: 1\nb: c: d\n---\nB');
+    const { issues } = readOutputStyle('output-styles/bad.md', '---\na: 1\nb: "c\n---\nB');
     expect(issues).toHaveLength(1);
     expect(issues[0]?.severity).toBe('warning');
     expect(issues[0]?.path).toBe('output-styles/bad.md');
     expect(issues[0]?.message).toContain('line 3');
-    expect(issues[0]?.message).toContain('Nested mappings are not allowed');
+    expect(issues[0]?.message).toContain('Missing closing "quote');
   });
 
   test('a flag that is not a flag is dropped with a warning and reads as the default', () => {

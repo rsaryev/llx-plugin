@@ -99,7 +99,7 @@ spec('commands.entry.source', () => {
     const read = readCommandEntry(
       'status',
       { source: './commands/status.md' },
-      '---\nmodel: [unclosed\n---\nCheck it.\n',
+      '---\nmodel: "unclosed\n---\nCheck it.\n',
       ctx,
     );
     const command = loaded(read);

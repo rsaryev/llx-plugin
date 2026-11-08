@@ -232,7 +232,7 @@ describe('readCommand: a flat command file (skills.md, "How a skill gets its com
   test('a YAML error loads the command with its body and no fields, and a warning on the file', () => {
     const read = readCommand(
       '.claude/commands/deploy.md',
-      '---\nmodel: [unclosed\n---\nDeploy.\n',
+      '---\nmodel: "unclosed\n---\nDeploy.\n',
       project('deploy.md'),
     );
     expect(loaded(read).body).toBe('Deploy.\n');

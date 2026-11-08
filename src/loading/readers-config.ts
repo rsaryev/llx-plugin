@@ -40,9 +40,12 @@ async function readInput<R extends { readonly issues: readonly PluginIssue[] }>(
 
 const noHooks: HooksRead = { hooks: {}, issues: [] };
 
+/** Plugin hooks drop an entry they cannot read and keep the rest, but for a guard (oracle 2.1.319). */
+const LENIENT = { lenient: true } as const;
+
 /** A hooks file that fails "does not load": its errors are reported as `Failed to load hooks from <path>: <reason>`. */
 const hooksFile = (raw: unknown, path: string): HooksRead => {
-  const read = readHooksFile(raw);
+  const read = readHooksFile(raw, LENIENT);
   return {
     hooks: read.hooks,
     issues: read.issues.map((found) =>
@@ -60,7 +63,7 @@ export async function readHooks(
     context.discovered.hooks.map((input) =>
       readInput(context, input, {
         file: hooksFile,
-        inline: readHooksSettings,
+        inline: (raw) => readHooksSettings(raw, LENIENT),
         empty: noHooks,
         failure: (path, reason) => `Failed to load hooks from ${path}: ${reason}`,
       }),
