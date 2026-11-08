@@ -5,8 +5,30 @@
  * precedence").
  */
 import { expect, test } from 'bun:test';
+import { DOCUMENTED_TOOLS } from '../../src/protocol/tool-names.ts';
 import { spec } from '../support/spec.ts';
-import { GITHUB, granted, MCP_NAMES, names, resolve, run, sorted } from '../support/tool-pool.ts';
+import {
+  background,
+  GITHUB,
+  granted,
+  MCP_NAMES,
+  names,
+  resolve,
+  run,
+  sorted,
+} from '../support/tool-pool.ts';
+
+/** What a foreground subagent never inherits: the first filter, `ExitPlanMode` outside plan mode, the host-granted tool. */
+const NOT_INHERITED: ReadonlySet<string> = new Set([
+  'AskUserQuestion',
+  'EndConversation',
+  'EnterPlanMode',
+  'ScheduleWakeup',
+  'WaitForMcpServers',
+  'Workflow',
+  'ExitPlanMode',
+  'SubagentHandback',
+]);
 
 spec('agents.frontmatter.disallowedTools', () => {
   test('omitted tools: the subagent inherits its pool except the listed tools', () => {
@@ -15,7 +37,14 @@ spec('agents.frontmatter.disallowedTools', () => {
     expect(tools).not.toContain('Edit');
     expect(tools).toContain('Bash');
     expect(tools).toEqual(expect.arrayContaining(MCP_NAMES));
-    expect(tools).toEqual(sorted(names({}).filter((tool) => tool !== 'Write' && tool !== 'Edit')));
+    expect(tools).toEqual(
+      sorted([
+        ...DOCUMENTED_TOOLS.filter(
+          (tool) => !NOT_INHERITED.has(tool) && !['Write', 'Edit'].includes(tool),
+        ),
+        ...MCP_NAMES,
+      ]),
+    );
   });
 
   test('a tool listed in both tools and disallowedTools is removed', () => {
@@ -25,7 +54,9 @@ spec('agents.frontmatter.disallowedTools', () => {
     ]);
   });
 
-  test('disallowedTools is applied first, then tools is resolved against what remains', () => {
+  // The documented order (disallowedTools first, then tools against the remaining pool) is only
+  // observable in the mixed-list refusal, which the docs leave open: spec/judgments.md, tool-judgments.test.ts.
+  test('a tools entry naming only denied tools adds nothing, the other entries still resolve', () => {
     const outcome = resolve({
       tools: ['mcp__github__*', 'Read'],
       disallowedTools: ['mcp__github'],
@@ -85,6 +116,35 @@ spec('agents.frontmatter.disallowedTools', () => {
     expect(outcome.ok && outcome.spawnTypes).toBe('none');
   });
 
+  test('Task is an alias of Agent in disallowedTools too', () => {
+    const outcome = resolve({ disallowedTools: ['Task'] });
+    expect(granted(outcome)).not.toContain('Agent');
+    expect(outcome.ok && outcome.spawnTypes).toBe('none');
+  });
+
+  test('Agent(type) in disallowedTools removes Agent, as the tool is removed whole', () => {
+    expect(granted(resolve({ disallowedTools: ['Agent(worker)'] }))).not.toContain('Agent');
+    expect(granted(resolve({ disallowedTools: ['Task(worker)'] }))).not.toContain('Agent');
+  });
+
+  test('on the main thread disallowedTools: Agent wins over an Agent(type) allowlist', () => {
+    const outcome = resolve(
+      { tools: ['Agent(worker, researcher)', 'Read'], disallowedTools: ['Agent'] },
+      run({ asMainThread: true }),
+    );
+    expect(granted(outcome)).toEqual(['Read']);
+    expect(outcome.ok && outcome.spawnTypes).toBe('none');
+  });
+
+  test('on the main thread the Agent(type) allowlist holds when nothing denies Agent', () => {
+    const outcome = resolve(
+      { tools: ['Agent(worker, researcher)', 'Read'] },
+      run({ asMainThread: true }),
+    );
+    expect(granted(outcome)).toEqual(['Agent', 'Read']);
+    expect(outcome.ok && outcome.spawnTypes).toEqual(['worker', 'researcher']);
+  });
+
   test('a disallowedTools that removes every tools entry does not refuse: no tools, no error', () => {
     const outcome = resolve({ tools: ['Read', 'Grep'], disallowedTools: ['Read', 'Grep'] });
     expect(granted(outcome)).toEqual([]);
@@ -95,5 +155,25 @@ spec('agents.frontmatter.disallowedTools', () => {
     expect(names({ tools: ['Read'] }, how)).toEqual(['Read', 'SubagentHandback']);
     expect(names({ disallowedTools: ['SubagentHandback'] }, how)).toContain('SubagentHandback');
     expect(names({ tools: ['Read'] })).toEqual(['Read']);
+  });
+
+  test('a tools list that names only SubagentHandback is not refused when the host grants it', () => {
+    for (const how of [run({ handback: true }), background({ handback: true })]) {
+      expect(names({ tools: ['SubagentHandback'] }, how)).toEqual(['SubagentHandback']);
+    }
+  });
+
+  test('SubagentHandback stays granted in the background, with tools omitted or listed', () => {
+    const how = background({ handback: true });
+    expect(names({}, how)).toContain('SubagentHandback');
+    expect(names({ tools: ['Read'] }, how)).toEqual(['Read', 'SubagentHandback']);
+    expect(names({ tools: ['Read', 'SubagentHandback'] }, how)).toEqual([
+      'Read',
+      'SubagentHandback',
+    ]);
+    expect(names({ tools: ['Read'], disallowedTools: ['SubagentHandback'] }, how)).toEqual([
+      'Read',
+      'SubagentHandback',
+    ]);
   });
 });

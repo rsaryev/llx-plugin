@@ -80,6 +80,12 @@
 
 ### Fixed
 
+- `resolveSubagentTools`: a `tools` list naming `SubagentHandback` is no longer refused when the
+  host grants it (`handback`), in the foreground or the background; `SubagentRun.teammate` keeps
+  the task and cron tools in a background run; `AgentToolFields` derives from the SDK's
+  `AgentDefinition`; the tests state their expected lists, cover `Task` and `Agent(type)` in
+  `disallowedTools`, and the Glob/Grep grant is recorded as the host's.
+
 - Agent fields: a quoted fraction such as `autoCompactWindow: "200000.5"` is dropped with
   `invalid autoCompactWindow` instead of truncating to 200000; `background` and `omitClaudeMd`
   accept a YAML boolean or the text `true` or `false` only (not `yes`, `on`, `1`); an empty

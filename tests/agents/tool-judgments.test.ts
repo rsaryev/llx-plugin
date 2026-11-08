@@ -5,9 +5,8 @@
 import { describe, expect, test } from 'bun:test';
 import { parseToolEntry } from '../../src/agents/tool-list.ts';
 import { resolveSubagentTools, type ToolsOutcome } from '../../src/agents/tool-resolution.ts';
-import { background, FULL_POOL, run } from '../support/tool-pool.ts';
+import { background, FULL_POOL, run, type Fields } from '../support/tool-pool.ts';
 
-type Fields = { tools?: string[]; disallowedTools?: string[] };
 const resolve = (fields: Fields, how = run()): ToolsOutcome =>
   resolveSubagentTools({ name: 'helper', ...fields }, FULL_POOL, how);
 const granted = (outcome: ToolsOutcome): readonly string[] => (outcome.ok ? outcome.tools : []);
@@ -78,6 +77,26 @@ describe('what is granted and in which order', () => {
     const outcome = resolve({ tools: ['Grpe'], disallowedTools: ['Read'] }, run({ kind: 'fork' }));
     expect(granted(outcome)).toContain('Read');
     expect(outcome.ok).toBe(true);
+  });
+
+  test('the granted tools follow the order of the entries, not the order of the pool', () => {
+    const reversed = { ...FULL_POOL, builtin: [...FULL_POOL.builtin].toReversed() };
+    const outcome = resolveSubagentTools(
+      { name: 'helper', tools: ['Read', 'Bash'] },
+      reversed,
+      run(),
+    );
+    expect(granted(outcome)).toEqual(['Read', 'Bash']);
+  });
+
+  test('a mixed list where disallowedTools emptied one entry and the other matched nothing is not refused', () => {
+    // sub-agents.md applies disallowedTools first; errors.md only says a list it empties entirely is not refused.
+    const outcome = resolve({
+      tools: ['mcp__github__*', 'Grpe'],
+      disallowedTools: ['mcp__github'],
+    });
+    expect(outcome.ok).toBe(true);
+    expect(granted(outcome)).toEqual([]);
   });
 
   test('SubagentHandback is not inherited and is not a tool a list can name without the host granting it', () => {

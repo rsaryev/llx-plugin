@@ -21,39 +21,14 @@ import {
   sorted,
 } from '../support/tool-pool.ts';
 
-const fork = (how = {}) => run({ kind: 'fork', ...how });
-
-const REMOVED_FROM_EVERY_SUBAGENT = [
+const REMOVED_FROM_EVERY_SUBAGENT: readonly string[] = [
   'AskUserQuestion',
   'EndConversation',
   'EnterPlanMode',
   'ScheduleWakeup',
   'WaitForMcpServers',
   'Workflow',
-] as const;
-
-const BACKGROUND_KEEPS = [
-  'Read',
-  'Grep',
-  'Glob',
-  'LSP',
-  'Bash',
-  'PowerShell',
-  'Edit',
-  'Write',
-  'NotebookEdit',
-  'WebFetch',
-  'WebSearch',
-  'TodoWrite',
-  'Skill',
-  'ToolSearch',
-  'EnterWorktree',
-  'ExitWorktree',
-  'Monitor',
-  'TaskStop',
-  'SendMessage',
-  'Artifact',
-] as const;
+];
 
 spec('agents.frontmatter.tools', () => {
   describe('omitted: inherits every tool available to subagents', () => {
@@ -63,7 +38,7 @@ spec('agents.frontmatter.tools', () => {
         sorted([
           ...DOCUMENTED_TOOLS.filter(
             (tool) =>
-              !(REMOVED_FROM_EVERY_SUBAGENT as readonly string[]).includes(tool) &&
+              !REMOVED_FROM_EVERY_SUBAGENT.includes(tool) &&
               tool !== 'ExitPlanMode' &&
               tool !== 'SubagentHandback',
           ),
@@ -134,68 +109,6 @@ spec('agents.frontmatter.tools', () => {
       const outcome = resolve({ tools: ['mcp__reports__v2'] });
       expect(outcome.ok).toBe(false);
       expect(outcome.ok ? [] : outcome.refusal.matchedNoTools).toEqual(['mcp__reports__v2']);
-    });
-
-    test('the same entry list is the same subagent whatever the order of the pool', () => {
-      const reversed = { ...FULL_POOL, builtin: [...FULL_POOL.builtin].toReversed() };
-      expect(names({ tools: ['Read', 'Bash'] }, run(), reversed)).toEqual(['Bash', 'Read']);
-    });
-  });
-
-  describe('background subagents keep a smaller built-in tool set', () => {
-    test('a background subagent keeps exactly the listed built-in tools and every MCP tool', () => {
-      const tools = names({}, background());
-      expect(tools).toEqual(sorted([...BACKGROUND_KEEPS, 'Agent', ...MCP_NAMES]));
-    });
-
-    test('a tool outside the set is dropped silently when other entries resolve', () => {
-      const outcome = resolve({ tools: ['Read', 'CronCreate'] }, background());
-      expect(granted(outcome)).toEqual(['Read']);
-      expect(names({ tools: ['Read', 'CronCreate'] })).toEqual(['CronCreate', 'Read']);
-    });
-
-    test('the same definition resolves to different tools in the foreground and the background', () => {
-      const fields = { tools: ['Read', 'TaskCreate', 'CronCreate'] };
-      expect(names(fields)).toEqual(['CronCreate', 'Read', 'TaskCreate']);
-      expect(names(fields, background())).toEqual(['Read']);
-    });
-
-    test('Agent and ExitPlanMode follow the first filter in the background too', () => {
-      expect(names({}, background())).toContain('Agent');
-      expect(names({}, background({ atDepthLimit: true }))).not.toContain('Agent');
-      expect(names({}, background())).not.toContain('ExitPlanMode');
-      expect(names({}, background({ permissionMode: 'plan' }))).toContain('ExitPlanMode');
-    });
-
-    test('an entry the background drops that leaves nothing is refused and named', () => {
-      const outcome = resolve({ tools: ['CronCreate'] }, background());
-      expect(outcome.ok).toBe(false);
-      expect(outcome.ok ? [] : outcome.refusal.notAvailableToSubagents).toEqual(['CronCreate']);
-    });
-
-    test('a subagent Claude waits for runs in the foreground and keeps the tool', () => {
-      expect(names({ tools: ['CronCreate'] }, run())).toEqual(['CronCreate']);
-    });
-  });
-
-  describe('forks skip both filters', () => {
-    test('a fork receives the main conversation exact tool pool', () => {
-      expect(names({}, fork({ background: true }))).toEqual(
-        sorted([...DOCUMENTED_TOOLS, ...MCP_NAMES]),
-      );
-    });
-
-    test('a fork keeps AskUserQuestion and CronCreate that a subagent loses', () => {
-      const tools = names({ tools: ['Read'] }, fork({ background: true }));
-      expect(tools).toContain('AskUserQuestion');
-      expect(tools).toContain('CronCreate');
-      expect(tools).toContain('Read');
-    });
-
-    test('a fork at the depth limit keeps Agent listed but cannot spawn', () => {
-      const outcome = resolve({}, fork({ atDepthLimit: true }));
-      expect(granted(outcome)).toContain('Agent');
-      expect(outcome.ok && outcome.spawnTypes).toBe('none');
     });
   });
 

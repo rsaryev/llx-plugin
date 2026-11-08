@@ -3,6 +3,7 @@ import { DOCUMENTED_TOOLS } from '../../src/protocol/tool-names.ts';
 import type { SubagentRun } from '../../src/agents/tool-filters.ts';
 import {
   resolveSubagentTools,
+  type AgentToolFields,
   type ToolPool,
   type ToolsOutcome,
 } from '../../src/agents/tool-resolution.ts';
@@ -43,7 +44,7 @@ export const run = (
 export const background = (with_: Partial<SubagentRun> = {}): SubagentRun =>
   run({ background: true, ...with_ });
 
-type Fields = { tools?: string[]; disallowedTools?: string[] };
+export type Fields = Omit<AgentToolFields, 'name'>;
 export const resolve = (fields: Fields, how = run(), pool = FULL_POOL): ToolsOutcome =>
   resolveSubagentTools({ name: 'code-reviewer', ...fields }, pool, how);
 

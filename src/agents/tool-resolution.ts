@@ -1,3 +1,4 @@
+import type { AgentDefinition } from '../protocol/official.ts';
 import { DOCUMENTED_TOOLS, SDK_ONLY_TOOLS } from '../protocol/tool-names.ts';
 import { parseToolEntry, toolEntryMatches, type ToolEntry } from './tool-list.ts';
 import { removedFromSubagent, type SubagentRun } from './tool-filters.ts';
@@ -9,12 +10,10 @@ export interface ToolPool {
   readonly mcp: readonly { readonly server: string; readonly name: string }[];
 }
 
-/** An agent as far as its tools go: the two frontmatter fields of the definition. */
-export interface AgentToolFields {
+/** An agent as far as its tools go: the two frontmatter fields of the SDK's `AgentDefinition`. */
+export type AgentToolFields = Pick<AgentDefinition, 'tools' | 'disallowedTools'> & {
   readonly name: string;
-  readonly tools?: readonly string[];
-  readonly disallowedTools?: readonly string[];
-}
+};
 
 /** errors.md, "Agent would be spawned with zero tools": the entries, by what went wrong. */
 export interface ToolRefusal {
@@ -100,10 +99,13 @@ function spawnTypesOf(
   return [...new Set(lists.flat())];
 }
 
+const HANDBACK = 'SubagentHandback';
 const dedupe = (names: readonly string[]): string[] => [...new Set(names)];
 
 function resolveSubagent(agent: AgentToolFields, pool: ToolPool, run: SubagentRun): ToolsOutcome {
   const available = availableTo(pool, run);
+  // The host grants `SubagentHandback` (`SubagentRun.handback`), so an entry naming it matches.
+  const matchable = run.handback === true ? [...available, HANDBACK] : available;
   const denied = (agent.disallowedTools ?? []).map(parseToolEntry);
   const isDenied = (tool: string): boolean =>
     denied.some((entry) => toolEntryMatches(entry, tool, 'deny'));
@@ -111,14 +113,14 @@ function resolveSubagent(agent: AgentToolFields, pool: ToolPool, run: SubagentRu
   // What each entry names in the pool, before `disallowedTools` takes its share away: a tool in
   // both fields is removed, and an entry it emptied still matched (so it never refuses).
   const matched = (entries ?? []).map((entry) =>
-    available.filter((tool) => toolEntryMatches(entry, tool, 'allow')),
+    matchable.filter((tool) => toolEntryMatches(entry, tool, 'allow')),
   );
   if (agent.tools !== undefined && agent.tools.length > 0 && matched.every((m) => m.length === 0)) {
     return refuse(agent, agent.tools, pool, run);
   }
   const listed = entries === undefined ? available : matched.flat();
   const tools = dedupe(listed).filter((tool) => !isDenied(tool));
-  const granted = run.handback === true ? [...tools, 'SubagentHandback'] : tools;
+  const granted = run.handback === true ? dedupe([...tools, HANDBACK]) : tools;
   return { ok: true, tools: granted, spawnTypes: spawnTypesOf(entries, tools, run) };
 }
 

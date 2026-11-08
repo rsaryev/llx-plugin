@@ -18,6 +18,11 @@ export interface SubagentRun {
    * subagent that is not a fork). It is granted whatever `tools` and `disallowedTools` say.
    */
   readonly handback?: boolean;
+  /**
+   * The subagent is an agent team teammate (sub-agents.md, "Available tools"): in the background
+   * it also keeps the task tools and cron tools.
+   */
+  readonly teammate?: boolean;
 }
 
 /** The first filter, sub-agents.md "Available tools": removed "even when listed in the `tools` field". */
@@ -66,7 +71,19 @@ const FIRST_FILTER: ReadonlyMap<string, (run: SubagentRun) => boolean> = new Map
   ['SubagentHandback', () => true],
 ]);
 
+/** What a teammate keeps in the background on top of `BACKGROUND_BUILTIN_TOOLS`. */
+const TEAMMATE_BACKGROUND_TOOLS = [
+  'TaskCreate',
+  'TaskGet',
+  'TaskList',
+  'TaskUpdate',
+  'CronCreate',
+  'CronDelete',
+  'CronList',
+] as const satisfies readonly DocumentedTool[];
+
 const BACKGROUND_KEEPS: ReadonlySet<string> = new Set(BACKGROUND_BUILTIN_TOOLS);
+const TEAMMATE_KEEPS: ReadonlySet<string> = new Set(TEAMMATE_BACKGROUND_TOOLS);
 
 /** "Apart from `Agent` and `ExitPlanMode`, which follow the first filter's conditions wherever the subagent runs". */
 const FOLLOWS_FIRST_FILTER_ONLY: ReadonlySet<string> = new Set(['Agent', 'ExitPlanMode']);
@@ -79,5 +96,8 @@ const FOLLOWS_FIRST_FILTER_ONLY: ReadonlySet<string> = new Set(['Agent', 'ExitPl
 export function removedFromSubagent(tool: string, run: SubagentRun): boolean {
   if (run.asMainThread) return false;
   if (FIRST_FILTER.get(tool)?.(run) === true) return true;
-  return run.background && !FOLLOWS_FIRST_FILTER_ONLY.has(tool) && !BACKGROUND_KEEPS.has(tool);
+  if (!run.background || FOLLOWS_FIRST_FILTER_ONLY.has(tool) || BACKGROUND_KEEPS.has(tool)) {
+    return false;
+  }
+  return !(run.teammate === true && TEAMMATE_KEEPS.has(tool));
 }
