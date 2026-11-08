@@ -10,6 +10,7 @@
 
 ### Added
 
+- `removedFromHeadersHelper(name)`: whether a `headersHelper` from a project `.mcp.json` or a plugin runs without `name` in its environment, as Claude Code observed by `bun run oracle:headers-helper-env`.
 - `readsAsEmptyInRemoteMcp(name)`: whether a remote MCP server's `url` or `headers` reads `${name}` as empty, for a host that expands its own MCP configs.
 - `bun run oracle:runtime`: what a Claude Code session registers from a plugin (`init` event of
   `claude -p --plugin-dir`, no model call) against the kit's session, for 32 fixtures

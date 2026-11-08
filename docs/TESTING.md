@@ -132,6 +132,15 @@ so the run sets no variable and gets a bare environment. The result is committed
 beside the candidates; `tests/loading/remote-mcp-credentials.test.ts` checks the kit's rule against it
 without running Claude Code, and `--check` fails when a new release empties other names.
 
+## headersHelper environment oracle
+
+`bun run oracle:headers-helper-env` observes which variables Claude Code removes from a supplied
+`headersHelper` (mcp.md, "Which variables a helper can read", gives the rule by example). Every name
+of `tests/fixtures/headers-helper-env/candidates.txt` is set to a dummy value in a bare environment
+(a proxy to an address `NO_PROXY` bypasses), a trusted private project's helper prints the names it
+received to a local HTTP server through `claude mcp get`, and the result is committed as
+`expected.json`; `tests/loading/helper-credentials.test.ts` checks the kit's rule against it.
+
 ## Runtime oracle
 
 `bun run oracle:runtime` compares what the kit's SESSION registers with what a Claude Code session
