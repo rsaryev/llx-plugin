@@ -18,6 +18,12 @@
 
 ### Fixed
 
+- MCP settings review: `managedServerEntries(layers, { desktopManaged })` reads no managed entry in the
+  Claude Desktop Code tab on a third-party deployment or in Cowork sessions and warns that the key is
+  not read there; the rank of a managed server is proven under "How provided servers load" with a
+  negative case; the approval and rejection of parent and `--add-dir` settings, the `listed in`
+  commands and the enterprise-blocked status are recorded as judgments; the tests of toggles, user
+  scope and plugin or connector duplicates by command now assert what they claim.
 - MCP: `displayHeaders(server, scope)` gives the header names `claude mcp get` shows for a server
   the organization provides (managed-mcp.md, "What users can see and change"), and the tests of
   `displayReference`, the credential debug line and the endpoint key now assert what they claim.

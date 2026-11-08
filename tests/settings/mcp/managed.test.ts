@@ -6,6 +6,9 @@
  * registry, from parent settings an embedding host supplies, or from user, project, or local settings
  * files, where it drops the key with a warning." The choice of managed source is the host's; the kit
  * reads the managed layers it is given (rank only: what an entry may contain is judged elsewhere).
+ * "Claude Code doesn't read the key in the Claude Desktop app's Code tab on a third-party deployment
+ * or in the app's Cowork sessions, because Claude Desktop supplies and locks those sessions' MCP
+ * servers itself. `/status` and `claude doctor` say so when your managed settings carry the key there."
  */
 import { describe, expect, test } from 'bun:test';
 import { managedServerEntries } from '../../../src/settings/mcp/index.ts';
@@ -41,14 +44,32 @@ spec('mcpSettings.managed.Where managedMcpServers applies', () => {
     expect(entries).toEqual({ search: high, records });
   });
 
-  test('user, project, local, --settings and parent settings drop the key with a warning', () => {
-    for (const scope of ['user', 'project', 'local', 'flag', 'parent'] as const) {
+  test('user, project, local, --settings, parent and --add-dir settings drop the key with a warning', () => {
+    for (const scope of ['user', 'project', 'local', 'flag', 'parent', 'addDir'] as const) {
       const { entries, issues } = managedServerEntries([layer(scope, { search })]);
       expect(entries).toEqual({});
       expect(issues).toHaveLength(1);
       expect(issues[0]?.severity).toBe('warning');
       expect(issues[0]?.path).toBe(`${scope}:managedMcpServers`);
     }
+  });
+
+  test('the Desktop Code tab on a third-party deployment and Cowork sessions read no managed entry and say so', () => {
+    for (const desktopManaged of ['third-party', 'cowork'] as const) {
+      const { entries, issues } = managedServerEntries([layer('managed', { search })], {
+        desktopManaged,
+      });
+      expect(entries).toEqual({});
+      expect(issues).toHaveLength(1);
+      expect(issues[0]?.severity).toBe('warning');
+      expect(issues[0]?.path).toBe('managed:managedMcpServers');
+    }
+  });
+
+  test('a Desktop session whose managed settings do not carry the key says nothing', () => {
+    expect(
+      managedServerEntries([{ scope: 'managed', settings: {} }], { desktopManaged: 'cowork' }),
+    ).toEqual({ entries: {}, issues: [] });
   });
 
   test('a managed entry is not affected by another scope also naming the key', () => {

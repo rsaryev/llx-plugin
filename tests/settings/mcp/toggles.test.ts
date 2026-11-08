@@ -107,14 +107,12 @@ spec('mcpSettings.behavior.Disable a server without removing it', () => {
   });
 
   test('a disabled server is still listed, marked disabled, and loses no configuration', () => {
-    const { candidates } = claudeJsonServers(
-      {
-        mcpServers: { stripe: { type: 'http', url: 'https://mcp.stripe.com' } },
-        projects: { '/work/app': { disabledMcpServers: ['stripe'] } },
-      },
-      '/work/app',
-    );
-    const marked = applyToggles(candidates, readProjectToggles(state, '/work/app'));
+    const own = {
+      mcpServers: { stripe: { type: 'http', url: 'https://mcp.stripe.com' } },
+      projects: { '/work/app': { disabledMcpServers: ['stripe'] } },
+    };
+    const { candidates } = claudeJsonServers(own, '/work/app');
+    const marked = applyToggles(candidates, readProjectToggles(own, '/work/app'));
     expect(marked).toEqual([
       { scope: 'user', name: 'stripe', server: http('https://mcp.stripe.com'), enabled: false },
     ]);

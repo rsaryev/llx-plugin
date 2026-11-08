@@ -14,7 +14,12 @@ export interface McpTrust {
   readonly localTracked?: boolean;
 }
 
-/** `pending approval` and `rejected` are two of the statuses `claude mcp list` and `claude mcp get` print without connecting. */
+/**
+ * Two of the statuses `claude mcp list` and `claude mcp get` print without connecting (mcp.md,
+ * "Server status"): `pending approval` shows in both commands, `rejected` only in `claude mcp get`.
+ * `✘ Blocked by enterprise managed policy` is a third such status; a policy decision is not an
+ * approval decision, so it is out of scope here (spec/judgments.md).
+ */
 export const PROJECT_SERVER_STATUSES = ['approved', 'pending approval', 'rejected'] as const;
 export type ProjectServerStatus = (typeof PROJECT_SERVER_STATUSES)[number];
 
@@ -45,7 +50,10 @@ const never: Honours = () => false;
  * The files whose approvals count. User settings, managed settings and `--settings` count in an
  * untrusted folder; the shared project file counts once the folder is trusted; an untracked
  * `.claude/settings.local.json` counts in a trusted folder or the configuration home. The parent
- * settings of an embedding host and `--add-dir` directories carry none of these keys.
+ * settings of an embedding host and `--add-dir` directories approve nothing (judgment, spec/judgments.md):
+ * `--add-dir` settings carry two keys only (permissions.md) and parent settings keep "only the host's
+ * values that restrict" (managed-settings.md); the settings key registry admits no MCP approval key
+ * from either, so their `disabledMcpjsonServers` does not reject either.
  */
 const HONOURS: { readonly [S in PolicyScope]: Honours } = {
   managed: always,

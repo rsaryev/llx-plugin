@@ -9,7 +9,8 @@
  * "a different path, query string, userinfo, or non-default port makes two servers". A server the
  * organization provides through `managedMcpServers` "ranks above all of these".
  * managed-mcp.md § "Where `managedMcpServers` applies" (rank only; the entries' content is another
- * module's) and § "How provided servers load": "A provided server takes precedence over a server with
+ * module's: the same-name rule across managed sources is tested in managed.test.ts) and
+ * § "How provided servers load": "A provided server takes precedence over a server with
  * the same name in local, project, or user scope, and over a plugin server or claude.ai connector that
  * points at the same URL." mcp.md § "Use MCP servers from claude.ai": "`/mcp` lists the connector as
  * hidden" when a server you added points at the same URL.
@@ -73,6 +74,34 @@ spec('mcpSettings.behavior.Scope hierarchy and precedence', () => {
     expect(labels(loaded)).toEqual(['user:docs']);
     expect(hidden[0]?.candidate.name).toBe('plugin:docs:docs');
     expect(hidden[0]?.duplicateOf.name).toBe('docs');
+  });
+
+  test('local and project servers that share a URL under different names both load, since the scopes match by name', () => {
+    const { loaded, hidden } = rankMcpServers([
+      candidate('local', 'one', http('https://same.example.com/mcp')),
+      candidate('project', 'two', http('https://same.example.com/mcp')),
+    ]);
+    expect(labels(loaded)).toEqual(['local:one', 'project:two']);
+    expect(hidden).toEqual([]);
+  });
+
+  test('a connector at the command of a user stdio server is hidden', () => {
+    const { loaded, hidden } = rankMcpServers([
+      candidate('connector', 'claude.ai Tool', stdio('npx', '-y', 'tool')),
+      candidate('user', 'tool', stdio('npx', '-y', 'tool')),
+    ]);
+    expect(labels(loaded)).toEqual(['user:tool']);
+    expect(hidden[0]?.candidate.scope).toBe('connector');
+  });
+
+  test('a plugin stdio server at the command of a project or managed server is hidden', () => {
+    for (const scope of ['project', 'managed'] as const) {
+      const { loaded } = rankMcpServers([
+        candidate('plugin', 'p', stdio('npx', '-y', 'tool')),
+        candidate(scope, 'tool', stdio('npx', '-y', 'tool')),
+      ]);
+      expect(labels(loaded)).toEqual([`${scope}:tool`]);
+    }
   });
 
   test('a plugin and a connector are matched by name never: the same name at another endpoint is no duplicate', () => {
@@ -189,7 +218,7 @@ spec('mcpSettings.behavior.Scope hierarchy and precedence', () => {
   });
 });
 
-spec('mcpSettings.managed.Where managedMcpServers applies', () => {
+spec('mcpSettings.managed.How provided servers load', () => {
   test('a managed server ranks above local, project and user servers of the same name', () => {
     const { loaded, hidden } = rankMcpServers([
       candidate('local', 'search', http('https://local.example.com/mcp')),
@@ -212,13 +241,13 @@ spec('mcpSettings.managed.Where managedMcpServers applies', () => {
     expect(labels(loaded)).toEqual(['managed:search']);
   });
 
-  test('two managed sources defining one name keep the first, the higher-ranked, whole', () => {
-    const { loaded } = rankMcpServers([
-      candidate('managed', 'search', http('https://high.example.com/mcp')),
-      candidate('managed', 'search', http('https://low.example.com/mcp')),
+  test('a managed server under another name and at another URL hides no user server', () => {
+    const { loaded, hidden } = rankMcpServers([
+      candidate('user', 'mine', http('https://mine.example.com/mcp')),
+      candidate('managed', 'search', http('https://search.example.com/mcp')),
     ]);
-    expect(loaded).toHaveLength(1);
-    expect(loaded[0]?.server).toEqual(http('https://high.example.com/mcp'));
+    expect(labels(loaded)).toEqual(['managed:search', 'user:mine']);
+    expect(hidden).toEqual([]);
   });
 });
 

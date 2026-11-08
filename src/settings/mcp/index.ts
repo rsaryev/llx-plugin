@@ -14,7 +14,12 @@ export {
   projectFileServers,
   type McpCandidatesRead,
 } from './candidates.ts';
-export { managedServerEntries, type ManagedServerEntries } from './managed.ts';
+export {
+  managedServerEntries,
+  type DesktopManaged,
+  type ManagedServerEntries,
+  type ManagedServerOptions,
+} from './managed.ts';
 export {
   applyToggles,
   connectorDisplayName,

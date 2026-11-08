@@ -38,9 +38,15 @@ spec('mcpSettings.behavior.User scope', () => {
     }
   });
 
-  test('a server written under a project is not a user server', () => {
-    const { candidates } = claudeJsonServers(state, '/other/project');
-    expect(labels(candidates).filter((each) => each.startsWith('user:'))).toEqual(['user:hubspot']);
+  test('a server written under a project is never a user server, and a top-level one is never local', () => {
+    for (const project of ['/path/to/your/project', '/other/project']) {
+      const user = labels(claudeJsonServers(state, project).candidates).filter((each) =>
+        each.startsWith('user:'),
+      );
+      expect(user).toEqual(['user:hubspot']);
+    }
+    const unopened = labels(claudeJsonServers(state, '/never/opened').candidates);
+    expect(unopened.filter((each) => each.startsWith('local:'))).toEqual([]);
   });
 });
 

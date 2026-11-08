@@ -207,6 +207,27 @@ describe('approval judgments', () => {
     ).toBe('approved');
   });
 
+  // Judgment (spec/judgments.md): the parent settings of an embedding host and --add-dir directories
+  // take no part: --add-dir settings carry two keys only (permissions.md), parent settings keep "only
+  // the host's values that restrict" (managed-settings.md), so their approvals and rejections are ignored.
+  test('parent and --add-dir settings neither approve nor reject a server', () => {
+    for (const scope of ['parent', 'addDir'] as const) {
+      for (const trust of [trusted, untrusted]) {
+        const approving = layers([scope, { ...approveAll, ...approveTwo }]);
+        expect(Object.values(statuses(projectServerApproval(servers, approving, trust)))).toEqual([
+          'pending approval',
+          'pending approval',
+          'pending approval',
+        ]);
+      }
+      const rejecting = layers(
+        ['user', approveAll],
+        [scope, { disabledMcpjsonServers: ['github'] }],
+      );
+      expect(statuses(projectServerApproval(servers, rejecting, trusted)).github).toBe('approved');
+    }
+  });
+
   // Judgment: the docs word the two lists of the three keys for `.mcp.json` names only; a name with
   // different case is another name, as it is for the server itself.
   test('names are matched exactly', () => {
