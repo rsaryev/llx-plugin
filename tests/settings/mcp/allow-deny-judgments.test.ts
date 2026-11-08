@@ -4,6 +4,7 @@
  * messages belong to the display of a blocked server.
  */
 import { expect, test, describe } from 'bun:test';
+import type { PolicyScope } from '../../../src/settings/index.ts';
 import { loads, policyOf, remote, stdio, verdictOf } from '../../support/mcp-policy.ts';
 
 const lock = { allowManagedMcpServersOnly: true };
@@ -59,6 +60,86 @@ describe('judgments and messages', () => {
     const policy = policyOf([['managed', { deniedMcpServers: [{ serverName: 'broken' }] }]]);
     expect(loads(policy, 'broken', remote('not a url'))).toBe(false);
     expect(loads(policy, 'fine', remote('not a url'))).toBe(true);
+  });
+
+  test('the highest layer that sets a variable wins when a denylist entry is filled', () => {
+    const entry = { deniedMcpServers: [{ serverUrl: 'https://${HOST}/*' }] };
+    const filledBy = (...layers: readonly (readonly [PolicyScope, string])[]) => {
+      const policy = policyOf([
+        ['managed', entry],
+        ...layers.map(([scope, host]) => [scope, { env: { HOST: host } }] as const),
+      ]);
+      return ['a', 'b'].filter(
+        (host) => !loads(policy, 'x', remote(`https://${host}.example.com/`)),
+      );
+    };
+    expect(filledBy(['user', 'a.example.com'], ['flag', 'b.example.com'])).toEqual(['b']);
+    expect(filledBy(['flag', 'b.example.com'], ['user', 'a.example.com'])).toEqual(['b']);
+    expect(filledBy(['flag', 'a.example.com'], ['parent', 'b.example.com'])).toEqual(['b']);
+  });
+
+  test('the parent and --settings layers fill a denylist variable, --add-dir files do not', () => {
+    const entry = { deniedMcpServers: [{ serverUrl: 'https://${HOST}/*' }] };
+    const blocked = (scope: PolicyScope) =>
+      !loads(
+        policyOf([
+          ['managed', entry],
+          [scope, { env: { HOST: 'staging.example.com' } }],
+        ]),
+        'a',
+        remote('https://staging.example.com/x'),
+      );
+    expect(blocked('parent')).toBe(true);
+    expect(blocked('flag')).toBe(true);
+    expect(blocked('addDir')).toBe(false);
+  });
+
+  test('headersHelper is not a checked value of a managed-mcp.json server', () => {
+    const policy = policyOf([['managed', { allowedMcpServers: [{ serverName: 'listed' }] }]]);
+    const server = {
+      type: 'http',
+      url: 'https://x.example.com/mcp',
+      headersHelper: '${X}',
+    } as const;
+    expect(loads(policy, 'a', server, 'managedFile')).toBe(true);
+    expect(loads(policy, 'a', server)).toBe(false);
+  });
+
+  test('an empty serverUrl entry matches nothing on either list', () => {
+    const policy = policyOf([
+      [
+        'managed',
+        { allowedMcpServers: [{ serverUrl: '' }], deniedMcpServers: [{ serverUrl: '' }] },
+      ],
+    ]);
+    expect(verdictOf(policy, 'a', remote('https://x.example.com/mcp'))).toMatchObject({
+      allowed: false,
+      blockedBy: 'allowlist',
+    });
+    const denyOnly = policyOf([['managed', { deniedMcpServers: [{ serverUrl: '' }] }]]);
+    expect(loads(denyOnly, 'a', remote('https://x.example.com/mcp'))).toBe(true);
+  });
+
+  test('the serverName rule of each list applies in a user and a project file too', () => {
+    for (const scope of ['user', 'project'] as const) {
+      const allowed = policyOf([
+        [scope, { allowedMcpServers: [{ serverName: 'two words' }, { serverName: 'ok' }] }],
+      ]);
+      expect([scope, loads(allowed, 'two words', stdio('x'))]).toEqual([scope, false]);
+      expect([scope, loads(allowed, 'ok', stdio('x'))]).toEqual([scope, true]);
+      const denied = policyOf([[scope, { deniedMcpServers: [{ serverName: 'two words' }] }]]);
+      expect([scope, loads(denied, 'two words', stdio('x'))]).toEqual([scope, false]);
+    }
+  });
+
+  test('an empty managed allowlist under the lock replaces a lower, non-empty one', () => {
+    const policy = policyOf([
+      ['managed', { ...lock, allowedMcpServers: [] }],
+      ['parent', { allowedMcpServers: [{ serverName: 'p' }] }],
+      ['user', { allowedMcpServers: [{ serverName: 'u' }] }],
+    ]);
+    expect(loads(policy, 'p', stdio('x'))).toBe(false);
+    expect(loads(policy, 'u', stdio('x'))).toBe(false);
   });
 
   test('the messages users see', () => {

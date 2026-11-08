@@ -27,6 +27,13 @@
 
 ### Fixed
 
+- MCP allow and deny lists review: `PolicyEnv` is exported once and replaces the three hand-declared
+  environment types; `createMcpServerPolicy` documents that it reads the lists at creation and a host
+  rebuilds it when settings change before a reconnect. The tests no longer claim the reconnect line, the
+  managed-set requirement is proven by its own denylist and `managed-mcp.json` tests, and the judgments
+  on layered `env` filling, `headersHelper`, empty `serverUrl` entries, per-source `serverName` rules and
+  an empty managed allowlist under the lock now have tests.
+
 - MCP settings review: `managedServerEntries(layers, { desktopManaged })` reads no managed entry in the
   Claude Desktop Code tab on a third-party deployment or in Cowork sessions and warns that the key is
   not read there; the rank of a managed server is proven under "How provided servers load" with a

@@ -5,32 +5,19 @@ import {
   splitDefault,
   type EnvLookup,
 } from '../../format/mcp-env.ts';
+import type { PolicyEnv } from '../context.ts';
 import type { PolicyView } from '../view.ts';
 import { isRecord } from '../record.ts';
 import type { McpList } from './entries.ts';
 
-/**
- * The environment a policy entry expands in (managed-mcp.md, "Environment variables in `serverCommand`
- * and `serverUrl` entries"): a pinned one, "so a variable set by a project or user settings file can't
- * change what an allowlist entry means". Both lists read "the environment Claude Code started with,
- * plus `env` values from managed settings"; the denylist also fills "a variable with no startup value
- * and no `:-default`" from "settings files outside the repository, such as user or managed settings,
- * which only ever widens what the entry matches".
- *
- * Judgments (spec/judgments.md): the startup environment wins over a managed `env` value; "outside the
- * repository" is the managed, parent, `--settings` and user layers (project, local and `--add-dir`
- * files live in the folder), the highest layer winning per variable.
- */
-type Env = Readonly<Record<string, string | undefined>>;
-
 /** A lookup that reads own entries only, so `constructor` is a variable name and not a function. */
 export const lookupIn =
-  (env: Env): EnvLookup =>
+  (env: PolicyEnv): EnvLookup =>
   (name) =>
     Object.hasOwn(env, name) ? env[name] : undefined;
 
 /** The `env` block of the layers of these scopes, each variable from the highest layer that sets it. */
-function settingsEnv(view: PolicyView, scopes: readonly string[]): Env {
+function settingsEnv(view: PolicyView, scopes: readonly string[]): PolicyEnv {
   const merged = new Map<string, string>();
   for (const layer of view.layers.toReversed()) {
     const block: unknown = layer.settings.env;
@@ -60,10 +47,23 @@ function expandWithFill(text: string, lookup: EnvLookup, fill: readonly EnvLooku
   });
 }
 
-/** The expansion of each list's entries over the layers and the environment Claude Code started with. */
+/**
+ * The environment a policy entry expands in (managed-mcp.md, "Environment variables in `serverCommand`
+ * and `serverUrl` entries"): a pinned one, "so a variable set by a project or user settings file can't
+ * change what an allowlist entry means". Both lists read "the environment Claude Code started with,
+ * plus `env` values from managed settings"; the denylist also fills "a variable with no startup value
+ * and no `:-default`" from "settings files outside the repository, such as user or managed settings,
+ * which only ever widens what the entry matches".
+ *
+ * Judgments (spec/judgments.md): the startup environment wins over a managed `env` value; "outside the
+ * repository" is the managed, parent, `--settings` and user layers (project, local and `--add-dir`
+ * files live in the folder), the highest layer winning per variable.
+ *
+ * The expansion of each list's entries over the layers and the environment Claude Code started with.
+ */
 export function entryExpansions(
   view: PolicyView,
-  startup: Env,
+  startup: PolicyEnv,
 ): { readonly [L in McpList]: EntryExpansion } {
   const managed = lookupIn(settingsEnv(view, ['managed']));
   const started = lookupIn(startup);

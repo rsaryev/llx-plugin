@@ -1,5 +1,6 @@
 import { expandMcpServer } from '../../format/mcp-env.ts';
 import { isRemoteMcpServer, type PluginMcpServer } from '../../format/mcp-config.ts';
+import type { PolicyEnv } from '../context.ts';
 import type { PolicyView } from '../view.ts';
 import { commandMatches } from './command-match.ts';
 import type { McpEntry, McpEntryKind } from './entries.ts';
@@ -8,21 +9,11 @@ import { readMcpLists, type McpEntriesByKind } from './lists.ts';
 import { ORIGIN_RULES, type McpServerOrigin } from './origins.ts';
 import { referenceInUrlScope, urlPatternMatches } from './url-pattern.ts';
 
-/**
- * The allowlist and the denylist over one server (managed-mcp.md, "How a server is evaluated"), in
- * the order the page gives: merge the lists (`lists.ts`), "check the denylist" ("Nothing overrides a
- * denylist match"), "check the allowlist" ("If `allowedMcpServers` isn't set anywhere, every server
- * that passed the denylist loads"). A remote server is allowed by a `serverUrl` entry, a stdio server
- * by a `serverCommand` entry, and a `serverName` match counts only when the list holds no entry of the
- * server's kind. The origins that skip a check are `origins.ts`.
- */
-type Env = Readonly<Record<string, string | undefined>>;
-
 export interface McpPolicyEnv {
   /** The environment Claude Code started with: the base of what a policy entry expands in. */
-  readonly startup: Env;
+  readonly startup: PolicyEnv;
   /** The live process environment: what the server's own `${VAR}` expands in. */
-  readonly live: Env;
+  readonly live: PolicyEnv;
 }
 
 export interface McpPolicySubject {
@@ -115,7 +106,7 @@ function entriesFor(allowed: McpEntriesByKind, target: Target): readonly McpEntr
 }
 
 /** The target of a server: its command or URL with its own `${VAR}` expanded in the live environment. */
-function targetOf(subject: McpPolicySubject, live: Env): Target {
+function targetOf(subject: McpPolicySubject, live: PolicyEnv): Target {
   const expanded = expandMcpServer(subject.name, subject.server, lookupIn(live)).server;
   if (expanded === undefined) return { name: subject.name };
   return {
@@ -131,6 +122,18 @@ export interface McpServerPolicy {
   check(subject: McpPolicySubject): McpServerVerdict;
 }
 
+/**
+ * The allowlist and the denylist over one server (managed-mcp.md, "How a server is evaluated"), in
+ * the order the page gives: merge the lists (`lists.ts`), "check the denylist" ("Nothing overrides a
+ * denylist match"), "check the allowlist" ("If `allowedMcpServers` isn't set anywhere, every server
+ * that passed the denylist loads"). A remote server is allowed by a `serverUrl` entry, a stdio server
+ * by a `serverCommand` entry, and a `serverName` match counts only when the list holds no entry of the
+ * server's kind. The origins that skip a check are `origins.ts`.
+ *
+ * The lists are read once, when the policy is created, so one policy gives the same verdict for a
+ * server until it is dropped: a host that sees settings change before a user reconnects a server (the
+ * docs run the checks again then) builds a new policy, as `McpSettingsPolicy.serverPolicy()` does.
+ */
 export function createMcpServerPolicy(view: PolicyView, env: McpPolicyEnv): McpServerPolicy {
   const lists = readMcpLists(view);
   const expansions = entryExpansions(view, env.startup);

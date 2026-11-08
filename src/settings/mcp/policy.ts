@@ -1,4 +1,4 @@
-import type { PolicyContext } from '../context.ts';
+import type { PolicyContext, PolicyEnv } from '../context.ts';
 import type { PolicyView } from '../view.ts';
 import { createMcpServerPolicy, type McpServerPolicy } from './allow-deny.ts';
 import {
@@ -25,7 +25,7 @@ export interface McpSettingsPolicy {
    * entry expands in the context's environment; the server's own `${VAR}` expands in `live` (default:
    * the same environment).
    */
-  serverPolicy(live?: Readonly<Record<string, string | undefined>>): McpServerPolicy;
+  serverPolicy(live?: PolicyEnv): McpServerPolicy;
 }
 
 export function createMcpSettingsPolicy(

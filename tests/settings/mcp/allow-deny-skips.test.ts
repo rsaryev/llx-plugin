@@ -9,16 +9,12 @@ import { loads, policyOf, remote, stdio } from '../../support/mcp-policy.ts';
 import { spec } from '../../support/spec.ts';
 
 const SKIPS = 'mcpSettings.managed.Servers that skip the allowlist check';
+const MANAGED_SET = 'mcpSettings.managed.How allowlists and denylists apply to the managed set';
 
-spec(SKIPS, () => {
-  const policy = policyOf([['managed', { allowedMcpServers: [{ serverName: 'listed' }] }]]);
-  const search = remote('https://search.example.com/mcp');
+const policy = policyOf([['managed', { allowedMcpServers: [{ serverName: 'listed' }] }]]);
+const search = remote('https://search.example.com/mcp');
 
-  test('the organization own servers: every managedMcpServers entry skips the allowlist', () => {
-    expect(loads(policy, 'search', search)).toBe(false);
-    expect(loads(policy, 'search', search, 'managedSettings')).toBe(true);
-  });
-
+spec([SKIPS, MANAGED_SET], () => {
   test('a managed-mcp.json entry with no ${VAR} outside env skips the allowlist', () => {
     expect(loads(policy, 'a', stdio('node', 'server.js'), 'managedFile')).toBe(true);
     const onlyEnv = { command: 'node', env: { API_KEY: '${API_KEY}', HOME_DIR: '${HOME:-/tmp}' } };
@@ -29,7 +25,7 @@ spec(SKIPS, () => {
         'a',
         {
           type: 'http',
-          url: search.type === 'http' ? search.url : '',
+          url: 'https://search.example.com/mcp',
           headers: { 'X-Team': 'eng' },
         },
         'managedFile',
@@ -53,6 +49,13 @@ spec(SKIPS, () => {
 
   test('a ${...} that is no variable reference does not make the server checked', () => {
     expect(loads(policy, 'a', stdio('echo', '${not a name}'), 'managedFile')).toBe(true);
+  });
+});
+
+spec(SKIPS, () => {
+  test('the organization own servers: every managedMcpServers entry skips the allowlist', () => {
+    expect(loads(policy, 'search', search)).toBe(false);
+    expect(loads(policy, 'search', search, 'managedSettings')).toBe(true);
   });
 
   test('built-in servers skip the allowlist: Claude in Chrome, the ide server, servers the CLI configures', () => {

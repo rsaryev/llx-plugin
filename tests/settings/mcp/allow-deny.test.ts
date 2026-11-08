@@ -9,8 +9,10 @@
  * settings-reference.md § `allowedMcpServers`, `deniedMcpServers`, `allowManagedMcpServersOnly`;
  * managed-settings.md § "Keys read from every admin source" (the lock and the managed list across
  * admin sources). "How a server is evaluated" has no requirement id of its own: the evaluation tests
- * below prove it through the two ids that point at it, "Policy-based control ..." and "How allowlists
- * and denylists apply to the managed set".
+ * below prove it through "Policy-based control ...". Its line that the checks run again when a user
+ * reconnects a server is the host's to apply (it builds a new policy), so no test claims it. "How
+ * allowlists and denylists apply to the managed set" is proven by the two denylist tests in the second
+ * block here and by the `managed-mcp.json` tests of `allow-deny-skips.test.ts`.
  */
 import { describe, expect, test } from 'bun:test';
 import { MCP_SERVER_ORIGINS } from '../../../src/settings/mcp/index.ts';
@@ -22,7 +24,7 @@ const MANAGED_SET = 'mcpSettings.managed.How allowlists and denylists apply to t
 
 const approved = { serverCommand: ['npx', '-y', 'approved-package'] };
 
-spec([POLICY, MANAGED_SET], () => {
+spec(POLICY, () => {
   describe('the docs example configuration', () => {
     const policy = policyOf([
       [
@@ -48,6 +50,22 @@ spec([POLICY, MANAGED_SET], () => {
     test('a user cannot get an unlisted remote server through by giving it an allowed name', () => {
       expect(loads(policy, 'github', remote('https://unlisted.example.org/mcp'))).toBe(false);
       expect(loads(policy, 'github', remote('https://api.githubcopilot.com/mcp'))).toBe(true);
+    });
+
+    test('a serverName entry never admits a remote server once the list has serverUrl entries', () => {
+      const named = policyOf([
+        [
+          'managed',
+          {
+            allowedMcpServers: [
+              { serverName: 'github' },
+              { serverUrl: 'https://api.githubcopilot.com/*' },
+            ],
+          },
+        ],
+      ]);
+      expect(loads(named, 'github', remote('https://unlisted.example.org/mcp'))).toBe(false);
+      expect(loads(named, 'github', remote('https://api.githubcopilot.com/mcp'))).toBe(true);
     });
 
     test('every local server must match a listed command exactly', () => {
@@ -210,7 +228,9 @@ spec([POLICY, MANAGED_SET], () => {
     for (const name of ['p', 'l', 'f', 'u']) expect(loads(everyScope, name, stdio('x'))).toBe(true);
     expect(loads(everyScope, 'z', stdio('x'))).toBe(false);
   });
+});
 
+spec([POLICY, MANAGED_SET], () => {
   test('denylists merge from every scope regardless, and a user can block a managed server for themselves', () => {
     const policy = policyOf([
       ['user', { deniedMcpServers: [{ serverName: 'records' }] }],
@@ -236,12 +256,5 @@ spec([POLICY, MANAGED_SET], () => {
         loads(policy, 'search', remote('https://s.example.com/mcp'), origin),
       ]).toEqual([origin, expected]);
     }
-  });
-
-  test('the check runs on every evaluation: a server blocked later is blocked again on reconnect', () => {
-    const before = policyOf([['user', {}]]);
-    const after = policyOf([['user', { deniedMcpServers: [{ serverName: 'late' }] }]]);
-    expect(loads(before, 'late', stdio('x'))).toBe(true);
-    expect(loads(after, 'late', stdio('x'))).toBe(false);
   });
 });
