@@ -20,6 +20,13 @@ export interface HostPlugin {
   readonly source?: NonNullable<ExpandSession['pluginSource']>;
 }
 
+/** A plugin the host knows and whether it runs. */
+export interface HostedPlugin {
+  readonly id: string;
+  readonly name: string;
+  readonly enabled: boolean;
+}
+
 /** What the host passes: the ports, with the ones its hook handler types need. */
 export type HostPorts = HookPorts;
 

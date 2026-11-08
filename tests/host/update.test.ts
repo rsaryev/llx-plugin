@@ -39,6 +39,10 @@ async function beta() {
   });
 }
 
+const servers = (command: string) => ({
+  store: { command, args: ['${user_config.endpoint}'] },
+});
+
 const menuNames = (session: { skills(): { menu: readonly { name: string }[] } }) =>
   session.skills().menu.map((entry) => entry.name);
 
@@ -150,6 +154,30 @@ describe('host.update replaces the settings view of an open session', () => {
     expect((await session.mcpServers()).resolved[0]?.server).toMatchObject({
       args: ['https://two.example'],
     });
+  });
+
+  test('userConfig replaces the saved values of every plugin: one left out loses them', async () => {
+    const declared = {
+      endpoint: { type: 'string', title: 'Endpoint', description: 'Where' },
+    };
+    const one = await pluginOf('alpha', { userConfig: declared, mcpServers: servers('/bin/a') });
+    const two = await pluginOf('beta', { userConfig: declared, mcpServers: servers('/bin/b') });
+    const { host } = await hostOf({
+      plugins: [hostPlugin(ALPHA, one), hostPlugin(BETA, two)],
+      userConfig: {
+        [ALPHA]: { endpoint: 'https://a-one.example' },
+        [BETA]: { endpoint: 'https://b-one.example' },
+      },
+    });
+    const session = host.openSession(SESSION);
+    const argsOf = async () =>
+      (await session.mcpServers()).resolved.map((entry) =>
+        'args' in entry.server ? entry.server.args : undefined,
+      );
+    expect(await argsOf()).toEqual([['https://a-one.example'], ['https://b-one.example']]);
+    host.update({ userConfig: { [ALPHA]: { endpoint: 'https://a-two.example' } } });
+    // The value of beta is gone: its placeholder is left as written, not filled from before.
+    expect(await argsOf()).toEqual([['https://a-two.example'], ['${user_config.endpoint}']]);
   });
 });
 

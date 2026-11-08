@@ -32,6 +32,11 @@
 
 ### Fixed
 
+- Host: review fixes of the update path. `host.update` builds the next state before it replaces the
+  merged options, so a state that throws leaves the host as it was; `mergeHostOptions` merges each
+  part by key and keeps its types; `HostedPlugin` moves to `src/host/types.ts`. Tests now cover
+  `parentSettings`, `userConfig` replacing every plugin's saved values and an update that lands during
+  an in-flight `dispatch`.
 - Host: review fixes of model limits. A stray `sed -i` backup of the skill-limits test is removed, the
   T2 layout check now fails on any file under `tests/` that is not a `.ts` file, and the skill hook
   registration closure declares its return type instead of casting `[]`.

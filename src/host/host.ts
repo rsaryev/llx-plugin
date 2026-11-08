@@ -2,14 +2,7 @@ import type { PluginIssue } from '../format/issues.ts';
 import { openSession, type PluginSession } from './session.ts';
 import { createHostState, createStateCell, mergeHostOptions } from './state.ts';
 import type { SessionOptions } from './session-types.ts';
-import type { HostUpdate, PluginHostOptions } from './types.ts';
-
-/** A plugin the host knows and whether it runs. */
-export interface HostedPlugin {
-  readonly id: string;
-  readonly name: string;
-  readonly enabled: boolean;
-}
+import type { HostedPlugin, HostUpdate, PluginHostOptions } from './types.ts';
 
 /** What `host.update` reports: the plugins and issues the host has now. */
 export interface UpdateResult {
@@ -53,8 +46,10 @@ export function createPluginHost(options: PluginHostOptions): PluginHost {
       return generation;
     },
     update(update) {
-      merged = mergeHostOptions(merged, update);
-      cell.set(createHostState(merged));
+      const next = mergeHostOptions(merged, update);
+      const state = createHostState(next);
+      merged = next;
+      cell.set(state);
       generation += 1;
       return { plugins: cell.current().all, issues: cell.current().issues };
     },

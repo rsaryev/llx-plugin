@@ -107,6 +107,22 @@ describe('the other hook gates follow the current settings', () => {
     expect(web.requests).toHaveLength(1);
   });
 
+  test('parentSettings given mid-session change the gates: an administrator drops the parent layer', async () => {
+    const { host, web } = await hostOf({
+      settings: settingsOf(['parent', { allowedHttpHookUrls: [] }]),
+      http: [{ status: 200, body: '{}' }],
+    });
+    const session = host.openSession(SESSION);
+    await session.dispatch('PostToolUse', wrote, { signal: signal() });
+    expect(web.requests).toHaveLength(0);
+    host.update({ parentSettings: { hasManagedSettings: true, parentMerge: false } });
+    await session.dispatch('PostToolUse', wrote, { signal: signal() });
+    expect(web.requests).toHaveLength(1);
+    host.update({ parentSettings: { hasManagedSettings: false, parentMerge: false } });
+    await session.dispatch('PostToolUse', wrote, { signal: signal() });
+    expect(web.requests).toHaveLength(1);
+  });
+
   test('the hooks of a settings file added mid-session run at the next dispatch', async () => {
     const { host, runner } = await hostOf({ runs: [{}, {}, {}] });
     const session = host.openSession(SESSION);
