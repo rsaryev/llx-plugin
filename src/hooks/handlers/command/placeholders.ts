@@ -41,8 +41,11 @@ export function substitutionScope(
  * "Plugin hooks additionally substitute `${user_config.*}` values": a handler of no plugin keeps
  * the reference as written.
  */
-function policyFor(entry: RegisteredHandler, surface: Surface): FieldPolicy {
-  const policy = SURFACE_POLICY[surface];
+function policyFor(entry: RegisteredHandler, surface: Surface, context: RunContext): FieldPolicy {
+  const surfaced = SURFACE_POLICY[surface];
+  // `shellPaths` (judgment): a bash command keeps its path variables as references the shell reads.
+  const keepReferences = surface === 'hook-shell' && context.shellPaths === 'environment-reference';
+  const policy: FieldPolicy = keepReferences ? { ...surfaced, paths: 'shell-reference' } : surfaced;
   return entry.pluginId === undefined ? { ...policy, userConfig: 'refuse' } : policy;
 }
 
@@ -53,6 +56,6 @@ export function handlerSubstituter(
   context: RunContext,
 ): (template: string, path: string) => Promise<Substituted> {
   const substitution = substituter(substitutionScope(entry, context));
-  const policy = policyFor(entry, surface);
+  const policy = policyFor(entry, surface, context);
   return (template, path) => substitution.run(template, policy, path);
 }

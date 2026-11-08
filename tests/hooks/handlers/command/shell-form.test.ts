@@ -11,7 +11,7 @@
 import { describe, expect, test } from 'bun:test';
 import { runHandler } from '../../../../src/hooks/handlers/index.ts';
 import { pluginCommand, runContext, settingsCommand } from '../../../support/hooks-run.ts';
-import { scriptedRunner } from '../../../support/ports.ts';
+import { locations, scriptedRunner } from '../../../support/ports.ts';
 import { spec } from '../../../support/spec.ts';
 import { windowsLocations } from '../../../support/windows-locations.ts';
 
@@ -243,5 +243,18 @@ describe('judgment: a hook of a settings file', () => {
       'CLAUDE_CODE_CHILD_SESSION',
       'CLAUDE_PROJECT_DIR',
     ]);
+  });
+});
+
+// Judgment (spec/judgments.md): `shellPaths: 'environment-reference'` keeps a bash command's path
+// variables for the shell to read from the hook's environment, so a folder name is never shell.
+describe('shellPaths environment-reference', () => {
+  test('a bash command keeps ${CLAUDE_PROJECT_DIR}, and the environment carries the path', async () => {
+    const { calls } = await run(settingsCommand({ command: '"${CLAUDE_PROJECT_DIR}"/h.sh' }), {
+      locations: locations({ project: '/work/x$(touch PWNED)' }),
+      shellPaths: 'environment-reference',
+    });
+    expect(calls[0]?.spec.command).toBe('"${CLAUDE_PROJECT_DIR}"/h.sh');
+    expect(calls[0]?.env['CLAUDE_PROJECT_DIR']).toBe('/work/x$(touch PWNED)');
   });
 });

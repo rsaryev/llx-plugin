@@ -4,6 +4,8 @@
 
 ### Added
 
+- `HookEngineOptions.shellPaths`: the engine's bash hooks keep their path variables as environment
+  references, as `resolveHookCommand` does.
 - `resolveHookCommand` option `shellPaths`: keep a bash hook's path variables as environment
   references, so a folder name with shell metacharacters is never parsed as shell.
 - `locationsWithoutPlugin`: the scope a host gives `resolveHookCommand` for a settings hook.

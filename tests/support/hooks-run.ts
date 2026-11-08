@@ -52,6 +52,7 @@ export interface ContextOptions {
   readonly input?: string;
   readonly windows?: boolean;
   readonly defaultShell?: RunContext['defaultShell'];
+  readonly shellPaths?: RunContext['shellPaths'];
   readonly observer?: RunPorts['observer'];
   readonly userConfigOf?: RunContext['userConfigOf'];
   readonly startDirectory?: string;
@@ -76,6 +77,7 @@ export function runContext(options: ContextOptions): RunContext {
     cwd: options.cwd ?? '/work/app',
     windows: options.windows ?? false,
     defaultShell: options.defaultShell ?? 'bash',
+    ...(options.shellPaths === undefined ? {} : { shellPaths: options.shellPaths }),
     timeouts: options.timeouts ?? {},
     signal: new AbortController().signal,
     ...(options.userConfigOf === undefined ? {} : { userConfigOf: options.userConfigOf }),

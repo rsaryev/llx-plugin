@@ -1,5 +1,5 @@
 import type { PluginIssue } from '../../format/issues.ts';
-import type { ResolvedUserConfig } from '../../loading/resolve/index.ts';
+import type { MonitorPaths, ResolvedUserConfig } from '../../loading/resolve/index.ts';
 import type {
   CommandRunner,
   Clock,
@@ -60,6 +60,8 @@ export interface RunContext {
    * Bash. The kit cannot tell which (hooks.md, "Exec form and shell form"), the host says.
    */
   readonly defaultShell: ShellKind;
+  /** How a bash shell-form command carries a path variable (`HookEngineOptions.shellPaths`). */
+  readonly shellPaths?: MonitorPaths;
   /** The saved options of a plugin, for `${user_config.*}` and `CLAUDE_PLUGIN_OPTION_<KEY>`. */
   readonly userConfigOf?: (pluginId: string) => ResolvedUserConfig;
   readonly timeouts: TimeoutPlan;

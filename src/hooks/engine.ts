@@ -53,6 +53,12 @@ export interface HookEngineOptions {
   readonly windows?: boolean;
   /** What a command hook with no `shell` field runs in: `bash`, or `powershell` on Windows without Git Bash. */
   readonly defaultShell?: ShellKind;
+  /**
+   * How a bash shell-form hook carries a path variable (`resolveHookCommand`'s `shellPaths`):
+   * `environment-reference` keeps `${CLAUDE_PROJECT_DIR}` for the shell to read from the hook's
+   * environment, so a folder name is never parsed as shell. Judgment (spec/judgments.md).
+   */
+  readonly shellPaths?: DispatchConfig['shellPaths'];
   readonly startDirectory?: string;
   readonly tempDirectory?: string;
   readonly userConfigOf?: DispatchConfig['userConfigOf'];
@@ -98,6 +104,7 @@ const runPortsOf = (ports: HookPorts): RunPorts => ({
 
 /** What the host sets about its machine; each is passed on only when set. */
 const hostOf = (options: HookEngineOptions) => ({
+  ...(options.shellPaths === undefined ? {} : { shellPaths: options.shellPaths }),
   ...(options.startDirectory === undefined ? {} : { startDirectory: options.startDirectory }),
   ...(options.tempDirectory === undefined ? {} : { tempDirectory: options.tempDirectory }),
   ...(options.userConfigOf === undefined ? {} : { userConfigOf: options.userConfigOf }),

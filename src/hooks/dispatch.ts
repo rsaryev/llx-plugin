@@ -40,6 +40,7 @@ export interface DispatchConfig {
   readonly modelCatalog?: ModelCatalog;
   readonly windows: boolean;
   readonly defaultShell: ShellKind;
+  readonly shellPaths?: RunContext['shellPaths'];
   readonly startDirectory?: string;
   readonly tempDirectory?: string;
   readonly userConfigOf?: RunContext['userConfigOf'];
@@ -81,6 +82,7 @@ function contextOf(
     defaultShell: config.defaultShell,
     timeouts,
     signal: request.signal,
+    ...(config.shellPaths === undefined ? {} : { shellPaths: config.shellPaths }),
     ...(config.startDirectory === undefined ? {} : { startDirectory: config.startDirectory }),
     ...(config.tempDirectory === undefined ? {} : { tempDirectory: config.tempDirectory }),
     ...(config.userConfigOf === undefined ? {} : { userConfigOf: config.userConfigOf }),
