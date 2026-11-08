@@ -1,3 +1,6 @@
+import type { BashInput, MonitorInput } from '../protocol/official-tools.ts';
+import type { Assert, Equal } from '../protocol/type-equality.ts';
+
 /**
  * How a tool reads what follows its name inside the parentheses of a rule: the "Rule format" table
  * of tools-reference.md ("Configure tools with permission rules and hooks"). One id per format;
@@ -39,20 +42,40 @@ export const ruleFormatOf = (toolName: string): RuleFormatId =>
   FORMAT_OF_TOOL.get(toolName) ?? 'bare';
 
 /**
- * The input fields of the command tools (hooks.md, "Bash" and "PowerShell" tool_input; Monitor's
- * own fields). A `name:value` specifier of a command rule is a parameter rule only for one of
- * these, because `git:* push` or `npm:run` is command text and the docs do not say otherwise
- * (spec/judgments.md).
+ * The input fields of the command tools: a `name:value` specifier of a command rule is a parameter
+ * rule only for one of these, because `git:* push` or `npm:run` is command text and the docs do
+ * not say otherwise (spec/judgments.md). Bash and Monitor share a rule format; their fields are
+ * the SDK's `BashInput` and `MonitorInput`, and the guards below fail the typecheck when either
+ * drifts. The SDK has no PowerShell input type, so PowerShell reads Bash's fields (judgment).
  */
-const COMMAND_INPUT_FIELDS: ReadonlySet<string> = new Set([
+const BASH_INPUT_FIELDS = [
   'command',
-  'description',
   'timeout',
-  'timeout_ms',
+  'description',
   'run_in_background',
   'dangerouslyDisableSandbox',
+] as const satisfies readonly (keyof BashInput)[];
+
+const MONITOR_INPUT_FIELDS = [
+  'description',
+  'timeout_ms',
+  'command',
   'ws',
+] as const satisfies readonly (keyof MonitorInput)[];
+
+/** @public A compile-time drift guard: a field the SDK adds to or drops from `BashInput` fails the typecheck. */
+export type BashFieldsMatchSdk = Assert<Equal<(typeof BASH_INPUT_FIELDS)[number], keyof BashInput>>;
+
+/** @public A compile-time drift guard: a field the SDK adds to or drops from `MonitorInput` fails the typecheck. */
+export type MonitorFieldsMatchSdk = Assert<
+  Equal<(typeof MONITOR_INPUT_FIELDS)[number], keyof MonitorInput>
+>;
+
+const COMMAND_INPUT_FIELDS: ReadonlySet<string> = new Set([
+  ...BASH_INPUT_FIELDS,
+  ...MONITOR_INPUT_FIELDS,
 ]);
+const POWERSHELL_INPUT_FIELDS: ReadonlySet<string> = new Set(BASH_INPUT_FIELDS);
 
 /** What a format changes about reading a specifier, before any matching. */
 export interface SpecifierSyntax {
@@ -77,10 +100,11 @@ const COMMAND: SpecifierSyntax = {
   colonStarSuffix: true,
   parameterNames: COMMAND_INPUT_FIELDS,
 };
+const POWERSHELL: SpecifierSyntax = { ...COMMAND, parameterNames: POWERSHELL_INPUT_FIELDS };
 
 export const SPECIFIER_SYNTAX: { readonly [F in RuleFormatId]: SpecifierSyntax } = {
   command: { ...COMMAND, starIsBare: true },
-  'powershell-command': COMMAND,
+  'powershell-command': POWERSHELL,
   'read-path': PLAIN,
   'edit-path': PLAIN,
   'skill-name': PLAIN,

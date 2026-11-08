@@ -10,8 +10,8 @@
  */
 import { describe, expect, test } from 'bun:test';
 import type { PermissionBehavior } from '../../src/protocol/official.ts';
-import { evaluateRules, matchRule, parseRule } from '../../src/rules/index.ts';
-import { call, matchContext, parsed } from '../support/rule-context.ts';
+import { evaluateRules, matchRule, parseRule, type RuleFormatId } from '../../src/rules/index.ts';
+import { call, matchContext, parsed, recordingMatchers } from '../support/rule-context.ts';
 import { spec } from '../support/spec.ts';
 
 const matches = (
@@ -79,19 +79,20 @@ spec('permissions.rule.Agent(isolation:worktree)', () => {
   test('the parameter must be a direct field: a nested one is not matchable', () => {
     const nested = { options: { isolation: 'worktree' } };
     expect(matches('Agent(isolation:worktree)', 'Agent', nested)).toBe(false);
-    expect(matches('Agent(options.isolation:worktree)', 'Agent', nested)).toBe(false);
     expect(matches('Agent(options:*)', 'Agent', nested)).toBe(false);
+  });
+
+  test('a dotted path is not a parameter name, so there is no nested-field rule to write', () => {
+    // The rule reads as a text specifier for the agent type; nothing digs into `options`.
+    expect(parsed('Agent(options.isolation:worktree)').specifier).toEqual({
+      form: 'text',
+      pattern: 'options.isolation:worktree',
+    });
   });
 
   test('a field inside an array is not matchable either', () => {
     expect(matches('Agent(tags:*)', 'Agent', { tags: ['worktree'] })).toBe(false);
     expect(matches('Agent(tags:worktree)', 'Agent', { tags: ['worktree'] })).toBe(false);
-  });
-
-  test('one parameter per rule: a rule that names two matches neither call shape', () => {
-    const both = { model: 'opus', isolation: 'worktree' };
-    expect(matches('Agent(model:opus, isolation:worktree)', 'Agent', both)).toBe(false);
-    expect(matches('Agent(model:opus isolation:worktree)', 'Agent', both)).toBe(false);
   });
 
   test('to gate on both, two rules cover each parameter on its own', () => {
@@ -175,16 +176,33 @@ spec('permissions.rule.Bash(run_in_background:true)', () => {
     }
   });
 
-  test('an allow rule does not match by parameter: allow keeps each tool own specifier syntax', () => {
+  test('an allow rule does not read a parameter: allow keeps each tool own specifier syntax', () => {
     const rule = parsed('Bash(run_in_background:true)', 'allow');
     expect(rule.specifier).toEqual({ form: 'text', pattern: 'run_in_background:true' });
-    expect(
-      matchRule(rule, call('Bash', { command: 'ls', run_in_background: true }), matchContext),
-    ).toBe(false);
+    // The rule goes to the command matcher as command text, never to parameter matching.
+    const seen: RuleFormatId[] = [];
+    const matchers = recordingMatchers(seen);
+    const background = call('Bash', { command: 'ls', run_in_background: true });
+    expect(matchRule(rule, background, matchContext, matchers)).toBe(true);
+    expect(seen).toEqual(['command']);
   });
 });
 
 describe('judgments (spec/judgments.md: how a parameter value is compared)', () => {
+  test('a rule that names two parameters reads them as one value and matches neither call shape', () => {
+    // The docs only say to write two rules "rather than combining them in one rule"; what a
+    // combined rule does is the kit's choice: `name:value` splits at the first colon, so the rest
+    // is one literal value.
+    const both = { model: 'opus', isolation: 'worktree' };
+    expect(parsed('Agent(model:opus, isolation:worktree)').specifier).toEqual({
+      form: 'param',
+      name: 'model',
+      value: 'opus, isolation:worktree',
+    });
+    expect(matches('Agent(model:opus, isolation:worktree)', 'Agent', both)).toBe(false);
+    expect(matches('Agent(model:opus isolation:worktree)', 'Agent', both)).toBe(false);
+  });
+
   test('a number or boolean compares as its text', () => {
     expect(matches('Bash(timeout:5000)', 'Bash', { command: 'ls', timeout: 5000 })).toBe(true);
     expect(matches('Bash(timeout:5000)', 'Bash', { command: 'ls', timeout: 5001 })).toBe(false);

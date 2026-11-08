@@ -1,5 +1,7 @@
 import type { PermissionBehavior } from '../../src/protocol/official.ts';
+import type { SpecifierMatchers } from '../../src/rules/matchers.ts';
 import { parseRule } from '../../src/rules/parse.ts';
+import type { RuleFormatId } from '../../src/rules/specifier-formats.ts';
 import type {
   MatchContext,
   PermissionRule,
@@ -35,3 +37,21 @@ export function parsed(
 
 /** A tool call as the model sends it. */
 export const call = (toolName: string, input: unknown): PreparedCall => ({ toolName, input });
+
+/** A registry whose every matcher records its own format and says yes. */
+export const recordingMatchers = (seen: RuleFormatId[]): SpecifierMatchers => {
+  const say = (format: RuleFormatId) => () => {
+    seen.push(format);
+    return true;
+  };
+  return {
+    command: say('command'),
+    'powershell-command': say('powershell-command'),
+    'read-path': say('read-path'),
+    'edit-path': say('edit-path'),
+    'skill-name': say('skill-name'),
+    'subagent-type': say('subagent-type'),
+    domain: say('domain'),
+    bare: say('bare'),
+  };
+};

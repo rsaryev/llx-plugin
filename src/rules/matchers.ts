@@ -1,3 +1,4 @@
+import type { PermissionBehavior } from '../protocol/official.ts';
 import type { RuleFormatId } from './specifier-formats.ts';
 import type { MatchContext, PermissionRule, PreparedCall } from './types.ts';
 
@@ -15,22 +16,27 @@ export type SpecifierMatcher = (
 
 export type SpecifierMatchers = { readonly [F in RuleFormatId]: SpecifierMatcher };
 
-/** Matches nothing: the placeholder of a format whose matcher is not written yet. */
-const matchesNothing: SpecifierMatcher = () => false;
-
 /**
- * The matcher of each rule format. The command, path, skill, agent and domain matchers are the
- * business of the sub-packages that implement them; each replaces its entry here. A format with no
- * matcher matches nothing, which is the safe side for an allow rule and, until the matcher exists,
- * the unsafe one for a deny rule.
+ * What an unwritten matcher answers, per behaviour: it fails on the safe side. An allow rule that
+ * matches nothing approves nothing; a deny or ask rule that matched nothing would let the call
+ * through unchecked, so it covers every call of its tool until the real matcher exists.
  */
+const COVERS_WHEN_UNWRITTEN: { readonly [B in PermissionBehavior]: boolean } = {
+  allow: false,
+  deny: true,
+  ask: true,
+};
+
+/** The placeholder of a format whose matcher is not written yet. */
+const failsClosed: SpecifierMatcher = (rule) => COVERS_WHEN_UNWRITTEN[rule.behavior];
+
 export const SPECIFIER_MATCHERS: SpecifierMatchers = {
-  command: matchesNothing,
-  'powershell-command': matchesNothing,
-  'read-path': matchesNothing,
-  'edit-path': matchesNothing,
-  'skill-name': matchesNothing,
-  'subagent-type': matchesNothing,
-  domain: matchesNothing,
-  bare: matchesNothing,
+  command: failsClosed,
+  'powershell-command': failsClosed,
+  'read-path': failsClosed,
+  'edit-path': failsClosed,
+  'skill-name': failsClosed,
+  'subagent-type': failsClosed,
+  domain: failsClosed,
+  bare: failsClosed,
 };

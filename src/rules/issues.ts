@@ -1,7 +1,6 @@
 import { warning, type PluginIssue } from '../format/issues.ts';
 import type { PermissionBehavior } from '../protocol/official.ts';
 import { REMOVED_TOOLS } from '../protocol/tool-names.ts';
-import { formatRule } from './parse.ts';
 import type { PermissionRule } from './types.ts';
 
 type RuleCheck = (rule: PermissionRule, knownTools: ReadonlySet<string>) => readonly PluginIssue[];
@@ -33,7 +32,7 @@ const matchesNoTool: RuleCheck = (rule, knownTools) => {
     : [
         warning(
           `permissions.${rule.behavior}`,
-          `Permission ${rule.behavior} rule "${formatRule(rule.value)}" matches no known tool — check for typos.`,
+          `Permission ${rule.behavior} rule "${rule.text}" matches no known tool — check for typos.`,
         ),
       ];
 };

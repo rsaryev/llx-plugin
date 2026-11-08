@@ -29,6 +29,13 @@
 
 ### Fixed
 
+- Permission rules: an `mcp__` rule with parentheses is skipped only when it comes from a settings
+  file, so a deny rule from the command line or the session matches an MCP tool parameter;
+  `RuleSource` gains `managed` and `embedder-managed`; a `Skill(skill:<name>)` deny rule matches
+  every name the host reports in `PreparedCall.skillNames`; the primary content field is per tool
+  (`url` is only `WebFetch`'s); the default matchers fail closed for deny and ask rules; the
+  matches-no-tool warning repeats the rule as written (`PermissionRule.text`); the command tools'
+  parameter names are checked against the SDK input types.
 - `readFlag` no longer reads `constructor` or `__proto__` as a flag, and `readList` no longer splits
   a glob such as `src/**/*.{ts,tsx}` or a path with a space.
 - The layer check now rejects `Date`, timers, `fetch`, `crypto`, `performance` and `globalThis` in

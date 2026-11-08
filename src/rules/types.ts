@@ -8,11 +8,17 @@ import type { PermissionRuleValue } from '../protocol/official-tools.ts';
  */
 
 /**
- * Where a rule was written (permissions.md, "Settings precedence"). It matters only to the path
- * rules, where `/path` anchors differently per source; that table is a registry typed over the
- * `kind`s, never a comparison.
+ * Where a rule was written (permissions.md, "Settings precedence" and "Managed settings"). It
+ * matters to the parser (a settings file skips an `mcp__` rule with parentheses, the command line
+ * does not) and to the path rules, where `/path` anchors differently per source; each such table is
+ * a registry typed over the `kind`s (`sources.ts`), never a comparison. `managed` is the managed
+ * tier (server-managed settings, MDM, `managed-settings.json`), the highest: no other source can
+ * override its rules. `embedder-managed` is the policy an embedding host passes through the SDK
+ * `managedSettings` option.
  */
 export type RuleSource =
+  | { readonly kind: 'managed' }
+  | { readonly kind: 'embedder-managed' }
   | { readonly kind: 'project' }
   | { readonly kind: 'local' }
   | { readonly kind: 'user' }
@@ -39,6 +45,8 @@ export interface PermissionRule {
   readonly toolGlob: boolean;
   /** `undefined` is a bare tool name: it covers every use of the tool (`Bash(*)` reads as bare). */
   readonly specifier: Specifier | undefined;
+  /** The rule as it was written, trimmed: what a warning repeats ("as you wrote it", errors.md). */
+  readonly text: string;
 }
 
 /** A tool call as a rule sees it: the canonical tool name and the input Claude sent. */
@@ -49,10 +57,17 @@ export interface ToolCall {
 
 /**
  * A call after the host's own preparation: the real paths a symlink in the call resolves to, which
- * the path rules need (permissions.md, "Symlinks"). Absent when nothing was resolved.
+ * the path rules need (permissions.md, "Symlinks"), and the names of a called skill. Absent when
+ * nothing was resolved.
  */
 export interface PreparedCall extends ToolCall {
   readonly resolvedPaths?: readonly string[];
+  /**
+   * Every name the called skill goes by (its alias, its display name, a qualified form), which a
+   * `Skill(skill:<name>)` deny rule matches (permissions.md, "Match by input parameter"). The host
+   * knows its skills; the kit holds no skill catalog.
+   */
+  readonly skillNames?: readonly string[];
 }
 
 /** The folders and platform path rules are read against. Plain data the host supplies. */

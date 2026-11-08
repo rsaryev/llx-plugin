@@ -1,7 +1,7 @@
 import type { PermissionBehavior } from '../protocol/official.ts';
 import type { Assert, Equal } from '../protocol/type-equality.ts';
 import { SPECIFIER_MATCHERS, type SpecifierMatchers } from './matchers.ts';
-import { matchesParam } from './param.ts';
+import { matchesCallParam } from './param.ts';
 import { ruleFormatOf } from './specifier-formats.ts';
 import { toolNameMatches } from './tool-pattern.ts';
 import type { MatchContext, PermissionRule, PreparedCall, RuleVerdict } from './types.ts';
@@ -21,7 +21,7 @@ export function matchRule(
   if (!toolNameMatches(rule, call.toolName)) return false;
   const { specifier } = rule;
   if (specifier === undefined) return true;
-  if (specifier.form === 'param') return matchesParam(specifier, call.input);
+  if (specifier.form === 'param') return matchesCallParam(rule, specifier, call);
   return matchers[ruleFormatOf(call.toolName)](rule, call, ctx);
 }
 

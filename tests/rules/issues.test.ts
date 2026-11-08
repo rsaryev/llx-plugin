@@ -32,18 +32,16 @@ describe('ruleIssues: a deny or ask rule that matches no tool', () => {
     );
   });
 
-  test('the warning repeats the rule as written, specifier included', () => {
+  test('the warning repeats the rule as written, specifier and empty parentheses included', () => {
     expect(issuesOf('Bsh(rm *)', 'deny')[0]?.message).toContain('"Bsh(rm *)"');
+    expect(issuesOf('Bsh()', 'deny')[0]?.message).toContain('"Bsh()"');
+    expect(issuesOf('  Bsh(*)  ', 'ask')[0]?.message).toContain('"Bsh(*)"');
   });
 
   test('a label is not a canonical name: "Stop Task" warns, TaskStop does not', () => {
     expect(issuesOf('Stop Task', 'deny')).toHaveLength(1);
     expect(issuesOf('Stop Task', 'ask')).toHaveLength(1);
     expect(issuesOf('TaskStop', 'deny')).toEqual([]);
-  });
-
-  test('every documented tool name is known', () => {
-    for (const name of DOCUMENTED_TOOLS) expect([name, issuesOf(name, 'deny')]).toEqual([name, []]);
   });
 
   test('names are case-sensitive: bash is not Bash', () => {

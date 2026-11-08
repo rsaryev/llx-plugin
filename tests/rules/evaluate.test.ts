@@ -19,9 +19,8 @@ import {
   matchRule,
   type PermissionRule,
   type RuleFormatId,
-  type SpecifierMatchers,
 } from '../../src/rules/index.ts';
-import { call, matchContext, parsed } from '../support/rule-context.ts';
+import { call, matchContext, parsed, recordingMatchers } from '../support/rule-context.ts';
 
 const verdict = (rules: readonly PermissionRule[], toolName: string, input: unknown = {}) =>
   evaluateRules(rules, call(toolName, input), matchContext);
@@ -92,24 +91,6 @@ describe('evaluateRules: deny, then ask, then allow', () => {
   });
 });
 
-/** A registry whose every matcher records its own format and says yes. */
-const recording = (seen: RuleFormatId[]): SpecifierMatchers => {
-  const say = (format: RuleFormatId) => () => {
-    seen.push(format);
-    return true;
-  };
-  return {
-    command: say('command'),
-    'powershell-command': say('powershell-command'),
-    'read-path': say('read-path'),
-    'edit-path': say('edit-path'),
-    'skill-name': say('skill-name'),
-    'subagent-type': say('subagent-type'),
-    domain: say('domain'),
-    bare: say('bare'),
-  };
-};
-
 // Hand-copied from the "Rule format" table of tools-reference.md.
 const table: readonly (readonly [string, string, RuleFormatId])[] = [
   ['Bash', 'Bash(npm run *)', 'command'],
@@ -133,7 +114,7 @@ describe('matchRule dispatches a specifier to the matcher of its tool format', (
     for (const [toolName, text, format] of table) {
       const seen: RuleFormatId[] = [];
       const rule = parsed(text, 'allow');
-      const matched = matchRule(rule, call(toolName, {}), matchContext, recording(seen));
+      const matched = matchRule(rule, call(toolName, {}), matchContext, recordingMatchers(seen));
       expect([toolName, matched, seen]).toEqual([toolName, true, [format]]);
     }
   });
@@ -141,13 +122,13 @@ describe('matchRule dispatches a specifier to the matcher of its tool format', (
   test('a rule for another tool never reaches a matcher', () => {
     const seen: RuleFormatId[] = [];
     const rule = parsed('Bash(npm run *)', 'allow');
-    expect(matchRule(rule, call('Read', {}), matchContext, recording(seen))).toBe(false);
+    expect(matchRule(rule, call('Read', {}), matchContext, recordingMatchers(seen))).toBe(false);
     expect(seen).toEqual([]);
   });
 
   test('a bare rule and a parameter rule never reach a matcher: the tool name and input decide', () => {
     const seen: RuleFormatId[] = [];
-    const matchers = recording(seen);
+    const matchers = recordingMatchers(seen);
     expect(matchRule(parsed('Bash'), call('Bash', {}), matchContext, matchers)).toBe(true);
     const param = parsed('Bash(timeout:5)');
     expect(matchRule(param, call('Bash', { timeout: 5 }), matchContext, matchers)).toBe(true);
@@ -157,7 +138,47 @@ describe('matchRule dispatches a specifier to the matcher of its tool format', (
   test('a tool the table does not list reads a specifier as the bare format does', () => {
     const seen: RuleFormatId[] = [];
     const rule = parsed('TodoWrite(anything)', 'allow');
-    expect(matchRule(rule, call('TodoWrite', {}), matchContext, recording(seen))).toBe(true);
+    expect(matchRule(rule, call('TodoWrite', {}), matchContext, recordingMatchers(seen))).toBe(
+      true,
+    );
     expect(seen).toEqual(['bare']);
+  });
+});
+
+describe('the default matchers fail closed (spec/judgments.md)', () => {
+  // The matchers of the Bash, path, domain, skill and agent formats are written by their own
+  // sub-packages. Until they exist a deny or ask rule must not silently let a call through.
+  const cases = [
+    ['Bash(rm *)', 'Bash', { command: 'rm -rf /' }],
+    ['PowerShell(Remove-Item *)', 'PowerShell', { command: 'Remove-Item x' }],
+    ['Read(./.env)', 'Read', { file_path: '/work/app/.env' }],
+    ['Edit(src/**)', 'Edit', { file_path: '/work/app/src/a.ts' }],
+    ['WebFetch(domain:example.com)', 'WebFetch', { url: 'https://example.com' }],
+    ['Skill(deploy *)', 'Skill', { skill: 'deploy' }],
+    ['Agent(Explore)', 'Agent', { subagent_type: 'Explore' }],
+  ] as const;
+
+  test('a deny or ask rule with a text or domain specifier covers every call of its tool', () => {
+    for (const [text, toolName, input] of cases) {
+      for (const behavior of ['deny', 'ask'] as const) {
+        const result = verdict([parsed(text, behavior)], toolName, input);
+        expect([text, behavior, result.behavior]).toEqual([text, behavior, behavior]);
+      }
+    }
+  });
+
+  test('an allow rule approves nothing', () => {
+    for (const [text, toolName, input] of cases) {
+      expect([text, verdict([parsed(text, 'allow')], toolName, input).behavior]).toEqual([
+        text,
+        undefined,
+      ]);
+    }
+  });
+
+  test('a rule for another tool is still not covered', () => {
+    expect(verdict([parsed('Bash(rm *)', 'deny')], 'Read', { file_path: '/a' }).behavior).toBe(
+      undefined,
+    );
   });
 });

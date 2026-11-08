@@ -172,9 +172,14 @@ const verdict = evaluateRules(rules, { toolName: 'Agent', input: { model: 'opus'
 
 `parseRule` returns the official `{ toolName, ruleContent? }` in `rule.value` and the read form in
 `rule.specifier` (`param`, `domain` or `text`), so matching never parses text again. Deny and ask
-rules read `name:value` as an input parameter; an allow rule keeps each tool's own syntax.
+rules read `name:value` as an input parameter; an allow rule keeps each tool's own syntax. An
+`mcp__` rule with parentheses is skipped in a settings file (`RuleSource` `managed`,
+`embedder-managed`, `project`, `local`, `user`, `flag-settings`) and read as a parameter rule from
+the command line or the session. A `Skill(skill:<name>)` deny rule also matches the names in
+`PreparedCall.skillNames`.
 `SPECIFIER_MATCHERS` holds one matcher per `RuleFormatId` (the "Rule format" table of
-tools-reference.md); a format whose matcher is not written yet matches nothing.
+tools-reference.md); until its matcher is written a format fails closed: an allow rule matches
+nothing, a deny or ask rule matches every call of its tool.
 
 ## Testing kit (planned)
 

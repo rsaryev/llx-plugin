@@ -3,6 +3,7 @@ import type { PermissionBehavior } from '../protocol/official.ts';
 import type { PermissionRuleValue } from '../protocol/official-tools.ts';
 import { isPrimaryField, readParam } from './param.ts';
 import { ruleFormatOf, SPECIFIER_SYNTAX } from './specifier-formats.ts';
+import { IS_SETTINGS_SOURCE } from './sources.ts';
 import { isAnchoredAllowGlob } from './tool-pattern.ts';
 import type { PermissionRule, RuleSource, Specifier } from './types.ts';
 
@@ -52,14 +53,18 @@ function splitRule(raw: string): Parts | undefined {
   return { toolName, content: raw.slice(open + 1, -1) };
 }
 
-/** Rules a tool name rules out whatever follows it: an MCP rule with parentheses, a glob with one. */
+/**
+ * Rules a tool name rules out whatever follows it: an MCP rule with parentheses (in a settings
+ * file only: the command line and the session read it as a parameter rule, permissions.md "Match
+ * by input parameter"), a glob with a specifier.
+ */
 function checkToolName(parts: Parts, at: RuleOrigin, raw: string): Problem | undefined {
   const { toolName, content } = parts;
   const hasSpecifier = content !== undefined;
-  if (hasSpecifier && toolName.startsWith('mcp__')) {
+  if (hasSpecifier && toolName.startsWith('mcp__') && IS_SETTINGS_SOURCE[at.source.kind]) {
     return invalid(
       raw,
-      'an mcp__ rule cannot have parentheses (to match a parameter of an MCP tool, pass a deny rule with --disallowedTools)',
+      'an mcp__ rule in a settings file cannot have parentheses (to match a parameter of an MCP tool, pass a deny rule with --disallowedTools)',
     );
   }
   if (hasSpecifier && toolName.includes('*')) {
@@ -98,7 +103,7 @@ function readSpecifier(parts: Parts, at: RuleOrigin, raw: string): Read {
   }
   const param = READS_PARAMETERS[at.behavior] ? readParam(content, syntax) : undefined;
   if (param === undefined) return { specifier: { form: 'text', pattern: content } };
-  if (!isPrimaryField(param.name)) return { specifier: param };
+  if (!isPrimaryField(toolName, param.name)) return { specifier: param };
   return {
     problem: {
       severity: 'warning',
@@ -138,6 +143,7 @@ export function parseRule(text: string, at: RuleOrigin): RuleParse {
       source: at.source,
       toolGlob: toolName.includes('*'),
       specifier: read.specifier,
+      text: raw,
     },
     issues: [],
   };

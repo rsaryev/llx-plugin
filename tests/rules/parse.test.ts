@@ -11,7 +11,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { PermissionBehavior } from '../../src/protocol/official.ts';
 import { PERMISSION_BEHAVIORS } from '../../src/protocol/permission-modes.ts';
-import { formatRule, matchRule, parseRule } from '../../src/rules/index.ts';
+import { formatRule, matchRule, parseRule, type RuleSource } from '../../src/rules/index.ts';
 import { call, matchContext, parsed } from '../support/rule-context.ts';
 import { spec } from '../support/spec.ts';
 
@@ -64,15 +64,6 @@ spec('permissions.rule.Bash', () => {
       }
     }
   });
-
-  test('as a deny rule both forms are whole-tool rules, so the tool leaves Claude context', () => {
-    // The removal itself is the availability filter's (tools.tool.Bash); the rule shape it reads
-    // is "deny, no specifier, no glob".
-    for (const text of ['Bash', 'Bash(*)']) {
-      const rule = parsed(text, 'deny');
-      expect([rule.behavior, rule.specifier, rule.toolGlob]).toEqual(['deny', undefined, false]);
-    }
-  });
 });
 
 spec('permissions.rule.Read', () => {
@@ -97,6 +88,18 @@ spec('permissions.rule.WebFetch', () => {
     ],
     ['WebSearch', 'Bash'],
   );
+});
+
+describe('a whole-tool deny rule (permissions.md § Match all uses of a tool)', () => {
+  // The docs say both forms "remove the tool from Claude's context". The removal is the
+  // availability filter's (tools.tool.Bash); this package proves only the rule shape that filter
+  // reads, so the test is not under spec() and counts as no proof of the removal.
+  test('Bash and Bash(*) are both deny rules with no specifier and no glob', () => {
+    for (const text of ['Bash', 'Bash(*)']) {
+      const rule = parsed(text, 'deny');
+      expect([rule.behavior, rule.specifier, rule.toolGlob]).toEqual(['deny', undefined, false]);
+    }
+  });
 });
 
 describe('rule grammar: Tool or Tool(specifier)', () => {
@@ -134,10 +137,21 @@ describe('rule grammar: Tool or Tool(specifier)', () => {
     });
   });
 
-  test('the rule keeps its behaviour and the settings source it came from', () => {
-    const source = { kind: 'flag-settings', file: '/tmp/s.json' } as const;
-    const rule = parsed('Bash', 'ask', source);
-    expect([rule.behavior, rule.source]).toEqual(['ask', source]);
+  test('the rule keeps its behaviour and the source it came from, managed ones included', () => {
+    const sources: readonly RuleSource[] = [
+      { kind: 'flag-settings', file: '/tmp/s.json' },
+      { kind: 'managed' },
+      { kind: 'embedder-managed' },
+    ];
+    for (const source of sources) {
+      const rule = parsed('Bash', 'ask', source);
+      expect([rule.behavior, rule.source]).toEqual(['ask', source]);
+    }
+  });
+
+  test('the rule keeps its text as written, trimmed', () => {
+    expect(parsed('  Bash()  ').text).toBe('Bash()');
+    expect(parsed('Bash(*)').text).toBe('Bash(*)');
   });
 
   test('surrounding whitespace in the settings entry is not part of the rule', () => {
@@ -181,14 +195,48 @@ describe('malformed rules (errors.md § Malformed Tool(content) rule)', () => {
 });
 
 describe('parseRule edge cases (spec/judgments.md)', () => {
-  test('an mcp__ rule with parentheses is skipped (permissions.md, "Match by input parameter")', () => {
-    const { rule, issues } = parseRule('mcp__github__get_issue(id:7)', {
-      behavior: 'deny',
-      source: { kind: 'project' },
-    });
-    expect(rule).toBeUndefined();
-    expect(issues.map((found) => found.severity)).toEqual(['error']);
-    expect(issues[0]?.message).toContain('mcp__github__get_issue(id:7)');
+  test('an mcp__ rule with parentheses is skipped in every settings source', () => {
+    const sources: readonly RuleSource[] = [
+      { kind: 'managed' },
+      { kind: 'embedder-managed' },
+      { kind: 'project' },
+      { kind: 'local' },
+      { kind: 'user' },
+      { kind: 'flag-settings', file: '/tmp/s.json' },
+    ];
+    for (const source of sources) {
+      for (const behavior of PERMISSION_BEHAVIORS) {
+        const { rule, issues } = parseRule('mcp__github__get_issue(id:7)', { behavior, source });
+        expect([source.kind, rule]).toEqual([source.kind, undefined]);
+        expect(issues.map((found) => found.severity)).toEqual(['error']);
+        expect(issues[0]?.message).toContain('mcp__github__get_issue(id:7)');
+      }
+    }
+  });
+
+  test('a deny or ask rule from the command line or the session matches an MCP parameter', () => {
+    // "To match a parameter on an MCP tool, pass a deny rule with --disallowedTools": the skip is
+    // for a settings file only, so the rule the error message recommends must parse.
+    for (const kind of ['cli', 'session'] as const) {
+      for (const behavior of ['deny', 'ask'] as const) {
+        const rule = parsed('mcp__github__get_issue(id:7)', behavior, { kind });
+        expect(rule.specifier).toEqual({ form: 'param', name: 'id', value: '7' });
+        const mcpCall = call('mcp__github__get_issue', { id: 7 });
+        expect(matchRule(rule, mcpCall, matchContext)).toBe(true);
+        expect(matchRule(rule, call('mcp__github__get_issue', { id: 8 }), matchContext)).toBe(
+          false,
+        );
+        expect(matchRule(rule, call('mcp__github__get_repo', { id: 7 }), matchContext)).toBe(false);
+      }
+    }
+  });
+
+  test('an allow rule with parentheses from the command line is a text specifier that approves nothing', () => {
+    // Judgment: the docs name only the deny case; an allow rule never matches by parameter, so it
+    // keeps its text and the unwritten matcher of the bare format matches nothing for an allow.
+    const rule = parsed('mcp__github__get_issue(id:7)', 'allow', { kind: 'cli' });
+    expect(rule.specifier).toEqual({ form: 'text', pattern: 'id:7' });
+    expect(matchRule(rule, call('mcp__github__get_issue', { id: 7 }), matchContext)).toBe(false);
   });
 
   test('a tool-name glob takes no specifier', () => {
