@@ -45,65 +45,44 @@ const load = async (tree: Record<string, string>, fallbackName?: string) =>
   loadPlugin({ files: memoryFiles(tree), ...(fallbackName && { fallbackName }) });
 
 describe('a plugin that uses every default location', () => {
-  spec(
-    [
-      'layout.Skills',
-      'layout.Commands',
-      'layout.Agents',
-      'layout.Hooks',
-      'layout.MCP servers',
-      'layout.LSP servers',
-      'layout.Output styles',
-      'layout.Workflows',
-      'layout.Themes',
-      'layout.Monitors',
-      'layout.Executables',
-      'layout.Settings',
-      'layout.Manifest',
-    ],
-    () => {
-      test('loadPlugin finds every component where the standard layout puts it', async () => {
-        const { plugin, issues } = await load(DEPLOY_TOOLS);
-        expect(issues).toEqual([]);
-        expect(plugin?.name).toBe('deploy-tools');
-        expect(plugin?.manifest?.version).toBe('1.0.0');
-        expect(plugin?.skills.map((one) => [one.qualifiedName, one.text])).toEqual([
-          ['deploy-tools:deploy', 'Deploy it.'],
-        ]);
-        expect(plugin?.commands.map((one) => one.qualifiedName)).toEqual(['deploy-tools:status']);
-        expect(plugin?.agents.map((one) => one.qualifiedName)).toEqual(['deploy-tools:reviewer']);
-        expect(Object.keys(plugin?.hooks ?? {})).toEqual(['PostToolUse']);
-        expect(Object.keys(plugin?.mcpServers ?? {})).toEqual(['db']);
-        expect(Object.keys(plugin?.lspServers ?? {})).toEqual(['go']);
-        expect(plugin?.outputStyles.map((one) => one.qualifiedName)).toEqual([
-          'deploy-tools:terse',
-        ]);
-        expect(plugin?.workflows.map((one) => one.path)).toEqual(['workflows/release-audit.js']);
-        expect(plugin?.themes.map((one) => one.path)).toEqual(['themes/dracula.json']);
-        expect(namesOf(plugin?.monitors ?? [])).toEqual(['error-log']);
-        expect(plugin?.bin).toEqual(['bin/deploy-tool']);
-        expect(plugin?.hasBin).toBe(true);
-        expect(plugin?.settings).toEqual({ agent: 'reviewer' });
-      });
+  test('loadPlugin finds every component where the standard layout puts it', async () => {
+    const { plugin, issues } = await load(DEPLOY_TOOLS);
+    expect(issues).toEqual([]);
+    expect(plugin?.name).toBe('deploy-tools');
+    expect(plugin?.manifest?.version).toBe('1.0.0');
+    expect(plugin?.skills.map((one) => [one.qualifiedName, one.text])).toEqual([
+      ['deploy-tools:deploy', 'Deploy it.'],
+    ]);
+    expect(plugin?.commands.map((one) => one.qualifiedName)).toEqual(['deploy-tools:status']);
+    expect(plugin?.agents.map((one) => one.qualifiedName)).toEqual(['deploy-tools:reviewer']);
+    expect(Object.keys(plugin?.hooks ?? {})).toEqual(['PostToolUse']);
+    expect(Object.keys(plugin?.mcpServers ?? {})).toEqual(['db']);
+    expect(Object.keys(plugin?.lspServers ?? {})).toEqual(['go']);
+    expect(plugin?.outputStyles.map((one) => one.qualifiedName)).toEqual(['deploy-tools:terse']);
+    expect(plugin?.workflows.map((one) => one.path)).toEqual(['workflows/release-audit.js']);
+    expect(plugin?.themes.map((one) => one.path)).toEqual(['themes/dracula.json']);
+    expect(namesOf(plugin?.monitors ?? [])).toEqual(['error-log']);
+    expect(plugin?.bin).toEqual(['bin/deploy-tool']);
+    expect(plugin?.hasBin).toBe(true);
+    expect(plugin?.settings).toEqual({ agent: 'reviewer' });
+  });
 
-      test('the same files in the wrong places load nothing', async () => {
-        const moved = Object.fromEntries(
-          Object.entries(DEPLOY_TOOLS).map(([path, text]) =>
-            path.startsWith('.claude-plugin/') ? [path, text] : [`.claude-plugin/${path}`, text],
-          ),
-        );
-        const { plugin } = await load(moved);
-        expect(plugin?.skills).toEqual([]);
-        expect(plugin?.commands).toEqual([]);
-        expect(plugin?.hooks).toEqual({});
-        expect(plugin?.mcpServers).toEqual({});
-        expect(plugin?.lspServers).toEqual({});
-        expect(plugin?.monitors).toEqual([]);
-        expect(plugin?.hasBin).toBe(false);
-        expect(plugin?.settings).toEqual({});
-      });
-    },
-  );
+  test('the same files in the wrong places load nothing', async () => {
+    const moved = Object.fromEntries(
+      Object.entries(DEPLOY_TOOLS).map(([path, text]) =>
+        path.startsWith('.claude-plugin/') ? [path, text] : [`.claude-plugin/${path}`, text],
+      ),
+    );
+    const { plugin } = await load(moved);
+    expect(plugin?.skills).toEqual([]);
+    expect(plugin?.commands).toEqual([]);
+    expect(plugin?.hooks).toEqual({});
+    expect(plugin?.mcpServers).toEqual({});
+    expect(plugin?.lspServers).toEqual({});
+    expect(plugin?.monitors).toEqual([]);
+    expect(plugin?.hasBin).toBe(false);
+    expect(plugin?.settings).toEqual({});
+  });
 });
 
 spec('layout.Manifest', () => {

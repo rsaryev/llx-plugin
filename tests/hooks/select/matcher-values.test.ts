@@ -6,102 +6,94 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { MATCHER_VALUES } from '../../../src/hooks/select/matcher-values.ts';
-import type { EventFactsOf } from '../../../src/hooks/contracts.ts';
 import type { HookEvent } from '../../../src/protocol/official.ts';
+import { factSchemaOf } from '../../../src/hooks/input/facts.ts';
+import { requirementKeys } from '../../support/requirements.ts';
 import { spec } from '../../support/spec.ts';
 import { entry, FACTS, select } from '../../support/hooks-select.ts';
 
-/** What the docs list for each event, written out here from the section tables. */
-const DOCUMENTED = {
-  SessionStart: ['startup', 'resume', 'clear', 'compact', 'fork'],
-  Setup: ['init', 'maintenance'],
-  Notification: [
-    'permission_prompt',
-    'idle_prompt',
-    'auth_success',
-    'auth_storage_failure',
-    'elicitation_dialog',
-    'elicitation_url_dialog',
-    'elicitation_complete',
-    'elicitation_response',
-    'agent_needs_input',
-    'agent_completed',
-    'quota_auto_resume_fired',
-    'quota_auto_resume_stale',
-    'quota_auto_resume_disabled',
-    'plugin_notification',
-  ],
-  PreCompact: ['manual', 'auto'],
-  PostCompact: ['manual', 'auto'],
-  ConfigChange: [
-    'user_settings',
-    'project_settings',
-    'local_settings',
-    'policy_settings',
-    'skills',
-  ],
-  DirectoryAdded: ['slash_command', 'register_repo_root'],
-} as const;
+/** The field that carries the value, in each event's "input" table of hooks.md. */
+const FIELD = {
+  SessionStart: 'source',
+  Setup: 'trigger',
+  Notification: 'notification_type',
+  PreCompact: 'trigger',
+  PostCompact: 'trigger',
+  ConfigChange: 'source',
+  DirectoryAdded: 'source',
+} as const satisfies Partial<Record<HookEvent, string>>;
+type ValuedEvent = keyof typeof FIELD;
+/** Events whose field is an open string (a plugin raises its own notification types), not an enum. */
+const OPEN_FIELD: readonly string[] = ['Notification'];
+const isValued = (event: string): event is ValuedEvent => event in FIELD;
 
-/** One spec block per documented value of `event`; `carrying` builds facts that hold the value. */
-function proveValues<E extends HookEvent, V extends string>(
-  event: E,
-  values: readonly V[],
-  carrying: (value: V) => EventFactsOf<E>,
-): void {
-  const runs = (matcher: string, value: V): boolean =>
-    select([entry(event, { matcher })], event, carrying(value)).selected.length === 1;
+/** The documented values, read from the ids `hooks.matcherValue.<Event>.<value>` of the requirements, never from a copy. */
+const DOCUMENTED = Object.fromEntries(
+  Object.keys(FIELD).map((event) => [event, requirementKeys(`hooks.matcherValue.${event}.`)]),
+);
+const documented = (event: ValuedEvent): readonly string[] => DOCUMENTED[event] ?? [];
+
+/** The events whose table lists `value`: the only ones whose facts may carry it. */
+const eventsWith = (value: string): ValuedEvent[] =>
+  Object.keys(FIELD)
+    .filter(isValued)
+    .filter((event) => documented(event).includes(value));
+
+const baseFacts = (event: ValuedEvent) => FACTS[event];
+
+/** The facts of `event` with `value` in the field its input table names. */
+const carrying = (event: ValuedEvent, value: string): unknown => ({
+  ...baseFacts(event),
+  [FIELD[event]]: value,
+});
+
+const accepts = (event: ValuedEvent, value: string): boolean =>
+  factSchemaOf(event).safeParse(carrying(event, value)).success;
+
+const runs = (event: ValuedEvent, matcher: string, facts: unknown): boolean => {
+  const parsed = factSchemaOf(event).safeParse(facts);
+  return (
+    parsed.success && select([entry(event, { matcher })], event, parsed.data).selected.length === 1
+  );
+};
+
+/** One spec block per documented value, each asserting what that value means for its event. */
+for (const [event, values] of Object.entries(DOCUMENTED)) {
+  if (!isValued(event)) continue;
   for (const value of values) {
     spec(`hooks.matcherValue.${event}.${value}`, () => {
-      test('a hook with this matcher runs when the event carries the value', () => {
-        expect(runs(value, value)).toBe(true);
+      test(`${value} is a value of the ${FIELD[event]} field of ${event}`, () => {
+        expect(accepts(event, value)).toBe(true);
+        if (OPEN_FIELD.includes(event)) return;
+        expect(accepts(event, `${value}_`)).toBe(false);
+        expect(accepts(event, value.toUpperCase())).toBe(false);
       });
-      test('and does not run for any other documented value', () => {
+
+      test(`only the events whose table lists ${value} carry it: ${eventsWith(value).join(', ')}`, () => {
+        for (const other of Object.keys(FIELD).filter(isValued)) {
+          if (OPEN_FIELD.includes(other)) continue;
+          expect(accepts(other, value), `${value} on ${other}`).toBe(
+            eventsWith(value).includes(other),
+          );
+        }
+      });
+
+      test('a hook with this matcher runs when the event carries the value, and not for another documented value', () => {
+        expect(runs(event, value, carrying(event, value))).toBe(true);
         for (const other of values.filter((each) => each !== value)) {
-          expect(runs(value, other)).toBe(false);
+          expect(runs(event, value, carrying(event, other)), other).toBe(false);
         }
       });
     });
   }
 }
 
-proveValues('SessionStart', DOCUMENTED.SessionStart, (source) => ({
-  ...FACTS.SessionStart,
-  source,
-}));
-proveValues('Setup', DOCUMENTED.Setup, (trigger) => ({ ...FACTS.Setup, trigger }));
-proveValues('Notification', DOCUMENTED.Notification, (notification_type) => ({
-  ...FACTS.Notification,
-  notification_type,
-}));
-proveValues('PreCompact', DOCUMENTED.PreCompact, (trigger) => ({ ...FACTS.PreCompact, trigger }));
-proveValues('PostCompact', DOCUMENTED.PostCompact, (trigger) => ({
-  ...FACTS.PostCompact,
-  trigger,
-}));
-proveValues('ConfigChange', DOCUMENTED.ConfigChange, (source) => ({
-  ...FACTS.ConfigChange,
-  source,
-}));
-proveValues('DirectoryAdded', DOCUMENTED.DirectoryAdded, (source) => ({
-  ...FACTS.DirectoryAdded,
-  source,
-}));
-
-const VALUED_EVENTS = [
-  'SessionStart',
-  'Setup',
-  'Notification',
-  'PreCompact',
-  'PostCompact',
-  'ConfigChange',
-  'DirectoryAdded',
-] as const;
-
 describe('the kit lists the documented values', () => {
   test('MATCHER_VALUES holds the documented values of each event', () => {
-    for (const event of VALUED_EVENTS) {
-      expect([...MATCHER_VALUES[event]]).toEqual([...DOCUMENTED[event]]);
+    for (const event of Object.keys(FIELD).filter(isValued)) {
+      expect(MATCHER_VALUES[event].map(String).toSorted()).toEqual(
+        [...documented(event)].toSorted(),
+      );
     }
   });
 

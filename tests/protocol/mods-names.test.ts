@@ -19,7 +19,8 @@ import {
 } from '../../src/protocol/mods-events.ts';
 import { HOOK_EVENTS } from '../../src/protocol/hook-events.ts';
 import { MOD_LIMITS, MOD_NAME_PATTERN } from '../../src/protocol/mods-limits.ts';
-import { MODS_REFERENCE, requirementKeys } from '../support/mods-reference.ts';
+import { MODS_REFERENCE } from '../support/mods-reference.ts';
+import { requirementKeys } from '../support/requirements.ts';
 
 /** The headings of § Events that hold event tables, and the group of the kit each one is. */
 const EVENT_HEADINGS: Readonly<Record<string, ModEventGroup>> = {

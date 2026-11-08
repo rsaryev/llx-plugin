@@ -25,51 +25,39 @@ const only = (raw: unknown) => {
   return read.monitors;
 };
 
-spec(
-  [
-    'monitors.field.name',
-    'monitors.field.command',
-    'monitors.field.description',
-    'monitors.field.when',
-  ],
-  () => {
-    test('the components.md example (the three required fields) loads, and `when` defaults to always', () => {
-      expect(only([errorLog])).toEqual([{ ...errorLog, when: { kind: 'always' } }]);
-    });
+describe('every monitors entry (not tied to one field)', () => {
+  test('an entry is a strict object: an unknown key is an error that keeps the plugin from loading', () => {
+    const read = readMonitors([{ ...errorLog, restart: true }], FILE);
+    expect(read.monitors).toEqual([]);
+    expect(read.issues).toHaveLength(1);
+    expect(read.issues[0]?.message).toContain('restart');
+    expect(blocksLoading(read.issues)).toBe(true);
+  });
 
-    test('an entry is a strict object: an unknown key is an error that keeps the plugin from loading', () => {
-      const read = readMonitors([{ ...errorLog, restart: true }], FILE);
+  test('an entry that is not an object is an error', () => {
+    for (const entry of ['tail -F x', 3, null, ['error-log']]) {
+      const read = readMonitors([entry], FILE);
       expect(read.monitors).toEqual([]);
-      expect(read.issues).toHaveLength(1);
-      expect(read.issues[0]?.message).toContain('restart');
       expect(blocksLoading(read.issues)).toBe(true);
-    });
+    }
+  });
 
-    test('an entry that is not an object is an error', () => {
-      for (const entry of ['tail -F x', 3, null, ['error-log']]) {
-        const read = readMonitors([entry], FILE);
-        expect(read.monitors).toEqual([]);
-        expect(blocksLoading(read.issues)).toBe(true);
-      }
-    });
+  test('the source is the monitors array: anything else is an error, an empty array is no monitor', () => {
+    for (const raw of [{ monitors: [errorLog] }, 'monitors', null, errorLog]) {
+      const read = readMonitors(raw, FILE);
+      expect(read.monitors).toEqual([]);
+      expect(blocksLoading(read.issues)).toBe(true);
+    }
+    expect(readMonitors([], FILE)).toEqual({ monitors: [], issues: [] });
+  });
 
-    test('the source is the monitors array: anything else is an error, an empty array is no monitor', () => {
-      for (const raw of [{ monitors: [errorLog] }, 'monitors', null, errorLog]) {
-        const read = readMonitors(raw, FILE);
-        expect(read.monitors).toEqual([]);
-        expect(blocksLoading(read.issues)).toBe(true);
-      }
-      expect(readMonitors([], FILE)).toEqual({ monitors: [], issues: [] });
-    });
-
-    test('an issue names the file and the position of the entry, so a plugin author finds it', () => {
-      const read = readMonitors([errorLog, { name: 'x' }], 'plugin.json experimental.monitors');
-      expect(read.issues.map((issue) => issue.path)).toEqual([
-        'plugin.json experimental.monitors[1]',
-      ]);
-    });
-  },
-);
+  test('an issue names the file and the position of the entry, so a plugin author finds it', () => {
+    const read = readMonitors([errorLog, { name: 'x' }], 'plugin.json experimental.monitors');
+    expect(read.issues.map((issue) => issue.path)).toEqual([
+      'plugin.json experimental.monitors[1]',
+    ]);
+  });
+});
 
 spec('monitors.field.name', () => {
   test('is required, and a string', () => {
@@ -88,6 +76,10 @@ spec('monitors.field.name', () => {
     expect(read.issues[0]?.message).toContain('"error-log"');
     expect(read.issues[0]?.message).toContain('unique');
     expect(blocksLoading(read.issues)).toBe(true);
+  });
+
+  test('the name of an entry is kept as declared (the components.md example)', () => {
+    expect(only([errorLog])[0]?.name).toBe('error-log');
   });
 
   test('distinct names are all kept, in file order', () => {

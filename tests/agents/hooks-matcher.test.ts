@@ -11,6 +11,8 @@ import { at, file, loaded } from '../support/agent-files.ts';
 import { commands } from '../support/agent-hooks.ts';
 import { spec } from '../support/spec.ts';
 
+const isNoSupport = (event: string): event is keyof typeof NO_SUPPORT => event in NO_SUPPORT;
+
 const withMatcher = (event: HookEvent, matcher: string) =>
   loaded(
     readAgent(
@@ -77,38 +79,33 @@ spec('hooks.matcher.StopFailure', () => {
   });
 });
 
-spec(
-  [
-    'hooks.matcher.UserPromptSubmit',
-    'hooks.matcher.PostToolBatch',
-    'hooks.matcher.Stop',
-    'hooks.matcher.TeammateIdle',
-    'hooks.matcher.TaskCreated',
-    'hooks.matcher.TaskCompleted',
-    'hooks.matcher.WorktreeCreate',
-    'hooks.matcher.WorktreeRemove',
-    'hooks.matcher.CwdChanged',
-    'hooks.matcher.MessageDisplay',
-  ],
-  () => {
-    const NO_SUPPORT = [
-      'UserPromptSubmit',
-      'PostToolBatch',
-      'Stop',
-      'TeammateIdle',
-      'TaskCreated',
-      'TaskCompleted',
-      'WorktreeCreate',
-      'WorktreeRemove',
-      'CwdChanged',
-      'MessageDisplay',
-    ] as const satisfies readonly HookEvent[];
+/** Each event without matcher support, with its own requirement: one block each, not one for all. */
+const NO_SUPPORT = {
+  UserPromptSubmit: 'hooks.matcher.UserPromptSubmit',
+  PostToolBatch: 'hooks.matcher.PostToolBatch',
+  Stop: 'hooks.matcher.Stop',
+  TeammateIdle: 'hooks.matcher.TeammateIdle',
+  TaskCreated: 'hooks.matcher.TaskCreated',
+  TaskCompleted: 'hooks.matcher.TaskCompleted',
+  WorktreeCreate: 'hooks.matcher.WorktreeCreate',
+  WorktreeRemove: 'hooks.matcher.WorktreeRemove',
+  CwdChanged: 'hooks.matcher.CwdChanged',
+  MessageDisplay: 'hooks.matcher.MessageDisplay',
+} as const satisfies Partial<Record<HookEvent, string>>;
 
-    test.each(NO_SUPPORT)('%s fires on every occurrence and ignores its matcher', (event) => {
+for (const [event, id] of Object.entries(NO_SUPPORT)) {
+  if (!isNoSupport(event)) continue;
+  spec(id, () => {
+    test(`${event} fires on every occurrence and ignores its matcher`, () => {
       const agent = withMatcher(event, 'never-matches');
       for (const matcherValue of [undefined, 'never-matches', 'anything']) {
         expect(commands(agent, { event, matcherValue, run: 'main-session' })).toEqual(['./run.sh']);
       }
     });
-  },
-);
+
+    test(`an event with matcher support does not behave so: the same matcher on ${event}'s neighbour with support filters`, () => {
+      const filtered = withMatcher('PreToolUse', 'never-matches');
+      expect(commands(filtered, { event: 'PreToolUse', matcherValue: 'Bash' })).toEqual([]);
+    });
+  });
+}
