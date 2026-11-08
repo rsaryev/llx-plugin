@@ -1,4 +1,13 @@
-import { Range, intersects, maxSatisfying, parse, rcompare, satisfies, validRange } from 'semver';
+import {
+  Range,
+  compare,
+  intersects,
+  maxSatisfying,
+  parse,
+  rcompare,
+  satisfies,
+  validRange,
+} from 'semver';
 
 /**
  * The one file that imports `semver` (node-semver), the range grammar plugins/dependencies.md names
@@ -16,6 +25,15 @@ export const strictVersion = (text: string): string | undefined => {
   const parsed = parse(text);
   if (parsed === null || parsed.raw !== text || /^[=v]|\s/i.test(text)) return undefined;
   return parsed.version;
+};
+
+/** The version `text` names, spelled one way (`v2.1.100` is `2.1.100`), or `undefined` when it is no version. */
+export const normalizedVersion = (text: string): string | undefined => parse(text)?.version;
+
+/** Negative, zero or positive as `a` is lower than, equal to or higher than `b`; `undefined` when either is no version. */
+export const compareVersions = (a: string, b: string): number | undefined => {
+  const [left, right] = [normalizedVersion(a), normalizedVersion(b)];
+  return left === undefined || right === undefined ? undefined : compare(left, right);
 };
 
 /** Whether `version` satisfies `range`; a version that is not semver satisfies nothing. */

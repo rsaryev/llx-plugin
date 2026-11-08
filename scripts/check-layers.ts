@@ -27,6 +27,7 @@ const LAYERS: Readonly<Record<string, number>> = {
   hooks: 4,
   skills: 4,
   mods: 4,
+  updates: 4,
   host: 5,
   testing: 6,
 };

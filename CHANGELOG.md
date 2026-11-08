@@ -14,6 +14,15 @@
 
 ### Added
 
+- Updates: a new `updates` module with the refresh before an install (`refreshBeforeInstall`: named
+  and bare references, the five skips, the managed block that also refuses the install,
+  `refreshFailed`), the auto-update precedence (`marketplaceAutoUpdate`, `autoUpdatePassAllowed`,
+  `toggleDecision`, the plugins a pass skips, the first-pass delay on the `Clock`), the background
+  check of a private marketplace, the re-runs of a `command` source and the Errors-tab entry of a
+  changed command (`commandSourceRuns`, `afterCommandRun`), `Update plugins now` (`planUpdate`) and
+  the version policy of Claude Code (`readVersionPolicy`, `pickAllowedVersion`, `startGate`,
+  `channelSwitch`: `autoUpdatesChannel`, `minimumVersion`, `requiredMinimumVersion`,
+  `requiredMaximumVersion`). `scripts/check-layers.ts` gives the module its layer.
 - Marketplace: the version of a plugin as Claude Code computes it (`computePluginVersion`: manifest,
   then entry, then the source type's default, a command source from its hash), when a new copy is
   made (`isUpdate`, `checkForUpdate`, `loadsInPlace`: only a differing version, never for a plugin

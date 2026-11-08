@@ -146,6 +146,7 @@ export {
 } from './protocol/mods-ui-names.ts';
 export * from './format/marketplace/index.ts';
 export * from './marketplace/index.ts';
+export * from './updates/index.ts';
 export {
   MARKETPLACE_KEY_ALIASES,
   MARKETPLACE_SOURCE_KINDS,

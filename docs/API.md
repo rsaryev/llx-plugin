@@ -283,6 +283,31 @@ const { plan } = planPluginFetch(entry.source, { platform: 'posix' }); // data: 
 it takes the git and npm plans and returns the fetched files or a `PluginIssue`. A missing port is
 a `PluginIssue` for that source only.
 
+## Updates (done: `updates`)
+
+```ts
+import { refreshBeforeInstall, marketplaceAutoUpdate, autoUpdatePassAllowed } from '@rsaryev/claude-plugin-kit';
+
+const decision = refreshBeforeInstall({ ref: 'formatter@acme', command: 'claude plugin install', marketplaces, lookupMissed: false, env, clock });
+// { outcome: 'refresh', marketplaces: ['acme'] } | { outcome: 'skip', reason } | { outcome: 'refuse', issue }
+```
+
+Every function is pure over data and two ports (`Environment`, `Clock`); the host fetches, clones,
+runs commands and writes files. Pages: plugins/loading.md ("Versions and updates"), install.md
+("Keep plugins updated"), host-marketplace.md ("Keep users up to date", "Change the command of a
+command source"), org.md ("Set update policy") and settings-reference.md ("Updates and versioning").
+
+| API | Status | What it does |
+| --- | --- | --- |
+| `refreshBeforeInstall({ ref, command, marketplaces, lookupMissed, env, clock })`, `refreshFailed(command)`, `KnownMarketplace` | done | what an install refreshes before the lookup: `name@marketplace` refreshes the named marketplace through `/plugin install` and `claude plugin install`, whatever its `autoUpdate` and `DISABLE_AUTOUPDATER`; a bare `name` refreshes only the auto-update marketplaces and only after a miss through `/plugin install`, and nothing through the CLI; skipped for a local `file` or `directory` source, an inline `settings` source, a seed marketplace, a refresh within 30 seconds (`Clock`) and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`; a marketplace managed settings block is refused (the install too); `refreshFailed` installs from the cached catalog and `claude plugin install` reports `marketplace not refreshed` |
+| `marketplaceAutoUpdate(facts)`, `autoUpdatePassAllowed(env)` | done | the settings entry's `autoUpdate`, then `known_marketplaces.json`'s, then the default (on for the official names but `knowledge-work-plugins` and `first-party-plugins`, on for claude.ai marketplaces, off otherwise), a seed marketplace off; `DISABLE_UPDATES`, `DISABLE_AUTOUPDATER` and the traffic variable turn the whole pass off unless `FORCE_AUTOUPDATE_PLUGINS` |
+| `toggleDecision({ name, enable, env, declared? })`, `toggleLabel(autoUpdate)` | done | the **Enable auto-update** toggle: hidden when the pass is off, refused with `Auto-update for '<name>' is set by` when a managed entry sets the field, otherwise the files to write (`known_marketplaces.json`, and the settings entry that declares the marketplace) |
+| `pluginSkippedByAutoUpdate(candidate)`, `planAutoUpdatePass(marketplaces, env)`, `armFirstPass({ clock, env, random, run })`, `firstPassDelayMs(random)`, `pluginUpdatedNotice(name)` | done | the plugins a pass leaves (a `headersHelper` entry, a `command` source) and the Errors tab; one pass's refreshes and updates; the first pass after a random delay of up to ten minutes on the `Clock`; the `Plugin updated: <name> · Run /reload-plugins to apply` notice. The hourly repeat of a host is its own choice |
+| `backgroundCheckAuthenticates(credentials)`, `afterBackgroundCheck(result, env)`, `afterReclone(ok)` | done | the unattended check of a private marketplace: an SSH key in the agent or a stored HTTPS credential authenticates, a helper that must prompt does not; leave an up-to-date checkout, re-clone on new commits or a failed check, keep the checkout when the clone fails or `CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE` is on |
+| `commandSourceRuns(event, plugin, env)`, `afterCommandRun(result)` | done | the runs of a `command` source (every install and update; once per session and at startup or `/reload-plugins` for a version missing from the cache, both skipped by the traffic variable only), a changed or switched command stops the background runs and gives an Errors-tab entry with the new command and `claude plugin update <id>`; a changed hash installs and reloads, or asks for `/reload-plugins` when the prompt cache would be invalidated |
+| `planUpdate(request, installed, registered)` | done | `Update plugins now`: one plugin; **Update marketplace** (listing, then the plugins installed from it, and the `command` and `headersHelper` ones left to the user); `claude plugin marketplace update [name]` refreshes listings and updates no plugin |
+| `readVersionPolicy(layers)`, `pickAllowedVersion(policy, versions)`, `startGate(policy, { command, current })`, `channelSwitch(request)` | done | `autoUpdatesChannel`, `minimumVersion` (never blocks a start), `requiredMinimumVersion` and `requiredMaximumVersion` (managed only): what an update may install, the refusal to start outside the range (`claude update`, `claude install` and `claude doctor` stay available), and what the `/config` channel switch writes |
+
 ## Loading (done: `loading`, `format/layout`)
 
 ```ts
