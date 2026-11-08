@@ -224,3 +224,8 @@ export {
   type PluginSettings,
   type PluginSettingsRead,
 } from './format/plugin-settings.ts';
+
+// Keep the existing file reader unambiguous; settings exposes its reader in general/.
+export { readAgent } from './format/agent.ts';
+
+export * from './settings/env/index.ts';

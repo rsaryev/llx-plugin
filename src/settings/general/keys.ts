@@ -9,25 +9,30 @@ import type { PolicyKey } from '../../protocol/settings-keys.ts';
  * combined by the general rule of `merge.ts` and needs no row.
  */
 export const GENERAL_KEYS = [
+  'agent',
   'allowManagedPermissionRulesOnly',
   'attribution',
   'autoMode',
   'autoMode.classifyAllShell',
   'availableModels',
   'crossSessionInbound',
+  'disableAgentView',
   'disableAutoMode',
   'disableClaudeAiConnectors',
   'enableArtifact',
   'env',
   'fallbackModel',
+  'fileSuggestion',
   'isolatePeerMachines',
   'maxEffortLevel',
   'model',
   'modelPicker',
+  'outputStyle',
   'permissions',
   'permissions.blockReadsOutsideWorkingDirectories',
   'permissions.blockWritesOutsideWorkingDirectories',
   'permissions.defaultMode',
+  'processWrapper',
   'remoteControlAtStartup',
   'sandbox',
   'sandbox.filesystem.allowManagedReadPathsOnly',
@@ -35,8 +40,13 @@ export const GENERAL_KEYS = [
   'sandbox.network.allowManagedDomainsOnly',
   'skipDangerousModePermissionPrompt',
   'spinnerTipsEnabled',
+  'statusLine',
+  'subagentStatusLine',
+  'teammateMode',
+  'theme',
   'useAutoModeDuringPlan',
   'worktree',
+  'worktree.location',
 ] as const;
 export type GeneralKey = (typeof GENERAL_KEYS)[number];
 
@@ -45,6 +55,16 @@ export type SettingsKey = PolicyKey | GeneralKey;
 
 /** The value type of each general key, from the official `Settings`, never declared again (`undefined` as `Settings` has it: the key is optional). */
 export interface GeneralValues {
+  readonly agent: Settings['agent'];
+  readonly disableAgentView: Settings['disableAgentView'];
+  readonly fileSuggestion: Settings['fileSuggestion'];
+  readonly outputStyle: Settings['outputStyle'];
+  readonly processWrapper: Settings['processWrapper'];
+  readonly statusLine: Settings['statusLine'];
+  readonly subagentStatusLine: Settings['subagentStatusLine'];
+  readonly teammateMode: Settings['teammateMode'];
+  readonly theme: Settings['theme'];
+  readonly 'worktree.location': NonNullable<Settings['worktree']>['location'];
   readonly allowManagedPermissionRulesOnly: Settings['allowManagedPermissionRulesOnly'];
   readonly attribution: Settings['attribution'];
   readonly autoMode: Settings['autoMode'];

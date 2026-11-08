@@ -118,3 +118,5 @@ The foundation's names win; a design that says otherwise means this:
 | `scripts/`      | the other gates (`check-*.ts`)                                              |
 | `config/lint/`  | the quality lint (`quality.json`) and the kit's own rules (`kit-rules.js`)  |
 | `.cache/`       | pulled docs, the corpus, test reports: local only                           |
+
+resolveEnv resolves settings environment values with scope, trust and launch-environment rules; envChange and envAfterCd model later application without unsetting removed variables. General readers cover agent view, theme, teammate mode, worktree settings, processWrapper argv parsing, command-line hook gates and plugin defaults. The host supplies the startup-safe variable classification and performs process execution.

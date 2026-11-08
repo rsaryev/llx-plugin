@@ -38,6 +38,7 @@ function nested<K extends GeneralKey>(
 }
 
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
+const isText = (value: unknown): value is string => typeof value === 'string';
 type DefaultMode = NonNullable<GeneralValues['permissions.defaultMode']>;
 const isDefaultMode = (value: unknown): value is DefaultMode =>
   PERMISSION_MODES.some((mode) => mode === value);
@@ -91,6 +92,18 @@ const pinsFilesystemDisabled = (managed: readonly Settings[]): boolean =>
  * union, a single value comes from the highest file.
  */
 export const GENERAL_SPECS: { readonly [K in GeneralKey]: ValueSpec<GeneralValues[K]> } = {
+  // "Any file" for the keys below; a value is whole (an object such as `statusLine` never mixes the
+  // fields of two files), so the highest file that sets it is the value.
+  agent: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  disableAgentView: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  fileSuggestion: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  outputStyle: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  // "User or managed" (settings-reference.md, `processWrapper`): a repository's file "never" supplies it.
+  processWrapper: { scopes: 'userOrManaged', merge: MERGES.highestWins },
+  statusLine: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  subagentStatusLine: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  teammateMode: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  theme: { scopes: 'anyAndParent', merge: MERGES.highestWins },
   allowManagedPermissionRulesOnly: { scopes: 'managed', merge: MERGES.highestWins },
   // "Any file"; blocks merge by the general rule (the object form of `false` takes the highest file).
   attribution: { scopes: 'anyAndParent', merge: MERGES.deepMerge },
@@ -191,4 +204,10 @@ export const GENERAL_SPECS: { readonly [K in GeneralKey]: ValueSpec<GeneralValue
     exception: FALSE_FROM_ANY_SCOPE,
   },
   worktree: { scopes: 'anyAndParent', merge: MERGES.deepMerge },
+  // "`User`, in `~/.claude/settings.json` on the remote machine" (settings-reference.md, `worktree.location`).
+  'worktree.location': nested<'worktree.location'>(
+    ['worktree', 'location'],
+    { scopes: 'user', merge: MERGES.highestWins },
+    isText,
+  ),
 };

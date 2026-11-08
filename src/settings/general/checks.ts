@@ -5,7 +5,6 @@ import {
   invalidRuleMessage,
   MALFORMED_RULE,
 } from '../../format/permission-rule-shape.ts';
-import { SCOPE_LABEL } from '../broken-file.ts';
 import { isRecord } from '../record.ts';
 import {
   closedFound,
@@ -20,7 +19,9 @@ import { autoMode, failClosedPermissions } from './closed-blocks.ts';
 import { attribution, worktree } from './closed-fields.ts';
 import { DISABLE_LOCK, FALSE_LOCK, type LockKind } from './closed-locks.ts';
 import { sandbox } from './sandbox-check.ts';
-import { envIgnored } from './env-ignored.ts';
+import { commandLine } from './command-lines.ts';
+import { parseTheme, TEAMMATE_MODES } from './look-and-feel.ts';
+import { env } from '../env/check-env.ts';
 import type { GeneralKey } from './keys.ts';
 
 /**
@@ -174,20 +175,6 @@ function readPermissions(value: Readonly<Record<string, unknown>>): Checked {
   );
 }
 
-/** `env`: a repository file loses the variables Claude Code ignores there, named, never their values. */
-const env: Check = (value, context) => {
-  if (!isRecord(value)) return drop(context.name, 'an object');
-  const entries = Object.entries(value);
-  const ignored = entries.filter(([name, one]) => envIgnored(context.scope, name, one));
-  return keep(
-    Object.fromEntries(entries.filter((entry) => !ignored.includes(entry))),
-    ignored.map(([name]) => ({
-      at: `.${name}`,
-      message: `"${name}" is ignored from ${SCOPE_LABEL[context.scope]}: a checked-out repository cannot set it`,
-    })),
-  );
-};
-
 const anyValue: Check = (value) => keep(value);
 
 /**
@@ -195,6 +182,19 @@ const anyValue: Check = (value) => keep(value);
  * (`rows.ts`), so a file's top-level name of that shape is kept as written.
  */
 export const GENERAL_CHECKS: { readonly [K in GeneralKey]: Check } = {
+  agent: text,
+  disableAgentView: boolean,
+  outputStyle: text,
+  processWrapper: text,
+  statusLine: commandLine,
+  subagentStatusLine: commandLine,
+  fileSuggestion: commandLine,
+  teammateMode: oneOf(...TEAMMATE_MODES),
+  theme: (value, { name }) =>
+    typeof value === 'string' && parseTheme(value) !== undefined
+      ? keep(value)
+      : drop(name, 'a preset or custom theme reference'),
+  'worktree.location': anyValue,
   allowManagedPermissionRulesOnly: lock,
   attribution,
   'autoMode.classifyAllShell': anyValue,

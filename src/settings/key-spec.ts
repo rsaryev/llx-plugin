@@ -53,6 +53,7 @@ export const SCOPE_RULES = [
   'anyAndEmptyListFromParent',
   'managed',
   'managedAndParent',
+  'user',
   'userOrManaged',
   'userManagedFlag',
   'userLocalManagedFlag',
@@ -88,6 +89,7 @@ const ADMITS: { readonly [R in ScopeRule]: Admits } = {
   anyAndEmptyListFromParent: fromFilesOrParent(isEmptyList),
   managed: inScopes('managed'),
   managedAndParent: inScopes('managed', 'parent'),
+  user: inScopes('user'),
   userOrManaged: inScopes('user', 'managed'),
   userManagedFlag: inScopes('user', 'managed', 'flag'),
   repositoryCannotElevate: (scope, value) =>

@@ -1258,3 +1258,7 @@ const web = recordingHttp({ status: 200, body: '{}' }); // HttpClient, `requests
 `runAgent`, `fakeMcp({ connected, tools })` an `McpCaller`, `fixedClock(start)` a `Clock` that moves
 only on `advance(ms)`, `locations(options)` fixed POSIX paths (`<plugins>/<id>`), `fakeEnvironment(record)`
 an `Environment`, `memoryScratch()` the `ScratchFiles`. The mods test kit stays `modsTesting`.
+
+## Environment and general settings readers
+
+resolveEnv resolves settings environment values with scope, trust and launch-environment rules; envChange and envAfterCd model later application without unsetting removed variables. General readers cover agent view, theme, teammate mode, worktree settings, processWrapper argv parsing, command-line hook gates and plugin defaults. The host supplies the startup-safe variable classification and performs process execution.

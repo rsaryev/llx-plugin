@@ -79,6 +79,9 @@ const EFFORT = [variable('CLAUDE_CODE_EFFORT_LEVEL'), flag('--effort'), files()]
 
 /** The keys with a per-session override, each with its sources highest first. */
 export const SESSION_OVERRIDES = {
+  agent: [flag('--agent'), files()],
+  teammateMode: [flag('--teammate-mode'), files()],
+  processWrapper: [variable('CLAUDE_CODE_PROCESS_WRAPPER'), files()],
   // `--model` overrides `ANTHROPIC_MODEL`, which overrides the `model` key; `ANTHROPIC_DEFAULT_MODEL`
   // "applies only when no file sets `model`".
   // A flag and a file value are gated by `availableModels`; the variable is not named there.

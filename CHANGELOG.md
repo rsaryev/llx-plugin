@@ -1118,3 +1118,7 @@
   PowerShell, the path and option variables the process receives) and `substituteContent` (path
   variables and non-sensitive options in a skill, command or agent body, a placeholder for a
   sensitive one), with the `HOOK_GUARD` message.
+
+### Fixed (policy completion)
+
+- resolveEnv resolves settings environment values with scope, trust and launch-environment rules; envChange and envAfterCd model later application without unsetting removed variables. General readers cover agent view, theme, teammate mode, worktree settings, processWrapper argv parsing, command-line hook gates and plugin defaults. The host supplies the startup-safe variable classification and performs process execution.

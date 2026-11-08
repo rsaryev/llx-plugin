@@ -64,3 +64,42 @@ export {
   type SessionValue,
 } from './session-overrides.ts';
 export { createGeneralView, type GeneralView } from './view.ts';
+
+export {
+  readAgent,
+  agentViewDisabled,
+  AGENT_VIEW_ENV,
+  type AgentViewDecision,
+} from './agent-keys.ts';
+export {
+  readTheme,
+  readTeammateMode,
+  readOutputStyle,
+  parseTheme,
+  THEME_PRESETS,
+  TEAMMATE_MODES,
+  type ThemeChoice,
+  type ThemePreset,
+  type TeammateMode,
+} from './look-and-feel.ts';
+export {
+  readProcessWrapper,
+  parseLauncher,
+  PROCESS_WRAPPER_ENV,
+  type LauncherRead,
+} from './process-wrapper.ts';
+export {
+  readWorktree,
+  baseRefTarget,
+  backgroundEditsBlocked,
+  worktreeFolder,
+  WORKTREE_CONSUMERS,
+  type WorktreeSettings,
+  type BaseRefTarget,
+  type BaseRefFacts,
+  type BackgroundEditFacts,
+  type WorktreeConsumer,
+  type WorktreeFolderFacts,
+} from './worktree-block.ts';
+export { COMMAND_LINE_KEYS, readCommandLine } from './command-lines.ts';
+export { pluginDefaultsOf, valueWithPluginDefaults } from './plugin-defaults.ts';

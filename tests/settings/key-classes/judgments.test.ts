@@ -204,7 +204,7 @@ describe('the worktree and attribution blocks in a managed source', () => {
   });
 
   test('valid blocks, a field of a newer version and the Boolean form of attribution stay as written', () => {
-    const block = { baseRef: 'head', bgIsolation: 'none', location: '~/wt', future: [1] };
+    const block = { baseRef: 'head', bgIsolation: 'none', future: [1] };
     expect(plain(worktree(block))).toEqual(block);
     expect(plain(attribution({ commit: '', pr: '', sessionUrl: false, future: 1 }))).toEqual({
       commit: '',
@@ -222,11 +222,11 @@ describe('the worktree and attribution blocks in a managed source', () => {
     expect(viewOf(['user', { worktree: 5 }]).get('worktree')).toBeUndefined();
   });
 
-  test('a user file keeps the block as written', () => {
+  test('a user file drops invalid fields rather than failing closed', () => {
     const raw = { worktree: { baseRef: 'sideways' }, attribution: { commit: 5 } };
     const view = viewOf(['user', raw]);
-    expect(plain(view.get('worktree'))).toEqual(raw.worktree);
-    expect(plain(view.get('attribution'))).toEqual(raw.attribution);
+    expect(plain(view.get('worktree'))).toEqual({});
+    expect(plain(view.get('attribution'))).toEqual({});
   });
 });
 

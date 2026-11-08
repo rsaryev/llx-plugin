@@ -27,7 +27,7 @@ const WORKTREE: Readonly<Record<string, Field>> = {
   sparsePaths: { valid: texts },
   baseRef: { valid: oneOf('fresh', 'head') },
   bgIsolation: { valid: oneOf('worktree', 'none'), reads: 'worktree' },
-  location: { valid: isText },
+  location: { valid: (value) => isText(value) && /^(?:\/|~\/|[A-Za-z]:[\\/])/.test(value) },
 };
 
 const ATTRIBUTION: Readonly<Record<string, Field>> = {
@@ -55,12 +55,13 @@ function repairFields(
   block: string,
   value: Readonly<Record<string, unknown>>,
   fields: Readonly<Record<string, Field>>,
+  closed: boolean,
 ): Checked {
   const found: Found[] = [];
   const entries = Object.entries(value).flatMap(([name, one]): [string, unknown][] => {
     const field = fields[name];
     if (field === undefined || field.valid(one)) return [[name, one]];
-    const repaired = repairField(name, block, field);
+    const repaired = repairField(name, block, closed ? field : { valid: field.valid });
     found.push(repaired.found);
     return repaired.value === undefined ? [] : [[name, repaired.value]];
   });
@@ -73,7 +74,17 @@ const blockCheck =
     if (allowsBoolean && typeof value === 'boolean') return keep(value);
     if (!isRecord(value))
       return drop(context.name, allowsBoolean ? 'an object or a boolean' : 'an object');
-    return context.closed ? repairFields(context.name, value, fields) : keep(value);
+    const read = repairFields(context.name, value, fields, context.closed);
+    if (context.name !== 'worktree' || context.scope === 'user' || value.location === undefined)
+      return read;
+    const { location: _location, ...kept } = isRecord(read.value) ? read.value : {};
+    return keep(kept, [
+      ...read.found,
+      {
+        at: '.location',
+        message: '"worktree.location" is not read from this scope; the key is ignored',
+      },
+    ]);
   };
 
 export const worktree: Check = blockCheck(WORKTREE, false);
