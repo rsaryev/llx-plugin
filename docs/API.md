@@ -118,7 +118,31 @@ every hook, stdio and LSP process, referenced or not.
 Choosing the hook surface is the caller's: a command hook with `args` is `hook-exec`; shell form is
 `hook-shell` (bash) or `hook-powershell`. A hook with no `shell` field runs in PowerShell on Windows
 without Git Bash (hooks.md, "Exec form and shell form"), and the kit cannot tell the host's shell, so
-the caller passes `hook-powershell` there.
+the caller passes `hook-powershell` there (`resolveHookCommand`, below, takes that as `defaultShell`).
+
+### Hook commands and Markdown content (done: `loading/resolve/hook-command`, `content`)
+
+```ts
+import { resolveHookCommand, substituteContent } from '@rsaryev/claude-plugin-kit';
+
+const { resolved, issues } = await resolveHookCommand(handler, scope, { defaultShell: 'bash' });
+// resolved.spec: { form: 'exec', command, args } | { form: 'shell', command, shell }: a CommandRunner `spec`
+// resolved.environment: CLAUDE_PLUGIN_ROOT/DATA, CLAUDE_PROJECT_DIR, CLAUDE_PLUGIN_OPTION_<KEY>
+const { text } = await substituteContent(skillBody, scope); // Markdown body of a skill, command or agent
+```
+
+| API | What it does |
+| --- | --- |
+| `resolveHookCommand(handler, scope, { path?, defaultShell? })` | with `args`: exec form, `command` and each element substituted as plain strings (`${user_config.*}` allowed, `shell` ignored); without: shell form through `shell` (default `defaultShell`, then `bash`), where `${user_config.*}` anywhere in `command` is the errors.md message and `resolved` is `undefined`, with no value needed; the environment holds the three path variables and an option variable per option with a value, sensitive included |
+| `HOOK_GUARD` | the shell-form hook message for `rejectUserConfigInShell` |
+| `substituteContent(body, scope, path?)` | the three path variables, `scope.extra` (a skill's `CLAUDE_SKILL_DIR`, `CLAUDE_SESSION_ID`), non-sensitive `${user_config.KEY}`; a sensitive one becomes `SENSITIVE_PLACEHOLDER`; `${VAR}` stays; nothing is exported |
+
+A PowerShell shell-form command gets `${env:NAME}` for the placeholders, and a bare `$CLAUDE_PROJECT_DIR`
+(or the other two) stays and is a warning; an exec-form `command` that is a bare name with whitespace
+beside `args` is a warning (the spawn would fail). `substituteContent` takes the body: splitting the
+frontmatter off, `$ARGUMENTS` and the `allowed-tools` rules are the skills'. The kit never spawns the
+hook: the host passes `spec` and `environment` to its `CommandRunner`, and says through `defaultShell`
+that a Windows host without Git Bash runs `powershell`.
 
 ### MCP servers (done: `format/mcp-*`, `loading/resolve/mcp`)
 

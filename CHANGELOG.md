@@ -143,3 +143,9 @@
   and the Agent, Skill and WebFetch matchers read behaviour and specifier form through a registry
   and a named guard, and their input fields are tied to the SDK's `AgentInput`, `WebFetchInput`
   and `ArtifactInput`.
+- Command hooks and Markdown content of a plugin: `resolveHookCommand` (exec form substitutes
+  `command` and each `args` element including `${user_config.*}`; shell form through bash or
+  PowerShell refuses `${user_config.*}` with the documented error, `${env:NAME}` placeholders for
+  PowerShell, the path and option variables the process receives) and `substituteContent` (path
+  variables and non-sensitive options in a skill, command or agent body, a placeholder for a
+  sensitive one), with the `HOOK_GUARD` message.

@@ -22,7 +22,15 @@ export {
   type LanguageRoute,
   type RestartDecision,
 } from './lsp-runtime.ts';
+export { substituteContent } from './content.ts';
 export { exportedEnvironment } from './exported-environment.ts';
+export {
+  resolveHookCommand,
+  type HookCommandHandler,
+  type HookCommandOptions,
+  type HookCommandResolution,
+  type ResolvedHookCommand,
+} from './hook-command.ts';
 export {
   headersHelperEnvironment,
   mcpServerKey,
@@ -32,6 +40,7 @@ export {
 } from './mcp.ts';
 export { monitorsToStart, type MonitorEvent, type MonitorMode } from './monitor-trigger.ts';
 export { resolveMonitor, type MonitorResolution, type ResolvedMonitor } from './monitor.ts';
+export { HOOK_GUARD } from './shell-guard-hook.ts';
 export { MONITOR_GUARD } from './shell-guard-monitor.ts';
 export { HEADERS_HELPER_GUARD, rejectUserConfigInShell, type ShellGuard } from './shell-guard.ts';
 export {
