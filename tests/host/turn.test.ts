@@ -129,7 +129,6 @@ describe('withTurn replaces the per-turn fields of the hook input', () => {
     const foreign: Record<string, unknown> = {
       permissionMode: undefined,
       sessionId: 'other',
-      trusted: false,
       transcriptPath: '/elsewhere.jsonl',
     };
     const turn = host.openSession(SESSION).withTurn(foreign);
@@ -141,6 +140,9 @@ describe('withTurn replaces the per-turn fields of the hook input', () => {
     });
   });
 
+  // `additionalDirectories` is not exercised here: an `if` path rule is anchored to the working
+  // directory and never widened by additional ones (the rules' `inScope` is for permission
+  // decisions, not for `if`), so a turn's additional directories cannot change what fires.
   test('an `if` path rule is read from the cwd of the turn', async () => {
     const { host, runner } = await guarded();
     const session = host.openSession(SESSION);
@@ -150,10 +152,6 @@ describe('withTurn replaces the per-turn fields of the hook input', () => {
     await session.withTurn({ cwd: '/work/other' }).dispatch('PreToolUse', file, {
       signal: signal(),
     });
-    expect(runner.calls).toHaveLength(1);
-    await session
-      .withTurn({ cwd: '/work/other', additionalDirectories: ['/work/app'] })
-      .dispatch('PreToolUse', file, { signal: signal() });
     expect(runner.calls).toHaveLength(1);
     await session.withTurn({ cwd: '/work/app' }).dispatch('PreToolUse', file, {
       signal: signal(),

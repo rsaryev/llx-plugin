@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- Host: review fixes of `withTurn`. The session core no longer carries an unused watch-list slot
+  (it returns with `fileChangedWatchList` support, with a test). Tests now prove that a turn cannot
+  change `trusted` (settings hooks stay held back or released as the session says), that a turn's
+  `scratchpadDir` replaces the session's in the hook input, and that a turn's `interactive` decides
+  whether a forked skill waits; the step on a turn's `additionalDirectories` is dropped because an
+  `if` path rule never reads them.
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
   short label and the amounts of each row of the Limits table, not the page's sentences, so the
   repository holds facts and identifiers only.

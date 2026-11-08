@@ -120,6 +120,9 @@ async function agentHookRuns(options: SessionOptions, turn: TurnOptions = {}): P
 /**
  * `folderTrustAccepted` gates the frontmatter hooks of a project subagent. The session API has no
  * way to register one yet, so the hooks go into the core's registry, as an agent registers them.
+ * This proves the gate only, not that a turn view sees what a session registered. Follow-up for
+ * the sub-package that adds `session.addHooks`: register through it here and drop the direct
+ * `createSessionCore` and `viewOf` use.
  */
 describe('folderTrustAccepted reaches the hook gates', () => {
   test('a project subagent hook does not run without it, not even in a trusted `-p` session', async () => {

@@ -776,7 +776,8 @@ must outlive a turn is the session's. The view `withTurn` returns shares the hoo
 consumed and what skill hooks have used of their limits; it never reopens the session, so none of
 that is lost. The hook input (`permission_mode`, `effort`, `cwd`), the base of an `if` path rule,
 `${CLAUDE_EFFORT}`, the working directory of a shell placeholder and its `permissions` answer all
-read the turn.
+read the turn, as do `scratchpad_dir` and `interactive` (a `-p` turn makes a forked skill wait for
+its result). An `if` path rule is anchored to the turn's `cwd`; additional directories do not widen it.
 
 ```ts
 const session = host.openSession({ sessionId, cwd, permissionMode: 'default', transcriptPath });

@@ -32,17 +32,14 @@ export interface SkillHookLedger {
 /**
  * The state of a session that must outlive a turn, made once by `openSession` and shared by every
  * view `withTurn` makes: the hooks registered so far, with the skills' (a `once` hook that ran is
- * gone from the cell for every later turn), what skill hooks have used of their limits, and the
- * paths the hooks of `FileChanged` watch beyond the ones their matchers name. The turn view holds
- * nothing of its own beyond the options of the turn.
+ * gone from the cell for every later turn), and what skill hooks have used of their limits. The turn
+ * view holds nothing of its own beyond the options of the turn.
  */
 export interface SessionCore {
   /** The policy of the settings, read once for the session. */
   readonly gates: HookSessionGates;
   readonly registry: Cell<HookRegistry>;
   readonly skillHooks: SkillHookLedger;
-  /** The watch list slot: what the host adds to the paths a `FileChanged` matcher names. */
-  readonly watch: Cell<readonly string[]>;
 }
 
 export function createSessionCore(state: HostState): SessionCore {
@@ -51,6 +48,5 @@ export function createSessionCore(state: HostState): SessionCore {
     gates,
     registry: cellOf(initialRegistry(state, gates)),
     skillHooks: { used: new Map(), counted: new Map() },
-    watch: cellOf([]),
   };
 }
