@@ -1,7 +1,7 @@
 /**
  * The rows of hooks.md § "Decision control" that no requirement names: PreCompact, TaskCreated and
  * PostToolUseFailure `decision: "block"`, TeammateIdle and TaskCompleted `continue: false`, plus
- * § "SubagentStart" (`additionalContext`) and § "WorktreeCreate output" (an HTTP hook returns
+ * § "WorktreeCreate output" (an HTTP hook returns
  * `hookSpecificOutput.worktreePath`). None has a spec id, so none counts as compatibility.
  */
 import { describe, expect, test } from 'bun:test';
@@ -47,21 +47,6 @@ describe.each(['TeammateIdle', 'TaskCompleted'] as const)('%s', (event) => {
 
   test('it has no top-level decision: a block is discarded, not acted on', () => {
     expect(merged(event, [{ decision: 'block', reason: 'r' }]).block).toBeUndefined();
-  });
-});
-
-describe('SubagentStart', () => {
-  test('additionalContext is injected into the subagent, from every hook', () => {
-    const outcome = merged('SubagentStart', [
-      specific('SubagentStart', { additionalContext: 'Follow the security guidelines' }),
-      specific('SubagentStart', { additionalContext: 'second' }),
-    ]);
-    expect(outcome.additionalContext).toEqual(['Follow the security guidelines', 'second']);
-    expect(outcome.block).toBeUndefined();
-  });
-
-  test('"can\'t block subagent creation": a decision is discarded', () => {
-    expect(merged('SubagentStart', [{ decision: 'block', reason: 'r' }]).block).toBeUndefined();
   });
 });
 

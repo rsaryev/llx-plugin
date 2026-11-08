@@ -109,6 +109,9 @@
   `ScratchFiles` with a 2,000-character preview, and is the engine's default output stage
   (`HookPorts.scratch`); `OutputStage` gains `limit`, `merge` takes the event's facts, and
   `MergedOutput` carries `issues`.
+- Hook output (`hooks/output`): `SubagentStart` `hookSpecificOutput.additionalContext` is proven
+  as a requirement (accepted for that event only, carried from every hook, capped, and no decision
+  holds subagent creation back).
 
 ### Fixed
 
