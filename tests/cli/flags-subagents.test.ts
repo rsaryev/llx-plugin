@@ -10,30 +10,27 @@
  * flag whose requirement is missing is outside `spec(...)` and in spec/judgments.md.
  */
 import { describe, expect, test } from 'bun:test';
-import { sessionAgent } from '../../src/cli/flags/agents.ts';
 import { file, planOf, printFacts } from '../support/session-flags.ts';
 import { spec } from '../support/spec.ts';
 
 const REVIEWER = '{"reviewer":{"description":"Reviews code","prompt":"You are a code reviewer"}}';
 
 spec('cli.flag.--agent', () => {
-  test('names the agent for the current session', () => {
+  test('names the agent for the current session when no setting does', () => {
     expect(planOf({ '--agent': 'my-custom-agent' }).agent).toBe('my-custom-agent');
   });
 
   test('overrides the agent setting; without the flag the setting stands', () => {
-    expect(sessionAgent('reviewer', 'writer')).toBe('reviewer');
-    expect(sessionAgent(undefined, 'writer')).toBe('writer');
-    expect(sessionAgent(undefined, undefined)).toBeUndefined();
+    expect(planOf({ '--agent': 'reviewer' }, { agentSetting: 'writer' }).agent).toBe('reviewer');
+    expect(planOf({}, { agentSetting: 'writer' }).agent).toBe('writer');
   });
 
-  test('a plugin agent is named by its scoped name, subfolders included', () => {
-    expect(planOf({ '--agent': 'my-plugin:review:security' }).agent).toBe(
-      'my-plugin:review:security',
-    );
+  test('a plugin agent is named by its scoped name, subfolders included, and still wins over the setting', () => {
+    const plan = planOf({ '--agent': 'my-plugin:review:security' }, { agentSetting: 'writer' });
+    expect(plan.agent).toBe('my-plugin:review:security');
   });
 
-  test('no flag, no agent', () => {
+  test('no flag and no setting, no agent', () => {
     expect(planOf({}).agent).toBeUndefined();
   });
 });
@@ -127,6 +124,34 @@ describe('--agents', () => {
       const plan = planOf({ '--agents': '{bad', '--safe-mode': true });
       expect(plan.refusals).toEqual([]);
       expect(plan.cliAgents).toBeUndefined();
+    });
+
+    test('CLAUDE_CODE_SAFE_MODE=1 ignores --agents entirely, as --safe-mode does', () => {
+      const on = run('{bad', { env: { CLAUDE_CODE_SAFE_MODE: '1' } });
+      expect(on.refusals).toEqual([]);
+      expect(on.cliAgents).toBeUndefined();
+      expect(run('{bad', { env: { CLAUDE_CODE_SAFE_MODE: '0' } }).refusals).toHaveLength(1);
+    });
+
+    test('with --resume or --continue an inline value is not checked and the session starts', () => {
+      for (const mode of [{ resume: true }, { continuing: true }]) {
+        const plan = run('{bad', mode);
+        expect(plan.refusals).toEqual([]);
+        expect(plan.cliAgents).toBeUndefined();
+        expect(run('{"a":{"prompt":"p"}}', mode).refusals).toEqual([]);
+      }
+    });
+
+    test('with --resume or --continue a value read from a file is checked on every launch', () => {
+      for (const mode of [{ resume: true }, { continuing: true }]) {
+        const bad = run(
+          './agents.json',
+          printFacts({ ...mode, files: { './agents.json': file('{bad') } }),
+        );
+        expect(bad.refusals[0]).toContain('invalid JSON');
+        const gone = run('./gone.json', printFacts(mode));
+        expect(gone.refusals).toEqual(['Error: --agents file not found: ./gone.json']);
+      }
     });
   });
 });
@@ -225,6 +250,24 @@ describe('--forward-subagent-text', () => {
       );
       expect(plan.forwardSubagentText).toBe(false);
       expect(plan.warnings[0]?.message).toContain('stream-json');
+    });
+
+    test('CLAUDE_CODE_FORWARD_SUBAGENT_TEXT=1 enables the same behavior, with the same requirements', () => {
+      const env = { CLAUDE_CODE_FORWARD_SUBAGENT_TEXT: '1' };
+      expect(planOf({}, printFacts({ outputFormat: 'stream-json', env })).forwardSubagentText).toBe(
+        true,
+      );
+      expect(planOf({}, { outputFormat: 'stream-json', env }).forwardSubagentText).toBe(false);
+      expect(planOf({}, printFacts({ outputFormat: 'json', env })).forwardSubagentText).toBe(false);
+    });
+
+    test('the variable is ignored outside non-interactive stream-json, where the flag would warn', () => {
+      const env = { CLAUDE_CODE_FORWARD_SUBAGENT_TEXT: '1' };
+      expect(planOf({}, printFacts({ outputFormat: 'json', env })).warnings).toEqual([]);
+      const off = { CLAUDE_CODE_FORWARD_SUBAGENT_TEXT: '0' };
+      expect(
+        planOf({}, printFacts({ outputFormat: 'stream-json', env: off })).forwardSubagentText,
+      ).toBe(false);
     });
 
     test('without the flag subagent text stays out of the stream', () => {

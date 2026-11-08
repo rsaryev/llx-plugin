@@ -194,6 +194,17 @@ spec('cli.plugin.plugin marketplace add.--json', () => {
 });
 
 describe('what the docs leave open', () => {
+  test('the reserved name is matched after surrounding whitespace is dropped, as remove does', () => {
+    const rendered = renderCommand(finished({ source: ' anthropic-plugin-directory ' }), {
+      json: false,
+    });
+    expect(rendered).toEqual({
+      stdout: [],
+      stderr: ['"anthropic-plugin-directory" is a reserved marketplace name'],
+      exitCode: 1,
+    });
+  });
+
   test('a name the registry refuses fails the add, and a reserved name outside github.com/anthropics is one', () => {
     const done = concluded({ source: 'acme/tools' }, fetched('claude-plugins-official'));
     const rendered = renderCommand(done.output, { json: false });

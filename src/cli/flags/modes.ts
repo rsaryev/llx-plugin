@@ -8,10 +8,15 @@ import type { Contribution, Customization } from './types.ts';
  * is those modules' (`availableTools` reads `restricted`).
  */
 
-/** "Sets `CLAUDE_CODE_SIMPLE`", which "Set to `1`" does (env-vars.md). */
+/**
+ * "Sets `CLAUDE_CODE_SIMPLE`", which "Set to `1`" does (env-vars.md); bare mode "never reads OAuth
+ * credentials or the system keychain": authentication comes from `ANTHROPIC_API_KEY` or an
+ * `apiKeyHelper` in `--settings` (headless.md, "Start faster with bare mode").
+ */
 export const bare = (): Contribution => ({
   skipped: skippedBy('bare'),
   env: { CLAUDE_CODE_SIMPLE: '1' },
+  readsStoredCredentials: false,
 });
 
 /** "Sets `CLAUDE_CODE_SAFE_MODE`", which "Set to `1`" does (env-vars.md). */

@@ -71,6 +71,12 @@ export interface FileFact {
 export interface FlagFacts {
   /** `--print` (`-p`): a non-interactive run. */
   readonly print: boolean;
+  /** `--resume` (`-r`): the run resumes a session. */
+  readonly resume: boolean;
+  /** `--continue` (`-c`): the run continues the latest session. */
+  readonly continuing: boolean;
+  /** The `agent` setting of the settings files, which `--agent` overrides. */
+  readonly agentSetting?: string;
   /** `--output-format`, when given. */
   readonly outputFormat?: string;
   readonly env: Readonly<Record<string, string | undefined>>;
@@ -137,6 +143,8 @@ export interface SessionPlan {
   readonly warnings: readonly PluginIssue[];
   readonly sessionPlugins: readonly SessionPluginRequest[];
   readonly skipped: readonly Customization[];
+  /** Whether the session reads stored login credentials (OAuth tokens, the system keychain). */
+  readonly readsStoredCredentials: boolean;
   /** Environment variables the flag sets for the session (`--bare` sets `CLAUDE_CODE_SIMPLE`). */
   readonly env: Readonly<Record<string, string>>;
   /** The settings scopes that load; absent means every one. */

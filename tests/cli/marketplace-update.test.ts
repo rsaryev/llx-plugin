@@ -4,10 +4,13 @@
  * default branch; `--json` without a name is refused with exit 1; `Successfully updated marketplace:
  * <name>`, `Successfully updated 2 marketplaces`), plugins/install.md § Update plugins now (with no
  * name it refreshes every marketplace's listing and leaves the installed plugins at their versions),
- * plugins/troubleshooting.md (`Marketplace '<name>' not found`; `Marketplace '<name>' is seed-managed
- * (<dir>)`, which a bulk update skips), § JSON result for marketplace commands (`marketplace-update`).
- * What the docs do not word (the seed-managed hint, one marketplace, none registered) is outside
- * `spec(...)` and in spec/judgments.md.
+ * plugins/troubleshooting.md § `Plugin "<name>" not found in marketplace "<marketplace>"` (`claude
+ * plugin marketplace update <marketplace>` answers `Marketplace '<marketplace>' not found` for a
+ * marketplace never added) and § `Marketplace '<name>' is seed-managed` (the update fails with
+ * `Marketplace '<name>' is seed-managed (<dir>)` and a hint to ask the admin; a bulk update skips it),
+ * § JSON result for marketplace commands (`marketplace-update`). What the docs do not give (the exit
+ * code and `failureCode` of both failures, the seed-managed hint, one marketplace, none registered)
+ * is outside `spec(...)` and in spec/judgments.md.
  */
 import { describe, expect, test } from 'bun:test';
 import {
@@ -64,19 +67,18 @@ spec('cli.plugin.plugin marketplace update', () => {
     expect(run({ json: true }).refresh).toEqual([]);
   });
 
-  test('a marketplace that was never added fails with Marketplace <name> not found', () => {
-    expect(text({ name: 'nowhere' })).toEqual({
-      stdout: [],
-      stderr: ["Marketplace 'nowhere' not found"],
-      exitCode: 1,
-    });
-    expect(run({ name: 'nowhere' }).refresh).toEqual([]);
+  test('a marketplace that was never added answers Marketplace <name> not found and refreshes nothing', () => {
+    const plan = run({ name: 'nowhere' });
+    expect(plan.output).toMatchObject({ result: { message: "Marketplace 'nowhere' not found" } });
+    expect(plan.refresh).toEqual([]);
   });
 
-  test('a seed-managed marketplace named fails; a bulk update skips it and updates the others', () => {
-    const named = text({ name: 'gamma' });
-    expect(named.exitCode).toBe(1);
-    expect(named.stderr[0]).toContain("Marketplace 'gamma' is seed-managed (/seed)");
+  test('a seed-managed marketplace named fails with its directory; a bulk update skips it and updates the others', () => {
+    const named = run({ name: 'gamma' });
+    expect(named.output).toMatchObject({
+      result: { message: expect.stringContaining("Marketplace 'gamma' is seed-managed (/seed)") },
+    });
+    expect(named.refresh).toEqual([]);
     expect(run({}).refresh.map((target) => target.name)).toEqual(['alpha', 'beta']);
     expect(text({}).stdout).toEqual(['Successfully updated 2 marketplaces']);
   });
@@ -90,8 +92,15 @@ spec('cli.plugin.JSON result for marketplace commands', () => {
       ],
     );
   });
+});
 
-  test('a failure carries failureCode', () => {
+describe('what the docs leave open', () => {
+  test('a marketplace never added fails with exit 1 on stderr and failureCode not_found', () => {
+    expect(text({ name: 'nowhere' })).toEqual({
+      stdout: [],
+      stderr: ["Marketplace 'nowhere' not found"],
+      exitCode: 1,
+    });
     const rendered = renderCommand(run({ name: 'nowhere', json: true }).output, { json: true });
     expect(JSON.parse(rendered.stdout.at(-1) ?? '')).toEqual({
       command: 'marketplace-update',
@@ -101,9 +110,17 @@ spec('cli.plugin.JSON result for marketplace commands', () => {
       message: "Marketplace 'nowhere' not found",
     });
   });
-});
 
-describe('what the docs leave open', () => {
+  test('a seed-managed marketplace named fails with exit 1 and failureCode seed_managed', () => {
+    expect(text({ name: 'gamma' }).exitCode).toBe(1);
+    const rendered = renderCommand(run({ name: 'gamma', json: true }).output, { json: true });
+    expect(JSON.parse(rendered.stdout.at(-1) ?? '')).toMatchObject({
+      outcome: 'failed',
+      marketplace: 'gamma',
+      failureCode: 'seed_managed',
+    });
+  });
+
   test('the seed-managed refusal tells the user to ask their administrator', () => {
     expect(text({ name: 'gamma' }).stderr[0]).toContain('administrator');
   });

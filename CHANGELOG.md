@@ -4,6 +4,20 @@
 
 ### Fixed
 
+- CLI session flags: what an `--add-dir` directory loads is derived from the whole plan, so
+  `--safe-mode`, `--disable-slash-commands`, `--setting-sources` without `project` (and `--restricted`)
+  remove what they remove from it too, `--bare` keeps only skills, and `CLAUDE.local.md` is its own
+  kind that needs `local` (`addDirLoads` takes `skipped` and `settingScopes`); `--agents` validation is
+  skipped by `CLAUDE_CODE_SAFE_MODE=1` and, for an inline value, by `--resume` and `--continue`
+  (`FlagFacts.resume`, `continuing`); `CLAUDE_CODE_FORWARD_SUBAGENT_TEXT=1` forwards subagent text; a
+  `--mcp-config` value holds space-separated files; `--bare` reports `readsStoredCredentials: false`;
+  `--agent` overrides the `agent` setting in the plan (`FlagFacts.agentSetting`). A `fields` key named
+  `command`, `outcome` or `message` no longer replaces the result's own, and `marketplace add` and
+  `remove` match the reserved name the same way. The `--bare`, `--add-dir`, `--agent`,
+  `--forward-subagent-text`, owner/repo and Windows path tests assert the plan, the failure codes
+  of marketplace update and remove are judgments outside `spec(...)`, and the shared JSON, word and
+  record helpers replace three copies.
+
 - Marketplace dependencies: `installClosure` no longer reports a false conflict when an installed
   root's marketplace entry changed a range (the root's installed range is replaced by its new one,
   and so is that of any plugin the walk reads from the catalog); a dependency already installed and

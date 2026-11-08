@@ -112,12 +112,18 @@ export const marketplaceFailure = (
 ): CommandOutput =>
   commandFailed(command, message, { ...marketplaceFields(marketplace), failureCode });
 
+/** The three keys "always present": a key of `fields` with one of these names is dropped (spec/judgments.md). */
+const ALWAYS_PRESENT: readonly string[] = ['command', 'outcome', 'message'];
+
+const otherFields = (fields: ResultFields | undefined): ResultFields =>
+  Object.fromEntries(Object.entries(fields ?? {}).filter(([key]) => !ALWAYS_PRESENT.includes(key)));
+
 /** The object of the last line: `command`, `outcome`, the other fields, `failureCode`, `message`. */
 function resultObject(found: PluginCommandResult): Readonly<Record<string, JsonValue>> {
   return {
     command: found.command,
     outcome: found.outcome,
-    ...found.fields,
+    ...otherFields(found.fields),
     ...(found.failureCode === undefined ? {} : { failureCode: found.failureCode }),
     message: found.message,
   };

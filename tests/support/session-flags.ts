@@ -4,6 +4,8 @@ import type { FlagFacts, GivenFlags, SessionPlan } from '../../src/cli/flags/typ
 
 const facts = (extra: Partial<FlagFacts> = {}): FlagFacts => ({
   print: false,
+  resume: false,
+  continuing: false,
   env: {},
   platform: 'posix',
   sideloadDisabled: false,

@@ -153,6 +153,20 @@ describe('--mcp-config', () => {
       ]);
     });
 
+    test('a value holds several files, space-separated; inline JSON stays whole', () => {
+      const plan = planOf({ '--mcp-config': ['./a.json  ./b.json', inline, './c.json'] });
+      expect(plan.mcpConfigs).toEqual([
+        { kind: 'file', path: './a.json' },
+        { kind: 'file', path: './b.json' },
+        { kind: 'inline', text: inline },
+        { kind: 'file', path: './c.json' },
+      ]);
+      const spaced = '{"mcpServers":{"a b":{"type":"http","url":"https://x"}}}';
+      expect(planOf({ '--mcp-config': [spaced] }).mcpConfigs).toEqual([
+        { kind: 'inline', text: spaced },
+      ]);
+    });
+
     test('with -p it waits for still-pending servers for 30 seconds by default', () => {
       expect(planOf({ '--mcp-config': ['./mcp.json'] }, printFacts()).mcpWaitMs).toBe(30_000);
       expect(DEFAULT_MCP_TIMEOUT_MS).toBe(30_000);

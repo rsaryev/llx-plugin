@@ -1,3 +1,4 @@
+import { isRecord } from '../../settings/record.ts';
 import { sideloadRefusal } from './sideload.ts';
 import {
   refuse,
@@ -6,6 +7,7 @@ import {
   type McpConfigSource,
   type SessionPlan,
 } from './types.ts';
+import { wordsOf } from './values.ts';
 
 /**
  * `--mcp-config` and `--strict-mcp-config` (cli-reference.md, "CLI flags"; plugins/org.md,
@@ -21,11 +23,16 @@ import {
 /** "30 seconds by default." */
 export const DEFAULT_MCP_TIMEOUT_MS = 30_000;
 
-/** A value that starts with `{` is the JSON itself; any other is the path of a file. */
-const sourceOf = (value: string): McpConfigSource =>
-  value.trimStart().startsWith('{')
-    ? { kind: 'inline', text: value }
-    : { kind: 'file', path: value };
+const isInline = (value: string): boolean => value.trimStart().startsWith('{');
+
+/**
+ * A value that starts with `{` is the JSON itself and stays whole; any other holds one or more file
+ * paths, "space-separated" (cli-reference.md, `--mcp-config`).
+ */
+const sourcesOf = (value: string): readonly McpConfigSource[] =>
+  isInline(value)
+    ? [{ kind: 'inline', text: value }]
+    : wordsOf(value).map((path): McpConfigSource => ({ kind: 'file', path }));
 
 type TextOf<K extends McpConfigSource['kind']> = (
   source: Extract<McpConfigSource, { kind: K }>,
@@ -41,9 +48,6 @@ const textOf = <K extends McpConfigSource['kind']>(
   source: Extract<McpConfigSource, { kind: K }>,
   context: FlagContext,
 ): string | undefined => TEXT_OF[source.kind](source, context);
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 // oxlint-disable-next-line kit/no-kind-literal -- `type` is a field of the user's JSON, not a closed set of the kit
 const isInProcessServer = (server: unknown): boolean => isRecord(server) && server.type === 'sdk';
@@ -67,7 +71,7 @@ function waitMs(context: FlagContext): number {
 }
 
 export function mcpConfig(values: readonly string[], context: FlagContext): Contribution {
-  const sources = values.map(sourceOf);
+  const sources = values.flatMap(sourcesOf);
   const refusal = sideloadRefusal('--mcp-config', context.facts);
   if (
     refusal !== undefined &&

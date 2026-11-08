@@ -43,6 +43,12 @@ spec('cli.flag.--bare', () => {
     expect(planOf({ '--bare': true }).env).toEqual({ CLAUDE_CODE_SIMPLE: '1' });
   });
 
+  test('never reads OAuth credentials or the system keychain, unlike every other mode', () => {
+    expect(planOf({ '--bare': true }).readsStoredCredentials).toBe(false);
+    expect(planOf({}).readsStoredCredentials).toBe(true);
+    expect(planOf({ '--safe-mode': true }).readsStoredCredentials).toBe(true);
+  });
+
   test('a plugin passed with --plugin-dir still loads: only installed plugins are skipped', () => {
     const plan = planOf({ '--bare': true, '--plugin-dir': ['./p'] });
     expect(plan.skipped).toContain('installed-plugins');

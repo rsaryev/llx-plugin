@@ -5,7 +5,7 @@ import {
   noResultLine,
   type CommandOutput,
 } from './result.ts';
-import { RESERVED_QUIET_NAME } from './marketplace-add.ts';
+import { isReservedName, RESERVED_QUIET_NAME } from './marketplace-add.ts';
 import { chooseScope, type ConfigScope } from './scope.ts';
 
 /**
@@ -99,7 +99,7 @@ const declarationsToRemove = (
 
 /** What `plugin marketplace remove` does and prints. */
 export function planMarketplaceRemove(args: RemoveArguments, facts: RemoveFacts): RemovePlan {
-  if (args.name === RESERVED_QUIET_NAME) {
+  if (isReservedName(args.name)) {
     return nothing(noResultLine(`"${RESERVED_QUIET_NAME}" is a reserved marketplace name`));
   }
   const chosen = chooseScope('marketplace-remove', args.scope);

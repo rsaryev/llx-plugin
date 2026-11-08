@@ -49,8 +49,27 @@ spec('cli.plugin.plugin marketplace add.owner/repo', () => {
     expect(started({ source: 'owner/repo@v1' }).source).toMatchObject({ ref: 'v1' });
   });
 
-  test('must follow GitHub naming rules', () => {
-    expect(renderCommand(finished({ source: 'owner/re po' }), { json: false }).exitCode).toBe(1);
+  test('must follow GitHub naming rules: the owner and the repo name each break one', () => {
+    const refused = [
+      'owner/re po',
+      '-owner/repo',
+      'owner-/repo',
+      'o_wner/repo',
+      `${'o'.repeat(40)}/repo`,
+      `owner/${'r'.repeat(101)}`,
+      'owner/.',
+      'owner/..',
+      'owner/repo/extra',
+    ];
+    for (const source of refused) {
+      const rendered = renderCommand(finished({ source }), { json: false });
+      expect({ source, exitCode: rendered.exitCode }).toEqual({ source, exitCode: 1 });
+    }
+  });
+
+  test('accepts the longest names GitHub allows: 39 characters for the owner, 100 for the repo', () => {
+    const repo = `${'o'.repeat(39)}/${'r'.repeat(100)}`;
+    expect(started({ source: repo }).source).toMatchObject({ kind: 'github', repo });
   });
 });
 
@@ -97,6 +116,11 @@ spec('cli.plugin.plugin marketplace add../path', () => {
       path: '.\\mine',
     });
     expect(finished({ source: '.\\mine' }).kind).toBe('result');
+    expect(started({ source: 'C:\\mine', platform: 'windows' }).source).toEqual({
+      kind: 'directory',
+      path: 'C:\\mine',
+    });
+    expect(finished({ source: 'C:\\mine' }).kind).toBe('result');
   });
 });
 

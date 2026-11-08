@@ -1,6 +1,7 @@
 import { readSettingsLayer } from '../../settings/read-layer.ts';
 import type { PolicyScope } from '../../settings/layers.ts';
 import { refuse, type Contribution, type FlagContext } from './types.ts';
+import { parseJson } from './values.ts';
 
 /**
  * `--setting-sources` and `--settings` (cli-reference.md, "CLI flags"). `--setting-sources` is "a
@@ -45,14 +46,6 @@ export function settingSources(value: string): Contribution {
 /** "The file must be a regular file no larger than 2 MiB." */
 export const SETTINGS_FILE_LIMIT = 2 * 1024 * 1024;
 
-const parseObject = (text: string): { readonly value: unknown } | { readonly problem: string } => {
-  try {
-    return { value: JSON.parse(text) };
-  } catch (failure) {
-    return { problem: failure instanceof Error ? failure.message : 'invalid JSON' };
-  }
-};
-
 /** The text of the settings and the place a refusal names. */
 function settingsText(value: string, context: FlagContext): { text: string } | { refusal: string } {
   if (value.trimStart().startsWith('{')) return { text: value };
@@ -72,7 +65,7 @@ function settingsText(value: string, context: FlagContext): { text: string } | {
 export function settings(value: string, context: FlagContext): Contribution {
   const found = settingsText(value, context);
   if ('refusal' in found) return refuse(found.refusal);
-  const parsed = parseObject(found.text);
+  const parsed = parseJson(found.text);
   if ('problem' in parsed)
     return refuse(`Error: Invalid JSON passed to --settings: ${parsed.problem}`);
   const read = readSettingsLayer('flag', parsed.value);

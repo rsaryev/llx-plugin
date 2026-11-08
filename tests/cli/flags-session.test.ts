@@ -144,6 +144,10 @@ describe('--add-dir', () => {
   const add = (paths: string[], extra = {}) =>
     planOf({ '--add-dir': paths }, { directories: dirs, ...extra });
 
+  const loadsFrom = (sources: string) =>
+    planOf({ '--add-dir': ['../apps'], '--setting-sources': sources }, { directories: dirs })
+      .addDirLoads;
+
   spec('cli.flag.--add-dir', () => {
     test('adds each path as a working directory, in the order given', () => {
       expect(add(['../apps', '../lib']).additionalDirectories).toEqual(['../apps', '../lib']);
@@ -182,6 +186,63 @@ describe('--add-dir', () => {
     test('CLAUDE.md files load only when CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1', () => {
       const on = add(['../apps'], { env: { CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1' } });
       expect(on.addDirLoads).toContain('claude-md');
+    });
+
+    test('--safe-mode loads none of it: the modes that skip a kind skip it from an added directory too', () => {
+      const plan = add(['../apps'], { env: { CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1' } });
+      const safe = planOf(
+        { '--add-dir': ['../apps'], '--safe-mode': true },
+        { directories: dirs, env: { CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1' } },
+      );
+      expect(plan.addDirLoads).toContain('skills');
+      expect(safe.skipped).toEqual(expect.arrayContaining(['skills', 'commands', 'agents']));
+      expect(safe.addDirLoads).toEqual([]);
+    });
+
+    test('--disable-slash-commands drops skills and commands and keeps the subagents', () => {
+      const plan = planOf(
+        { '--add-dir': ['../apps'], '--disable-slash-commands': true },
+        { directories: dirs },
+      );
+      expect(plan.addDirLoads).toEqual([
+        'agents',
+        'settings:enabledPlugins',
+        'settings:extraKnownMarketplaces',
+      ]);
+    });
+
+    test('--bare keeps the skills and drops the rest', () => {
+      const plan = planOf({ '--add-dir': ['../apps'], '--bare': true }, { directories: dirs });
+      expect(plan.addDirLoads).toEqual(['skills']);
+    });
+
+    test('skills, commands and subagents load through the project setting source', () => {
+      expect(loadsFrom('user')).toEqual([]);
+      expect(loadsFrom('user,local')).toEqual([]);
+      expect(loadsFrom('project')).toEqual(add(['../apps']).addDirLoads);
+    });
+
+    test('CLAUDE.local.md additionally needs the local setting source', () => {
+      const env = { CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1' };
+      const loads = (sources: string) =>
+        planOf(
+          { '--add-dir': ['../apps'], '--setting-sources': sources },
+          { directories: dirs, env },
+        ).addDirLoads;
+      expect(loads('project,local')).toEqual(
+        expect.arrayContaining(['claude-md', 'claude-local-md']),
+      );
+      expect(loads('project')).toContain('claude-md');
+      expect(loads('project')).not.toContain('claude-local-md');
+      expect(add(['../apps'], { env }).addDirLoads).toContain('claude-local-md');
+    });
+
+    test('--restricted excludes the project source, so nothing configuration loads from an added directory', () => {
+      const plan = planOf(
+        { '--add-dir': ['../apps'], '--restricted': true },
+        { directories: dirs },
+      );
+      expect(plan.addDirLoads).toEqual([]);
     });
 
     test('without the flag no directory is added and nothing extra loads', () => {

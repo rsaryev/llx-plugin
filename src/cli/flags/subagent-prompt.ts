@@ -1,5 +1,5 @@
 import { warning } from '../../format/issues.ts';
-import { refuse, type Contribution, type FlagContext } from './types.ts';
+import { refuse, type Contribution, type FlagContext, type FlagFacts } from './types.ts';
 
 /**
  * `--append-subagent-system-prompt`, `--append-subagent-system-prompt-file` and
@@ -7,8 +7,9 @@ import { refuse, type Contribution, type FlagContext } from './types.ts';
  * system-prompt flag and its file form"; headless.md, "Follow subagent messages"). The first two
  * append text to every subagent's system prompt and "only apply in non-interactive mode with `-p`";
  * the two "can't be combined". The last forwards subagent text and thinking blocks and "requires
- * `--print` and `--output-format stream-json`". What a flag does when its requirement is missing is
- * not stated: it has no effect (spec/judgments.md).
+ * `--print` and `--output-format stream-json`"; `CLAUDE_CODE_FORWARD_SUBAGENT_TEXT=1` "enables the
+ * same behavior" and, "unlike the flag", "is ignored" outside that mode (env-vars.md). What a flag
+ * does when its requirement is missing is not stated: it has no effect (spec/judgments.md).
  */
 
 const CONFLICT =
@@ -32,9 +33,17 @@ export function appendSubagentPromptFile(path: string, context: FlagContext): Co
   return { subagentPromptAppend: file.text };
 }
 
+const streamsJson = ({ print, outputFormat }: FlagFacts): boolean =>
+  print && outputFormat === STREAM_JSON;
+
+/** The variable alone: ignored, without a warning, outside `--print` with `stream-json`. */
+export const forwardSubagentTextVariable = (facts: FlagFacts): Contribution =>
+  facts.env.CLAUDE_CODE_FORWARD_SUBAGENT_TEXT === '1' && streamsJson(facts)
+    ? { forwardSubagentText: true }
+    : {};
+
 export function forwardSubagentText(_value: true, context: FlagContext): Contribution {
-  const { print, outputFormat } = context.facts;
-  if (print && outputFormat === STREAM_JSON) return { forwardSubagentText: true };
+  if (streamsJson(context.facts)) return { forwardSubagentText: true };
   return {
     warnings: [
       warning(

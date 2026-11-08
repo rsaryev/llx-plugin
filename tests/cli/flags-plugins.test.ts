@@ -26,9 +26,8 @@ spec('cli.flag.--plugin-dir', () => {
   });
 
   test('a .zip archive is read as an archive', () => {
-    expect(planOf({ '--plugin-dir': ['./other.zip', './UPPER.ZIP'] }).sessionPlugins).toEqual([
+    expect(planOf({ '--plugin-dir': ['./other.zip'] }).sessionPlugins).toEqual([
       { source: 'archive', location: './other.zip', origin: 'inline' },
-      { source: 'archive', location: './UPPER.ZIP', origin: 'inline' },
     ]);
   });
 
@@ -120,6 +119,14 @@ spec('cli.flag.--plugin-url', () => {
   test('--plugin-dir requests come before --plugin-url ones', () => {
     const plan = planOf({ '--plugin-url': ['https://e.com/a.zip'], '--plugin-dir': ['./p'] });
     expect(plan.sessionPlugins.map((request) => request.source)).toEqual(['directory', 'url']);
+  });
+});
+
+describe('what the docs leave open', () => {
+  test('the .zip extension is matched without regard to case', () => {
+    expect(planOf({ '--plugin-dir': ['./UPPER.ZIP'] }).sessionPlugins).toEqual([
+      { source: 'archive', location: './UPPER.ZIP', origin: 'inline' },
+    ]);
   });
 });
 

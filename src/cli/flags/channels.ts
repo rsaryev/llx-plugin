@@ -1,6 +1,7 @@
 import type { ChannelPluginRef } from '../../protocol/official.ts';
 import type { ChannelEntry } from '../../settings/channels/verdict.ts';
 import { refuse, type Contribution, type FlagContext, type SessionChannel } from './types.ts';
+import { wordsOf } from './values.ts';
 
 /**
  * `--channels` and `--dangerously-load-development-channels` (cli-reference.md, "CLI flags";
@@ -12,12 +13,10 @@ import { refuse, type Contribution, type FlagContext, type SessionChannel } from
  * of an entry that is neither form is in spec/judgments.md.
  */
 
-const WHITESPACE = /\s+/;
 const PLUGIN_ENTRY = /^plugin:([^@\s]+)@(\S+)$/;
 const SERVER_ENTRY = /^server:(\S+)$/;
 
-const entriesOf = (values: readonly string[]): readonly string[] =>
-  values.flatMap((value) => value.split(WHITESPACE).filter((entry) => entry !== ''));
+const entriesOf = (values: readonly string[]): readonly string[] => values.flatMap(wordsOf);
 
 const pluginRef = (raw: string): ChannelPluginRef | undefined => {
   const parts = PLUGIN_ENTRY.exec(raw);

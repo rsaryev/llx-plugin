@@ -1,5 +1,7 @@
+import { isRecord } from '../../settings/record.ts';
 import { sideloadRefusal } from './sideload.ts';
 import { refuse, type Contribution, type FlagContext } from './types.ts';
+import { parseJson, type Parsed } from './values.ts';
 
 /**
  * `--agent` and `--agents` (cli-reference.md, "CLI flags"; sub-agents.md, "Choose the subagent
@@ -7,8 +9,10 @@ import { refuse, type Contribution, type FlagContext } from './types.ts';
  * names the session's agent and "overrides the `agent` setting". `--agents` is JSON of definitions
  * keyed by name; "with `--print`, the value can instead be the path to a JSON file"; Claude Code
  * "validates the value at startup and exits on an invalid one", running the checks "in order and
- * stops at the first one that fails": the JSON, the definitions, the names. `--safe-mode` "ignores
- * `--agents` entirely". The refusal wording is errors.md's; what the docs leave open is in
+ * stops at the first one that fails": the JSON, the definitions, the names. `--safe-mode` and
+ * `CLAUDE_CODE_SAFE_MODE` "ignore `--agents` entirely"; with `--resume` or `--continue` "an inline
+ * JSON value isn't checked and the session starts; a value read from a file is checked on every
+ * launch". The refusal wording is errors.md's; what the docs leave open is in
  * spec/judgments.md.
  */
 
@@ -25,19 +29,6 @@ const MAX_PROBLEM_LINES = 20;
 
 /** "`color` and `experimental` aren't accepted here and are ignored rather than rejected." */
 const IGNORED_FIELDS: readonly string[] = ['color', 'experimental'];
-
-type Parsed = { readonly value: unknown } | { readonly problem: string };
-
-function parseJson(text: string): Parsed {
-  try {
-    return { value: JSON.parse(text) };
-  } catch (failure) {
-    return { problem: failure instanceof Error ? failure.message : 'invalid JSON' };
-  }
-}
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** The problems of one definition: `description` and `prompt` are the two a definition always carries; `prompt` may be empty. */
 function definitionProblems(name: string, definition: unknown): readonly string[] {
@@ -79,9 +70,15 @@ function withoutIgnored(definition: unknown): unknown {
     : definition;
 }
 
+const isInline = (value: string): boolean => value.trimStart().startsWith('{');
+
+/** `--safe-mode` or `CLAUDE_CODE_SAFE_MODE=1` ("Equivalent to passing `--safe-mode`", env-vars.md). */
+const safeModeOn = ({ given, facts }: FlagContext): boolean =>
+  given['--safe-mode'] === true || facts.env.CLAUDE_CODE_SAFE_MODE === '1';
+
 /** The value as JSON, or the refusal: an object starts with `{`; any other value is a path to a file. */
 function agentsJson(value: string, context: FlagContext): Parsed | { readonly refusal: string } {
-  if (value.trimStart().startsWith('{')) return parseJson(value);
+  if (isInline(value)) return parseJson(value);
   if (!context.facts.print) {
     return {
       refusal: 'Error: --agents takes a JSON object, or a file path only with --print (-p)',
@@ -92,12 +89,22 @@ function agentsJson(value: string, context: FlagContext): Parsed | { readonly re
   return parseJson(file.text);
 }
 
-export function agents(value: string, context: FlagContext): Contribution {
-  const refusal = sideloadRefusal('--agents', context.facts);
-  if (refusal !== undefined) return refuse(refusal);
-  if (context.given['--safe-mode'] === true) return {};
+function validated(value: string, context: FlagContext): Contribution {
   const json = agentsJson(value, context);
   if ('refusal' in json) return refuse(json.refusal);
   if ('problem' in json) return invalid([`invalid JSON: ${json.problem}`]);
   return checkDefinitions(json.value);
+}
+
+/** An inline value on a resumed session is not checked: it defines agents when valid and is ignored when not (judgment). */
+const unchecked = (value: string, { facts }: FlagContext): boolean =>
+  isInline(value) && (facts.resume || facts.continuing);
+
+export function agents(value: string, context: FlagContext): Contribution {
+  const refusal = sideloadRefusal('--agents', context.facts);
+  if (refusal !== undefined) return refuse(refusal);
+  if (safeModeOn(context)) return {};
+  const result = validated(value, context);
+  const failed = (result.refusals ?? []).length > 0;
+  return failed && unchecked(value, context) ? {} : result;
 }

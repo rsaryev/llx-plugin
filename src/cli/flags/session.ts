@@ -1,5 +1,6 @@
 import { PERMISSION_MODE_INPUTS, type PermissionModeInput } from '../../agents/permission-mode.ts';
 import type { PermissionMode } from '../../protocol/official.ts';
+import type { DocumentedTool } from '../../protocol/tool-names.ts';
 import { refuse, type Contribution, type FlagContext } from './types.ts';
 
 /**
@@ -39,17 +40,19 @@ export function permissionMode(value: string, context: FlagContext): Contributio
 }
 
 /** The task-tracking tools: naming one in `--tools` opts the session in (tools-reference.md, "Task tool availability"). */
-const TASK_TOOLS: readonly string[] = [
+const TASK_TOOLS = [
   'TaskCreate',
   'TaskGet',
   'TaskUpdate',
   'TaskList',
   'TodoWrite',
-];
+] as const satisfies readonly DocumentedTool[];
+
+const TASK_TOOL_NAMES: ReadonlySet<string> = new Set(TASK_TOOLS);
 
 const SEPARATORS = /[\s,]+/;
 
 export function tools(value: string): Contribution {
   const names = value.split(SEPARATORS).filter((name) => name !== '');
-  return { tools: names, optsIntoTaskTools: names.some((name) => TASK_TOOLS.includes(name)) };
+  return { tools: names, optsIntoTaskTools: names.some((name) => TASK_TOOL_NAMES.has(name)) };
 }

@@ -126,6 +126,20 @@ describe('a usage error', () => {
   });
 });
 
+describe('what the docs leave open', () => {
+  test('a key of fields named command, outcome or message is dropped for the reserved key', () => {
+    const output = commandSucceeded('install', 'the message', {
+      fields: { command: 'x', outcome: 'failed', message: 'y', scope: 'user' },
+    });
+    expect(lastLine(renderCommand(output, { json: true }).stdout)).toEqual({
+      command: 'install',
+      outcome: 'ok',
+      scope: 'user',
+      message: 'the message',
+    });
+  });
+});
+
 describe('exit codes', () => {
   test('an unexpected error exits 2 with the reason on stderr and no result line (validate only)', () => {
     expect(renderCommand(unexpectedError('boom'), { json: true })).toEqual({

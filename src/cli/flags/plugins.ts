@@ -1,6 +1,7 @@
 import { pluginDirFolders, type PluginDirListing } from '../../marketplace/plugin-dir-folders.ts';
 import { sideloadRefusal } from './sideload.ts';
 import { refuse, type Contribution, type FlagContext, type SessionPluginRequest } from './types.ts';
+import { wordsOf } from './values.ts';
 
 /**
  * `--plugin-dir` and `--plugin-url` (cli-reference.md, "CLI flags"; plugins/cli-reference.md,
@@ -12,7 +13,6 @@ import { refuse, type Contribution, type FlagContext, type SessionPluginRequest 
  */
 
 const ARCHIVE = /\.zip$/i;
-const WHITESPACE = /\s+/;
 
 const requestOf = (
   source: SessionPluginRequest['source'],
@@ -38,7 +38,7 @@ export function pluginDir(paths: readonly string[], context: FlagContext): Contr
 export function pluginUrl(values: readonly string[], context: FlagContext): Contribution {
   const refusal = sideloadRefusal('--plugin-url', context.facts);
   if (refusal !== undefined) return refuse(refusal);
-  const urls = values.flatMap((value) => value.split(WHITESPACE).filter((url) => url !== ''));
+  const urls = values.flatMap(wordsOf);
   return { sessionPlugins: urls.map((url) => requestOf('url', url)) };
 }
 

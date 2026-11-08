@@ -57,6 +57,10 @@ export type AddStart =
 /** "`plugin marketplace add` and `plugin marketplace remove` can print no result line" for this name. */
 export const RESERVED_QUIET_NAME = 'anthropic-plugin-directory';
 
+/** The argument is the reserved name once surrounding whitespace is dropped (spec/judgments.md). */
+export const isReservedName = (argument: string): boolean =>
+  argument.trim() === RESERVED_QUIET_NAME;
+
 const done = (output: CommandOutput): AddStart => ({ kind: 'done', output });
 
 const invalidSource = (message: string): AddStart =>
@@ -89,7 +93,7 @@ function sourceOf(
 
 /** What to fetch, or what the command ends with before any fetch. */
 export function startMarketplaceAdd(args: AddArguments): AddStart {
-  if (args.source.trim() === RESERVED_QUIET_NAME) {
+  if (isReservedName(args.source)) {
     return done(noResultLine(`"${RESERVED_QUIET_NAME}" is a reserved marketplace name`));
   }
   if (args.claudeai === true) return claudeAiStart(args);

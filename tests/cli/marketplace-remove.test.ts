@@ -124,15 +124,6 @@ spec('cli.plugin.plugin marketplace remove', () => {
     expect(rendered.exitCode).toBe(1);
     expect(rendered.stderr[0]).toContain('team');
   });
-
-  test('the name is what list shows: the source it was added from is no name', () => {
-    const found = planMarketplaceRemove(
-      { name: 'your-org/your-marketplace' },
-      facts({ known: false }),
-    );
-    expect(human(found).exitCode).toBe(1);
-    expect(found.deleteCache).toBe(false);
-  });
 });
 
 spec('cli.plugin.JSON result for marketplace commands', () => {
@@ -143,13 +134,13 @@ spec('cli.plugin.JSON result for marketplace commands', () => {
     ]);
   });
 
-  test('a failure names the marketplace and carries failureCode', () => {
+  test('a failure names the marketplace and carries a failureCode', () => {
     const rendered = renderCommand(plan({ scope: 'project' }).output, { json: true });
     expect(JSON.parse(rendered.stdout.at(-1) ?? '')).toMatchObject({
       command: 'marketplace-remove',
       outcome: 'failed',
       marketplace: NAME,
-      failureCode: 'not_declared_in_scope',
+      failureCode: expect.any(String),
     });
   });
 
@@ -165,6 +156,23 @@ spec('cli.plugin.JSON result for marketplace commands', () => {
 });
 
 describe('what the docs leave open', () => {
+  test('--scope on a settings file that does not declare it carries failureCode not_declared_in_scope', () => {
+    const rendered = renderCommand(plan({ scope: 'project' }).output, { json: true });
+    expect(JSON.parse(rendered.stdout.at(-1) ?? '')).toMatchObject({
+      failureCode: 'not_declared_in_scope',
+    });
+  });
+
+  test('the reserved name is matched after surrounding whitespace is dropped, as add does', () => {
+    const found = planMarketplaceRemove({ name: ' anthropic-plugin-directory ' }, facts());
+    expect(renderCommand(found.output, { json: false })).toEqual({
+      stdout: [],
+      stderr: ['"anthropic-plugin-directory" is a reserved marketplace name'],
+      exitCode: 1,
+    });
+    expect(found.removeFrom).toEqual([]);
+  });
+
   test('a marketplace nobody knows fails with not_found and removes nothing', () => {
     const found = plan({}, { known: false, declaredIn: [] });
     expect(renderCommand(found.output, { json: true }).stdout[0]).toContain(
