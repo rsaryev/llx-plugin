@@ -91,6 +91,11 @@
 
 ### Fixed
 
+- Agent hooks: a Monitor command (matcher input `Monitor`) is also matched as `Bash` on
+  `PreToolUse` and `PermissionRequest`, never on `PostToolUse` (hooks.md, "Match Monitor
+  commands"); the `--agents` (flag) trust exemption, the `FileChanged` and `StopFailure` narrow
+  grammar and the ignored matcher of events without matcher support are now proven under their
+  `hooks.matcher.*` ids, and `spec/judgments.md` keeps only the managed-agent exemption there.
 - Permission modes: the dead `classifier` trait is dropped from `PERMISSION_MODE_TRAITS` and its
   tautology test with it; `BaselineDecision` derives from the SDK's `PermissionBehavior`;
   `SubagentPermissionInput.set` takes `string` (raw host text that is no mode counts as unset);

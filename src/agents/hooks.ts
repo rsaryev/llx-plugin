@@ -124,9 +124,29 @@ const MATCHING: { readonly [E in HookEvent]: MatcherMode | 'none' } = {
   MessageDisplay: 'none',
 };
 
+/**
+ * "A `PreToolUse` or `PermissionRequest` hook with a `Bash` matcher also runs on shell commands
+ * Claude starts with the Monitor tool", while a `PostToolUse` hook with one "doesn't run for
+ * Monitor" (hooks.md, "Match Monitor commands"). So a Monitor call is matched under its own name
+ * and, on these two events only, as `Bash`: `Bash|PowerShell`, `^Bash$` and `Bash.*` select it, and
+ * so do `Bash|Monitor`, `.*` and no matcher.
+ */
+const MONITOR_ACTS_AS_BASH: ReadonlySet<HookEvent> = new Set<HookEvent>([
+  'PreToolUse',
+  'PermissionRequest',
+]);
+
+const MONITOR_TOOL = 'Monitor';
+
+const matcherInputs = (event: HookEvent, value: string | undefined): (string | undefined)[] =>
+  value === MONITOR_TOOL && MONITOR_ACTS_AS_BASH.has(event) ? [value, 'Bash'] : [value];
+
 const groupMatches = (group: HookMatcherGroup, event: HookEvent, value: string | undefined) => {
   const mode = MATCHING[event];
-  return mode === 'none' || matchesMatcher(group.matcher, value, mode);
+  return (
+    mode === 'none' ||
+    matcherInputs(event, value).some((input) => matchesMatcher(group.matcher, input, mode))
+  );
 };
 
 export interface AgentHookSelection {
@@ -140,7 +160,10 @@ export interface AgentHookContext {
   readonly run: AgentRunKind;
   /** The event that occurred; for a subagent's `Stop`, `SubagentStop`. */
   readonly event: HookEvent;
-  /** The event's matcher input (the tool name, the agent type, ...); none for `Stop`. */
+  /**
+   * The event's matcher input (the tool name, the agent type, ...); none for `Stop`. A Monitor
+   * call is passed as `Monitor`; the kit adds the `Bash` reading where the docs give it.
+   */
   readonly matcherValue: string | undefined;
   /** "These hooks only run while that specific subagent is active." */
   readonly active: boolean;

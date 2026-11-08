@@ -116,6 +116,20 @@ spec('agents.frontmatter.hooks', () => {
       },
     );
 
+    test('definitions passed with --agents (flag) run their hooks in an untrusted folder', () => {
+      // sub-agents.md: hooks from definitions passed with `--agents` run without the trust step.
+      // `readAgent` never produces a flag record, so the record is built by hand.
+      const hooks = reviewer().hooks;
+      const selection = selectAgentHooks(
+        { hooks, source: 'flag' },
+        { run: 'subagent', active: true, folderTrusted: false, ...fire },
+      );
+      expect(selection.skipped).toBeUndefined();
+      expect(selection.groups.flatMap((group) => group.hooks)).toEqual([
+        { type: 'command', command: VALIDATE },
+      ]);
+    });
+
     test('the gate is a function of the source and the folder trust only', () => {
       const gate: Record<AgentSource, 'run' | 'skip-untrusted'> = {
         managed: 'run',

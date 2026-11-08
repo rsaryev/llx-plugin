@@ -34,21 +34,4 @@ describe('what the docs leave open (judgments)', () => {
   test('a tool event needs a tool name: without one a specific matcher selects nothing', () => {
     expect(commands(reviewer(), { event: 'PreToolUse', matcherValue: undefined })).toEqual([]);
   });
-
-  test('StopFailure uses the narrow matcher set: a hyphenated matcher is a regular expression', () => {
-    const agent = loaded(
-      readAgent(
-        file(
-          'name: errs\ndescription: Errs\nhooks:\n  StopFailure:\n    - matcher: rate-limit\n      hooks: [{ type: command, command: ./e.sh }]',
-        ),
-        at('user'),
-      ),
-    );
-    expect(commands(agent, { event: 'StopFailure', matcherValue: 'rate-limit' })).toEqual([
-      './e.sh',
-    ]);
-    expect(commands(agent, { event: 'StopFailure', matcherValue: 'a rate-limit b' })).toEqual([
-      './e.sh',
-    ]);
-  });
 });

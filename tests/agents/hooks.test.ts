@@ -79,6 +79,44 @@ spec('agents.hookEvent.PreToolUse', () => {
       './notebook.sh',
     ]);
   });
+
+  test('a Bash matcher also selects a Monitor command, whatever the Bash matcher looks like', () => {
+    // hooks.md, "Match Monitor commands": `Bash|PowerShell`, `^Bash$` and `Bash.*` are Bash matchers too.
+    expect(commands(dbReader(), { event: 'PreToolUse', matcherValue: 'Monitor' })).toEqual([
+      './scripts/validate-readonly-query.sh',
+    ]);
+    for (const matcher of ['Bash|PowerShell', '^Bash$', 'Bash.*']) {
+      const agent = loaded(
+        readAgent(
+          file(
+            `name: guard\ndescription: Guard\nhooks:\n  PreToolUse:\n    - matcher: "${matcher}"\n      hooks: [{ type: command, command: ./guard.sh }]`,
+          ),
+          at('user'),
+        ),
+      );
+      expect(commands(agent, { event: 'PreToolUse', matcherValue: 'Monitor' })).toEqual([
+        './guard.sh',
+      ]);
+    }
+  });
+
+  test('only a Bash or Monitor matcher selects a Monitor command, not one for other tools', () => {
+    const edits = loaded(
+      readAgent(
+        file(
+          'name: edits\ndescription: Edits\nhooks:\n  PreToolUse:\n    - matcher: "Edit|Write"\n      hooks: [{ type: command, command: ./edit.sh }]\n    - matcher: "Bash|Monitor"\n      hooks: [{ type: command, command: ./both.sh }]',
+        ),
+        at('user'),
+      ),
+    );
+    expect(commands(edits, { event: 'PreToolUse', matcherValue: 'Monitor' })).toEqual([
+      './both.sh',
+    ]);
+  });
+
+  test('the Bash reading is for the Monitor tool only, not a tool whose name starts with Monitor', () => {
+    expect(commands(dbReader(), { event: 'PreToolUse', matcherValue: 'MonitorX' })).toEqual([]);
+  });
 });
 
 spec('agents.hookEvent.PostToolUse', () => {
@@ -103,6 +141,25 @@ spec('agents.hookEvent.PostToolUse', () => {
 
   test('a PostToolUse group does not fire for a PreToolUse call', () => {
     expect(commands(reviewer(), { event: 'PreToolUse', matcherValue: 'Edit' })).toEqual([]);
+  });
+
+  test('a Bash matcher does not select a Monitor command on PostToolUse', () => {
+    // hooks.md, "Match Monitor commands": "a `PostToolUse` hook with one doesn't run for Monitor".
+    const bash = loaded(
+      readAgent(
+        file(
+          'name: after\ndescription: After\nhooks:\n  PostToolUse:\n    - matcher: "Bash"\n      hooks: [{ type: command, command: ./after.sh }]\n    - matcher: "Bash|Monitor"\n      hooks: [{ type: command, command: ./monitor.sh }]',
+        ),
+        at('user'),
+      ),
+    );
+    expect(commands(bash, { event: 'PostToolUse', matcherValue: 'Bash' })).toEqual([
+      './after.sh',
+      './monitor.sh',
+    ]);
+    expect(commands(bash, { event: 'PostToolUse', matcherValue: 'Monitor' })).toEqual([
+      './monitor.sh',
+    ]);
   });
 });
 
