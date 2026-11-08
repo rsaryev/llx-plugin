@@ -126,6 +126,35 @@ spec('mods.troubleshoot.Claude Code stops asking to enable hot reloading', () =>
   });
 });
 
+// create.md § Ask Claude for a mod has no requirement id of its own, so these are documented behaviour
+// outside `spec(...)` (no id is invented).
+test('docs: `Enable for this session` turns hot reloading on and ends the question; your answer lasts for the session, including after you resume it', () => {
+  const gate = createHotReloadGate();
+  expect(gate.enabled()).toBe(false);
+  gate.answered('enable');
+  expect(gate.enabled()).toBe(true);
+  expect(gate.shouldAsk()).toBe(false);
+  const resumed = createHotReloadGate(gate.state());
+  expect(resumed.enabled()).toBe(true);
+  expect(resumed.shouldAsk()).toBe(false);
+});
+
+test('docs: `Not now` loads nothing for now', () => {
+  const gate = createHotReloadGate();
+  gate.answered('not-now');
+  expect(gate.enabled()).toBe(false);
+});
+
+test('judgment: `Not now` ends the question for the session too, and a session resumed from its state does not ask again', () => {
+  const gate = createHotReloadGate();
+  gate.answered('not-now');
+  expect(gate.shouldAsk()).toBe(false);
+  const resumed = createHotReloadGate(gate.state());
+  expect(resumed.shouldAsk()).toBe(false);
+  expect(resumed.enabled()).toBe(false);
+  expect(gate.state()).toEqual({ enabled: false, unanswered: 0, declined: true });
+});
+
 /** A mod whose module throws while `state.breaks` loads remain, and whose source text `state.source` the folder serves. */
 function editable() {
   const state = {
@@ -161,13 +190,9 @@ spec(
       const outcome = await host.reloadMod('first-mod');
       expect(outcome?.mod).toBeDefined();
       const line = outcome ? changeNotice('first-mod', outcome) : undefined;
-      expect(
-        line?.startsWith(
-          "first-mod: This mod's change didn't load, so the earlier version is still running: ",
-        ),
-      ).toBe(true);
-      expect(line?.endsWith('.')).toBe(true);
-      expect(line).toContain('first-mod');
+      expect(line).toBe(
+        "first-mod: This mod's change didn't load, so the earlier version is still running: hooks module did not load: hooks/register.js: Unexpected token (1:31).",
+      );
     });
 
     test("a change that leaves no version running: `This mod didn't load, and the earlier version is no longer running: <reason>.`", async () => {
@@ -194,8 +219,11 @@ spec(
       state.breaks = 2;
       state.message = 'it ended with a stop.';
       const outcome = await host.reloadMod('first-mod');
-      const line = outcome ? changeNotice('first-mod', outcome) : '';
-      expect(line?.endsWith('it ended with a stop.')).toBe(true);
+      const line = outcome ? changeNotice('first-mod', outcome) : undefined;
+      expect(line).toBe(
+        "first-mod: This mod didn't load, and the earlier version is no longer running: hooks module did not load: hooks/register.js: it ended with a stop.",
+      );
+      expect(line).not.toEndWith('..');
     });
   },
 );

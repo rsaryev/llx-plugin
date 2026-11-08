@@ -113,7 +113,10 @@ export function modsVersionProblem(
   version: string,
 ): string | undefined {
   const minimum = MODS_MINIMUM_VERSION[app];
-  return versionAtLeast(version, minimum)
-    ? undefined
-    : `mods need Claude Code v${minimum} or later; this is v${version.replace(/^v/, '')}`;
+  if (versionAtLeast(version, minimum)) return undefined;
+  const found =
+    partsOf(version) === undefined
+      ? `an unreadable version (${version})`
+      : `v${version.replace(/^v/, '')}`;
+  return `mods need Claude Code v${minimum} or later; this is ${found}`;
 }

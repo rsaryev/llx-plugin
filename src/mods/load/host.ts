@@ -57,8 +57,11 @@ export interface ModsHostOptions {
   readonly firesSessionStart?: boolean;
   /** Whether the session is interactive, for the input of `session.start` and for where a line about a mod is read (default true). */
   readonly isInteractive?: boolean;
-  /** Hot reloading is on for the mods Claude wrote in this session: lines about a mod reach the transcript. */
-  readonly hotReload?: boolean;
+  /**
+   * Whether hot reloading is on for the mods Claude wrote in this session, read on every call so the
+   * answer to the question (`HotReloadGate.enabled`) reaches the lines at once: they then reach the transcript.
+   */
+  readonly hotReload?: () => boolean;
   /** `claude -p --output-format`, for where a line about a mod is read (default text). */
   readonly outputFormat?: 'text' | 'json' | 'stream-json';
 }
@@ -146,12 +149,12 @@ export function createModsHost(options: ModsHostOptions): ModsHost {
       options.firesSessionStart === false
         ? Promise.resolve()
         : announceSessionStart({ options, chain, dispatchOptions }, started),
-    session: {
+    session: () => ({
       isInteractive: options.isInteractive ?? true,
       pluginDir: pluginDirsOf(policy).length > 0,
-      ...(options.hotReload === undefined ? {} : { hotReload: options.hotReload }),
+      ...(options.hotReload === undefined ? {} : { hotReload: options.hotReload() }),
       ...(options.outputFormat === undefined ? {} : { outputFormat: options.outputFormat }),
-    },
+    }),
   });
 
   return {

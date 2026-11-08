@@ -4,11 +4,22 @@
  * Read the debug log (`reload failed, the previous version stays loaded:`).
  */
 import { expect, test } from 'bun:test';
-import { inline, modPlugin, policy, registerOf, session } from '../../support/mods-load.ts';
+import type { ModCandidate, ModsHostOptions } from '../../../src/mods/load/index.ts';
+import {
+  inline,
+  installed,
+  modPlugin,
+  policy,
+  registerOf,
+  session,
+} from '../../support/mods-load.ts';
 import { spec } from '../../support/spec.ts';
 
 /** A mod whose hooks module is edited between loads: the folder serves `source`, `behaviour` is what `register` then does. */
-function editable() {
+function editable(
+  candidate: ModCandidate = inline('first-mod'),
+  options: Partial<ModsHostOptions> = {},
+) {
   const source = `export function register(on) {
     on('session.start', async ($, e, next) => next(e))
     on('tool.call', async ($, e, next) => next(e))
@@ -27,7 +38,7 @@ function editable() {
     });
     on('tool.call', () => ({ result: answer }));
   });
-  const base = modPlugin(inline('first-mod'), behaviour);
+  const base = modPlugin(candidate, behaviour);
   const plugin = {
     ...base,
     files: {
@@ -36,7 +47,7 @@ function editable() {
         path === 'hooks/register.js' ? Promise.resolve(state.source) : base.files.readText(path),
     },
   };
-  const s = session({ 'first-mod': behaviour });
+  const s = session({ [candidate.name]: behaviour }, options);
   return {
     ...s,
     state,
@@ -113,17 +124,31 @@ spec('mods.command.claude --plugin-dir <directory>', () => {
   });
 });
 
+/** What the session does when a file of a mod is saved: it reloads the mods of the directories it watches. */
+const onSave = async (mod: ReturnType<typeof editable>, name: string): Promise<void> => {
+  const watched = mod.host.pluginDirs().length > 0 && mod.host.watchesPluginDirs(true);
+  if (watched) await mod.host.reloadMod(name);
+};
+
 spec(`mods.troubleshoot.Your edits don't take effect`, () => {
   test('develop with --plugin-dir pointed at your working copy: the session loads that directory, watches it, and an edit you save is what runs', async () => {
     const flags = policy({ flags: { pluginDirs: ['./first-mod'] } });
-    const working = editable();
-    const { host } = session({ 'first-mod': registerOf((on) => void on) }, { policy: flags });
-    expect(host.pluginDirs()).toEqual(['./first-mod']);
-    expect(host.watchesPluginDirs(true)).toBe(true);
+    const working = editable(inline('first-mod'), { policy: flags });
+    expect(working.host.pluginDirs()).toEqual(['./first-mod']);
+    expect(working.host.watchesPluginDirs(true)).toBe(true);
     await working.host.load([working.plugin]);
     expect(await working.fire()).toEqual({ result: 'v1' });
     working.state.version = 'v2';
-    await working.host.reloadMod('first-mod');
+    await onSave(working, 'first-mod');
     expect(await working.fire()).toEqual({ result: 'v2' });
+  });
+
+  test('an installed plugin runs the cached copy for the installed version: an edit in your working copy changes nothing there', async () => {
+    const cached = editable(installed('first-mod'));
+    expect(cached.host.pluginDirs()).toEqual([]);
+    await cached.host.load([cached.plugin]);
+    cached.state.version = 'v2';
+    await onSave(cached, 'first-mod');
+    expect(await cached.fire()).toEqual({ result: 'v1' });
   });
 });

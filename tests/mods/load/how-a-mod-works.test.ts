@@ -7,36 +7,32 @@ import { expect, test } from 'bun:test';
 import { ESM_FORMAT } from '../../../src/mods/load/index.ts';
 import type { ModCompiler } from '../../../src/mods/ports.ts';
 import type { PluginFiles } from '../../../src/ports/index.ts';
+import { fakeModInterface } from '../../../src/testing/mods/index.ts';
 import { inline, registerOf, session } from '../../support/mods-load.ts';
 import { memoryFiles } from '../../support/ports.ts';
 import { spec } from '../../support/spec.ts';
 
-type Next = (e: unknown) => Promise<unknown>;
-type Hook = (api: { ui: { invalidate(name: string): void } }, e: unknown, next: Next) => unknown;
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
+let imports = 0;
+
 /**
- * `register.js` of the page, the same code: the count is shared by the hooks, `tool.call` adds one and
- * asks for a redraw, the Spinner hook adds the count after the word.
+ * The `register` the page's own `register.js` exports, imported from its text as a module of its
+ * own (a comment makes each import a fresh copy, so the module's `calls` starts at zero). `registered`
+ * counts the calls of `register`.
  */
-function firstMod(drawn: string[], registered: { times: number }) {
+async function firstMod(registered: { times: number }) {
+  imports += 1;
+  const source = new Blob([`${REGISTER_JS}\n// copy ${imports}`], { type: 'text/javascript' });
+  const url = URL.createObjectURL(source);
+  const loaded: unknown = await import(url).finally(() => URL.revokeObjectURL(url));
+  const register = isRecord(loaded) ? loaded.register : undefined;
+  if (typeof register !== 'function')
+    throw new Error('register.js of the page exports no register');
   return registerOf((on) => {
     registered.times += 1;
-    let calls = 0;
-    on('tool.call', (async ($, e, next) => {
-      calls += 1;
-      $.ui.invalidate('ui.render');
-      drawn.push('invalidate');
-      return next(e);
-    }) satisfies Hook);
-    on('ui.render', { component: 'Spinner' }, (async (_$, e, next) => {
-      const props = isRecord(e) && isRecord(e.props) ? e.props : {};
-      return next({
-        ...(isRecord(e) ? e : {}),
-        props: { ...props, suffix: ` · tool calls: ${calls}…` },
-      });
-    }) satisfies Hook);
+    return Reflect.apply(register, undefined, [on]);
   });
 }
 
@@ -84,15 +80,18 @@ const engine = (e: unknown) => Promise.resolve({ type: 'engine', ref: e });
 
 spec('mods.overview.How a mod works', () => {
   test('the page`s mod, from its three files: three tool calls give `Thinking · tool calls: 3…` beside the spinner', async () => {
-    const drawn: string[] = [];
-    const registered = { times: 0 };
-    const { host } = session({ 'first-mod': firstMod(drawn, registered) });
+    const redraws: string[] = [];
+    const { host } = session(
+      { 'first-mod': await firstMod({ times: 0 }) },
+      { iface: fakeModInterface({ redraw: () => redraws.push('ui.render') }) },
+    );
     const report = await host.load([
       { candidate: inline('first-mod'), files: folder('{"modules":["./register.js"]}') },
     ]);
     expect(report.lines).toEqual([]);
     for (let call = 0; call < 3; call += 1) await host.fire('tool.call', { tool: 'Bash' });
-    expect(drawn).toEqual(['invalidate', 'invalidate', 'invalidate']);
+    // The first `$.ui.invalidate('ui.render')` redraws at once; the next two are coalesced.
+    expect(redraws).toEqual(['ui.render']);
     const drawing = await host.fire('ui.render', SPINNER, { core: engine });
     expect(drawing).toEqual({
       type: 'engine',
@@ -101,7 +100,7 @@ spec('mods.overview.How a mod works', () => {
   });
 
   test('a hook runs only on its own event: another site is drawn as Claude Code draws it', async () => {
-    const { host } = session({ 'first-mod': firstMod([], { times: 0 }) });
+    const { host } = session({ 'first-mod': await firstMod({ times: 0 }) });
     await host.load([
       { candidate: inline('first-mod'), files: folder('{"modules":["./register.js"]}') },
     ]);
@@ -116,7 +115,7 @@ spec('mods.overview.How a mod works', () => {
 spec('mods.overview.How a mod works.register.js', () => {
   test('`register` is called once when the mod loads, with `on`, and what it registers is what runs', async () => {
     const registered = { times: 0 };
-    const { host } = session({ 'first-mod': firstMod([], registered) });
+    const { host } = session({ 'first-mod': await firstMod(registered) });
     const report = await host.load([
       { candidate: inline('first-mod'), files: folder('{"modules":["./register.js"]}') },
     ]);
@@ -137,66 +136,67 @@ spec('mods.overview.How a mod works.register.js', () => {
   });
 });
 
-spec('mods.overview.How a mod works.hooks.json', () => {
-  /** A compiler that records which module it was asked for and hands that file's text back. */
-  function recording(entries: string[]): ModCompiler {
-    return {
-      compile: async ({ files, entry }) => {
-        entries.push(entry);
-        const code = await files.readText(entry);
-        return code === undefined
-          ? { issues: [] }
-          : { run: { code, format: ESM_FORMAT }, issues: [] };
-      },
-    };
-  }
+/** A compiler that records which module it was asked for and hands that file's text back. */
+function recording(entries: string[]): ModCompiler {
+  return {
+    compile: async ({ files, entry }) => {
+      entries.push(entry);
+      const code = await files.readText(entry);
+      return code === undefined
+        ? { issues: [] }
+        : { run: { code, format: ESM_FORMAT }, issues: [] };
+    },
+  };
+}
 
+spec('mods.overview.How a mod works.hooks.json', () => {
   test('points to the code file: the module `hooks.json` names is the one that loads, wherever it sits', async () => {
     const entries: string[] = [];
     const files = folder('{"modules":["./mods/main.js"]}', {
       'hooks/mods/main.js': 'export function register(on) {}',
     });
     const { host } = session(
-      { 'first-mod': firstMod([], { times: 0 }) },
+      { 'first-mod': await firstMod({ times: 0 }) },
       { compiler: recording(entries) },
     );
     await host.load([{ candidate: inline('first-mod'), files }]);
     expect(entries).toEqual(['hooks/mods/main.js']);
-  });
-
-  test('with no `modules` key it points to nothing: no module loads and nothing is asked of the compiler', async () => {
-    const entries: string[] = [];
-    const registered = { times: 0 };
-    const { host } = session(
-      { 'first-mod': firstMod([], registered) },
-      { compiler: recording(entries) },
-    );
-    const report = await host.load([{ candidate: inline('first-mod'), files: folder('{}') }]);
-    expect(entries).toEqual([]);
-    expect(registered.times).toBe(0);
-    expect(report.loaded).toEqual([]);
   });
 });
 
 spec('mods.overview.How a mod works.plugin.json', () => {
   test('is the plugin`s manifest: one that is not valid keeps the module from loading, with the manifest`s own reason', async () => {
     const registered = { times: 0 };
-    const { host } = session({ 'first-mod': firstMod([], registered) });
+    const { host } = session({ 'first-mod': await firstMod(registered) });
     const files = folder('{"modules":["./register.js"]}', {
       '.claude-plugin/plugin.json': JSON.stringify({ version: '0.1.0' }),
     });
     const report = await host.load([{ candidate: inline('first-mod'), files }]);
     expect(registered.times).toBe(0);
     expect(report.loaded).toEqual([]);
-    expect(report.lines[0]).toStartWith('first-mod: hooks module did not load: ');
-    expect(report.lines[0]).toContain('name');
+    expect(report.lines).toEqual([
+      'first-mod: hooks module did not load: The manifest has no "name"',
+    ]);
   });
 
   test('a manifest that is valid lets the same module load', async () => {
-    const { host } = session({ 'first-mod': firstMod([], { times: 0 }) });
+    const { host } = session({ 'first-mod': await firstMod({ times: 0 }) });
     const report = await host.load([
       { candidate: inline('first-mod'), files: folder('{"modules":["./register.js"]}') },
     ]);
     expect(report.loaded.map((mod) => mod.name)).toEqual(['first-mod']);
   });
+});
+
+test('judgment: with no `modules` key it points to nothing: no module loads and nothing is asked of the compiler', async () => {
+  const entries: string[] = [];
+  const registered = { times: 0 };
+  const { host } = session(
+    { 'first-mod': await firstMod(registered) },
+    { compiler: recording(entries) },
+  );
+  const report = await host.load([{ candidate: inline('first-mod'), files: folder('{}') }]);
+  expect(entries).toEqual([]);
+  expect(registered.times).toBe(0);
+  expect(report.loaded).toEqual([]);
 });

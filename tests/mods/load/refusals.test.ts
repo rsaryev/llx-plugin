@@ -194,56 +194,27 @@ spec(`mods.troubleshoot.The mods active line doesn't name the mod`, () => {
   });
 
   test('the mods that did load are named, and the refused one is not', async () => {
+    const { host, debug } = session(
+      { accepted: register, refused: register },
+      { policy: managed({ allowManagedHooksOnly: true }) },
+    );
+    const report = await host.load([
+      modPlugin(organizations('accepted'), register),
+      modPlugin(installed('refused'), register),
+    ]);
+    expect(report.loaded.map((mod) => mod.name)).toEqual(['cc-plugin-sec-default', 'accepted']);
+    expect(debug).toContain(
+      'hooks module refused@market not loaded: only managed plugins and built-in plugins run',
+    );
+    expect(activeModsLine(host.active())).toBe('1 mod active · accepted');
+  });
+
+  test('judgment: two mods that loaded are both named, and one turned off is not', async () => {
     const { host } = session({ a: register, b: register }, { policy: policy({ isTrusted: true }) });
     await host.load([modPlugin(installed('a'), register)]);
     await host.loadMod(modPlugin(installed('b'), register));
     expect(activeModsLine(host.active())).toBe('2 mods active · a, b');
     await host.unloadMod('b');
     expect(activeModsLine(host.active())).toBe('1 mod active · a');
-  });
-});
-
-spec('mods.troubleshoot.A claude -p run prints hooks module not loaded', () => {
-  const refusing = managed({ disableAllHooks: true });
-
-  test('the line starts with the mod`s name and goes to stderr', async () => {
-    const { host } = session(
-      { 'first-mod': register },
-      { policy: { ...refusing, flags: { pluginDirs: ['./first-mod'] } }, isInteractive: false },
-    );
-    const report = await host.load([modPlugin(inline('first-mod'), register)]);
-    expect(report.notices).toEqual([
-      {
-        line: 'first-mod: hooks module not loaded: disableAllHooks in managed settings',
-        channel: 'stderr',
-      },
-    ]);
-  });
-
-  test('an interactive session that hot-reloads the directory writes it to the transcript, any other one to the debug log only', async () => {
-    const run = async (flags: string[]) => {
-      const { host } = session(
-        { 'first-mod': register },
-        { policy: { ...refusing, flags: { pluginDirs: flags } } },
-      );
-      return (await host.load([modPlugin(inline('first-mod'), register)])).notices[0]?.channel;
-    };
-    expect(await run(['./first-mod'])).toBe('transcript');
-    expect(await run([])).toBe('debug-log');
-  });
-
-  test('a refusal by another mod goes to the debug log only, even from a `claude -p` run with --plugin-dir', async () => {
-    const guarded = {
-      ...managed({
-        pluginConfigs: {
-          'cc-plugin-sec-default@builtin': { options: { allowManagedModsOnly: true } },
-        },
-      }),
-      flags: { pluginDirs: ['./first-mod'] },
-    };
-    const { host } = session({ 'first-mod': register }, { policy: guarded, isInteractive: false });
-    const report = await host.load([modPlugin(inline('first-mod'), register)]);
-    expect(report.notices.map((notice) => notice.channel)).toEqual(['debug-log']);
-    expect(report.notices[0]?.line).toStartWith('first-mod: refused by cc-plugin-sec-default: ');
   });
 });

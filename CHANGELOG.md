@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Mods, review of per-mod load and where mods run. A refusal by another mod reaches the transcript of
+  an interactive session that loads a plugin directory or hot-reloads (it was the debug log in every
+  session). `ModsHostOptions.hotReload` is a getter, so the answer to the hot-reloading question moves
+  later lines to the transcript at once. `modsVersionProblem` words an unreadable version as `this is
+  an unreadable version (latest)`. Tests: the page's own `register.js` runs and its redraw is seen,
+  edits take effect only in a watched directory, the whole change-notice lines, the hot-reloading
+  answers and their state, the refused mod stays off the `mods active` line, and the WSL and
+  feature-flag defaults.
+
 ### Added
 
 - Mods, per-mod load and unload, and where mods run. `createModsHost` keys a mod by its name: `load`
@@ -11,7 +22,8 @@
   off (idempotent, drops the mod from the approval ledger and the refusal book, and `reload` does not
   bring it back). `ModLoadReport.notices` carries the lines a person reads with where each is read
   (`modLineChannel`: transcript, stderr of `claude -p --plugin-dir`, debug log; a refusal by another
-  mod only in the debug log). `whereModsRun` gives overview.md's table (hooks and drawing per place,
+  mod in the debug log of a `claude -p` run and in the transcript of an interactive session that
+  loads a plugin directory or hot-reloads; `hotReload` is a getter, read on every line). `whereModsRun` gives overview.md's table (hooks and drawing per place,
   the VS Code versions) and `decideModLoad` refuses an installed plugin in a WSL session of the Desktop
   app and, in the cloud, one that does not reach the session; `modsVersionProblem` names the first
   versions that load mods. `writtenModRefusal` says why a mod Claude wrote cannot load,

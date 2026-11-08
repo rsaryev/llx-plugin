@@ -44,7 +44,8 @@ export interface ModSetDeps {
   readonly debug: (line: string) => void;
   /** `session.start` for the mods just loaded, or nothing where the host does not fire it. */
   readonly announce: (mods: readonly LoadedMod[]) => Promise<void>;
-  readonly session: ModLineSession;
+  /** The session as it is now: read for every line, as hot reloading can be turned on in the middle of it. */
+  readonly session: () => ModLineSession;
 }
 
 export interface ModSet {
@@ -91,7 +92,7 @@ const byRunningOrder = (mods: readonly LoadedMod[]): LoadedMod[] =>
   mods.toSorted((a, b) => TIER_RANK[a.tier] - TIER_RANK[b.tier]);
 
 const channelOf = (ctx: Ctx, kind: ModLineKind): ModLineChannel =>
-  modLineChannel(ctx.session, kind);
+  modLineChannel(ctx.session(), kind);
 
 function skipped(ctx: Ctx, out: Out, candidate: ModCandidate, reason: string): void {
   out.lines.push(`hooks module ${candidate.id} not loaded: ${reason}`);

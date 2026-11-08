@@ -13,7 +13,7 @@ import {
   versionAtLeast,
   whereModsRun,
 } from '../../../src/mods/load/index.ts';
-import { installed, modPlugin, policy, session } from '../../support/mods-load.ts';
+import { installed, modPlugin, organizations, policy, session } from '../../support/mods-load.ts';
 import { spec } from '../../support/spec.ts';
 
 spec('mods.overview.Where mods run.claude', () => {
@@ -55,6 +55,20 @@ spec('mods.overview.Where mods run.A WSL session in the Desktop app', () => {
     expect(report.lines).toEqual([
       'hooks module a@market not loaded: plugins are not available in WSL sessions of the Desktop app',
     ]);
+  });
+
+  test('the organization`s own plugin does not load there either: "plugins aren`t available" holds for every plugin', () => {
+    const settings = policy({ where: { app: 'desktop-wsl' } });
+    expect(decideModLoad(settings, organizations('acme-guard'))).toMatchObject({
+      load: false,
+      reason: 'plugins are not available in WSL sessions of the Desktop app',
+    });
+  });
+
+  test('judgment: a mod built into Claude Code is not a plugin the place refuses: it loads there', () => {
+    const settings = policy({ where: { app: 'desktop-wsl' } });
+    const builtin = { ...installed('agents-md'), isBuiltin: true, id: 'agents-md@builtin' };
+    expect(decideModLoad(settings, builtin).load).toBe(true);
   });
 
   test('the Code tab of the Desktop app outside WSL is another place: hooks run', () => {
@@ -100,6 +114,11 @@ spec(`mods.overview.Where mods run.The VS Code extension's chat panel`, () => {
     expect(at('2.1.303').hooksRun).toBe(true);
   });
 
+  test('a session that does not say whether it fetches feature flags is read as one that does: 2.1.299 draws', () => {
+    expect(whereModsRun({ app: 'vscode', extensionVersion: '2.1.299' }).draws).toBe(true);
+    expect(whereModsRun({ app: 'vscode', extensionVersion: '2.1.298' }).draws).toBe(false);
+  });
+
   test('versions compare by number: 2.1.1000 is later than 2.1.304', () => {
     expect(versionAtLeast('2.1.1000', '2.1.304')).toBe(true);
     expect(versionAtLeast('2.1.99', '2.1.304')).toBe(false);
@@ -107,12 +126,17 @@ spec(`mods.overview.Where mods run.The VS Code extension's chat panel`, () => {
   });
 });
 
-test('judgment: remote control draws in the terminal on your machine, the Desktop app everything but terminal-only elements', () => {
+// The Desktop app and Remote Control rows of the table have no requirement id of their own, so these
+// tests are documented behaviour outside `spec(...)` (no id is invented).
+test('docs row: Remote Control runs hooks in the session on your machine and draws in the terminal on your machine', () => {
   expect(whereModsRun({ app: 'remote-control' })).toMatchObject({
     hooksRun: true,
     draws: true,
     drawsOn: 'terminal',
   });
+});
+
+test('docs row: the Code tab of the Desktop app outside WSL runs hooks and draws, except elements the elements table marks terminal-only', () => {
   expect(whereModsRun({ app: 'desktop' })).toMatchObject({
     hooksRun: true,
     draws: true,
@@ -154,7 +178,7 @@ spec('mods.troubleshoot.Your version is too old', () => {
 
   test('a version the host cannot read is a problem, not a pass', () => {
     expect(modsVersionProblem('terminal', 'latest')).toBe(
-      'mods need Claude Code v2.1.287 or later; this is vlatest',
+      'mods need Claude Code v2.1.287 or later; this is an unreadable version (latest)',
     );
   });
 });
@@ -169,6 +193,24 @@ spec('mods.troubleshoot.A claude -p run prints hooks module not loaded', () => {
 
   test('a refusal by another mod goes to the debug log only', () => {
     expect(modLineChannel(print, 'refused-by-mod')).toBe('debug-log');
+  });
+
+  test('a refusal by another mod reaches the transcript of an interactive session that hot-reloads a plugin directory, as the guard table says', () => {
+    expect(modLineChannel({ isInteractive: true, pluginDir: true }, 'refused-by-mod')).toBe(
+      'transcript',
+    );
+    expect(
+      modLineChannel({ isInteractive: true, pluginDir: false, hotReload: true }, 'refused-by-mod'),
+    ).toBe('transcript');
+  });
+
+  test('any other interactive session keeps a refusal by another mod in the debug log', () => {
+    expect(modLineChannel({ isInteractive: true, pluginDir: false }, 'refused-by-mod')).toBe(
+      'debug-log',
+    );
+    expect(
+      modLineChannel({ isInteractive: true, pluginDir: false, hotReload: false }, 'refused-by-mod'),
+    ).toBe('debug-log');
   });
 
   test('the transcript is for an interactive session that hot-reloads a plugin directory; any other interactive session has the debug log only', () => {
