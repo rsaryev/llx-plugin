@@ -234,16 +234,16 @@ describe('a file reached twice through a link inside the plugin loads once (orac
     '.claude-plugin/plugin.json': '{ "name": "plug" }',
     'agents/judge.md': '---\nname: judge\ndescription: a\n---\nJudge.\n',
     'agents/judge.agent.md': { symlink: 'judge.md' },
-    'commands/x.md': '---\ndescription: c\n---\nRun x.\n',
-    'commands/y.md': { symlink: 'x.md' },
+    'commands/zeta.md': '---\ndescription: c\n---\nRun zeta.\n',
+    'commands/alpha.md': { symlink: 'zeta.md' },
   } as const;
 
   // A linked skill folder is covered by the runtime fixture only: memoryFiles does not follow paths
   // below a linked directory.
-  test('agents and commands keep the first name in folder order', async () => {
+  test('an agent or command file wins over a link to it, whatever their order', async () => {
     const { plugin } = await loadPlugin({ files: memoryFiles(linked), fallbackName: 'plug' });
     expect(plugin?.agents.map((file) => file.name)).toEqual(['judge']);
-    expect(plugin?.commands.map((file) => file.name)).toEqual(['x']);
+    expect(plugin?.commands.map((file) => file.name)).toEqual(['zeta']);
   });
 
   test('two real files with the same content both load', async () => {

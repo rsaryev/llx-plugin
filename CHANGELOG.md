@@ -5,6 +5,7 @@
 ### Fixed
 
 - A link inside a plugin to another agent, command or skill folder of the same plugin registers it once, as Claude Code does (runtime fixture `symlinked-duplicates`).
+- Of a file and a link to it, the agent or command file itself stays whatever their order; a skill folder keeps folder order.
 
 ### Added
 

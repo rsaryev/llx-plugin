@@ -95,39 +95,56 @@ async function walkOne(
   };
 }
 
+interface Place {
+  /** Where the file really lives: a link inside the plugin counts as its target (`realPath`). */
+  readonly key: string | undefined;
+  readonly linked: boolean;
+}
+
 /**
  * Where a found file really lives: a link inside the plugin counts as its target (`realPath`, relative
  * to the folder), so `agents/a.agent.md -> a.md` or `skills/alias -> real` is the same file as its
  * target; a skill is its folder. Inline commands have no path.
  */
-async function realKey(
-  file: DiscoveredFile,
-  context: DiscoverContext,
-): Promise<string | undefined> {
+async function placeOf(file: DiscoveredFile, context: DiscoverContext): Promise<Place> {
   const path = file.directory ?? file.path;
-  if (path === undefined) return undefined;
+  if (path === undefined) return { key: undefined, linked: false };
   const stat = await context.files.stat(path, context.signal);
-  return stat?.isSymlink === true && stat.realPath !== undefined ? stat.realPath : path;
+  const linked = stat?.isSymlink === true && stat.realPath !== undefined;
+  return { key: linked ? stat.realPath : path, linked };
 }
 
 /**
- * A file reached twice loads once, under the name its first location gave it (oracle 2.1.319): a
- * folder listed in the manifest that is also inside the default `skills/` folder, or a link inside the
- * plugin to another file of the same component (tests/fixtures/runtime/symlinked-duplicates). Inline
- * commands have no path and all stay.
+ * Which occurrence of a file reached twice stays (oracle 2.1.319,
+ * tests/fixtures/runtime/symlinked-duplicates): for a skill folder the first in folder order, for an
+ * agent or command file the file itself over a link to it, whatever their order.
+ */
+function keeperOf(found: readonly DiscoveredFile[], places: readonly Place[]): Map<string, number> {
+  const keeper = new Map<string, number>();
+  places.forEach((place, index) => {
+    if (place.key === undefined) return;
+    const kept = keeper.get(place.key);
+    const skill = found[index]?.directory !== undefined;
+    const better = kept !== undefined && !skill && places[kept]?.linked === true && !place.linked;
+    if (kept === undefined || better) keeper.set(place.key, index);
+  });
+  return keeper;
+}
+
+/**
+ * A file reached twice loads once (oracle 2.1.319): a folder listed in the manifest that is also
+ * inside the default `skills/` folder, or a link inside the plugin to another file of the same
+ * component. Inline commands have no path and all stay.
  */
 async function firstOfEach(
   found: readonly DiscoveredFile[],
   context: DiscoverContext,
 ): Promise<DiscoveredFile[]> {
-  const keys = await Promise.all(found.map((file) => realKey(file, context)));
-  const seen = new Set<string>();
+  const places = await Promise.all(found.map((file) => placeOf(file, context)));
+  const keeper = keeperOf(found, places);
   return found.filter((_, index) => {
-    const key = keys[index];
-    if (key === undefined) return true;
-    const first = !seen.has(key);
-    seen.add(key);
-    return first;
+    const key = places[index]?.key;
+    return key === undefined || keeper.get(key) === index;
   });
 }
 
