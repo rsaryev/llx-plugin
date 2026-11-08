@@ -3,7 +3,7 @@
  * is installed and what each scope enables. A test writes the plugins it needs in a line each.
  */
 import type { PluginSource } from '../../src/format/marketplace/types.ts';
-import { normalizeDependency } from '../../src/marketplace/dependencies.ts';
+import { namesMarketplace, normalizeDependency } from '../../src/marketplace/dependencies.ts';
 import type {
   CatalogPlugin,
   DeclaredDependency,
@@ -44,7 +44,11 @@ export interface Spec {
 export function plugin(name: string, spec: Spec = {}): readonly [string, CatalogPlugin] {
   const marketplace = spec.marketplace ?? 'm';
   const declared = (items: readonly unknown[] = [], declaredIn: DeclaredDependency['declaredIn']) =>
-    items.map((item) => ({ dep: dep(item, marketplace), declaredIn }));
+    items.map((item) => ({
+      dep: dep(item, marketplace),
+      declaredIn,
+      ...(namesMarketplace(item) ? { namesMarketplace: true } : {}),
+    }));
   return [
     `${name}@${marketplace}`,
     {

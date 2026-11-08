@@ -4,6 +4,18 @@
 
 ### Fixed
 
+- Marketplace dependencies: `installClosure` no longer reports a false conflict when an installed
+  root's marketplace entry changed a range (the root's installed range is replaced by its new one,
+  and so is that of any plugin the walk reads from the catalog); a dependency already installed and
+  enabled still has its own missing dependencies planned; an `--plugin-dir` copy meets an entry that
+  names a marketplace only from Claude Code 2.1.242 (`InstallRequest.hostVersion`,
+  `DeclaredDependency.namesMarketplace`); the allowlist bypass and the met check read the plugin's
+  `enabledPlugins` at the install scope, not the winning scope's. The five install operations plan
+  identically (recorded in `spec/judgments.md`) and the tests assert that through the facts, the
+  bundle test runs under `auto-update` and `reload-plugins`, the force-moved tag, `=2.1.0` and
+  no-version tests assert the decision the docs describe, and `Create a release tag` is no longer
+  counted as proven until `claude plugin tag` exists. `docs/API.md` has one
+  `resolveDependencyVersion` row.
 - Marketplace updates: `checkForUpdate` now derives `loaded in place` from `loadsInPlace(source,
   origin)` instead of trusting the host, and its claude.ai subject has no manifest version field;
   `upToDateMessage` gives the `already at the latest version` wording; the SHA-256 of a downloaded

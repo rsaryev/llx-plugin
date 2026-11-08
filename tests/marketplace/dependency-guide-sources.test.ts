@@ -115,31 +115,41 @@ spec('dependencies.guide.Constrain a dependency that has a non-git source', () =
   });
 
   describe('operations that also install missing declared dependencies', () => {
-    test('are install, /reload-plugins, auto-update, re-running install and marketplace add', () => {
-      expect([...DEPENDENCY_INSTALL_OPERATIONS]).toEqual([
-        'install',
-        'reload-plugins',
-        'auto-update',
-        'reinstall',
-        'marketplace-add',
-      ]);
+    const missing = facts([
+      plugin('consumer', { manifest: ['lib', 'tool', 'gated'] }),
+      plugin('lib', { source: npm, currentCopyVersion: '1.0.0' }),
+      plugin('tool', { source: command }),
+      plugin('gated', { source: archive, headersHelper: './h.sh' }),
+    ]);
+
+    test('the docs name install plus four more, each distinct', () => {
+      expect(DEPENDENCY_INSTALL_OPERATIONS).toHaveLength(5);
+      expect(new Set(DEPENDENCY_INSTALL_OPERATIONS).size).toBe(5);
     });
 
     test.each(DEPENDENCY_INSTALL_OPERATIONS)(
-      '%s installs a missing registry dependency but leaves a command source and a headersHelper entry',
+      '%s installs a missing registry dependency but leaves a command source and a headersHelper entry for the user',
       (operation) => {
-        const have = facts([
-          plugin('consumer', { manifest: ['lib', 'tool', 'gated'] }),
-          plugin('lib', { source: npm, currentCopyVersion: '1.0.0' }),
-          plugin('tool', { source: command }),
-          plugin('gated', { source: archive, headersHelper: './h.sh' }),
+        const result = plan('consumer@m', missing, operation);
+        expect(result.steps.map((one) => [one.id, one.action])).toEqual([['lib@m', 'install']]);
+        expect(result.leftOut.map((one) => [one.id, one.reason, one.command])).toEqual([
+          ['tool@m', 'command-source', 'claude plugin install tool@m'],
+          ['gated@m', 'headers-helper', 'claude plugin install gated@m'],
         ]);
-        const result = plan('consumer@m', have, operation);
-        expect(result.operation).toBe(operation);
-        expect(result.steps.map((one) => one.id)).toEqual(['lib@m']);
-        expect(result.leftOut.map((one) => one.id)).toEqual(['tool@m', 'gated@m']);
+        expect(result.ok).toBe(true);
       },
     );
+
+    test('the docs give them one behaviour, so the plan is the same whichever runs it', () => {
+      const outcome = (operation: DependencyInstallOperation) => {
+        const { steps, leftOut, issues, ok } = plan('consumer@m', missing, operation);
+        return { steps, leftOut, issues, ok };
+      };
+      const reference = outcome('install');
+      for (const operation of DEPENDENCY_INSTALL_OPERATIONS) {
+        expect(outcome(operation)).toEqual(reference);
+      }
+    });
   });
 });
 
@@ -203,6 +213,18 @@ spec('dependencies.guide.Depend on a plugin from another marketplace', () => {
     );
   });
 
+  test('disabled at this scope but enabled by another scope is not enabled at the same scope, so it does not bypass it either', () => {
+    const id = `audit-logger@${SHARED}`;
+    const have = [
+      installed(id, { scope: 'user', enabled: false }),
+      installed(id, { scope: 'project', enabled: true }),
+    ];
+    const result = run('entry', {}, have);
+    expect(result.ok).toBe(false);
+    expect(result.issues[0]?.message.startsWith(REFUSAL)).toBe(true);
+    expect(run('entry', { allowlists: { [ROOT]: [SHARED] } }, have).ok).toBe(true);
+  });
+
   test('only the root marketplace allowlist applies, down the whole chain', () => {
     const chain = [
       deployKit('entry'),
@@ -214,8 +236,10 @@ spec('dependencies.guide.Depend on a plugin from another marketplace', () => {
     ];
     const allowed = (lists: Record<string, readonly string[]>) =>
       plan(`deploy-kit@${ROOT}`, facts(chain, [], { allowlists: lists }));
-    expect(allowed({ [ROOT]: [SHARED], [SHARED]: ['third'] }).steps.map((one) => one.id)).toEqual([
-      `audit-logger@${SHARED}`,
+    const shared = allowed({ [ROOT]: [SHARED], [SHARED]: ['third'] });
+    expect(shared.steps.map((one) => one.id)).toEqual([`audit-logger@${SHARED}`]);
+    expect(shared.leftOut.map((one) => [one.id, one.reason])).toEqual([
+      ['log-core@third', 'cross-marketplace'],
     ]);
     expect(allowed({ [ROOT]: [SHARED, 'third'] }).steps.map((one) => one.id)).toEqual([
       'log-core@third',

@@ -5,7 +5,10 @@
  * (the docs do not describe cycles or depth): judgments in spec/judgments.md, so no `spec(...)`.
  */
 import { describe, expect, test } from 'bun:test';
-import { installClosure } from '../../src/marketplace/dependency-install-plan.ts';
+import {
+  DEPENDENCY_INSTALL_OPERATIONS,
+  installClosure,
+} from '../../src/marketplace/dependency-install-plan.ts';
 import { facts, installed, plugin } from '../support/dependency-facts.ts';
 
 const plan = (have: ReturnType<typeof facts>, root = 'app@m') =>
@@ -69,15 +72,104 @@ describe('transitive install plan', () => {
     expect(result.issues[0]?.message).toContain('has conflicting version requirements');
   });
 
-  test('a dependency already installed, enabled and in range needs no step and is not walked', () => {
+  test('a dependency already installed, enabled and in range needs no step of its own', () => {
+    const result = plan(
+      facts(
+        [plugin('app', { manifest: ['lib'] }), plugin('lib')],
+        [installed('lib@m', { version: '1.0.0' })],
+      ),
+    );
+    expect(result.steps).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  test('a dependency of an installed, enabled dependency is still planned when it is missing, under every operation', () => {
+    for (const operation of DEPENDENCY_INSTALL_OPERATIONS) {
+      const result = installClosure(
+        { root: 'a@m', scope: 'user', operation },
+        facts(
+          [plugin('a', { manifest: ['b'] }), plugin('b', { manifest: ['c'] }), plugin('c')],
+          [installed('a@m', { deps: ['b'] }), installed('b@m', { deps: ['c'] })],
+        ),
+      );
+      expect(result.steps.map((one) => [one.id, one.action, one.requiredBy])).toEqual([
+        ['c@m', 'install', ['b@m']],
+      ]);
+      expect(result.ok).toBe(true);
+    }
+  });
+
+  test('a missing dependency of an installed dependency that its marketplace does not list refuses the plan', () => {
     const result = plan(
       facts(
         [plugin('app', { manifest: ['lib'] }), plugin('lib', { manifest: ['gone'] })],
         [installed('lib@m', { version: '1.0.0' })],
       ),
     );
+    expect(result.ok).toBe(false);
     expect(result.steps).toEqual([]);
-    expect(result.ok).toBe(true);
+    expect(result.issues[0]?.message).toContain('Dependency "gone@m"');
+  });
+
+  test('a dependency of an installed dependency that is installed and in range needs no step either', () => {
+    const result = plan(
+      facts(
+        [
+          plugin('app', { manifest: ['lib'] }),
+          plugin('lib', { manifest: ['core'] }),
+          plugin('core'),
+        ],
+        [installed('lib@m', { deps: ['core'] }), installed('core@m')],
+      ),
+    );
+    expect(result.steps).toEqual([]);
+  });
+
+  describe('a root already installed whose marketplace entry changed its range', () => {
+    const changed = () =>
+      facts(
+        [
+          plugin('a', { manifest: [{ name: 'lib', version: '~3.0' }] }),
+          plugin('lib', { tags: ['lib--v2.1.5', 'lib--v3.0.2'] }),
+        ],
+        [
+          installed('a@m', { version: '1.0.0', deps: [{ name: 'lib', version: '~2.1' }] }),
+          installed('lib@m', { auto: true, version: '2.1.5' }),
+        ],
+      );
+
+    test.each(['auto-update', 'reinstall'] as const)(
+      "%s replaces the root's old range with its new one instead of reporting a conflict",
+      (operation) => {
+        const result = installClosure({ root: 'a@m', scope: 'user', operation }, changed());
+        expect(result.issues).toEqual([]);
+        expect(result.ok).toBe(true);
+        expect(result.steps).toHaveLength(1);
+        expect(result.steps[0]).toMatchObject({
+          id: 'lib@m',
+          action: 'update',
+          ranges: ['~3.0'],
+          requiredBy: ['a@m'],
+          resolution: { tag: 'lib--v3.0.2', version: '3.0.2' },
+        });
+      },
+    );
+
+    test('another installed plugin that still constrains it keeps its range, so a real conflict is still refused', () => {
+      const have = changed();
+      const result = installClosure(
+        { root: 'a@m', scope: 'user', operation: 'auto-update' },
+        {
+          ...have,
+          installed: [
+            ...have.installed,
+            installed('b@m', { deps: [{ name: 'lib', version: '~2.1' }] }).record,
+          ],
+        },
+      );
+      expect(result.ok).toBe(false);
+      expect(result.issues[0]?.message).toContain('has conflicting version requirements');
+    });
   });
 
   test('an installed dependency that is disabled is enabled, with its own dependencies', () => {

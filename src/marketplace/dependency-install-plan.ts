@@ -36,7 +36,8 @@ import type { NormalizedDependency } from './types.ts';
  * The operations that install any missing declared dependency (plugins/dependencies.md, "Constrain
  * a dependency that has a non-git source"): `claude plugin install`, `/reload-plugins`, auto-update
  * of the dependent plugin's marketplace, re-running `claude plugin install` on the dependent, and
- * `claude plugin marketplace add`.
+ * `claude plugin marketplace add`. The docs give the five one behaviour, so the plan does not depend
+ * on which runs (judgment, spec/judgments.md); the plan only names it, for the host's report.
  */
 export const DEPENDENCY_INSTALL_OPERATIONS = [
   'install',
@@ -52,6 +53,8 @@ export interface InstallRequest {
   readonly root: string;
   readonly scope: InstallScope;
   readonly operation: DependencyInstallOperation;
+  /** The Claude Code version being emulated, for what only newer versions do (a local copy meeting an entry that names a marketplace, from 2.1.242); absent means a current one. */
+  readonly hostVersion?: string;
 }
 
 /** `install`: not installed; `enable`: installed and disabled; `update`: installed at a version the combined ranges rule out. */
@@ -83,9 +86,18 @@ export interface InstallPlan {
   readonly ok: boolean;
 }
 
-/** Every range on a dependency: this plan's plugins' and the installed ones'. */
-const rangesFor = (id: string, node: Node, facts: GraphFacts): readonly string[] => [
-  ...new Set([...node.ranges, ...constraintsOn(id, facts).map((one) => one.range)]),
+/**
+ * Every range on a dependency: this plan's plugins' and the installed ones'. A plugin the walk read
+ * from the catalog (the root above all) speaks with its new declaration only: its installed range
+ * is replaced, not combined ("publish a new version of your plugin with a wider constraint").
+ */
+const rangesFor = (id: string, node: Node, walk: Walk): readonly string[] => [
+  ...new Set([
+    ...node.ranges,
+    ...constraintsOn(id, walk.facts)
+      .filter((one) => !walk.walked.has(one.by))
+      .map((one) => one.range),
+  ]),
 ];
 
 function actionFor(
@@ -163,7 +175,7 @@ function fetchStep(asked: Asked): InstallStep | PluginIssue {
 function stepFor(id: string, walk: Walk): InstallStep | PluginIssue | undefined {
   const node = walk.nodes.get(id);
   if (node === undefined) return undefined;
-  const ranges = rangesFor(id, node, walk.facts);
+  const ranges = rangesFor(id, node, walk);
   const entry = walk.facts.catalog[id];
   const conflict =
     ranges.length > 1 ? combineRanges(ranges, entry?.tags ?? [], node.dep) : undefined;
@@ -204,7 +216,7 @@ const refused = (
 /**
  * The plan that installs, enables or updates the dependencies of `request.root`, transitively and
  * dependencies first. Per dependency: one already installed, enabled and inside every range is met
- * and needs no step; installed and disabled is enabled; installed outside the combined ranges is
+ * and needs no step, though its own declared dependencies are still planned; installed and disabled is enabled; installed outside the combined ranges is
  * updated; otherwise installed from the catalog. Each step carries its reason (`requiredBy`), the
  * ranges and what they resolve against (plugins/dependencies.md, "How a constraint resolves
  * against tags", "Combine constraints from several plugins"). A dependency in another marketplace
@@ -214,7 +226,8 @@ const refused = (
  * repository meets, or a dependency its marketplace does not list refuses the whole plan:
  * `steps` is empty and nothing changes ("Plugin A and the dependency stay as they were").
  * Judgments (spec/judgments.md): the docs are silent on cycles and on depth, so each plugin is
- * planned once and the walk has no limit; a dependency left out does not fail the install.
+ * planned once and the walk has no limit; a dependency left out does not fail the install; a plugin
+ * read from the catalog (the root above all) replaces its installed ranges with its new ones.
  */
 export function installClosure(request: InstallRequest, facts: GraphFacts): InstallPlan {
   const declared = declaredOf(request.root, facts);
@@ -236,6 +249,8 @@ export function installClosure(request: InstallRequest, facts: GraphFacts): Inst
     scope: request.scope,
     root: request.root,
     rootMarketplace: facts.catalog[request.root]?.marketplace ?? parts.marketplace,
+    ...(request.hostVersion === undefined ? {} : { hostVersion: request.hostVersion }),
+    walked: new Set(),
     nodes: new Map(),
     order: [],
     leftOut: [],

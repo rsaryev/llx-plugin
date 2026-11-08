@@ -22,6 +22,8 @@ import type { NormalizedDependency } from './types.ts';
 export interface DeclaredDependency {
   readonly dep: NormalizedDependency;
   readonly declaredIn: DeclaredIn;
+  /** The item names a marketplace itself (`namesMarketplace(item)`); absent means it does not, which a `--plugin-dir` copy meets on every Claude Code version. */
+  readonly namesMarketplace?: boolean;
 }
 
 /** One install of a plugin at one scope (`installed_plugins.json`). */

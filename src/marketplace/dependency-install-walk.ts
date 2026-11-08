@@ -4,10 +4,10 @@ import { crossMarketplaceDecision } from './cross-marketplace.ts';
 import { dependencyId } from './dependencies.ts';
 import {
   dependenciesOf,
-  effectiveEnabled,
   localCopyOf,
   recordAt,
   type CatalogPlugin,
+  type CopyLookup,
   type DeclaredDependency,
   type GraphFacts,
 } from './dependency-graph.ts';
@@ -52,6 +52,10 @@ export interface Walk {
   /** The plugin whose dependencies are walked: a cycle back to it ends there. */
   readonly root: string;
   readonly rootMarketplace: string;
+  /** The Claude Code version being emulated; absent means a current one (see `CopyLookup`). */
+  readonly hostVersion?: string;
+  /** The plugins whose declarations were read: their installed constraints are replaced by what was read. */
+  readonly walked: Set<string>;
   readonly nodes: Map<string, Node>;
   /** Ids to act on or check, dependencies first. */
   readonly order: string[];
@@ -118,14 +122,8 @@ export const declaredOf = (
     : undefined;
 };
 
-/** A dependency already installed and enabled at the scope: it is only checked against the ranges, not walked. */
-const MET = { met: true } as const;
-
-const isMet = (value: readonly DeclaredDependency[] | typeof MET): value is typeof MET =>
-  value === MET;
-
-/** What the walk does with a dependency: walk into its dependencies, check it only, or leave it out (`undefined`). */
-type Children = readonly DeclaredDependency[] | typeof MET | undefined;
+/** What the walk does with a dependency: walk into its declared dependencies, or leave it out (`undefined`). */
+type Children = readonly DeclaredDependency[] | undefined;
 
 /** The allowlist (plugins/dependencies.md, "Depend on a plugin from another marketplace"); a refusal is recorded as the declaration decides. */
 function crossAllowed(
@@ -137,7 +135,9 @@ function crossAllowed(
   const id = dependencyId(dep);
   const enabledAtScope = new Set(
     walk.facts.installed
-      .filter((one) => one.scope === walk.scope && effectiveEnabled(one.id, walk.facts) === true)
+      .filter(
+        (one) => one.scope === walk.scope && walk.facts.enabled[walk.scope]?.[one.id] === true,
+      )
       .map((one) => one.id),
   );
   const decision = crossMarketplaceDecision({
@@ -172,38 +172,52 @@ function fromCatalog(id: string, walk: Walk): Children {
   return undefined;
 }
 
-function childrenOf(
-  dep: NormalizedDependency,
-  declaredIn: DeclaredDependency['declaredIn'],
-  parent: Parent,
-  walk: Walk,
-): Children {
+/** Where a `--plugin-dir` copy meets this entry: the emulated host version and whether the entry names a marketplace. */
+const copyLookup = (declared: DeclaredDependency, walk: Walk): CopyLookup => ({
+  ...(walk.hostVersion === undefined ? {} : { hostVersion: walk.hostVersion }),
+  ...(declared.namesMarketplace === true ? { namesMarketplace: true } : {}),
+});
+
+const hasLocalCopy = (declared: DeclaredDependency, walk: Walk): boolean =>
+  localCopyOf(declared.dep, walk.facts, copyLookup(declared, walk)) !== undefined;
+
+/**
+ * What the walk does with one declared dependency. One installed and enabled at the scope (its own
+ * `enabledPlugins` says so: another scope's value does not count) is met: it
+ * gets no step, but its own declared dependencies are walked, since a re-run installs "any missing
+ * declared dependency" (plugins/dependencies.md, "Constrain a dependency that has a non-git
+ * source").
+ */
+function childrenOf(declared: DeclaredDependency, parent: Parent, walk: Walk): Children {
+  const { dep, declaredIn } = declared;
   const id = dependencyId(dep);
   const record = recordAt(id, walk.scope, walk.facts);
-  if (record !== undefined && effectiveEnabled(id, walk.facts) === true) return MET;
-  if (record === undefined && localCopyOf(dep, walk.facts) !== undefined) return undefined;
+  if (record !== undefined && walk.facts.enabled[walk.scope]?.[id] === true) {
+    return declaredOf(id, walk.facts) ?? [];
+  }
+  if (record === undefined && hasLocalCopy(declared, walk)) return undefined;
   if (!crossAllowed(dep, declaredIn, parent, walk)) return undefined;
   return record === undefined ? fromCatalog(id, walk) : declaredOf(id, walk.facts);
 }
 
-/** Depth-first over declared dependencies; a dependency met again only adds its asker and range, so a cycle ends. */
+/** Depth-first over declared dependencies, those of a met dependency too; a dependency met again only adds its asker and range, so a cycle ends. */
 export function walkFrom(
   parent: Parent,
   declared: readonly DeclaredDependency[],
   walk: Walk,
 ): void {
-  for (const { dep, declaredIn } of declared) {
+  walk.walked.add(parent.id);
+  for (const one of declared) {
+    const { dep } = one;
     const id = dependencyId(dep);
     if (id === walk.root || id === parent.id) continue;
     const known = walk.nodes.has(id);
     nodeFor(walk, dep, parent.id);
     if (known) continue;
-    const children = childrenOf(dep, declaredIn, parent, walk);
+    const children = childrenOf(one, parent, walk);
     if (children === undefined) continue;
-    if (!isMet(children)) {
-      const self = { id, name: dep.name, marketplace: dep.marketplace ?? parent.marketplace };
-      walkFrom(self, children, walk);
-    }
+    const self = { id, name: dep.name, marketplace: dep.marketplace ?? parent.marketplace };
+    walkFrom(self, children, walk);
     walk.order.push(id);
   }
 }

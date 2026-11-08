@@ -11,8 +11,9 @@ import { describe, expect, test } from 'bun:test';
 import { checkInstalledDependency } from '../../src/marketplace/dependencies.ts';
 import { installClosure, type InstallPlan } from '../../src/marketplace/dependency-install-plan.ts';
 import { autoUpdateDecision, releaseTag } from '../../src/marketplace/dependency-tags.ts';
-import type { GraphFacts } from '../../src/marketplace/dependency-graph.ts';
+import { constraintsOn, type GraphFacts } from '../../src/marketplace/dependency-graph.ts';
 import { versionCacheSegment } from '../../src/marketplace/plugin-version.ts';
+import { isUpdate } from '../../src/marketplace/update-detection.ts';
 import { dep, facts, installed, plugin, relativeSource } from '../support/dependency-facts.ts';
 import { spec } from '../support/spec.ts';
 
@@ -168,6 +169,10 @@ spec('dependencies.guide.Confirm the resolved version', () => {
     const before = resolved(COMMIT)?.version;
     const after = resolved('f00dfeedcafe0123456789abcdef0123456789ab')?.version;
     expect(after).toBe('2.1.0-f00dfeedcafe');
+    expect(before).toBeDefined();
+    expect(after).toBeDefined();
+    expect(isUpdate(before, after ?? '')).toBe('new copy');
+    expect(isUpdate(after, after ?? '')).toBe('unchanged');
     expect(versionCacheSegment(after ?? '')).not.toBe(versionCacheSegment(before ?? ''));
   });
 });
@@ -239,9 +244,12 @@ describe('Combine constraints from several plugins', () => {
 
   spec('dependencies.guide.Combine constraints from several plugins.=2.1.0', () => {
     test('=2.1.0 and no other range: the dependency stays at 2.1.0 and auto-update skips newer versions', () => {
+      const installedFacts = facts([], have('=2.1.0', '2.1.0'));
+      const ranges = constraintsOn('lib@m', installedFacts).map((one) => one.range);
+      expect(ranges).toEqual(['=2.1.0']);
       const decision = autoUpdateDecision({
         dep: dep({ name: 'lib', version: '=2.1.0' }),
-        ranges: ['=2.1.0'],
+        ranges,
         tags: tagsOf('lib', '2.1.0', '2.2.0', '3.0.0'),
       });
       expect(decision).toEqual({

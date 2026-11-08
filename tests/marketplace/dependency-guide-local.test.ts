@@ -92,6 +92,10 @@ spec('dependencies.guide.Test a plugin and its dependency locally.No version nee
     expect(checkDeclaredDependency(constrained, have)?.message).toBe(
       'Requires "my-dependency@m" ~2.1.0, installed 9.9.9',
     );
+    const unversioned = facts([], [installed('my-dependency@m')]);
+    expect(checkDeclaredDependency(constrained, unversioned)?.message).toBe(
+      'Requires "my-dependency@m" ~2.1.0, installed (no version)',
+    );
   });
 });
 
@@ -123,6 +127,62 @@ spec(
           namesMarketplace: true,
         })?.message,
       ).toBe('Dependency "my-dependency@shared" is not installed');
+    });
+
+    describe('the install plan agrees with the load check', () => {
+      const plan = (entryItem: unknown, hostVersion?: string) =>
+        installClosure(
+          {
+            root: 'my-plugin@m',
+            scope: 'user',
+            operation: 'reload-plugins',
+            ...(hostVersion === undefined ? {} : { hostVersion }),
+          },
+          facts(
+            [
+              plugin('my-plugin', { manifest: [entryItem] }),
+              plugin('my-dependency', { marketplace: 'shared', currentCopyVersion: '1.0.0' }),
+              plugin('my-dependency', { currentCopyVersion: '1.0.0' }),
+            ],
+            [],
+            { localCopies: [local()], allowlists: { m: ['shared'] } },
+          ),
+        );
+
+      test('on 2.1.241 the local copy does not meet an entry that names a marketplace, so the dependency is installed', () => {
+        const result = plan({ name: 'my-dependency', marketplace: 'shared' }, '2.1.241');
+        expect(result.steps.map((one) => [one.id, one.action])).toEqual([
+          ['my-dependency@shared', 'install'],
+        ]);
+      });
+
+      test('on 2.1.242 and later, or with no version given, it does, so nothing is installed', () => {
+        for (const version of ['2.1.242', '2.1.300', undefined]) {
+          const result = plan({ name: 'my-dependency', marketplace: 'shared' }, version);
+          expect(result.steps).toEqual([]);
+          expect(result.leftOut).toEqual([]);
+        }
+      });
+
+      test('an entry that names no marketplace is met by the local copy on 2.1.241 too', () => {
+        expect(plan('my-dependency', '2.1.241').steps).toEqual([]);
+      });
+
+      test('a refused cross-marketplace entry is reported, not silently met by the local copy, before 2.1.242', () => {
+        const refused = installClosure(
+          { root: 'my-plugin@m', scope: 'user', operation: 'install', hostVersion: '2.1.241' },
+          facts(
+            [
+              plugin('my-plugin', { entry: [{ name: 'my-dependency', marketplace: 'shared' }] }),
+              plugin('my-dependency', { marketplace: 'shared' }),
+            ],
+            [],
+            { localCopies: [local()] },
+          ),
+        );
+        expect(refused.ok).toBe(false);
+        expect(refused.issues[0]?.message).toContain('my-dependency@shared');
+      });
     });
 
     test('whether an item names a marketplace is read from the item as written', () => {

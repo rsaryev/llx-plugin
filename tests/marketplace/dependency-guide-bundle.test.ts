@@ -4,11 +4,14 @@
  * with an extra dependency installs just that one), § Create a release tag (`<plugin-name>--v<version>`,
  * so one marketplace repository can host several plugins with independent histories). The checks
  * `claude plugin tag` runs before creating the tag belong to the cli stream; only the tag name and
- * how it is read are proven here.
+ * how it is read are tested here, outside `spec(...)`, so that section is not claimed as proven.
  */
-import { expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { readManifest } from '../../src/format/manifest.ts';
-import { installClosure } from '../../src/marketplace/dependency-install-plan.ts';
+import {
+  installClosure,
+  type DependencyInstallOperation,
+} from '../../src/marketplace/dependency-install-plan.ts';
 import { parseReleaseTag, releaseTag, selectTag } from '../../src/marketplace/dependency-tags.ts';
 import { dep, facts, installed, plugin } from '../support/dependency-facts.ts';
 import { spec } from '../support/spec.ts';
@@ -46,8 +49,8 @@ const catalog = (dependencies: readonly unknown[] = BUNDLE_MANIFEST.dependencies
   ),
 ];
 
-const install = (have = facts(catalog())) =>
-  installClosure({ root: BUNDLE_ID, scope: 'user', operation: 'install' }, have);
+const install = (have = facts(catalog()), operation: DependencyInstallOperation = 'install') =>
+  installClosure({ root: BUNDLE_ID, scope: 'user', operation }, have);
 
 spec('dependencies.guide.Bundle plugins for a team', () => {
   test('a manifest with only a name and dependencies is a valid plugin', () => {
@@ -81,22 +84,30 @@ spec('dependencies.guide.Bundle plugins for a team', () => {
     expect(plan.steps.every((one) => one.requiredBy.includes(BUNDLE_ID))).toBe(true);
   });
 
-  test('a new bundle version with an extra dependency installs only the dependency it adds', () => {
-    const have = facts(
-      [
-        ...catalog([...BUNDLE_MANIFEST.dependencies, 'lint-rules']),
-        plugin('lint-rules', { marketplace: MARKETPLACE, currentCopyVersion: '2.0.0' }),
-      ],
-      [
-        installed(BUNDLE_ID, { deps: BUNDLE_MANIFEST.dependencies }),
-        ...IDS.map((id) =>
-          installed(id, { auto: true, version: id.startsWith('db-') ? '3.4.1' : '1.0.0' }),
-        ),
-      ],
-    );
-    const plan = install(have);
-    expect(plan.steps.map((one) => one.id)).toEqual([`lint-rules@${MARKETPLACE}`]);
-  });
+  // The docs' two paths: the next auto-update, or `claude plugin update` then `/reload-plugins`.
+  test.each(['auto-update', 'reload-plugins'] as const)(
+    'a new bundle version with an extra dependency installs only the dependency it adds (%s)',
+    (operation) => {
+      const have = facts(
+        [
+          ...catalog([...BUNDLE_MANIFEST.dependencies, 'lint-rules']),
+          plugin('lint-rules', { marketplace: MARKETPLACE, currentCopyVersion: '2.0.0' }),
+        ],
+        [
+          installed(BUNDLE_ID, { deps: BUNDLE_MANIFEST.dependencies }),
+          ...IDS.map((id) =>
+            installed(id, { auto: true, version: id.startsWith('db-') ? '3.4.1' : '1.0.0' }),
+          ),
+        ],
+      );
+      const plan = install(have, operation);
+      expect(plan.ok).toBe(true);
+      expect(plan.steps.map((one) => [one.id, one.action, one.requiredBy])).toEqual([
+        [`lint-rules@${MARKETPLACE}`, 'install', [BUNDLE_ID]],
+      ]);
+      expect(plan.leftOut).toEqual([]);
+    },
+  );
 
   test('a bundle member its marketplace does not list refuses the whole install and installs nothing', () => {
     const plan = install(facts(catalog().filter(([id]) => !id.startsWith('oncall-runbook'))));
@@ -106,7 +117,11 @@ spec('dependencies.guide.Bundle plugins for a team', () => {
   });
 });
 
-spec('dependencies.guide.Create a release tag', () => {
+// Not a `spec(...)`: the section also documents what `claude plugin tag` checks, prints and pushes
+// (four pre-checks, `Created tag ...`, `Pushed to origin`, the `git push` hint, `--dry-run`), which
+// the cli stream implements; until it does, only the tag name and its reading are tested, and the
+// requirement `dependencies.guide.Create a release tag` is not claimed.
+describe('release tag name', () => {
   test('a release is tagged <plugin-name>--v<version>', () => {
     expect(releaseTag('secrets-vault', '2.1.0')).toBe('secrets-vault--v2.1.0');
     expect(parseReleaseTag('secrets-vault--v2.1.0', 'secrets-vault')).toBe('2.1.0');
