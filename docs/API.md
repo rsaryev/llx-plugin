@@ -147,7 +147,7 @@ The host maps its own tools to Claude Code's names and inputs before dispatching
 `Write`, `Edit`…, typed by the official `ToolInputSchemas`), so a plugin's `"matcher": "Write|Edit"`
 and `"if": "Bash(git *)"` mean what they mean in Claude Code.
 
-## Permission rules (done: syntax, bare, parameter and glob rules, precedence, Bash and PowerShell commands, hook `if`; planned: path, domain)
+## Permission rules (done: syntax, bare, parameter and glob rules, precedence, Bash and PowerShell commands, hook `if`, path rules; planned: domain)
 
 Claude Code's rule syntax (permissions.md), used by the `if` field of hooks, `allowed-tools` of
 skills and commands, and a host's own permission system. Pure functions over data, no ports.
@@ -170,7 +170,11 @@ const verdict = evaluateRules(rules, { toolName: 'Agent', input: { model: 'opus'
 | Bash and PowerShell command matchers | done | `Bash(npm run *)`, `Monitor(...)` and `PowerShell(...)`: wildcards, compound commands, wrappers, exec wrappers and `find` actions |
 | `evaluateIf(ifRule, toolName, input, context)` | done | whether a hook `if` runs: `{ runs, issues }`; the Bash table of hooks.md, "runs when it cannot tell", a `Bash(...)` rule also answering a Monitor call, and issues reported at `hooks.if` |
 | `splitCommand`, `stripWrappers`, `matchBashPattern`, `requiresPromptDespitePrefixRule` | done | the pieces of the Bash matcher, for a host that reads commands itself |
-| path, domain, skill and agent matchers | planned | fill `SPECIFIER_MATCHERS` per rule format                              |
+| `Read(...)`, `Edit(...)` path matchers | done | the four anchors (`//`, `~/`, `/` per settings source, `path`/`./path`), gitignore matching, the allow versus deny/ask depth rule, `!` negation, Windows POSIX form, routing (Edit covers Write and NotebookEdit, Read covers Grep and Glob, Edit allow implies read, Read deny covers Edit and Write) |
+| `prepareCall(call, paths, resolver)`, `resolveRuleDirectories(rules, paths, resolver)` | done | the symlink two-path rule through the `PathResolver` port: allow needs both paths, deny and ask either; a rule written through a symlinked directory also applies at its real location (`PathContext.realDirectories`); an unresolvable path is a `PortFailure` |
+| `readsNetworkPath`, `isNetworkPath`   | done    | UNC and `/net` paths, which always prompt                                    |
+| `matchCdRule(rule, target, context)`  | done    | `Cd(path)` patterns: whole-path, `*` one segment, `**` across                |
+| domain, skill and agent matchers | planned | fill `SPECIFIER_MATCHERS` per rule format                              |
 | `decide`, tool catalog            | planned | modes and the tool table                                                     |
 
 `parseRule` returns the official `{ toolName, ruleContent? }` in `rule.value` and the read form in
@@ -195,6 +199,13 @@ allow rule never approves `watch`, `setsid`, `ionice`, `flock` or a `find` that 
 writes. `ruleIssues` also reports a `Bash` allow rule with a `*` before the subcommand
 (`Bash(git * main)`). The rule matches the text as written, never a path or quote-normalised form:
 `/usr/bin/curl` and `sh -c 'curl ...'` are not `Bash(curl *)`.
+
+A path rule (`src/rules/path`) is a gitignore pattern over the path below its anchor (the `ignore`
+package). Deny and ask rules match when any of a call's paths matches, allow rules when all do (the
+requested path and `PreparedCall.resolvedPaths`, which `prepareCall` fills). A `!` rule carves paths
+out of the rules before it in the same source and list; `evaluateRules` applies it. `Write(...)`,
+`Glob(...)`, `Grep(...)` and `NotebookEdit(...)` rules with a path never match; write `Edit(...)` or
+`Read(...)`. A host asks `readsNetworkPath` before it trusts any allow rule, hook or classifier.
 
 ## Testing kit (planned)
 

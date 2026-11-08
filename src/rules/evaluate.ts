@@ -2,6 +2,8 @@ import type { PermissionBehavior } from '../protocol/official.ts';
 import type { Assert, Equal } from '../protocol/type-equality.ts';
 import { SPECIFIER_MATCHERS, type SpecifierMatchers } from './matchers.ts';
 import { matchesCallParam } from './param.ts';
+import { routesToCall } from './path/file-rules.ts';
+import { isCarvedOut } from './path/negation.ts';
 import { ruleFormatOf } from './specifier-formats.ts';
 import { toolNameMatches } from './tool-pattern.ts';
 import type { MatchContext, PermissionRule, PreparedCall, RuleVerdict } from './types.ts';
@@ -18,7 +20,13 @@ export function matchRule(
   ctx: MatchContext,
   matchers: SpecifierMatchers = SPECIFIER_MATCHERS,
 ): boolean {
-  if (!toolNameMatches(rule, call.toolName)) return false;
+  if (!toolNameMatches(rule, call.toolName)) {
+    // A path rule also covers the calls of the tools it stands for: an Edit rule Write, a Read rule Grep.
+    return (
+      routesToCall(rule, call.toolName) &&
+      matchers[ruleFormatOf(rule.value.toolName)](rule, call, ctx)
+    );
+  }
   const { specifier } = rule;
   if (specifier === undefined) return true;
   if (specifier.form === 'param') return matchesCallParam(rule, specifier, call);
@@ -40,7 +48,8 @@ export type PrecedenceCoversBehaviors = Assert<
 /**
  * What the rules alone say about a call: the first deny rule that matches, else the first ask
  * rule, else the first allow rule, else nothing. A broad deny beats a narrower allow, and an ask
- * beats an allow, however specific.
+ * beats an allow, however specific. A `!` rule of the same source and list carves the paths it
+ * matches out of the path rules before it, so such a rule is skipped for those paths.
  */
 export function evaluateRules(
   rules: readonly PermissionRule[],
@@ -50,7 +59,10 @@ export function evaluateRules(
 ): RuleVerdict {
   for (const behavior of PRECEDENCE) {
     const rule = rules.find(
-      (candidate) => candidate.behavior === behavior && matchRule(candidate, call, ctx, matchers),
+      (candidate, index) =>
+        candidate.behavior === behavior &&
+        matchRule(candidate, call, ctx, matchers) &&
+        !isCarvedOut(rules, index, call, ctx),
     );
     if (rule !== undefined) return { behavior, rule };
   }

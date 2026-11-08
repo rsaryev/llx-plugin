@@ -146,11 +146,9 @@ describe('matchRule dispatches a specifier to the matcher of its tool format', (
 });
 
 describe('the default matchers fail closed (spec/judgments.md)', () => {
-  // The matchers of the path, domain, skill and agent formats are written by their own
-  // sub-packages (the command formats' are in src/rules/bash). Until they exist a deny or ask rule must not silently let a call through.
+  // The matchers of the domain, skill and agent formats are written by their own
+  // sub-packages (the command formats' are in src/rules/bash, the path formats' in src/rules/path). Until they exist a deny or ask rule must not silently let a call through.
   const cases = [
-    ['Read(./.env)', 'Read', { file_path: '/work/app/.env' }],
-    ['Edit(src/**)', 'Edit', { file_path: '/work/app/src/a.ts' }],
     ['WebFetch(domain:example.com)', 'WebFetch', { url: 'https://example.com' }],
     ['Skill(deploy *)', 'Skill', { skill: 'deploy' }],
     ['Agent(Explore)', 'Agent', { subagent_type: 'Explore' }],
@@ -176,7 +174,7 @@ describe('the default matchers fail closed (spec/judgments.md)', () => {
 
   test('a rule for another tool is still not covered', () => {
     expect(
-      verdict([parsed('Read(./.env)', 'deny')], 'Bash', { command: 'cat .env' }).behavior,
+      verdict([parsed('Agent(Explore)', 'deny')], 'Bash', { command: 'cat .env' }).behavior,
     ).toBe(undefined);
   });
 });

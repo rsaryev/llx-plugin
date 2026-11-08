@@ -34,6 +34,13 @@
   wildcard-before-subcommand startup warning, and `evaluateIf` for the `if` field of hooks.
   `splitCommand`, `stripWrappers`, `matchBashPattern` and `requiresPromptDespitePrefixRule` are
   exported.
+- Path rules (`rules/path`): `Read(...)` and `Edit(...)` patterns with the four anchors (`//`, `~/`,
+  `/` per settings source, `path` and `./path`), gitignore matching through `ignore`, the allow versus
+  deny/ask depth rule for a single directory segment, `!` negation within one source, Windows POSIX
+  paths, routing (Edit covers Write and NotebookEdit, Read covers Grep and Glob, an Edit allow implies
+  read, a Read deny covers Edit and Write, Write/Glob/Grep/NotebookEdit path rules never match), the
+  symlink two-path rule through a new `PathResolver` port (`prepareCall`, `resolveRuleDirectories`,
+  `PathContext.realDirectories`), `readsNetworkPath` and `matchCdRule`.
 
 ### Fixed
 

@@ -77,6 +77,13 @@ export interface PathContext {
   readonly primaryWorkingDirectory: string;
   readonly additionalDirectories: readonly string[];
   readonly platform: 'posix' | 'windows';
+  /**
+   * Directories as a `//`, `~/` or `/` deny or ask rule spells them, mapped to where they really are
+   * (`/etc` to `/private/etc`), built with `resolveRuleDirectories`: "a deny or ask rule written
+   * through a symlinked directory ... also applies at the directory's real location" (permissions.md,
+   * "How rules match a symlinked path"). Absent when no rule goes through a link.
+   */
+  readonly realDirectories?: ReadonlyMap<string, string>;
 }
 
 /** Everything a rule needs beside the call itself. */
