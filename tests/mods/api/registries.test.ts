@@ -13,7 +13,7 @@ import { describe, expect, test } from 'bun:test';
 import { isValidModName, toolFullName } from '../../../src/mods/api/index.ts';
 import { AGENT_STATUSES, MODS_API } from '../../../src/protocol/mods-api-names.ts';
 import { MOD_LIMITS } from '../../../src/protocol/mods-limits.ts';
-import { sectionsOf } from '../../support/mods-docs.ts';
+import { MODS_REFERENCE } from '../../support/mods-reference.ts';
 import { fn } from '../../support/mods-chain.ts';
 import { apiHarness, expectMethods } from '../../support/mods-api.ts';
 import { rejection } from '../../support/rejection.ts';
@@ -157,12 +157,7 @@ spec('mods.api.$.tool', () => {
   });
 });
 
-const statuses = (): string[] => {
-  const section = sectionsOf(2).find((s) => s.heading === 'Mods API methods');
-  const row = section?.lines.find((line) => line.startsWith('| `$.agent`')) ?? '';
-  const listed = /`status` of (.*?), where/.exec(row)?.[1] ?? '';
-  return [...listed.matchAll(/`([a-z]+)`/g)].flatMap((m) => (m[1] ? [m[1]] : []));
-};
+const statuses = (): readonly string[] => MODS_REFERENCE.agentStatuses;
 
 spec('mods.api.$.agent', () => {
   test('$.agent has register, spawn and list', async () => {

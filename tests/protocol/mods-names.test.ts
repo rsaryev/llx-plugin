@@ -1,8 +1,8 @@
 /**
  * The names and numbers the mods reference gives as tables (plugins/mods/reference.md § Events,
- * § Mods API methods, § Limits). Each table is parsed from the pulled page
- * (`tests/support/mods-docs.ts`) and compared with the constants, so a change to the page that
- * `bun run docs:pull` brings in shows up as a failing comparison here.
+ * § Mods API methods, § Limits), compared with the constants. The tables are the committed
+ * snapshot (`tests/support/mods-reference.ts`); `check:spec` compares it with the pulled page, so a
+ * change to the page shows up there, and the `mods.event.*` requirement ids are the events.
  */
 import { describe, expect, test } from 'bun:test';
 import { MODS_API } from '../../src/protocol/mods-api-names.ts';
@@ -19,7 +19,7 @@ import {
 } from '../../src/protocol/mods-events.ts';
 import { HOOK_EVENTS } from '../../src/protocol/hook-events.ts';
 import { MOD_LIMITS, MOD_NAME_PATTERN } from '../../src/protocol/mods-limits.ts';
-import { codeTokens, sectionsOf, tableRows } from '../support/mods-docs.ts';
+import { MODS_REFERENCE, requirementKeys } from '../support/mods-reference.ts';
 
 /** The headings of § Events that hold event tables, and the group of the kit each one is. */
 const EVENT_HEADINGS: Readonly<Record<string, ModEventGroup>> = {
@@ -34,23 +34,22 @@ const EVENT_HEADINGS: Readonly<Record<string, ModEventGroup>> = {
   Telemetry: 'telemetry',
 };
 
-const eventNamesOf = (lines: readonly string[]): string[] =>
-  tableRows(lines, 'Event').flatMap((cells) => codeTokens(cells[0] ?? ''));
-
 describe('the events of the reference', () => {
   test('the events of each group of the page, in its order, are the events of the kit', () => {
-    const groups = sectionsOf(3, 'Events').filter((section) => section.heading in EVENT_HEADINGS);
-    expect(groups.map((section) => section.heading)).toEqual(Object.keys(EVENT_HEADINGS));
+    const groups = MODS_REFERENCE.events;
+    expect(groups.map((section) => section.group)).toEqual(Object.keys(EVENT_HEADINGS));
     for (const section of groups) {
-      const group = EVENT_HEADINGS[section.heading];
+      const group = EVENT_HEADINGS[section.group];
       expect(group).toBeDefined();
-      if (group) expect(MOD_EVENT_GROUPS[group].map(String)).toEqual(eventNamesOf(section.lines));
+      if (group) expect(MOD_EVENT_GROUPS[group].map(String)).toEqual(section.events);
     }
     expect(MOD_EVENT_NAMES).toHaveLength(48);
     expect(new Set(MOD_EVENT_NAMES).size).toBe(48);
-    expect(MOD_EVENT_NAMES.map(String)).toEqual(
-      groups.flatMap((section) => eventNamesOf(section.lines)),
-    );
+    expect(MOD_EVENT_NAMES.map(String)).toEqual(groups.flatMap((section) => section.events));
+  });
+  test('the mods.event.* requirements are the events of the kit', () => {
+    const events = requirementKeys('mods.event.').filter((key) => !key.endsWith('*'));
+    expect(events.toSorted()).toEqual(MOD_EVENT_NAMES.map(String).toSorted());
   });
   test('every settings hook event is an event named classic.<Event>', () => {
     expect(CLASSIC_EVENT_NAMES.map(String)).toEqual(HOOK_EVENTS.map((event) => `classic.${event}`));
@@ -73,19 +72,9 @@ describe('the events of the reference', () => {
   });
 });
 
-/** The names of a row of § Mods API methods: the first list of `code` words, after at most a lead-in such as `Reactive state: `, before the prose. */
-const methodsOf = (cell: string): string[] =>
-  codeTokens(/^(?:[^`]*: )?((?:`[A-Za-z]+`(?:, )?)+)/.exec(cell)?.[1] ?? '');
-
 describe('the mods API table', () => {
   test('every namespace of the page has exactly the methods the kit lists, in the page order', () => {
-    const rows = tableRows(
-      sectionsOf(2).find((s) => s.heading === 'Mods API methods')?.lines ?? [],
-    );
-    const documented = rows.map((cells) => [
-      codeTokens(cells[0] ?? '')[0]?.replace(/^\$\./, ''),
-      methodsOf(cells[1] ?? ''),
-    ]);
+    const documented = MODS_REFERENCE.apiMethods.map((row) => [row.namespace, row.methods]);
     expect(Object.keys(MODS_API)).toHaveLength(21);
     expect(documented).toEqual(
       Object.entries(MODS_API).map(([name, methods]) => [name, [...methods]]),
@@ -150,7 +139,7 @@ const LIMIT_ROWS: Readonly<Record<keyof typeof MOD_LIMITS, readonly [string, str
 const isLimit = (key: string): key is keyof typeof MOD_LIMITS => key in MOD_LIMITS;
 
 describe('the Limits table', () => {
-  const rows = tableRows(sectionsOf(2).find((s) => s.heading === 'Limits')?.lines ?? [], 'Limit');
+  const rows = MODS_REFERENCE.limits.map((row) => [row.limit, row.value]);
   const rowOf = (part: string) => rows.filter((cells) => cells[0]?.includes(part));
 
   test('every constant is the number the page writes in its row', () => {

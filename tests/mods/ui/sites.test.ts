@@ -17,45 +17,16 @@ import {
   RENDER_SITES,
   SURFACES,
   type RenderSite,
-  type Surface,
 } from '../../../src/protocol/mods-ui-names.ts';
 import { decideSite, renderEvent } from '../../../src/mods/ui/index.ts';
 import { fn } from '../../support/mods-chain.ts';
-import { codeTokens, sectionsOf, tableRows } from '../../support/mods-docs.ts';
+import { MODS_REFERENCE } from '../../support/mods-reference.ts';
 import { recordOf, uiChain } from '../../support/mods-ui.ts';
 import { spec } from '../../support/spec.ts';
 
-const SURFACE_WORDS: Readonly<Record<string, Surface>> = {
-  Terminal: 'terminal',
-  Desktop: 'desktop',
-  'VS Code': 'vscode',
-};
-const REQUESTS = [
-  ["The pane's", 'pane-id'],
-  ['One instance', 'instance'],
-  ['The message id', 'message-id'],
-  ['The tool call id', 'tool-call-id'],
-  ['The agent id', 'agent-id'],
-] as const;
+type Row = (typeof MODS_REFERENCE.renderSites)[number];
 
-interface Row {
-  readonly sites: readonly string[];
-  readonly props: readonly string[];
-  readonly request: string | undefined;
-  readonly surfaces: readonly Surface[];
-}
-
-const rows = (): readonly Row[] =>
-  tableRows(sectionsOf(2).find((s) => s.heading === 'Render sites')?.lines ?? [], 'Site').map(
-    (cells) => ({
-      sites: codeTokens(cells[0] ?? ''),
-      props: codeTokens(cells[1] ?? ''),
-      request: REQUESTS.find(([start]) => (cells[2] ?? '').startsWith(start))?.[1],
-      surfaces: Object.entries(SURFACE_WORDS)
-        .filter(([word]) => (cells[3] ?? '').includes(word))
-        .map(([, surface]) => surface),
-    }),
-  );
+const rows = (): readonly Row[] => MODS_REFERENCE.renderSites;
 
 const siteRow = (site: RenderSite): Row => {
   const row = rows().find((candidate) => candidate.sites.includes(site));
@@ -73,7 +44,7 @@ for (const site of RENDER_SITE_NAMES) {
     test('the table holds the site as the reference does: its props, its request id and the apps that raise it', () => {
       const row = siteRow(site);
       expect<readonly string[]>([...RENDER_SITES[site].props]).toEqual(row.props);
-      expect<string | undefined>(RENDER_SITES[site].request).toBe(row.request);
+      expect<string | undefined>(RENDER_SITES[site].request).toBe(row.request ?? undefined);
       expect<readonly string[]>([...RENDER_SITES[site].surfaces]).toEqual(row.surfaces);
     });
 

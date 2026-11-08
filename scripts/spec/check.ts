@@ -6,11 +6,15 @@
  * - SP3 the installed `@anthropic-ai/claude-agent-sdk` describes the same Claude Code release as
  *   the requirements (SDK `0.3.N` ↔ Claude Code `2.1.N`): the types and the docs never disagree.
  * - SP4 docs pulled locally that are newer than the requirements must be extracted first.
+ * - SP5 when the docs are pulled, the committed tables the tests read (`spec/docs-tables.json`,
+ *   `tests/support/tool-table.ts`) are what the pulled pages say: tests never read the docs.
  */
 import { join, relative } from 'node:path';
 import { z } from 'zod';
 import { DOCS_DIR, ROOT } from '../docs/location.ts';
+import { pulledDocsTables, readCommittedDocsTables } from './mods-reference.ts';
 import { readRequirements } from './requirements.ts';
+import { toolTableDrift } from './tool-table.ts';
 
 const problems: string[] = [];
 const file = await readRequirements().catch((error: unknown) => {
@@ -57,6 +61,17 @@ if (file && (await pulled.exists())) {
     problems.push(`SP4 docs ${local} are pulled but the requirements are ${file.claudeCode}`);
   }
 }
+
+const pulledTables = await pulledDocsTables();
+if (pulledTables) {
+  const committed = await readCommittedDocsTables().catch(() => undefined);
+  if (JSON.stringify(committed) !== JSON.stringify(pulledTables)) {
+    problems.push(
+      'SP5 spec/docs-tables.json differs from the pulled docs: run `bun run spec:extract`',
+    );
+  }
+}
+for (const drift of await toolTableDrift()) problems.push(`SP5 ${drift}`);
 
 for (const problem of problems) console.error(problem);
 process.exit(problems.length > 0 ? 1 : 0);

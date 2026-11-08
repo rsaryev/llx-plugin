@@ -28,6 +28,10 @@ section. It stores identifiers only, never the docs' text.
   must find something, so a page Anthropic restructures stops the extraction loudly.
 - A cell listing several code spans (`` `min` / `max` ``) yields one requirement each.
 - The output is sorted and stable; the extractor prints what was added and removed.
+- The extractor also writes `spec/docs-tables.json`, the tables of the mods reference the mods
+  tests compare the kit with (events, API methods, limits, elements, render sites, settings). Tests
+  read this committed snapshot and never `.cache/claude-docs`; `check:spec` (SP5) compares it, and
+  `tests/support/tool-table.ts` (the tools table), with the pulled pages whenever they are present.
 
 A requirement id reads `<category path>.<key>`: `manifest.field.homepage`,
 `hooks.handler.common.timeout`, `hooks.input.PreToolUse.tool_input`, `permissions.rule.Bash(git push *)`.
@@ -59,7 +63,7 @@ renames an event, a handler type or a field, `bun run typecheck` names every pla
 ## Updating to a new Claude Code release
 
 The SDK's version tracks Claude Code's (`0.3.N` ↔ `2.1.N`); `check:spec` (SP3) refuses a pair
-that disagrees, and SP4 refuses pulled docs newer than the requirements.
+that disagrees, and SP4 refuses pulled docs newer than the requirements, and SP5 a snapshot the pulled docs contradict.
 
 1. `bun run docs:pull` and `bun add -d @anthropic-ai/claude-agent-sdk@<matching>` (keep the
    `peerDependencies` range in step).

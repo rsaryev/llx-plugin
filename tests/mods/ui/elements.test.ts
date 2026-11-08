@@ -10,7 +10,12 @@
  * test here claims a pixel or a terminal cell.
  */
 import { expect, test } from 'bun:test';
-import { ELEMENT_NAMES, ELEMENT_SURFACES, SURFACES } from '../../../src/protocol/mods-ui-names.ts';
+import {
+  ELEMENT_NAMES,
+  ELEMENT_SURFACES,
+  SURFACES,
+  type ElementName,
+} from '../../../src/protocol/mods-ui-names.ts';
 import {
   borderOf,
   defaultElementTable,
@@ -19,78 +24,101 @@ import {
   textStyle,
   treeProblem,
 } from '../../../src/mods/ui/index.ts';
-import { sectionsOf, tableRows, codeTokens } from '../../support/mods-docs.ts';
+import { MODS_REFERENCE } from '../../support/mods-reference.ts';
 import { node, text } from '../../support/mods-ui.ts';
 import { spec } from '../../support/spec.ts';
 
 const problemOf = (tree: unknown, surface: 'terminal' | 'desktop' | 'vscode' = 'terminal') =>
   treeProblem('Pane', surface, tree);
 
-const table = () => {
-  const section = sectionsOf(2).find((s) => s.heading === 'Elements');
-  return tableRows(section?.lines ?? [], 'Element');
-};
+/** One `spec` block for each element, each asserting what that element's own row of the table says. */
+const ELEMENT_IDS = {
+  Box: 'mods.element.Box',
+  Text: 'mods.element.Text',
+  Button: 'mods.element.Button',
+  Link: 'mods.element.Link',
+  Code: 'mods.element.Code',
+  Markdown: 'mods.element.Markdown',
+  Input: 'mods.element.Input',
+  Select: 'mods.element.Select',
+  Svg: 'mods.element.Svg',
+  Client: 'mods.element.Client',
+  Raster: 'mods.element.Raster',
+  Image: 'mods.element.Image',
+} as const satisfies Record<ElementName, string>;
 
-spec(
-  [
-    'mods.element.Box',
-    'mods.element.Text',
-    'mods.element.Button',
-    'mods.element.Link',
-    'mods.element.Code',
-    'mods.element.Markdown',
-    'mods.element.Input',
-    'mods.element.Select',
-    'mods.element.Svg',
-    'mods.element.Client',
-    'mods.element.Raster',
-    'mods.element.Image',
-  ],
-  () => {
-    test('the elements an app draws are the check marks of the elements table', () => {
-      const rows = table();
-      expect(rows.map((row) => codeTokens(row[0] ?? '')[0])).toEqual([...ELEMENT_NAMES]);
-      for (const row of rows) {
-        const name = codeTokens(row[0] ?? '')[0];
-        const drawn = SURFACES.filter((_surface, index) => row[2 + index] === '✓');
-        expect(ELEMENT_SURFACES[ELEMENT_NAMES.find((n) => n === name) ?? 'Box']).toEqual(drawn);
+for (const name of ELEMENT_NAMES) {
+  const row = MODS_REFERENCE.elements.find((candidate) => candidate.name === name);
+  const drawn = row?.surfaces ?? [];
+  const refused = SURFACES.filter((surface) => !drawn.includes(surface));
+  spec(ELEMENT_IDS[name], () => {
+    test(`the row of ${name} gives the apps that draw it, and the kit routes it to those`, () => {
+      expect(row).toBeDefined();
+      expect([...ELEMENT_SURFACES[name]]).toEqual(drawn);
+      for (const surface of SURFACES) {
+        expect(defaultElementTable(surface)[name] !== undefined, `${name} on ${surface}`).toBe(
+          drawn.includes(surface),
+        );
       }
     });
 
-    test('an element function gives { type, props, children }, and children are not a prop', () => {
-      const { Text } = defaultElementTable('terminal');
-      expect(Text?.({ color: 'red', children: ['hi'] })).toEqual({
-        type: 'Text',
-        props: { color: 'red' },
-        children: ['hi'],
-      });
+    test(`${name} gives { type, props, children } and children are not a prop`, () => {
+      const make = defaultElementTable(drawn[0] ?? 'terminal')[name];
+      const made = make?.({ children: ['x'] });
+      expect(made?.type).toBe(name);
+      expect(made?.props).toEqual({});
+      expect(made?.children).toEqual(['x']);
     });
 
-    test('an element the app cannot draw is absent from its table, and a tree that holds one is refused', () => {
-      expect(defaultElementTable('desktop').Raster).toBeUndefined();
-      expect(defaultElementTable('vscode').Client).toBeUndefined();
-      expect(defaultElementTable('terminal').Svg).toBeUndefined();
-      expect(problemOf(node('Raster', { columns: 1, rows: 1 }), 'desktop')).toBe(
-        'a tree Pane refuses: Raster is not drawn by the desktop app',
-      );
+    test(`a tree with ${name} is refused on exactly the apps its row leaves unchecked`, () => {
+      for (const surface of refused) {
+        expect(problemOf(node(name), surface)).toBe(
+          `a tree Pane refuses: ${name} is not drawn by the ${surface} app`,
+        );
+      }
+      for (const surface of drawn) {
+        expect(problemOf(node(name), surface) ?? '').not.toContain('is not drawn by');
+      }
     });
 
-    test('a prop an element does not take fails the tree, with the documented line for a Text', () => {
-      expect(problemOf(node('Text', { bogusProp: 1, children: ['x'] }))).toBe(
-        'a tree Pane refuses: Text prop "bogusProp" is not allowed',
+    test(`${name} takes each main prop its row names and refuses one it does not`, () => {
+      const props = (row?.props ?? []).filter((prop) => prop !== 'children');
+      expect(props.length).toBeGreaterThan(0);
+      for (const prop of props) {
+        expect(problemOf(node(name, { [prop]: undefined }), drawn[0]) ?? '', prop).not.toContain(
+          'is not allowed',
+        );
+      }
+      expect(problemOf(node(name, { bogusProp: 1 }), drawn[0])).toBe(
+        `a tree Pane refuses: ${name} prop "bogusProp" is not allowed`,
       );
     });
+  });
+}
 
-    test('a child where none goes fails the tree', () => {
-      expect(problemOf(node('Markdown', { text: 'x', children: ['y'] }))).toBe(
-        'a tree Pane refuses: Markdown takes no children',
-      );
-      expect(problemOf(node('Input', { key: 'k', children: [text('x')] }))).toContain(
-        'Input takes no children',
-      );
-    });
-  },
-);
+spec('mods.element.Text', () => {
+  test('a prop an element does not take fails the tree, with the documented line for a Text', () => {
+    expect(problemOf(node('Text', { bogusProp: 1, children: ['x'] }))).toBe(
+      'a tree Pane refuses: Text prop "bogusProp" is not allowed',
+    );
+  });
+});
+
+spec('mods.element.Markdown', () => {
+  test('a child where none goes fails the tree', () => {
+    expect(problemOf(node('Markdown', { text: 'x', children: ['y'] }))).toBe(
+      'a tree Pane refuses: Markdown takes no children',
+    );
+  });
+});
+
+spec('mods.element.Input', () => {
+  test('a child where none goes fails the tree', () => {
+    expect(problemOf(node('Input', { key: 'k', children: [text('x')] }))).toContain(
+      'Input takes no children',
+    );
+  });
+});
 
 spec('mods.element.Box', () => {
   test('a Box takes the props of the table: key, layout, spacing, size, border, position, overflow, display, hover', () => {
@@ -131,10 +159,7 @@ spec('mods.element.Box', () => {
   });
 
   test('the ten border styles draw a border, and any other name draws none without failing the tree', () => {
-    const section = sectionsOf(3, 'Elements').find((s) => s.heading === '`Box` border styles');
-    const names = tableRows(section?.lines ?? [], '`borderStyle`').map(
-      (row) => codeTokens(row[0] ?? '')[0]?.replaceAll("'", '') ?? '',
-    );
+    const names = MODS_REFERENCE.borderStyles;
     expect(names).toHaveLength(10);
     for (const name of names) expect(String(borderOf({ borderStyle: name }))).toBe(name);
     expect(borderOf({ borderStyle: 'rounded' })).toBeUndefined();

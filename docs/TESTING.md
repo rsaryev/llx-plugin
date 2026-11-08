@@ -15,7 +15,9 @@ lack uses `skipIf(!available)`.
 
 Tests touch no network, no real clock, no randomness and no files outside a temporary folder they
 make. The kit's ports make this natural: a test passes fakes. The pulled docs and the corpus are
-read only by `scripts/`, never by `bun test`.
+read only by `scripts/`, never by `bun test`: a table a test needs from the docs is committed
+(`spec/docs-tables.json`, `tests/support/tool-table.ts`) and `check:spec` (SP5) compares it with
+the pulled docs.
 
 ## Fakes of the ports
 

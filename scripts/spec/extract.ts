@@ -9,6 +9,7 @@
 import { join } from 'node:path';
 import { DOCS_DIR } from '../docs/location.ts';
 import { keysOf, parsePage, type Page } from './markdown.ts';
+import { DOCS_TABLES_FILE, pulledDocsTables } from './mods-reference.ts';
 import { readRequirements, REQUIREMENTS_FILE, type Requirement } from './requirements.ts';
 import { HEADING_RULES, TABLE_RULES, type HeadingRule, type TableRule } from './sources.ts';
 
@@ -83,6 +84,8 @@ await Bun.write(
   REQUIREMENTS_FILE,
   `${JSON.stringify({ claudeCode: version, requirements }, null, 2)}\n`,
 );
+const tables = await pulledDocsTables();
+if (tables) await Bun.write(DOCS_TABLES_FILE, `${JSON.stringify(tables, null, 2)}\n`);
 const added = requirements.filter((r) => !old.has(r.id));
 const removed = [...old].filter((id) => !now.has(id));
 console.log(`Claude Code ${version}: ${requirements.length} requirements`);

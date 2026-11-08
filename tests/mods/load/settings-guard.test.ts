@@ -18,7 +18,7 @@ import {
   registerOf,
   session,
 } from '../../support/mods-load.ts';
-import { codeTokens, sectionsOf, tableRows } from '../../support/mods-docs.ts';
+import { MODS_REFERENCE } from '../../support/mods-reference.ts';
 import { spec } from '../../support/spec.ts';
 
 spec('mods.setting.allowManagedModsOnly', () => {
@@ -257,11 +257,5 @@ spec('mods.setting.allowModsToOverrideDenyRules', () => {
 });
 
 test('the settings the kit reads are the ones the reference lists, and no others', () => {
-  const rows = tableRows(
-    sectionsOf(2).find((section) => section.heading === 'Settings and environment variables')
-      ?.lines ?? [],
-    'Name',
-  );
-  const listed = rows.flatMap((row) => codeTokens(row[0] ?? ''));
-  expect(Object.keys(MOD_SETTINGS).toSorted()).toEqual([...listed].toSorted());
+  expect(Object.keys(MOD_SETTINGS).toSorted()).toEqual([...MODS_REFERENCE.settings].toSorted());
 });

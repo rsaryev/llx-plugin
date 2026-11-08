@@ -1,0 +1,842 @@
+{
+  "events": [
+    {
+      "group": "Tools",
+      "events": [
+        "tool.call",
+        "tool.check",
+        "tool.describe"
+      ]
+    },
+    {
+      "group": "Prompts and what Claude reads",
+      "events": [
+        "prompt.submit",
+        "prompt.fill",
+        "prompt.suggest",
+        "prompt.edit",
+        "prompt.autocomplete",
+        "prompt.compose",
+        "prompt.section",
+        "prompt.context",
+        "prompt.attachment",
+        "prompt.mention",
+        "skill.prompt",
+        "attribution.text"
+      ]
+    },
+    {
+      "group": "Commands and configuration",
+      "events": [
+        "command.run",
+        "command.describe",
+        "config.set",
+        "config.describe",
+        "settings.read"
+      ]
+    },
+    {
+      "group": "Turns",
+      "events": [
+        "turn.start",
+        "turn.step",
+        "turn.complete"
+      ]
+    },
+    {
+      "group": "Session",
+      "events": [
+        "session.start",
+        "session.end",
+        "session.compact",
+        "session.receive",
+        "session.send",
+        "session.append",
+        "session.attach",
+        "session.detach",
+        "session.measure"
+      ]
+    },
+    {
+      "group": "Subagents",
+      "events": [
+        "agent.offer",
+        "agent.spawn"
+      ]
+    },
+    {
+      "group": "Interface",
+      "events": [
+        "ui.render",
+        "ui.resolve",
+        "ui.press",
+        "ui.input",
+        "ui.select",
+        "ui.focus",
+        "ui.scroll",
+        "ui.close",
+        "ui.message",
+        "ui.fault"
+      ]
+    },
+    {
+      "group": "Other mods",
+      "events": [
+        "plugin.register",
+        "engine.create"
+      ]
+    },
+    {
+      "group": "Telemetry",
+      "events": [
+        "telemetry.log",
+        "telemetry.mark"
+      ]
+    }
+  ],
+  "apiMethods": [
+    {
+      "namespace": "plugin",
+      "methods": [
+        "name",
+        "root"
+      ]
+    },
+    {
+      "namespace": "ui",
+      "methods": [
+        "resolve",
+        "invalidate",
+        "open",
+        "close",
+        "panes",
+        "focus",
+        "scroll",
+        "toast",
+        "notify",
+        "status",
+        "log",
+        "notice",
+        "ask",
+        "copy",
+        "selection",
+        "blit"
+      ]
+    },
+    {
+      "namespace": "command",
+      "methods": [
+        "register",
+        "run",
+        "list"
+      ]
+    },
+    {
+      "namespace": "tool",
+      "methods": [
+        "register",
+        "call",
+        "check",
+        "list"
+      ]
+    },
+    {
+      "namespace": "agent",
+      "methods": [
+        "register",
+        "spawn",
+        "list"
+      ]
+    },
+    {
+      "namespace": "model",
+      "methods": [
+        "complete",
+        "fork",
+        "classify"
+      ]
+    },
+    {
+      "namespace": "prompt",
+      "methods": [
+        "submit",
+        "read",
+        "fill",
+        "suggest",
+        "compose"
+      ]
+    },
+    {
+      "namespace": "turn",
+      "methods": [
+        "abort"
+      ]
+    },
+    {
+      "namespace": "session",
+      "methods": [
+        "messages",
+        "cwd",
+        "root",
+        "model",
+        "turns",
+        "id",
+        "repo",
+        "surfaces",
+        "usage",
+        "version",
+        "compact",
+        "send",
+        "append",
+        "authorize"
+      ]
+    },
+    {
+      "namespace": "config",
+      "methods": [
+        "list",
+        "set"
+      ]
+    },
+    {
+      "namespace": "settings",
+      "methods": [
+        "read"
+      ]
+    },
+    {
+      "namespace": "env",
+      "methods": [
+        "get",
+        "set"
+      ]
+    },
+    {
+      "namespace": "fs",
+      "methods": [
+        "read",
+        "write",
+        "list",
+        "exists",
+        "stat",
+        "ancestors"
+      ]
+    },
+    {
+      "namespace": "store",
+      "methods": [
+        "get",
+        "set",
+        "delete",
+        "keys"
+      ]
+    },
+    {
+      "namespace": "state",
+      "methods": [
+        "get",
+        "set"
+      ]
+    },
+    {
+      "namespace": "clock",
+      "methods": [
+        "now",
+        "sleep",
+        "after",
+        "every"
+      ]
+    },
+    {
+      "namespace": "http",
+      "methods": [
+        "fetch"
+      ]
+    },
+    {
+      "namespace": "process",
+      "methods": [
+        "run",
+        "spawn"
+      ]
+    },
+    {
+      "namespace": "mcp",
+      "methods": [
+        "call",
+        "connect"
+      ]
+    },
+    {
+      "namespace": "audio",
+      "methods": [
+        "play",
+        "speak"
+      ]
+    },
+    {
+      "namespace": "telemetry",
+      "methods": [
+        "log",
+        "mark"
+      ]
+    }
+  ],
+  "agentStatuses": [
+    "pending",
+    "running",
+    "waiting",
+    "idle",
+    "completed",
+    "failed",
+    "killed"
+  ],
+  "limits": [
+    {
+      "limit": "A hook's own execution time for one event, not counting time inside `next` or a mods API call other than `$.clock.sleep`",
+      "value": "10 seconds, or 50 milliseconds for a `prompt.edit` hook"
+    },
+    {
+      "limit": "A `.catch` handler's execution time",
+      "value": "1 second"
+    },
+    {
+      "limit": "All `session.end` hooks together",
+      "value": "As long as the [SessionEnd hook budget](https://code.claude.com/docs/en/hooks.md#sessionend-input), 1.5 seconds unless you change it, counted from when your settings `SessionEnd` hooks finish"
+    },
+    {
+      "limit": "`$.process.run` timeout",
+      "value": "30 seconds by default, 10 minutes at most"
+    },
+    {
+      "limit": "`$.process.run` `stdout` and `stderr`",
+      "value": "4 MiB each. `isStdoutTruncated` or `isStderrTruncated` is `true` when one was cut."
+    },
+    {
+      "limit": "`$.model.complete` `maxTokens`",
+      "value": "1024 by default, up to 64,000 or the model's output limit"
+    },
+    {
+      "limit": "`$.fs.read` and `$.fs.write`",
+      "value": "4 MiB for one file"
+    },
+    {
+      "limit": "A `$.http.fetch` request body",
+      "value": "4 MiB, counted in characters. A call with a larger body rejects."
+    },
+    {
+      "limit": "A `$.http.fetch` response body",
+      "value": "4 MiB. `text` holds the first 4 MiB and the rest isn't read. When the `Content-Length` header declares more, the call rejects instead, with a reason that ends `is over the 4194304-byte limit`, except when the last request after any redirects uses the `HEAD` method. The `HEAD` exemption requires Claude Code v2.1.296 or later."
+    },
+    {
+      "limit": "One `$.http.fetch` call, redirects and body included",
+      "value": "30 seconds"
+    },
+    {
+      "limit": "Redirects one `$.http.fetch` call follows",
+      "value": "5"
+    },
+    {
+      "limit": "A hook's `drop` reason or `config.set` `deny` reason",
+      "value": "4,096 characters. The end of a longer reason is cut, and the drop or deny still applies. The cut requires Claude Code v2.1.292 or later, and on earlier versions the hook [fails](https://code.claude.com/docs/en/plugins/mods/events.md#handle-a-hook-that-fails) instead."
+    },
+    {
+      "limit": "Text in one tree",
+      "value": "The first 100,000 characters are drawn"
+    },
+    {
+      "limit": "A `Code`'s `language` or `path`, a `Select` option's `value`, or a `Client`'s `module`",
+      "value": "10,000 characters. If one is longer, the `ui.render` hook that returned it [fails](https://code.claude.com/docs/en/plugins/mods/events.md#handle-a-hook-that-fails)."
+    },
+    {
+      "limit": "A `Link`'s `href`",
+      "value": "2,048 characters. If it's longer, the `ui.render` hook that returned it [fails](https://code.claude.com/docs/en/plugins/mods/events.md#handle-a-hook-that-fails)."
+    },
+    {
+      "limit": "Nesting depth of one tree",
+      "value": "32 levels below the root element"
+    },
+    {
+      "limit": "Elements and text children in one tree",
+      "value": "20,000"
+    },
+    {
+      "limit": "`Raster` cells in one tree, each `Raster`'s `columns` times its `rows`",
+      "value": "262,144"
+    },
+    {
+      "limit": "PNG or RGBA bytes of all the `Image`s in one tree",
+      "value": "2 MiB"
+    },
+    {
+      "limit": "`$.store`",
+      "value": "4 MiB of JSON in total"
+    },
+    {
+      "limit": "`$.session.messages()`",
+      "value": "The newest 4,096 entries"
+    },
+    {
+      "limit": "`$.ui.invalidate('ui.render')` redraws",
+      "value": "Throttled to 10 a second, or 30 in the terminal for the visible pane, the expanded band, and the hint line under the prompt. Calls that come sooner are coalesced."
+    },
+    {
+      "limit": "`$.ui.toast`",
+      "value": "Shown for 4 seconds unless you pass `{ timeoutMs }`. In the [classic renderer](https://code.claude.com/docs/en/fullscreen.md#enable-fullscreen-rendering), a mod's newer toast can [take the place of its older one](https://code.claude.com/docs/en/plugins/mods/troubleshoot.md#a-toast-doesn’t-appear) that's showing or waiting to show."
+    },
+    {
+      "limit": "A pane opened without the user asking",
+      "value": "Placed from 144 terminal columns, 110 after they've opened it once"
+    },
+    {
+      "limit": "Nesting depth of a mods API call's arguments",
+      "value": "28,000 levels. Past that, the call rejects with a message ending `nesting deeper than 28000 levels is not supported`. Requires Claude Code v2.1.299 or later."
+    },
+    {
+      "limit": "Nesting depth of a changed event passed to `next`, outside [async generator hooks](#events) such as one on `turn.step`",
+      "value": "28,000 levels. Past that, `next` rejects with a message ending `nesting deeper than 28000 levels is not supported`. Requires Claude Code v2.1.299 or later."
+    },
+    {
+      "limit": "Nesting depth of a hook's return value, outside `ui.render`, `ui.resolve`, and async generator hooks",
+      "value": "28,000 levels. Past that, the hook's result is refused, and [the notice that reports it](https://code.claude.com/docs/en/plugins/mods/troubleshoot.md#find-out-why-a-mod-does-nothing) includes `nesting deeper than 28000 levels is not supported`. Requires Claude Code v2.1.299 or later."
+    },
+    {
+      "limit": "Scopes, such as functions, blocks, and loops, nested inside one another in one file of a hooks module",
+      "value": "2,000"
+    },
+    {
+      "limit": "Command, tool, subagent type, and pane names",
+      "value": "Letters, digits, `_`, and `-`, up to 64 characters"
+    },
+    {
+      "limit": "One `claude plugin test` test",
+      "value": "5 seconds unless the test sets `timeoutMs`"
+    }
+  ],
+  "elements": [
+    {
+      "name": "Box",
+      "props": [
+        "key",
+        "gap",
+        "padding",
+        "margin",
+        "width",
+        "height",
+        "minWidth",
+        "minHeight",
+        "borderStyle",
+        "borderColor",
+        "borderDimColor",
+        "backgroundColor",
+        "position",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "overflow",
+        "display",
+        "hover"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Text",
+      "props": [
+        "color",
+        "backgroundColor",
+        "bold",
+        "italic",
+        "underline",
+        "strikethrough",
+        "dimColor",
+        "inverse",
+        "wrap",
+        "size",
+        "weight",
+        "mono",
+        "tabular",
+        "hover"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Button",
+      "props": [
+        "key",
+        "label",
+        "children",
+        "onPress",
+        "hotkey",
+        "plain",
+        "dimColor",
+        "autoFocus",
+        "action",
+        "variant",
+        "role",
+        "hover"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Link",
+      "props": [
+        "href",
+        "label"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Code",
+      "props": [
+        "source",
+        "language",
+        "path",
+        "startLine",
+        "format",
+        "wrap"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Markdown",
+      "props": [
+        "text",
+        "key",
+        "dimColor",
+        "onLinkPress",
+        "pressableLinks"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Input",
+      "props": [
+        "key",
+        "label",
+        "placeholder",
+        "value",
+        "submitLabel",
+        "rows",
+        "onSubmit",
+        "onInput",
+        "autoFocus"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Select",
+      "props": [
+        "key",
+        "label",
+        "options",
+        "value",
+        "onSelect",
+        "autoFocus"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Svg",
+      "props": [
+        "source",
+        "alt",
+        "width",
+        "height",
+        "isInteractive"
+      ],
+      "surfaces": [
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Client",
+      "props": [
+        "module",
+        "key",
+        "props",
+        "width",
+        "height",
+        "flexGrow"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop"
+      ]
+    },
+    {
+      "name": "Raster",
+      "props": [
+        "key",
+        "columns",
+        "rows",
+        "cells"
+      ],
+      "surfaces": [
+        "terminal"
+      ]
+    },
+    {
+      "name": "Image",
+      "props": [
+        "key",
+        "source",
+        "columns",
+        "rows",
+        "alt"
+      ],
+      "surfaces": [
+        "terminal"
+      ]
+    }
+  ],
+  "borderStyles": [
+    "single",
+    "double",
+    "round",
+    "bold",
+    "singleDouble",
+    "doubleSingle",
+    "classic",
+    "arrow",
+    "dashed",
+    "quote"
+  ],
+  "renderSites": [
+    {
+      "sites": [
+        "Pane"
+      ],
+      "props": [
+        "title",
+        "isFocused",
+        "bodyColumns",
+        "placement",
+        "scroll",
+        "view"
+      ],
+      "request": "pane-id",
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "sites": [
+        "AbovePrompt"
+      ],
+      "props": [
+        "hasSurvey",
+        "isWorking",
+        "maxRows",
+        "bodyColumns",
+        "scroll",
+        "view"
+      ],
+      "request": "instance",
+      "surfaces": [
+        "terminal",
+        "desktop"
+      ]
+    },
+    {
+      "sites": [
+        "UserMessage"
+      ],
+      "props": [
+        "text",
+        "origin",
+        "isExpanded",
+        "task",
+        "from"
+      ],
+      "request": "message-id",
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "sites": [
+        "AssistantMessage"
+      ],
+      "props": [],
+      "request": "message-id",
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "sites": [
+        "ToolUse",
+        "ToolResult",
+        "ToolGroup"
+      ],
+      "props": [],
+      "request": "tool-call-id",
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "sites": [
+        "CommandOutput"
+      ],
+      "props": [
+        "command",
+        "text"
+      ],
+      "request": "message-id",
+      "surfaces": [
+        "terminal",
+        "desktop"
+      ]
+    },
+    {
+      "sites": [
+        "AskUserQuestion"
+      ],
+      "props": [],
+      "request": "tool-call-id",
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "sites": [
+        "ToolProgress"
+      ],
+      "props": [
+        "kind"
+      ],
+      "request": "tool-call-id",
+      "surfaces": [
+        "terminal"
+      ]
+    },
+    {
+      "sites": [
+        "Spinner"
+      ],
+      "props": [
+        "word",
+        "message",
+        "suffix",
+        "mode"
+      ],
+      "request": "agent-id",
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "sites": [
+        "TurnDuration"
+      ],
+      "props": [
+        "word",
+        "durationMs"
+      ],
+      "request": "message-id",
+      "surfaces": [
+        "terminal"
+      ]
+    },
+    {
+      "sites": [
+        "InfoNotice"
+      ],
+      "props": [
+        "text",
+        "command"
+      ],
+      "request": "message-id",
+      "surfaces": [
+        "terminal"
+      ]
+    },
+    {
+      "sites": [
+        "SessionMode"
+      ],
+      "props": [
+        "modes"
+      ],
+      "request": "instance",
+      "surfaces": [
+        "terminal",
+        "desktop"
+      ]
+    },
+    {
+      "sites": [
+        "PromptHint"
+      ],
+      "props": [
+        "isDraft",
+        "isWorking",
+        "hint"
+      ],
+      "request": "instance",
+      "surfaces": [
+        "terminal",
+        "desktop"
+      ]
+    }
+  ],
+  "settings": [
+    "CLAUDE_CODE_PLUGIN_DIRS",
+    "CLAUDE_CODE_PLUGIN_DIR_WATCH",
+    "prependPlugins",
+    "appendPlugins",
+    "allowManagedModsOnly",
+    "allowModsToOverrideDenyRules",
+    "allowManagedHooksOnly",
+    "disableAllHooks",
+    "disableSideloadFlags",
+    "pluginConfigs"
+  ]
+}
