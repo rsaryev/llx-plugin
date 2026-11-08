@@ -50,3 +50,6 @@ export type UserConfigValue = NonNullable<
  * `extraKnownMarketplaces` use the same forms.
  */
 export type MarketplaceSource = NonNullable<Settings['strictKnownMarketplaces']>[number];
+
+/** The provenance an Agent SDK application stamps on a user message (`{ kind: 'human' }` for keyboard input). */
+export type { SDKMessageOrigin } from '@anthropic-ai/claude-agent-sdk';

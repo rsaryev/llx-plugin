@@ -107,6 +107,14 @@
   (neither undoes the other), `disableSkillShellExecution` as a per-origin verdict with the
   `[shell command execution disabled by policy]` replacement (a managed `true` is never overridden),
   and `syncClaudeAiSkills` as the same decision `syncClaudeAiPlugins` gives.
+- Workflow keys (`settings/workflows`): `createWorkflowSettingsPolicy(view, context)` answers
+  `disableWorkflows` and `enableWorkflows` as `enablement()` (off by `disableWorkflows` in any file,
+  `CLAUDE_CODE_DISABLE_WORKFLOWS=1` or the organization's toggle, none undone by `enableWorkflows:
+  true`; on by default except on Pro; what goes with workflows; the `/config` row),
+  `workflowKeywordTriggerEnabled` as `keyword(prompt)` (the `ultracode` keyword triggers only in a
+  prompt a person typed, never for `-p`, a scheduled task, an unstamped SDK prompt or a relayed
+  event) and `workflowSizeGuideline` as `size()` (agent count advice, precedence over the `/config`
+  choice, the `Large workflow` threshold).
 
 ### Fixed
 
