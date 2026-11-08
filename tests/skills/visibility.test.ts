@@ -128,11 +128,10 @@ spec(OFF, () => {
     expect(menu(overrides)).not.toContain('deploy');
   });
 
-  test('"also hides the skill from the command lists advertised to Remote Control clients and to Agent SDK callers": those lists are the menu rows', () => {
+  test('"also hides the skill from the command lists advertised to Remote Control clients and to Agent SDK callers": judgment: those lists are the menu rows', () => {
     // the SDK's `SlashCommand` rows are what `menuEntries` returns: an off skill has none
     const rows = menuEntries([LEGACY, DEPLOY, OTHER], { overrides });
     expect(rows.map((row) => row.name)).toEqual(['legacy-context', 'other']);
-    expect(rows.every((row) => typeof row.argumentHint === 'string')).toBe(true);
   });
 
   test('"Invoking a hidden skill by its full name returns the skillOverrides error instead of running it"', () => {

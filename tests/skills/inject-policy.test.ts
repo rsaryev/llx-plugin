@@ -41,6 +41,14 @@ spec('skills.behavior.When only managed permission rules apply', () => {
     expect(grantsOf(run)).toHaveLength(3);
   });
 
+  test('"Skills from managed settings ... keep their allowed-tools": a managed-origin skill keeps its 3 grants', async () => {
+    const run = await expandWith(skillFrom(commit, 'x', { kind: 'managed' }), {
+      request: { policy: { managedPermissionRulesOnly: true } },
+    });
+    expect(grantsOf(run)).toHaveLength(3);
+    expect(run.expansion).toMatchObject({ ok: true, ignoredGrants: [] });
+  });
+
   test('the same setting ignores `allowed-tools` of a skills-directory plugin and of an `@inline` plugin in a managed Desktop session', async () => {
     const policy = { managedPermissionRulesOnly: true };
     const skill = skillFrom(commit, 'x', PLUGIN);
@@ -110,6 +118,16 @@ spec('skills.behavior.When managed settings lock hooks to plugins', () => {
     expect(grantsOf(plain)).toHaveLength(3);
     const plugin = await expandWith(skillFrom(`${commit}\n${hooks}`, 'x', PLUGIN), { request });
     expect(grantsOf(plugin)).toHaveLength(3);
+  });
+
+  test('a skill from the managed settings directory keeps its hooks and its grant under the lock', async () => {
+    const hooks =
+      'hooks:\n  PreToolUse:\n    - matcher: Bash\n      hooks:\n        - type: command\n          command: ./check.sh';
+    const run = await expandWith(skillFrom(`${commit}\n${hooks}`, 'x', { kind: 'managed' }), {
+      request: { policy: { hooksLockedToPlugins: true } },
+    });
+    expect(grantsOf(run)).toHaveLength(3);
+    expect(run.expansion).toMatchObject({ ok: true, hooks: { PreToolUse: [{ matcher: 'Bash' }] } });
   });
 
   test('"When such a skill runs in a subagent through `context: fork`, it keeps the pre-approval"', async () => {

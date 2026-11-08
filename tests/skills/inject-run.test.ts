@@ -186,16 +186,32 @@ spec('skills.behavior.How injected commands run.Output size', () => {
 
   test('"output past the inline ceiling arrives as a file path plus a short preview, not truncated text"', async () => {
     const scratch = memoryScratch('/session');
-    const text = `${'a'.repeat(PREVIEW)}${'b'.repeat(CEILING)}`;
+    const text = `${'a'.repeat(PREVIEW)}${'B'.repeat(CEILING)}`;
     const result = await runThrough(fixedRunner({ stdout: text }), 'cat big', { scratch });
     if (!result.ok) throw new Error(result.issue.message);
     const [injected = ''] = result.outputs;
     const [path] = [...scratch.files.keys()];
     expect(scratch.files.get(path ?? '')).toBe(text);
     expect(injected.includes(path ?? 'missing')).toBe(true);
-    expect(injected.includes('a'.repeat(PREVIEW))).toBe(true);
-    expect(injected.includes('b')).toBe(false);
+    expect(injected.endsWith(`\n${'a'.repeat(PREVIEW)}`)).toBe(true);
+    expect(injected.includes('B')).toBe(false);
     expect(injected.length).toBeLessThan(text.length / 10);
+  });
+
+  test('"truncated past 64 MiB": the saved file keeps the first 64 MiB, cut between two characters', async () => {
+    const limit = 64 * 1024 * 1024;
+    const scratch = memoryScratch('/session');
+    const text = `${'a'.repeat(limit - 1)}\u20ac${'z'.repeat(10)}`;
+    const result = await runThrough(fixedRunner({ stdout: text }), 'cat huge', { scratch });
+    if (!result.ok) throw new Error(result.issue.message);
+    const [saved = ''] = [...scratch.files.values()];
+    expect(saved).toBe('a'.repeat(limit - 1));
+    expect(result.outputs[0]).toContain('the first 64 MiB of the output was saved to');
+    const whole = memoryScratch('/session');
+    await runThrough(fixedRunner({ stdout: 'a'.repeat(limit) }), 'cat huge', {
+      scratch: whole,
+    });
+    expect([...whole.files.values()][0]?.length).toBe(limit);
   });
 
   test('`bashOutputMaxChars` sizes the inline ceiling', async () => {

@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- Skills review: a `Skill(name)` allow or ask rule matches the invoked name and the skill's own name (a
+  deny rule still sees every name); the file an injected command's oversized output is saved to is cut at
+  64 MiB, between two UTF-8 characters, and the note says so; judgments record the host mapping of Claude's
+  `args`, the SDK command lists, and how `&` and entities in a description are handled.
 - Sub-agent catalog review: a `Task(...)` deny rule works as an alias of `Agent(...)`; `readFlagAgents`
   reports the schema problems of every definition before the `-` names and cuts more than 20 lines to
   `…and N more`; `resolveSubagentModel` takes `builtin: { name, connection }` and runs Explore on the `opus`

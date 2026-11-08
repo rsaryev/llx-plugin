@@ -21,21 +21,28 @@ function skillCovers(pattern: string, name: string): boolean {
 }
 
 /**
- * Only a deny rule sees the other names a skill goes by (its alias, its unqualified name, a synced
- * form): "Claude Code matches an allow rule only against the skill's own name and the name in
- * Claude's invocation", which is the call's `skill` field. The host reports the other names in
- * `PreparedCall.skillNames`; the kit holds no skill catalog (spec/judgments.md).
+ * The names `skillNames` adds to the invoked one. A deny rule sees every other name a skill goes by
+ * (its alias, its unqualified name, a synced form); an allow rule sees only "the skill's own name
+ * and the name in Claude's invocation" (skills.md, "Restrict Claude's skill access"), the invoked
+ * name being the call's `skill` field. The host reports the names in `PreparedCall.skillNames`,
+ * the command first; the kit holds no skill catalog. Judgment (spec/judgments.md): an ask rule
+ * reads the same names as an allow rule, the docs naming only allow and deny.
  */
-const SEES_OTHER_NAMES: { readonly [B in PermissionBehavior]: boolean } = {
-  allow: false,
-  deny: true,
-  ask: false,
+const OWN_NAME_ONLY = (names: readonly string[]): readonly string[] => names.slice(0, 1);
+const EVERY_NAME = (names: readonly string[]): readonly string[] => names;
+
+const NAMES_SEEN: {
+  readonly [B in PermissionBehavior]: (names: readonly string[]) => readonly string[];
+} = {
+  allow: OWN_NAME_ONLY,
+  deny: EVERY_NAME,
+  ask: OWN_NAME_ONLY,
 };
 
 function namesOf(behavior: PermissionBehavior, call: PreparedCall): readonly string[] {
   const invoked = inputString(call.input, 'skill');
   const own = invoked === undefined ? [] : [invoked];
-  return SEES_OTHER_NAMES[behavior] ? [...own, ...(call.skillNames ?? [])] : own;
+  return [...own, ...NAMES_SEEN[behavior](call.skillNames ?? [])];
 }
 
 export const matchSkillRule: SpecifierMatcher = (rule, call) => {

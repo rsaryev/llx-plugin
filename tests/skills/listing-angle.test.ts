@@ -45,7 +45,14 @@ spec('skills.behavior.Angle brackets in a skill description show as &lt; and &gt
     });
   });
 
-  test('an already-escaped entity is escaped again, never read back', () => {
+  test('judgment: only < and > are escaped; & is left alone', () => {
     expect(listed([described('a', 'Fish &amp; chips')])[0]?.description).toBe('Fish &amp; chips');
+    expect(listed([described('b', 'Tom & Jerry')])[0]?.description).toBe('Tom & Jerry');
+  });
+
+  test('judgment: an input already holding &lt; keeps it, so it displays as written', () => {
+    expect(listed([described('a', 'Use &lt;branch&gt; or <env>')])[0]?.description).toBe(
+      'Use &lt;branch&gt; or &lt;env&gt;',
+    );
   });
 });

@@ -1,4 +1,5 @@
 import type { AgentMemoryScope } from '../format/agent-fields.ts';
+import { prefixWithinBytes } from '../foundation/index.ts';
 import type { AgentSource } from '../format/agent-record.ts';
 import type { AgentMcpServerSpec } from '../protocol/official.ts';
 import type { Locations, TextFileReader } from '../ports/index.ts';
@@ -207,17 +208,6 @@ function withoutBlockComments(text: string): string {
 
 /** errors.md, "Memory index is over its read limit": frontmatter and block comments do not load. */
 const loadedContent = (text: string): string => withoutBlockComments(text.replace(FRONTMATTER, ''));
-
-const startsCharacter = (byte: number | undefined): boolean => (byte ?? 0) >> 6 !== 0b10;
-
-/** The longest prefix of `text` of at most `limit` UTF-8 bytes that ends between two characters. */
-function prefixWithinBytes(text: string, limit: number): string {
-  const bytes = new TextEncoder().encode(text);
-  if (bytes.length <= limit) return text;
-  let end = limit;
-  while (end > 0 && !startsCharacter(bytes[end])) end -= 1;
-  return new TextDecoder().decode(bytes.subarray(0, end));
-}
 
 /**
  * The part of a `MEMORY.md` index that the subagent's system prompt includes: "the first 200 lines

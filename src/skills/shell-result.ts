@@ -1,3 +1,4 @@
+import { prefixWithinBytes } from '../foundation/index.ts';
 import type { SkillShell } from '../format/skill-types.ts';
 import type { ScratchFiles } from '../ports/index.ts';
 import {
@@ -56,6 +57,9 @@ const isNormalResult = (command: string, shell: SkillShell, exitCode: number | n
 
 const OUTPUT_FILE = 'skill-command-output.txt';
 
+/** "the path of a file saved to the session directory and truncated past 64 MiB" (tools-reference.md). */
+const SAVED_OUTPUT_MAX_BYTES = 64 * 1024 * 1024;
+
 /**
  * A valid result past the inline ceiling "arrives as a file path plus a short preview, not
  * truncated text" (tools-reference.md, "Output limits"). Judgment (spec/judgments.md): the docs give
@@ -71,11 +75,13 @@ async function inlineOrFile(
   const limits = bashOutputLimits(environmentOf(context.env), context.bashOutputMaxChars);
   const window = windowBashOutput({ output, valid: true, limits });
   if (!window.savedToFile) return window.text;
-  const path = await scratch?.write(OUTPUT_FILE, output, signal).catch(() => undefined);
+  const saved = prefixWithinBytes(output, SAVED_OUTPUT_MAX_BYTES);
+  const path = await scratch?.write(OUTPUT_FILE, saved, signal).catch(() => undefined);
+  const extent = saved === output ? 'the full output' : 'the first 64 MiB of the output';
   const where =
     path === undefined
       ? 'the rest could not be saved'
-      : `the full output was saved to ${path}; read or search that file for the rest`;
+      : `${extent} was saved to ${path}; read or search that file for the rest`;
   return `[The command printed ${output.length} characters, more than fits inline: ${where}. Preview of the first ${window.text.length} characters follows.]\n${window.text}`;
 }
 

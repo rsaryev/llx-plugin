@@ -34,12 +34,6 @@ spec('skills.behavior.Pass arguments to skills', () => {
     expect(text.includes('$ARGUMENTS')).toBe(false);
   });
 
-  test('Claude passes them in the `args` of the Skill tool call: the same text, the same result', async () => {
-    const input = { skill: 'fix-issue', args: '123' };
-    const text = await expanded('', FIX_ISSUE, input.args);
-    expect(text.startsWith('Fix GitHub issue 123 ')).toBe(true);
-  });
-
   test('"Running /migrate-component SearchBar JavaScript TypeScript replaces $ARGUMENTS[0], [1] and [2]", and `$N` is the same', async () => {
     const indexed = 'Migrate the $ARGUMENTS[0] component from $ARGUMENTS[1] to $ARGUMENTS[2].';
     const short = 'Migrate the $0 component from $1 to $2.';

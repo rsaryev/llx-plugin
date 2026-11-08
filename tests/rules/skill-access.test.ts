@@ -64,10 +64,25 @@ spec(ACCESS_0, () => {
     expect(blocks('Skill(review)', callFor(DEPLOY, 'deploy', ['ship']))).toBe(false);
   });
 
-  test('only a deny rule sees the alias: an allow rule is matched against the invoked name', () => {
-    const call = callFor(CODE_REVIEW, 'code-review', ['review']);
-    expect(matchRule(parsed('Skill(review)', 'allow'), call, matchContext)).toBe(false);
+  test("only a deny rule sees the alias: an allow rule reads the invoked name and the skill's own name", () => {
+    const call = callFor(CODE_REVIEW, 'review', ['review']);
+    expect(matchRule(parsed('Skill(code-review)', 'allow'), call, matchContext)).toBe(true);
+    expect(matchRule(parsed('Skill(review)', 'allow'), call, matchContext)).toBe(true);
+    const own = callFor(CODE_REVIEW, 'code-review', ['review']);
+    expect(matchRule(parsed('Skill(review)', 'allow'), own, matchContext)).toBe(false);
     expect(allows('Skill(review)', 'review')).toBe(true);
+  });
+
+  test('judgment: an ask rule reads the same names as an allow rule', () => {
+    const call = callFor(CODE_REVIEW, 'review', ['review']);
+    expect(matchRule(parsed('Skill(code-review)', 'ask'), call, matchContext)).toBe(true);
+    expect(
+      matchRule(
+        parsed('Skill(review)', 'ask'),
+        callFor(CODE_REVIEW, 'code-review', ['review']),
+        matchContext,
+      ),
+    ).toBe(false);
   });
 });
 
