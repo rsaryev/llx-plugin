@@ -7,6 +7,8 @@
  */
 import { describe, expect, test } from 'bun:test';
 import {
+  MCP_DISPLAY_SCOPES,
+  displayHeaders,
   displayReference,
   expandEnvText,
   expandMcpServer,
@@ -182,24 +184,42 @@ spec('mcpSettings.behavior.How references appear in /mcp and CLI output', () => 
     headers: { Authorization: 'Bearer ${API_KEY}' },
   };
   const stdio: PluginMcpServer = { command: 'npx', args: ['-y', '${PKG}', '--root=${ROOT}'] };
+  const lookup = lookupOf({ API_BASE_URL: 'https://internal.example', PKG: 'p', ROOT: '/r' });
+  const local = MCP_DISPLAY_SCOPES.filter((scope) => scope !== 'managed');
 
   test('local, project and user servers show the ${VAR} reference by name, not its value', () => {
-    for (const scope of ['local', 'project', 'user'] as const) {
+    for (const scope of local) {
       expect(displayReference(server, scope)).toBe('${API_BASE_URL:-https://api.example.com}/mcp');
       expect(displayReference(stdio, scope)).toBe('npx -y ${PKG} --root=${ROOT}');
     }
-    // the connection uses the value; the display never does
-    const lookup = lookupOf({ API_BASE_URL: 'https://internal.example', PKG: 'p', ROOT: '/r' });
-    expect(expandMcpServer('s', server, lookup).server).toMatchObject({
-      url: 'https://internal.example/mcp',
-    });
-    expect(displayReference(server, 'user')).not.toContain('internal.example');
   });
 
+  test('the connection uses the value and the as-written entry is left holding its reference', () => {
+    const { server: expanded } = expandMcpServer('s', server, lookup);
+    expect(expanded).toMatchObject({ url: 'https://internal.example/mcp' });
+    for (const scope of local) {
+      expect(displayReference(server, scope)).toBe('${API_BASE_URL:-https://api.example.com}/mcp');
+    }
+  });
+
+  test('the display shows what it is given: an expanded server shows its value, so pass the entry as written', () => {
+    const { server: expanded } = expandMcpServer('s', server, lookup);
+    expect(expanded).toBeDefined();
+    if (expanded === undefined) return;
+    expect(displayReference(expanded, 'user')).toBe('https://internal.example/mcp');
+    expect(displayReference(server, 'user')).not.toContain('internal.example');
+  });
+});
+
+spec('mcpSettings.managed.What users can see and change', () => {
+  const remote: PluginMcpServer = {
+    type: 'http',
+    url: 'https://mcp.example.com/v1/tools?x=1',
+    headers: { Authorization: 'Bearer secret-9f2', 'X-Team': 'blue' },
+  };
+
   test('a managed server shows the URL host only', () => {
-    expect(
-      displayReference({ type: 'http', url: 'https://mcp.example.com/v1/tools?x=1' }, 'managed'),
-    ).toBe('https://mcp.example.com/…');
+    expect(displayReference(remote, 'managed')).toBe('https://mcp.example.com/…');
   });
 
   test('the host of a managed server keeps its port and drops userinfo', () => {
@@ -207,6 +227,26 @@ spec('mcpSettings.behavior.How references appear in /mcp and CLI output', () => 
     expect(
       displayReference({ type: 'sse', url: 'https://u:p@mcp.example.com:8443/a' }, 'managed'),
     ).toBe('https://mcp.example.com:8443/…');
+  });
+
+  test('a managed server shows its header names without their values', () => {
+    const shown = displayHeaders(remote, 'managed');
+    expect(shown).toEqual([{ name: 'Authorization' }, { name: 'X-Team' }]);
+    expect(JSON.stringify(shown)).not.toContain('secret-9f2');
+  });
+
+  test('a server with no headers, or a stdio one, shows none', () => {
+    expect(displayHeaders({ type: 'http', url: 'https://mcp.example.com/' }, 'managed')).toEqual(
+      [],
+    );
+    expect(displayHeaders({ command: 'srv' }, 'managed')).toEqual([]);
+  });
+
+  test('the other scopes show a header as written (judgment)', () => {
+    expect(displayHeaders(remote, 'user')).toEqual([
+      { name: 'Authorization', value: 'Bearer secret-9f2' },
+      { name: 'X-Team', value: 'blue' },
+    ]);
   });
 });
 
@@ -224,10 +264,11 @@ describe('expansion edges (judgments)', () => {
   });
 
   test('a stdio entry with a url key is expanded as stdio and the url is kept as written', () => {
-    const odd = { type: 'stdio', command: '${C}', url: '${U}' } as const;
+    // the extra key comes through a spread: the type has no `url` on stdio, which is the point
+    const extra = { url: '${U}' };
+    const odd: PluginMcpServer = { type: 'stdio', command: '${C}', ...extra };
     const out = expandMcpServer('s', odd, lookupOf({ C: 'c', U: 'u' }));
-    const expected = { type: 'stdio', command: 'c', url: '${U}' } as const;
-    expect(out.server).toEqual(expected);
+    expect(out.server).toEqual({ type: 'stdio', command: 'c', ...extra });
   });
 
   test('the same variable referenced twice is reported once per field', () => {

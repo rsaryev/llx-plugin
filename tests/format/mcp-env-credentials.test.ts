@@ -93,12 +93,14 @@ spec('mcpSettings.behavior.Credential variables that read as empty', () => {
   test('the debug line is for url and headers, not for a stdio server, and never holds the value', () => {
     const local = expandMcpServer('s', { command: '${NPM_TOKEN}' }, lookupOf({ NPM_TOKEN: 'tok' }));
     expect(local.debug).toEqual([]);
+    const value = 'sk-v4lue-9f2';
     const remoteOut = expandMcpServer(
       's',
       remote({ A: '${NPM_TOKEN}', B: '${NPM_TOKEN}' }),
-      lookupOf({ NPM_TOKEN: 'tok' }),
+      lookupOf({ NPM_TOKEN: value }),
     );
     expect(remoteOut.debug).toHaveLength(1);
-    expect(remoteOut.debug[0]).not.toContain('tok ');
+    expect(remoteOut.debug[0]).toContain('NPM_TOKEN');
+    expect(remoteOut.debug[0]).not.toContain(value);
   });
 });

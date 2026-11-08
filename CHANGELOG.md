@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- MCP: `displayHeaders(server, scope)` gives the header names `claude mcp get` shows for a server
+  the organization provides (managed-mcp.md, "What users can see and change"), and the tests of
+  `displayReference`, the credential debug line and the endpoint key now assert what they claim.
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
   short label and the amounts of each row of the Limits table, not the page's sentences, so the
   repository holds facts and identifiers only.

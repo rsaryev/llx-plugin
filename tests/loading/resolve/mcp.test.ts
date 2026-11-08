@@ -243,4 +243,17 @@ describe('plugin and settings-scope servers expand alike (judgment)', () => {
       );
     }
   });
+
+  test('one concrete result: the default fills an unset name, an empty value counts as set', async () => {
+    const plugin = await resolveMcpServer(
+      'srv',
+      servers[1] ?? { command: '' },
+      scopeOf({ environment: fakeEnvironment(env) }),
+    );
+    expect(plugin.resolved?.server).toEqual({
+      command: 'h.example',
+      args: ['', '${MISSING}', 't'],
+      env: { K: 'z' },
+    });
+  });
 });

@@ -211,9 +211,48 @@ const REMOTE_DISPLAY: { readonly [S in McpDisplayScope]: (url: string) => string
  * provides, the URL's host only. Judgment: the host is the URL's host component (with its port) and
  * a URL that does not parse shows nothing of itself. A managed entry has no `command` (managed-mcp.md,
  * "What an entry can contain"), so a command line is shown as written in every scope.
+
+ * `server` is the entry as written, never the result of `expandMcpServer`: the function shows what it
+ * is given, so an expanded server would show the resolved value.
  */
 export function displayReference(server: PluginMcpServer, scope: McpDisplayScope): string {
   return isRemoteMcpServer(server)
     ? REMOTE_DISPLAY[scope](server.url)
     : [server.command, ...(server.args ?? [])].join(' ');
+}
+
+/** One header a surface shows: its name, and its value when the scope shows it. */
+export interface DisplayedHeader {
+  readonly name: string;
+  readonly value?: string;
+}
+
+const headerAsWritten = ([name, value]: readonly [string, string]): DisplayedHeader => ({
+  name,
+  value,
+});
+const headerNameOnly = ([name]: readonly [string, string]): DisplayedHeader => ({ name });
+
+const HEADER_DISPLAY: {
+  readonly [S in McpDisplayScope]: (entry: readonly [string, string]) => DisplayedHeader;
+} = {
+  local: headerAsWritten,
+  project: headerAsWritten,
+  user: headerAsWritten,
+  managed: headerNameOnly,
+};
+
+/**
+ * What `claude mcp get` shows of a remote server's headers. For a server the organization provides:
+ * "its header names without their values" (managed-mcp.md, "What users can see and change"). Judgment:
+ * the docs give no rule for the other scopes, so a header there is shown as written (a `${VAR}`
+ * reference by name, as for the URL; pass the entry as written, as for `displayReference`). A stdio
+ * server has no headers.
+ */
+export function displayHeaders(
+  server: PluginMcpServer,
+  scope: McpDisplayScope,
+): readonly DisplayedHeader[] {
+  if (!isRemoteMcpServer(server)) return [];
+  return Object.entries(server.headers ?? {}).map(HEADER_DISPLAY[scope]);
 }

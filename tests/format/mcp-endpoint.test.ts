@@ -112,7 +112,9 @@ describe('endpoint key (judgments)', () => {
   });
 
   test('a stdio entry that carries a url key stays a command endpoint', () => {
-    const odd = { type: 'stdio', command: 'srv', url: 'https://x.example/' } as const;
+    // the extra key comes through a spread: the type has no `url` on stdio, which is the point
+    const extra = { url: 'https://x.example/' };
+    const odd: PluginMcpServer = { type: 'stdio', command: 'srv', ...extra };
     expect(mcpEndpointKey(odd)).toBe(mcpEndpointKey({ command: 'srv' }));
   });
 });

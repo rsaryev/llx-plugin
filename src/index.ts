@@ -57,9 +57,11 @@ export {
 } from './format/credential-env.ts';
 export {
   MCP_DISPLAY_SCOPES,
+  displayHeaders,
   displayReference,
   expandEnvText,
   expandMcpServer,
+  type DisplayedHeader,
   type EnvExpansion,
   type EnvLookup,
   type McpDisplayScope,
