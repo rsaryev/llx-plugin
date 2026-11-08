@@ -39,7 +39,7 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `readMarketplace(raw)`              | planned | `marketplace.json`: entries, sources, strict mode                     |
 | `readSkill(path, text)`             | planned | `SKILL.md` frontmatter and body                                       |
 | `readCommand(path, text)`           | planned | a command file (the older skill format)                               |
-| `readAgent(text, origin)`           | done (name, description, model, effort, maxTurns, autoCompactWindow, background, omitClaudeMd, isolation, color, initialPrompt, experimental) | an agent file → `AgentRecord` (official `AgentDefinition` + scoped name, source, `extras` for `color`, `isolation` and `cacheTtl`): a project, user or managed file without a name is documentation and a bad name, no description or unparseable YAML skips it; a plugin agent always loads (file-name fallback, `Agent from <plugin> plugin`) and lists the fields it ignores in `ignored`; a bad value is dropped with a warning; `unrecognized` names up to five unknown fields; the other fields follow |
+| `readAgent(text, origin)`           | done (name, description, tools, disallowedTools, model, effort, maxTurns, autoCompactWindow, background, omitClaudeMd, isolation, color, initialPrompt, experimental) | an agent file → `AgentRecord` (official `AgentDefinition` + scoped name, source, `extras` for `color`, `isolation` and `cacheTtl`): a project, user or managed file without a name is documentation and a bad name, no description or unparseable YAML skips it; a plugin agent always loads (file-name fallback, `Agent from <plugin> plugin`) and lists the fields it ignores in `ignored`; a bad value is dropped with a warning; `unrecognized` names up to five unknown fields; the other fields follow |
 | `AGENT_FIELDS`, `AGENT_FIELD_NAMES`, `PLUGIN_IGNORED_FIELDS`, `AGENT_COLORS`, `AGENT_ISOLATIONS`, `AGENT_MEMORY_SCOPES`, `AUTO_COMPACT_RANGE` | done | the registry of the 19 documented frontmatter fields (plugin `supported` or `ignored`, and a coercer each) and the closed lists behind them |
 | `scopedAgentName`, `hookAgentType`, `validAgentName` | done | `my-plugin:review:security` (frontmatter `name` replaces the file segment, a manifest-listed file drops subfolders); the `agent_type` hooks receive; the name rules |
 | `readHooksFile(raw)`                | done    | `hooks/hooks.json` → official `HooksSettings`: events, matcher groups, every handler field; an error leaves no hooks, as Claude Code does |
@@ -253,6 +253,31 @@ requested path and `PreparedCall.resolvedPaths`, which `prepareCall` fills). A `
 out of the rules before it in the same source and list; `evaluateRules` applies it. `Write(...)`,
 `Glob(...)`, `Grep(...)` and `NotebookEdit(...)` rules with a path never match; write `Edit(...)` or
 `Read(...)`. A host asks `readsNetworkPath` before it trusts any allow rule, hook or classifier.
+
+## Sub-agents (done: the tools a subagent gets)
+
+```ts
+import { resolveSubagentTools } from '@rsaryev/claude-plugin-kit';
+
+const outcome = resolveSubagentTools(
+  { name: agent.name, tools: agent.definition.tools, disallowedTools: agent.definition.disallowedTools },
+  { builtin: mainConversationTools, mcp: mcpTools }, // the pool the host offers
+  { kind: 'subagent', background: true, atDepthLimit: false, permissionMode: 'default', asMainThread: false },
+);
+if (!outcome.ok) return outcome.refusal.message; // "Agent 'x' would be spawned with zero tools — refusing. ..."
+```
+
+| Function                          | Status  | Does                                                                                   |
+| --------------------------------- | ------- | -------------------------------------------------------------------------------------- |
+| `resolveSubagentTools(agent, pool, run)` | done | `tools` and `disallowedTools` against the host's pool: the first filter (`AskUserQuestion`, `EndConversation`, `EnterPlanMode`, `ScheduleWakeup`, `WaitForMcpServers`, `Workflow`, `Agent` at the depth limit, `ExitPlanMode` unless `plan`), the background built-in set, `disallowedTools` first (a tool in both is removed, a specifier removes the whole tool, `mcp__github`, `mcp__github__*`, `mcp__*`, `mcp__reports__v2__*`), forks unfiltered, `Agent(worker, researcher)` as an allowlist only for the main thread (`Task(...)` is an alias), and the zero-tools refusal with its three groups (an omitted, empty or fully disallowed list never refuses) |
+| `parseToolEntry(entry)`, `toolEntryMatches(entry, tool, behavior)` | done | one entry of the field and whether it names a tool (`tools` reads as an allow rule, `disallowedTools` as a deny rule) |
+| `removedFromSubagent(tool, run)`, `BACKGROUND_BUILTIN_TOOLS` | done | the two filters as a predicate and the background list |
+
+The host owns the pool (the main conversation's built-in and MCP tools); the kit never lists the
+session's tools itself. `SubagentRun.handback` says the host gives the subagent `SubagentHandback`
+(auto mode, a local subagent that is not a fork), which then beats `disallowedTools`.
+Teammates' task and cron tools, and the Glob and Grep a subagent gets back without Bash, are the
+host's to put in the pool.
 
 ## Testing kit (planned)
 

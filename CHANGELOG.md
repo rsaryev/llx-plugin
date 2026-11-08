@@ -4,6 +4,12 @@
 
 ### Added
 
+- `resolveSubagentTools`: the tools a subagent gets from `tools` and `disallowedTools` (inherit
+  when omitted, `disallowedTools` first, a specifier removes the whole tool, `mcp__server`
+  entries including servers whose name holds `__`, the always-removed list with `ExitPlanMode` kept
+  for `plan`, the background built-in set, forks unfiltered, the `Agent(worker, researcher)`
+  allowlist for the main thread with `Task(...)` as an alias) and the documented zero-tools
+  refusal (`ToolRefusal`); `parseToolEntry` and `toolEntryMatches` for single entries.
 - Agent frontmatter fields in `readAgent`: `model`, `effort`, `maxTurns`, `autoCompactWindow` (a
   string such as `200k` reads as 200 and is dropped with `invalid autoCompactWindow`),
   `background`, `omitClaudeMd`, `isolation`, `color`, `initialPrompt` and `experimental.cacheTtl`,

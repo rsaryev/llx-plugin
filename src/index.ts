@@ -25,6 +25,7 @@ export type * from './protocol/official.ts';
 export type * from './ports/index.ts';
 export * from './loading/index.ts';
 export * from './rules/index.ts';
+export * from './agents/index.ts';
 export {
   PERMISSION_BEHAVIORS,
   PERMISSION_MODES,
