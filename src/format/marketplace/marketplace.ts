@@ -3,6 +3,7 @@ import { withoutDuplicates, type IndexedEntry } from './entry-checks.ts';
 import { pluginIdIssues, desktopNameIssues } from './ids.ts';
 import { marketplaceNameIssues, validationNameIssues } from './marketplace-names.ts';
 import { isRecord, readTopLevel, typeName, type TopLevel } from './marketplace-schema.ts';
+import { validateRenames } from './renames.ts';
 import type {
   Marketplace,
   MarketplaceContext,
@@ -77,6 +78,15 @@ function completenessIssues(top: TopLevel): PluginIssue[] {
   return found;
 }
 
+/** What only `claude plugin validate` reports of the top level: the `renames` chains, against the names in `plugins[]`. */
+function renameIssues(top: TopLevel, mode: ReadMode): PluginIssue[] {
+  if (mode !== 'validate') return [];
+  const names = top.plugins.flatMap((raw) =>
+    isRecord(raw) && typeof raw.name === 'string' ? [raw.name] : [],
+  );
+  return validateRenames(top.renames, names);
+}
+
 function readEntries(
   top: TopLevel,
   context: MarketplaceContext,
@@ -114,7 +124,13 @@ function assemble(
   const named = typeof raw.name === 'string' ? nameIssues(raw.name, mode, context) : [];
   if (top === undefined) return { marketplace: undefined, issues: [...topIssues, ...named] };
   const { entries, issues: entryIssues } = readEntries(top, context, readEntry, mode);
-  const issues = [...topIssues, ...named, ...completenessIssues(top), ...entryIssues];
+  const issues = [
+    ...topIssues,
+    ...named,
+    ...completenessIssues(top),
+    ...entryIssues,
+    ...renameIssues(top, mode),
+  ];
   if (blocksLoading([...topIssues, ...named])) return { marketplace: undefined, issues };
   const marketplace: Marketplace = {
     name: top.name,

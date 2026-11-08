@@ -76,3 +76,19 @@ export {
 export { isCredentialVariable, withoutCredentials } from './credential-variables.ts';
 export { planMarketplaceFetch } from './marketplace-fetch-plan.ts';
 export { parseMarketplaceInput, type MarketplaceInputOptions } from './marketplace-input.ts';
+export { INSTALL_SCOPES, isWritableScope, type InstallScope } from './install-scopes.ts';
+export {
+  migrateSettingsKeys,
+  migrateSettingsScopes,
+  renameNotice,
+  resolveRename,
+  type MigratedKeys,
+  type MigratedScopes,
+  type ScopedSettings,
+} from './renames.ts';
+export {
+  REMOVED_STATUS,
+  removedPlugins,
+  type InstalledPlugin,
+  type RemovedPlugin,
+} from './removal.ts';

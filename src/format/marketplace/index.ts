@@ -65,3 +65,4 @@ export {
   parseMarketplaceSource,
   type MarketplaceSourceOptions,
 } from './marketplace-source.ts';
+export { validateRenames, type Renames } from './renames.ts';

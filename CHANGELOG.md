@@ -100,6 +100,12 @@
   `planMarketplaceFetch` turns a source into a git clone, a 5 MiB and 10 second file download, an
   in-place read with the root two levels up, or an inline catalog; `parseMarketplaceInput` builds
   the source `claude plugin marketplace add` builds from what you type, with `--sparse`.
+- Marketplace renames and removal (`marketplace`): `validateRenames` (also run by
+  `validateMarketplace`) rejects a `renames` chain that cycles or ends outside `plugins` and a target
+  that is not a plugin name; `resolveRename`, `renameNotice`, `migrateSettingsKeys` and
+  `migrateSettingsScopes` follow the chain from the oldest name and rewrite or drop the old keys of
+  `enabledPlugins` and `pluginConfigs` (managed settings are left and their notice recurs);
+  `removedPlugins` decides what `forceRemoveDeletedPlugins` uninstalls and flags.
 
 ### Fixed
 
