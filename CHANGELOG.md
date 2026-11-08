@@ -4,6 +4,15 @@
 
 ### Added
 
+- `planPreloadedSkills`, `resolveAgentMcpServers` and `planAgentMemory`: what a subagent starts
+  with beyond its prompt. The `skills` field preloads the first 32 distinct names, skipping a
+  missing or disabled skill and one with `disable-model-invocation: true`; `mcpServers` splits
+  references from inline definitions, ignores the field for a plugin agent, skips the inline
+  servers of a project or `--add-dir` agent file until its folder is trusted and any server the
+  host's `McpPolicy` blocks (`--strict-mcp-config` does not filter an `--agents` definition,
+  managed restrictions always apply); `memory` plans the directory of its scope, none when auto
+  memory is off, the first 200 lines or 25KB of `MEMORY.md` (`truncateMemoryIndex`) and the Read,
+  Write and Edit tools to add.
 - `resolveSubagentModel` and `resolveSubagentEffort`: the model a subagent runs on (invocation
   parameter, then the definition with `inherit`, then `CLAUDE_CODE_SUBAGENT_MODEL`, then the main
   model; a family alias of the main model's family resolves to its exact model; the FORCE variable)

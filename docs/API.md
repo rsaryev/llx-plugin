@@ -363,6 +363,34 @@ Explore and Plan subagents (`CLAUDE_CODE_SUBAGENT_MODEL` alone does not move the
 `CLAUDE_CODE_AUTO_COMPACT_WINDOW` with its `k` and `M` suffixes, compaction, the turn loop, cache
 requests and creating the worktree are the host's.
 
+### Sub-agents: skills, MCP servers and memory
+
+```ts
+import { planPreloadedSkills, resolveAgentMcpServers, planAgentMemory } from '@rsaryev/claude-plugin-kit';
+
+const skills = planPreloadedSkills(agent.definition.skills, { has, isModelInvocable });
+// { load: ['api-conventions'], skipped: [{ name: 'verify', reason: 'not-model-invocable' }] }
+const mcp = resolveAgentMcpServers(agent.definition.mcpServers, {
+  source: agent.source, folderTrusted, policy: { allows, managedAllows },
+});
+const memory = await planAgentMemory(agent.definition.memory, agent.scopedName, {
+  autoMemoryEnabled, locations, files,
+});
+```
+
+| Function                                | Status | Does                                                                                   |
+| --------------------------------------- | ------ | -------------------------------------------------------------------------------------- |
+| `planPreloadedSkills(names, catalog)`   | done   | the first 32 distinct names of `skills` are preloaded; a missing or disabled skill, one with `disable-model-invocation: true` and a name past the 32 are `skipped` with a reason |
+| `resolveAgentMcpServers(specs, ctx)`    | done   | strings are `references`, keyed entries `inline` definitions; none for a plugin agent; an inline server of a `project` agent (also `--add-dir`) waits for `folderTrusted`; `policy` blocks (`allows` for everything, `managedAllows` for the managed-only restrictions that also bind an `--agents` definition) become `skipped` |
+| `planAgentMemory(scope, agentType, ctx)`| done   | the directory of `user`, `project` or `local`, the part of `MEMORY.md` for the prompt, `addTools` Read, Write and Edit; `undefined` without a scope or with auto memory off |
+| `truncateMemoryIndex(text)`             | done   | the first 200 lines or 25KB (25600 bytes) of the index, whichever comes first; frontmatter and block comments do not load |
+
+`SkillCatalog` and `McpPolicy` are narrow interfaces the host fills, so this module needs neither the
+skills package nor a process: the host knows `--strict-mcp-config`, `--bare` and the managed lists, and
+whether the folder is trusted (a parent folder's trust and a `-p` session do not count). Loading the
+skill content, connecting servers, creating the memory directory, the memory instructions for the
+system prompt and merging `addTools` into the tool pool are the host's.
+
 ## Testing kit (planned)
 
 `@rsaryev/claude-plugin-kit/testing`: in-memory `PluginFiles`, a scripted `CommandRunner`, a

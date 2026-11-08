@@ -60,3 +60,17 @@ export {
   type SubagentModel,
   type SubagentModelInput,
 } from './launch-model.ts';
+export {
+  planAgentMemory,
+  planPreloadedSkills,
+  resolveAgentMcpServers,
+  truncateMemoryIndex,
+  type AgentMcpResolution,
+  type McpPolicy,
+  type McpSkipReason,
+  type MemoryContext,
+  type MemoryPlan,
+  type PreloadPlan,
+  type SkillCatalog,
+  type SkillSkipReason,
+} from './context.ts';
