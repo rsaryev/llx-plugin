@@ -146,6 +146,8 @@ describe('the narrower set of FileChanged and StopFailure: letters, digits, "_" 
     expect(matchesMatcher('.envrc|.env', '.envrc', 'narrow')).toBe(true);
     expect(matchesMatcher('.envrc|.env', '.env', 'narrow')).toBe(true);
     expect(matchesMatcher('.envrc|.env', 'package.json', 'narrow')).toBe(false);
+    // Only an unanchored regular expression selects this; an exact list would not.
+    expect(matchesMatcher('.envrc|.env', 'xenv', 'narrow')).toBe(true);
   });
 
   test('match-all spellings are the same as in the standard set', () => {

@@ -70,7 +70,7 @@ describe('Hook handler fields', () => {
       statusMessage: 'Verifying',
       once: false,
     },
-  } as const;
+  } satisfies Record<string, Record<string, unknown>>;
 
   for (const [type, handler] of Object.entries(FULL)) {
     test(`a ${type} hook with every documented field reads unchanged`, () => {
@@ -141,6 +141,21 @@ describe('Hook handler fields', () => {
         );
       }
     });
+
+    test('is ignored when "args" is set: both fields load and are kept', () => {
+      const handler = { type: 'command', command: 'node', args: ['--version'], shell: 'bash' };
+      const result = read(handler);
+      expect(result.issues).toEqual([]);
+      expect(firstHandler(result)).toEqual(handler);
+    });
+
+    test('on a handler that is not a command is a stray field, dropped with a warning', () => {
+      const result = read({ type: 'http', url: 'https://example.com', shell: 'bash' });
+      expect(errorsOf(result)).toEqual([]);
+      expect(warningsOf(result)).toEqual([
+        expect.objectContaining({ path: 'hooks.PreToolUse[0].hooks[0].shell' }),
+      ]);
+    });
   });
 
   // Required fields (the "Required: yes" column) and field types. The docs describe what each
@@ -155,7 +170,9 @@ describe('Hook handler fields', () => {
   ];
   for (const [type, field] of REQUIRED) {
     test(`a ${type} hook needs "${field}"`, () => {
-      const { [field]: _omitted, ...without } = FULL[type] as Record<string, unknown>;
+      const without = Object.fromEntries(
+        Object.entries(FULL[type]).filter(([key]) => key !== field),
+      );
       const result = read(without);
       expect(plain(result.hooks)).toEqual({});
       expect(result.issues).toContainEqual(

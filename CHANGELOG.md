@@ -27,6 +27,10 @@
 
 ### Fixed
 
+- `readHooksFile` accepts a mod-only file (`modules` with no `hooks`), `readHooksSettings` keeps a
+  JSON-parsed `__proto__` event as an own key, a matcher that does not compile is no longer
+  warned about on an event without matcher support, and a non-finite `timeout` reports "expected a
+  positive, finite number of seconds".
 - `readFlag` no longer reads `constructor` or `__proto__` as a flag, and `readList` no longer splits
   a glob such as `src/**/*.{ts,tsx}` or a path with a space.
 - The layer check now rejects `Date`, timers, `fetch`, `crypto`, `performance` and `globalThis` in

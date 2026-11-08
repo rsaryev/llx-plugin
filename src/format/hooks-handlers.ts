@@ -14,7 +14,11 @@ import { error, warning, type PluginIssue } from './issues.ts';
  */
 
 // Judgment (spec/judgments.md): a timeout is a positive, finite number of seconds.
-const seconds = z.number().positive().finite();
+const SECONDS_MESSAGE = 'expected a positive, finite number of seconds';
+const seconds = z
+  .number({ error: SECONDS_MESSAGE })
+  .positive({ error: SECONDS_MESSAGE })
+  .finite({ error: SECONDS_MESSAGE });
 const text = z.string();
 const flag = z.boolean();
 const textList = z.array(text);

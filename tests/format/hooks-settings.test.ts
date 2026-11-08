@@ -77,12 +77,30 @@ describe('the hooks file', () => {
   });
 });
 
+describe('a mod-only hooks file', () => {
+  test('"modules" with no "hooks" key is a valid file that holds no hooks', () => {
+    expect(readHooksFile({ modules: ['./register.js'] })).toEqual({ hooks: {}, issues: [] });
+  });
+
+  test('a file with neither "hooks" nor "modules" still fails to load', () => {
+    const result = readHooksFile({ ...LINT_EXAMPLE.hooks, other: 1 });
+    expect(errorsOf(result)).toHaveLength(1);
+  });
+});
+
 describe('events', () => {
   test('every hook event is accepted', () => {
     const hooks = Object.fromEntries(HOOK_EVENTS.map((event) => [event, [{ hooks: [command] }]]));
     const result = readHooksFile(file(hooks));
     expect(result.issues).toEqual([]);
     expect(Object.keys(result.hooks)).toEqual([...HOOK_EVENTS]);
+  });
+
+  test('an event named "__proto__" stays an own key of the result', () => {
+    const result = readHooksSettings(JSON.parse('{"__proto__":[{"hooks":[]}]}'));
+    expect(Object.keys(result.hooks)).toEqual(['__proto__']);
+    expect(Object.getPrototypeOf(result.hooks)).toBe(Object.prototype);
+    expect(warningsOf(result)).toEqual([expect.objectContaining({ path: 'hooks.__proto__' })]);
   });
 
   test('an event is an array of matcher groups', () => {
@@ -115,6 +133,29 @@ describe('matcher groups', () => {
       file({ UserPromptSubmit: [{ matcher: 'anything', hooks: [command] }] }),
     );
     expect(result.issues).toEqual([]);
+  });
+
+  test('a matcher that does not compile is not warned about where the event ignores it', () => {
+    for (const event of [
+      'CwdChanged',
+      'UserPromptSubmit',
+      'PostToolBatch',
+      'Stop',
+      'TeammateIdle',
+      'TaskCreated',
+      'TaskCompleted',
+      'WorktreeCreate',
+      'WorktreeRemove',
+      'MessageDisplay',
+    ]) {
+      const result = readHooksFile(file({ [event]: [{ matcher: 'Edit(', hooks: [command] }] }));
+      expect(result.issues).toEqual([]);
+    }
+  });
+
+  test('a matcher that does not compile is still warned about on FileChanged', () => {
+    const result = readHooksFile(file({ FileChanged: [{ matcher: 'Edit(', hooks: [command] }] }));
+    expect(warningsOf(result)).toHaveLength(1);
   });
 
   test('every matcher spelling the docs show loads', () => {
