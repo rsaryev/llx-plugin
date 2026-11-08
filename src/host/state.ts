@@ -4,7 +4,7 @@ import { enabledPlugin, pluginConfig } from '../settings/plugins/index.ts';
 import type { ParentSettingsContext } from '../settings/hooks/index.ts';
 import { createPolicyView, type PolicyView } from '../settings/index.ts';
 import { readCatalog, type PluginCatalog } from './catalog.ts';
-import type { HostPlugin, PluginHostOptions } from './types.ts';
+import type { HostedPlugin, HostPlugin, HostUpdate, PluginHostOptions } from './types.ts';
 
 /** A plugin the host runs: what its components read to, and the options saved for it. */
 export interface ActivePlugin extends HostPlugin {
@@ -12,18 +12,14 @@ export interface ActivePlugin extends HostPlugin {
   readonly userConfig: ResolvedUserConfig;
 }
 
-/** What every session of a host shares, decided once when the host is made. */
+/** What every session of a host shares: the state of one generation of the host; `update` makes the next. */
 export interface HostState {
   readonly options: PluginHostOptions;
   readonly view: PolicyView;
   /** How parent settings are treated: the host's, else no administrator and no merge. */
   readonly parent: ParentSettingsContext;
   /** Every plugin the host was given, with whether it runs. */
-  readonly all: readonly {
-    readonly id: string;
-    readonly name: string;
-    readonly enabled: boolean;
-  }[];
+  readonly all: readonly HostedPlugin[];
   /** The plugins that run, in the order given. */
   readonly active: readonly ActivePlugin[];
   readonly issues: readonly PluginIssue[];
@@ -84,5 +80,41 @@ export function createHostState(options: PluginHostOptions): HostState {
     })),
     active: active.map((each) => each.active),
     issues: active.flatMap((each) => each.issues),
+  };
+}
+
+/**
+ * The options after an update: each part the update gives replaces the host's, a part left out or
+ * given as `undefined` stays (as in `applyTurn`: an update replaces, it cannot unset). Pure.
+ */
+export function mergeHostOptions(base: PluginHostOptions, update: HostUpdate): PluginHostOptions {
+  const settings = update.settings ?? base.settings;
+  const parentSettings = update.parentSettings ?? base.parentSettings;
+  const userConfig = update.userConfig ?? base.userConfig;
+  return {
+    ...base,
+    plugins: update.plugins ?? base.plugins,
+    ...(settings === undefined ? {} : { settings }),
+    ...(parentSettings === undefined ? {} : { parentSettings }),
+    ...(userConfig === undefined ? {} : { userConfig }),
+  };
+}
+
+/**
+ * The state the host's sessions read, replaced by `host.update`. A session never holds a state
+ * past one use: it asks the cell, so an update reaches every session that is open.
+ */
+export interface HostStateCell {
+  current(): HostState;
+  set(next: HostState): void;
+}
+
+export function createStateCell(initial: HostState): HostStateCell {
+  let state = initial;
+  return {
+    current: () => state,
+    set: (next) => {
+      state = next;
+    },
   };
 }

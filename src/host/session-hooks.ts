@@ -1,64 +1,50 @@
+import type { SubprocessKind } from '../hooks/index.ts';
+import { environmentFor, subprocessFor, type HookEnvironment } from './session-environment.ts';
+export type { HookEnvironment } from './session-environment.ts';
 import {
-  createEnvFiles,
   createHookEngine,
-  createHookRegistry,
   ifEvaluatorFor,
-  registerHooks,
-  type EnvFiles,
   type EventFactsOf,
   type HookOutcome,
   type HookSession,
-  type HookSource,
   type RegisteredHandler,
-  type SubprocessKind,
-  subprocessEnvironment,
 } from '../hooks/index.ts';
 import type { HookEvent } from '../protocol/official.ts';
-import { hookSessionGates, type HookSessionGates } from '../settings/hooks/index.ts';
-import { resolveSettingsEnv, type PolicyScope, type SettingsEnv } from '../settings/index.ts';
-import type { ActivePlugin, HostState } from './state.ts';
-import type { SessionDirectories } from './session-directories.ts';
-import type { SessionOptions } from './types.ts';
+import type { HookSessionGates } from '../settings/hooks/index.ts';
+import { currentOf, type SessionCore } from './session-core.ts';
+import {
+  createHookScope,
+  recordOutcome,
+  registerEntries,
+  type HookScope,
+  type TurnScope,
+} from './session-hook-scope.ts';
+import type { SessionOptions } from './session-types.ts';
+import type { HostState } from './state.ts';
 
-/** Where the hooks of a settings file of each scope are declared (hooks.md, "Hook locations"). */
-const SETTINGS_SOURCE: { readonly [S in PolicyScope]: HookSource } = {
-  managed: { kind: 'settings', label: '[settings]', managed: true },
-  parent: { kind: 'settings', label: '[settings]' },
-  flag: { kind: 'settings', label: '[settings]' },
-  local: { kind: 'settings', label: '[settings]', scope: 'local' },
-  project: { kind: 'settings', label: '[settings]', scope: 'project' },
-  user: { kind: 'settings', label: '[settings]', scope: 'user' },
-  addDir: { kind: 'settings', label: '[settings]' },
-};
-
-const pluginEntries = (plugin: ActivePlugin): readonly RegisteredHandler[] =>
-  registerHooks(plugin.plugin.hooks, {
-    idPrefix: plugin.id,
-    source: {
-      kind: 'plugin',
-      label: `[plugin:${plugin.plugin.name}]`,
-      pluginName: plugin.plugin.name,
-    },
-    pluginId: plugin.id,
-  });
-
-const settingsEntries = (gates: HookSessionGates): readonly RegisteredHandler[] =>
-  gates.settingsHooks.flatMap(({ scope, hooks }) =>
-    registerHooks(hooks, { idPrefix: `settings:${scope}`, source: SETTINGS_SOURCE[scope] }),
-  );
-
+/**
+ * The hook session of one turn: the common input fields and the gates. `promptId`, `scratchpadDir`,
+ * `agent` and `folderTrustAccepted` pass through as given; absent, the input omits them.
+ */
 function sessionOf(
   state: HostState,
   gates: HookSessionGates,
   options: SessionOptions,
-): Omit<HookSession, 'cwd'> {
+): HookSession {
   return {
     sessionId: options.sessionId,
     transcriptPath: options.transcriptPath,
+    cwd: options.cwd,
     permissionMode: options.permissionMode,
     ...(options.effort === undefined ? {} : { effort: options.effort }),
+    ...(options.promptId === undefined ? {} : { promptId: options.promptId }),
+    ...(options.scratchpadDir === undefined ? {} : { scratchpadDir: options.scratchpadDir }),
+    ...(options.agent === undefined ? {} : { agent: options.agent }),
     interactive: options.interactive ?? true,
     trusted: options.trusted ?? true,
+    ...(options.folderTrustAccepted === undefined
+      ? {}
+      : { folderTrustAccepted: options.folderTrustAccepted }),
     disableAllHooks: gates.disableAllHooks,
     allowManagedHooksOnly: gates.allowManagedHooksOnly,
     pluginOnlyHooks: gates.pluginOnlyHooks,
@@ -78,23 +64,8 @@ export interface SkillHooksRegistrar {
   registerSkillHooks(prefix: string, entries: readonly RegisteredHandler[]): void;
 }
 
-/** What a shell the host runs itself needs of the session's hooks: the settings `env` and the env files. */
-export interface HookEnvironment {
-  /** The variables of the settings files' `env` blocks that apply in this session, and what was ignored. */
-  readonly settings: SettingsEnv;
-  /** The files of `CLAUDE_ENV_FILE`; absent when the host gave no store. */
-  readonly files?: EnvFiles;
-}
-
 export interface HookPart {
-  /** What the host's own Bash and PowerShell commands read, as the hooks do. */
   readonly hookEnvironment: HookEnvironment;
-  /**
-   * The environment of a process the host starts itself for this session, as Claude Code builds it:
-   * the host's environment with the settings `env`, the scrub, the `OTEL_*` removal and the variables
-   * of that kind (`CLAUDECODE`, `CLAUDE_CODE_CHILD_SESSION`, `CLAUDE_CODE_SESSION_ID`, `CLAUDE_PID`).
-   * It holds no path placeholder or `CLAUDE_ENV_FILE`.
-   */
   subprocessEnvironment(kind: SubprocessKind): Record<string, string>;
   dispatch<E extends HookEvent>(
     event: E,
@@ -103,30 +74,25 @@ export interface HookPart {
   ): Promise<HookOutcome<E>>;
 }
 
-/** The engine for one working directory: path rules in an `if` read it, so a `/cd` builds another. */
-function engineFor(
+/** The engine of one dispatch: the `if` path context is the turn's, the policy and options the settings'. */
+function engineOf(
   state: HostState,
   gates: HookSessionGates,
   options: SessionOptions,
-  runtime: {
-    readonly cwd: string;
-    readonly settings: ReturnType<typeof resolveSettingsEnv>;
-    readonly files: ReturnType<typeof createEnvFiles> | undefined;
-  },
+  environment: HookEnvironment,
 ) {
-  const { cwd, settings, files } = runtime;
   const { ports } = state.options;
   const windows = state.options.windows ?? false;
   return createHookEngine(ports, {
     windows,
-    settingsEnv: settings.values,
+    settingsEnv: environment.settings.values,
+    ...(environment.files === undefined ? {} : { envFiles: environment.files }),
     ...(state.options.processId === undefined ? {} : { processId: state.options.processId }),
-    ...(files === undefined ? {} : { envFiles: files }),
     ifEvaluator: ifEvaluatorFor({
       paths: {
-        cwd,
+        cwd: options.cwd,
         home: ports.locations.homeDir(),
-        primaryWorkingDirectory: cwd,
+        primaryWorkingDirectory: options.cwd,
         additionalDirectories: options.additionalDirectories ?? [],
         platform: windows ? 'windows' : 'posix',
       },
@@ -138,71 +104,52 @@ function engineFor(
 }
 
 /**
- * The hooks of a session: every enabled plugin's, then the settings files', through the engine
- * with the policy of the settings. A skill's hooks join them when the skill is expanded
- * (`registerSkillHooks`), and a skill's `once` hook that ran is dropped after the dispatch. The
- * registry outlives a `/cd`: only the working directory the hooks see changes.
+ * The hooks of one turn over the session's core: the engine and the `if` path context are made at
+ * each dispatch from the turn's options and the current settings (cheap), the registry is the
+ * core's, so a skill's hooks and the `once` hooks already consumed are the same in every turn. A
+ * skill's `once` hook that ran is dropped after the dispatch, which also leaves its `watchPaths`
+ * and background promises in the core.
  */
 export function createHookPart(
-  state: HostState,
-  options: SessionOptions,
-  directories: SessionDirectories,
-): HookPart & SkillHooksRegistrar {
-  const { ports } = state.options;
-  const windows = state.options.windows ?? false;
-  const settings = resolveSettingsEnv(state.view.layers, {
-    // Judgment (spec/judgments.md): the session's one `trusted` answers for the project and local files.
-    isFolderTrusted: () => options.trusted ?? true,
-    environment: ports.environment.snapshot(),
-    windows,
-    ...(state.options.launchOwnsEnvironment === undefined
-      ? {}
-      : { launchOwnsEnvironment: state.options.launchOwnsEnvironment }),
-  });
-  const inheritedEnvFile = ports.environment.get('CLAUDE_ENV_FILE');
-  const files =
-    state.options.envFiles === undefined
-      ? undefined
-      : createEnvFiles(state.options.envFiles, {
-          launchScript: inheritedEnvFile === '' ? undefined : inheritedEnvFile,
-        });
-  const gates = hookSessionGates(state.view, state.parent);
-  const session = sessionOf(state, gates, options);
-  let engine = {
-    cwd: directories.cwd(),
-    run: engineFor(state, gates, options, { cwd: directories.cwd(), settings, files }),
+  core: SessionCore,
+  optionsOf: () => SessionOptions,
+  turn?: TurnScope,
+): { readonly part: HookPart & HookScope; readonly skills: SkillHooksRegistrar } {
+  const sessionNow = (): HookSession => {
+    const { state, gates } = currentOf(core);
+    return sessionOf(state, gates, optionsOf());
   };
-  let registry = createHookRegistry([
-    ...state.active.flatMap(pluginEntries),
-    ...settingsEntries(gates),
-  ]);
   return {
-    hookEnvironment: { settings, ...(files === undefined ? {} : { files }) },
-    subprocessEnvironment: (kind) =>
-      subprocessEnvironment({
-        kind,
-        environment: ports.environment.snapshot(),
-        settingsEnv: settings.values,
-        windows,
-        sessionId: options.sessionId,
-        processId: state.options.processId,
-      }),
-    registerSkillHooks(prefix, entries) {
-      const previous = registry.entries.filter((entry) => entry.id.startsWith(`${prefix}:`));
-      registry = registry.without(previous.map((entry) => entry.id)).with(entries);
+    skills: {
+      registerSkillHooks(prefix, entries) {
+        registerEntries(core, prefix, entries);
+      },
     },
-    async dispatch(event, facts, { signal }) {
-      const cwd = directories.cwd();
-      if (engine.cwd !== cwd)
-        engine = { cwd, run: engineFor(state, gates, options, { cwd, settings, files }) };
-      const outcome = await engine.run.dispatch(registry, {
-        event,
-        facts,
-        session: { ...session, cwd },
-        signal,
-      });
-      registry = registry.without(outcome.consumedOnce);
-      return outcome;
+    part: {
+      get hookEnvironment() {
+        return environmentFor(core, optionsOf());
+      },
+      subprocessEnvironment: (kind) => subprocessFor(core, optionsOf(), kind),
+      ...createHookScope(core, sessionNow, turn),
+      async dispatch(event, facts, { signal }) {
+        const { state, gates } = currentOf(core);
+        const options = optionsOf();
+        const session = sessionOf(state, gates, options);
+        const outcome = await engineOf(
+          state,
+          gates,
+          options,
+          environmentFor(core, options),
+        ).dispatch(core.registry.get(), {
+          event,
+          facts,
+          session,
+          signal,
+        });
+        core.registry.set(core.registry.get().without(outcome.consumedOnce));
+        recordOutcome(core, outcome);
+        return outcome;
+      },
     },
   };
 }

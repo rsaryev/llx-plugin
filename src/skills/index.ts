@@ -52,7 +52,12 @@ export {
   type TokenCounter,
 } from './lifecycle.ts';
 export { stackSkills, type Stack, type StackOptions } from './stack.ts';
-export { readSkillMentions, type SkillMention } from './mention.ts';
+export {
+  readSkillMentions,
+  stackableOf,
+  type MentionOptions,
+  type SkillMention,
+} from './mention.ts';
 export {
   listingLine,
   menuEntries,

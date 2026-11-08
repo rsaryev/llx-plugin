@@ -16,7 +16,7 @@ import type { PermissionRule } from '../rules/index.ts';
 import { createCustomizationPolicy } from '../settings/customization/index.ts';
 import type { SessionDirectories } from './session-directories.ts';
 import type { ActivePlugin, HostState } from './state.ts';
-import type { SessionOptions } from './types.ts';
+import type { SessionOptions } from './session-types.ts';
 
 /**
  * A session's subagents (sub-agents.md, "Choose the subagent scope"): the built-ins, the `--agents`
@@ -102,12 +102,21 @@ function pluginAgents(state: HostState) {
 }
 
 export function createAgentPart(
-  state: HostState,
+  stateOf: () => HostState,
   options: SessionOptions,
   directories: SessionDirectories,
 ): AgentPart {
-  const policy = createCustomizationPolicy(state.view, state.parent);
-  const plugins = pluginAgents(state);
+  const cache = new WeakMap<HostState, ReturnType<typeof pluginAgents>>();
+  const pluginsOf = () => {
+    const state = stateOf();
+    const found = cache.get(state) ?? pluginAgents(state);
+    cache.set(state, found);
+    return found;
+  };
+  const policyOf = () => {
+    const state = stateOf();
+    return createCustomizationPolicy(state.view, state.parent);
+  };
   let scanned: readonly ScannedAgent[] = [];
   let queue: Promise<unknown> = Promise.resolve();
 
@@ -116,7 +125,7 @@ export function createAgentPart(
     readFlag(overrides !== undefined && 'flag' in overrides ? overrides.flag : options.agents);
 
   const read = async (signal: AbortSignal, overrides?: AgentOverrides): Promise<AgentsReload> => {
-    const { folders, locations } = state.options.ports;
+    const { folders, locations } = stateOf().options.ports;
     const flag = flagOf(overrides);
     if (folders === undefined) return { issues: [...flag.issues, NOT_WIRED], watch: [] };
     const outcome = await scanAgents({
@@ -126,7 +135,7 @@ export function createAgentPart(
         cwd: directories.cwd(),
         addedDirectories: directories.added(),
       },
-      allows: (origin) => policy.loads('agents', origin),
+      allows: (origin) => policyOf().loads('agents', origin),
       signal,
     });
     scanned = outcome.entries;
@@ -137,12 +146,12 @@ export function createAgentPart(
     const interactive = overrides?.interactive ?? options.interactive ?? true;
     const denied = overrides?.permissionRules ?? options.permissionRules;
     return resolveAgents({
-      builtin: policy.loads('agents', 'builtIn')
-        ? builtinAgents(builtinPolicyOf(state, interactive))
+      builtin: policyOf().loads('agents', 'builtIn')
+        ? builtinAgents(builtinPolicyOf(stateOf(), interactive))
         : [],
       flag: flagOf(overrides).agents.map(catalogAgentOf),
-      scanned,
-      plugin: plugins.agents,
+      scanned: scanned.filter((entry) => policyOf().loads('agents', entry.origin)),
+      plugin: pluginsOf().agents,
       ...(denied === undefined ? {} : { denied }),
     });
   };
@@ -155,6 +164,6 @@ export function createAgentPart(
     },
     agentCatalog: catalog,
     selectAgent: (choice, overrides) => selectSessionAgent(catalog(overrides), choice),
-    pluginOf: (agent) => plugins.owners.get(agent),
+    pluginOf: (agent) => pluginsOf().owners.get(agent),
   };
 }

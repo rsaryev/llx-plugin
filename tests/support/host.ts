@@ -160,9 +160,12 @@ export async function hostOf(fixture: HostFixture = {}) {
     ports: {
       commands: runner,
       http: web,
-      locations: locations({
-        directories: [FORMATTER, AUDIT, DORMANT].map((id) => `/plugins/${id}`),
-      }),
+      // Every directory in this in-memory host fixture exists, including plugins added by update.
+      // Missing-directory and cwd-fallback behavior is tested with explicit Locations in hooks/.
+      locations: {
+        ...locations(),
+        existingDirectory: (candidates) => Promise.resolve(candidates[0]),
+      },
       environment: fakeEnvironment(fixture.env),
     },
     ...(fixture.settings === undefined ? {} : { settings: fixture.settings }),

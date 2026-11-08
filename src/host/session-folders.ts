@@ -1,15 +1,14 @@
+import { createFolderResolution } from './session-folder-resolution.ts';
 import { warning, type PluginIssue } from '../format/issues.ts';
 import type { Command, Skill, SkillOrigin } from '../format/skill-types.ts';
 import {
   isStrictlyBelow,
-  resolveFolderSkills,
   scanFolders,
   scanNested,
   scanScope,
   type ScanContext,
   type ScanOutcome,
   type ScanScope,
-  type Resolution,
   type ScannedEntry,
   type ShadowedEntry,
   type SkillsDirectoryPlugin,
@@ -112,17 +111,6 @@ function scanContextOf(
   };
 }
 
-const sourcesOf = (resolution: Resolution): FolderSkillSources => ({
-  entries: resolution.resolved.map(({ invocable, names, scope, yielded }) => ({
-    command: invocable.command,
-    names,
-    scope,
-    origin: invocable.origin,
-    yielded,
-  })),
-  shadowed: resolution.shadowed,
-});
-
 /**
  * A session's folder skills. `taken` lists the commands other sources already use (the host's
  * built-in commands, bundled skills and MCP prompts, and the plugins' skills), which only a synced
@@ -132,16 +120,18 @@ const sourcesOf = (resolution: Resolution): FolderSkillSources => ({
  * touch that finishes during a reload cannot be overwritten by it.
  */
 export function createFolderSkills(
-  state: HostState,
+  stateOf: () => HostState,
   directories: SessionDirectories,
   taken: () => readonly string[],
 ): FolderSkills {
-  const policy = createCustomizationPolicy(state.view, state.parent);
+  const policyOf = () => {
+    const state = stateOf();
+    return createCustomizationPolicy(state.view, state.parent);
+  };
   let root: readonly ScannedEntry[] = [];
   let nested: readonly ScannedEntry[] = [];
   const nestedDirectories = new Set<string>();
-  let listed: readonly FolderEntry[] = [];
-  let sources: FolderSkillSources = { entries: [], shadowed: [] };
+  const resolution = createFolderResolution(stateOf, directories, taken);
   let queue: Promise<unknown> = Promise.resolve();
 
   const serialized = <T>(task: () => Promise<T>): Promise<T> => {
@@ -155,23 +145,15 @@ export function createFolderSkills(
     [...nestedDirectories].filter((directory) => !directories.added().includes(directory));
 
   const context = (signal: AbortSignal): ScanContext | undefined =>
-    scanContextOf(state, directories, policy, signal);
+    scanContextOf(stateOf(), directories, policyOf(), signal);
 
-  const resolve = (): void => {
-    const resolution = resolveFolderSkills([...root, ...nested], {
-      cwd: directories.cwd(),
-      addedDirectories: directories.added(),
-      taken: taken(),
-    });
-    listed = resolution.resolved.map(({ invocable, names }) => ({ invocable, names }));
-    sources = sourcesOf(resolution);
-  };
+  const resolve = () => resolution.set([...root, ...nested]);
 
   /** The skill folders that are also plugins, unless the settings stop skills-directory plugins. */
   const reloadOf = (outcome: ScanOutcome, extra: readonly PluginIssue[] = []): SkillsReload => ({
     issues: [...extra, ...outcome.issues],
     watch: outcome.watch,
-    plugins: policy.skillsDirPlugins().admitted ? outcome.plugins : [],
+    plugins: policyOf().skillsDirPlugins().admitted ? outcome.plugins : [],
   });
 
   const read = async (signal: AbortSignal): Promise<SkillsReload> => {
@@ -189,8 +171,8 @@ export function createFolderSkills(
   };
 
   return {
-    current: () => listed,
-    sources: () => sources,
+    current: () => resolution.current(),
+    sources: () => resolution.sources(),
     reload: (signal) => serialized(() => read(signal)),
     touch: (path, signal) =>
       serialized(async () => {

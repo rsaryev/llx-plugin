@@ -596,6 +596,53 @@
   the judgments of the scrub, the managed layer order, the `CLAUDE_ENV_FILE` of exec-form hooks and the
   PowerShell reader are recorded and tested outside `spec(...)`.
 
+- Host: an update path. `host.update({ plugins?, settings?, parentSettings?, userConfig? })` replaces
+  those parts, re-runs the pure `createHostState` over the merged options (`mergeHostOptions`) and
+  returns the new `{ plugins, issues }`; `host.plugins` and `host.issues` are live getters and
+  `host.generation` counts the updates. Sessions and their `withTurn` and `runScoped` views read a
+  `HostStateCell` at each use instead of a state captured at open: the plugin and settings hooks are
+  rebuilt, the skill, agent and session hooks stay unless their plugin no longer runs or the new
+  plugin-only lock silences them (`pluginOnlyAllows`, exported by the hooks module), the gates, skill
+  list, policies and catalogs are read per call, the skill-hook limit ledger is summed again from the
+  survivors, consumed `once` keys stay consumed and the dynamic watch list is kept. `readCatalog`
+  caches by `Plugin` identity, so an unchanged plugin is not read again.
+- Host: model limits and message expansion. `SessionOptions.limits` and `TurnOptions.limits`
+  (`SessionLimits`: model allowlist, `maxEffort`, `supportedEfforts`) reach `session.expandSkill`,
+  so `Expansion.turn` carries the allowlisted model and the capped effort. `session.expandMessage`
+  reads the mentions of a typed message (`stackableOf` over the catalog, the turn's interactivity)
+  and expands the direct and stacked skills in order with the shared arguments; named mentions come
+  back as `permitted`, and `expandSkill` takes `permittedByMention` for the model's call.
+- Host: scoped hooks, `hasHooks`, the watch list and background deliveries. `session.addHooks(prefix,
+  hooks, source, options?)` and `removeHooks(prefix)` register hooks of a run, an agent or a skill
+  (replacing by prefix, never stacking; the handle's `remove()`); `lifetime: 'turn'` ends when
+  `session.runScoped(turn, run)` settles. `session.hasHooks(event)` is true when a handler that
+  passes the gates would run. `session.fileChangedWatchList()` joins the matchers' literal names with
+  the `watchPaths` of SessionStart, CwdChanged and FileChanged outputs (replaced by each, `[]` clears
+  it). `session.takeBackground()` and the pure `settleDeliveries` turn `HookOutcome.background` into
+  `{ additionalContext, systemMessages, wake? }`, a wake surfaced apart for `asyncRewake` exit 2.
+  `mergeWatchPaths` and `hasRunnableHandler` belong to the hooks module.
+
+### Fixed
+
+- Host: review fixes of the update path. `host.update` builds the next state before it replaces the
+  merged options, so a state that throws leaves the host as it was; `mergeHostOptions` merges each
+  part by key and keeps its types; `HostedPlugin` moves to `src/host/types.ts`. Tests now cover
+  `parentSettings`, `userConfig` replacing every plugin's saved values and an update that lands during
+  an in-flight `dispatch`.
+- Host: review fixes of model limits. A stray `sed -i` backup of the skill-limits test is removed, the
+  T2 layout check now fails on any file under `tests/` that is not a `.ts` file, and the skill hook
+  registration closure declares its return type instead of casting `[]`.
+- Host: review fixes of scoped hooks. `session.onBackground(listener)` tells an idle host of each
+  background delivery, an `asyncRewake` exit 2 wake included, without polling. A view kept past
+  `runScoped` now refuses `lifetime: 'turn'` registrations instead of leaking them for the session.
+  The judgments say the host drains the background queue and owns the async `SessionStart` repeat
+  check; tests cover the stdout wake fallback and a typed hooks literal replaces `JSON.parse`.
+- Host: review fixes of `withTurn`. The session core no longer carries an unused watch-list slot
+  (it returns with `fileChangedWatchList` support, with a test). Tests now prove that a turn cannot
+  change `trusted` (settings hooks stay held back or released as the session says), that a turn's
+  `scratchpadDir` replaces the session's in the hook input, and that a turn's `interactive` decides
+  whether a forked skill waits; the step on a turn's `additionalDirectories` is dropped because an
+  `if` path rule never reads them.
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
   short label and the amounts of each row of the Limits table, not the page's sentences, so the
   repository holds facts and identifiers only.
@@ -726,6 +773,14 @@
   lists; a user, project, local or `--settings` source that is not a JSON object is an error issue
   ("Settings Error: ...") rather than a warning, and still skipped.
 
+- Host: `session.withTurn(turn)` returns the same session for one turn. A turn replaces only the
+  `permissionMode`, `effort`, `cwd`, `additionalDirectories`, `permissions` (the shell answer),
+  `promptId`, `scratchpadDir`, `agent`, `folderTrustAccepted` and `interactive` it names, and shares
+  what must outlive a turn: the skills' registered hooks, the `once` keys already consumed and the
+  limits on skill hooks. The session it is called on does not change.
+- Host: `SessionOptions` carries `promptId`, `scratchpadDir`, `agent` (`id`, `type`) and
+  `folderTrustAccepted` into the hook input (`prompt_id`, `scratchpad_dir`, `agent_id`,
+  `agent_type`) and the workspace-trust gate of a project subagent's hooks.
 - Spec: the requirement set now counts the docs' prose, not only their tables. Every heading of
   the plugin, mods, skills, subagents, hooks, MCP, managed MCP, settings, managed settings,
   permissions, environment, CLI, workflows, themes, output styles and channels pages is either

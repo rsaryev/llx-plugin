@@ -1,4 +1,4 @@
-import type { SessionOptions } from './types.ts';
+import type { SessionOptions } from './session-types.ts';
 
 /**
  * The directories of a live session: the working directory and the directories added with

@@ -206,7 +206,10 @@ skill sets its own, pass the one `resolveTurnOverrides` chose.
 Who may run a skill, what the model and the `/` menu are told, when `paths` activate it and how it
 runs once invoked (skills.md, "Control who invokes a skill", "Override skill visibility from
 settings", "Skill descriptions are cut short", "Run skills in a subagent"). All pure: the host passes
-the settings, the usage counts and what it knows of the session.
+the settings, the usage counts and what it knows of the session. A host that works through a session
+uses `session.expandSkill` and `session.expandMessage` instead, which pass the turn's limits as
+`ExpandRequest.limits` and build the `stackable` of `readSkillMentions` with `stackableOf` (see "Host and
+sessions").
 
 ```ts
 import { checkInvocation, modelListing, menuEntries, resolveExecution } from '@rsaryev/claude-plugin-kit';
@@ -477,10 +480,10 @@ const report = stageReport({ id, enabled, records: read.records[id] ?? [], exist
 | `ignoredReason(name, entry, checks)`, `ignoredLine(name, reason, surface)`, `untrustedSource(name, entry)`, `untrustedSourceMessage(name)` | done | `Marketplace "<name>" is added but ignored`: the first failing check (location, git URL, URL, settings declaration, name from `loadNameIssues` with the entry's source) and its line for `claude plugin list` or the Errors tab; a reserved name registered from a source that is not an `anthropics` GitHub repository is `untrustedSource`, with the untrusted-source message |
 | `scopeReach(scope)`, `mostSpecificScope`, `defaultScope(command, listedIn)`, `collaboratorInstallCommand(id)` | done | the user, project and local scopes: file, audience, reach; local beats project beats user; the scope a command acts on without `--scope` |
 | `pluginActions`, `closePanel`, `uninstallChoice`, `marketplaceCommand`, `planMarketplaceUpdate`, `marketplaceTabUpdate`, `planMarketplaceRemoval` | done | the `/plugin` panel and the marketplace commands as plans: the details menu, closing with pending changes (run, queue while a response streams, or warn), `y`/`u` for a project-enabled plugin, list/update/remove from a shell or a session (the update line is `Successfully updated ...` in a shell and `✔ Updated N marketplace(s)` in a session) |
-| `planInstall(id, scope, graph)`, `planEnable(id, scope, graph)`, `planDisable`, `planUninstall`, `planPrune` | done | what each does to declared dependencies over a graph of `PluginNode` (`installedScopes`, `enabledIn` per scope): install and enable bring them in at the target scope (dependencies first; a plugin already installed there says so), enable fails for a dependency that is not installed, blocked by policy or set to `false` above the target scope, disable is refused with a chained command, uninstall leaves auto-installed ones for `prune` |
+| `planInstall(id, scope, graph)`, `planEnable(id, scope, graph)`, `planDisable`, `planInstalledUninstall`, `planInstalledPrune` | done | what each does to declared dependencies over a graph of `PluginNode` (`installedScopes`, `enabledIn` per scope): install and enable bring them in at the target scope (dependencies first; a plugin already installed there says so), enable fails for a dependency that is not installed, blocked by policy or set to `false` above the target scope, disable is refused with a chained command, uninstall leaves auto-installed ones for `prune` |
 | `reloadSummary(counts, { interactive })`, `reloadGate(change, { force, interactive })`, `parseReloadArguments`, `reloadAllowed`, `skillCount` | done | the `Reloaded: ...` line, the refusal `This reload changes MCP tools (...)` unless `--force`, no MCP connect in a session without an interactive terminal, the remote-connection reply |
 | `orphanSweep({ remaining, orphans, nowMs, layout })`, `dirsToOrphan(removed, remaining, layout)`, `orphanMarkerPath`, `ORPHAN_GRACE_MS` | done | the `.orphaned_at` marker and the sweep 14 days later, only while an install is recorded; only version folders inside the plugin cache are marked or swept, so the source directory of a plugin loaded in place is never deleted |
-| `computePluginVersion(input, sha256)`, `isVersionSegment`, `PluginVersion`, `VersionInput`, `VersionSource`, `VersionOrigin`, `UNKNOWN_VERSION` | done | the version of an installed plugin as loading.md computes it: manifest `version`, then the entry's, then what the source gives (12-character commit for `github`/`url`, and `<12-character commit>-<8-hex path hash>` for `git-subdir`, whose input always carries its `subdir`; the `sha256` pin or download digest for `archive`, the commit of a relative path only when its directory or marketplace is a Git repository (`inGitRepository`) and outside an enclosing repository, `unknown` for `npm` and a local directory); a `command` source is always `<manifest version>-<12-hex hash>` or the bare hash, the entry's `version` ignored; a marketplace hosted on claude.ai gives the version the host reports as recorded (`origin: 'claude-ai'`). A version that is not one folder name (`../x`, `a/b`) is skipped, since it names the cache folder (`isVersionSegment`). The host reads the facts; the kit decides |
+| `resolvePluginVersion(input, sha256)`, `isVersionSegment`, `PluginVersion`, `VersionInput`, `VersionSource`, `VersionOrigin`, `UNKNOWN_VERSION` | done | the version of an installed plugin as loading.md computes it: manifest `version`, then the entry's, then what the source gives (12-character commit for `github`/`url`, and `<12-character commit>-<8-hex path hash>` for `git-subdir`, whose input always carries its `subdir`; the `sha256` pin or download digest for `archive`, the commit of a relative path only when its directory or marketplace is a Git repository (`inGitRepository`) and outside an enclosing repository, `unknown` for `npm` and a local directory); a `command` source is always `<manifest version>-<12-hex hash>` or the bare hash, the entry's `version` ignored; a marketplace hosted on claude.ai gives the version the host reports as recorded (`origin: 'claude-ai'`). A version that is not one folder name (`../x`, `a/b`) is skipped, since it names the cache folder (`isVersionSegment`). The host reads the facts; the kit decides |
 | `copyModeHash(files, sha256)`, `linkModeHash(realPath, files, sha256)`, `subdirectoryPathHash(path, sha256)`, `shortHash12(hex)` | done | what a `command` version is hashed from: the copied files in path order, or a linked directory's real path and top-level names; the 8-digit hash of a `git-subdir` path; listing order never depends on the port |
 | `unknownVersionSteps(plugin, unknownScopes)`, `PluginRef` | done | the four steps out of `Version: unknown` for a git-sourced plugin (given as `{ name, marketplace }`) and one rerun per writable scope still showing it, each scope once |
 | `pluginNames(merge, marketplace)`, `lookupPlugin(entries, name, marketplace, refresh)` | done | the entry name is the install id, `enabledPlugins` key and cache folder; the manifest name is the namespace; installing by the manifest name is `Plugin "<name>" not found in marketplace "<marketplace>"` |
@@ -1023,6 +1026,9 @@ const { selected, issues, monitor } = selectHandlers(registry, {
 | `canonicalMatcherModel(toModel, catalog)`  | done    | the canonical name a model-switch matcher is tested against, `[1m]` stripped; none means every hook runs |
 | `ifEvaluatorFor(context)`                  | done    | an `if` reader over `evaluateIf`; a handler with `if` never runs on a non-tool event |
 | `fileChangedWatchList(entries, session)`   | done    | the literal file names the `FileChanged` matchers of handlers that can run register to watch |
+| `mergeWatchPaths(current, effect)`         | done    | the dynamic watch list after one output: its `watchPaths` replace the list (each once), `[]` clears it, an output without the field leaves it |
+| `hasRunnableHandler(entries, session, event)` | done | whether a registered handler of the event passes the gates and has a type the event supports (matchers and `if` are not read) |
+| `settleDeliveries(background)`, `groupDeliveries(deliveries)` | done | `HookOutcome.background` as `{ additionalContext[], systemMessages[], wake? }`: the first awaits the promises (a rejected one delivers nothing), the second groups deliveries already in hand |
 | `consumedByRun(entry, succeeded)`          | done    | whether `once: true` removes the handler: skill frontmatter and a successful run only |
 | `buildHookInput(event, facts, session)`    | done    | the input of an event as `{ input, issues }`: the common fields from the session, then the event's facts checked against the official input type; `input` is `undefined` when a fact has the wrong type or value |
 | `serializeHookInput(input)`                | done    | the one JSON text a command hook reads on stdin and an HTTP hook receives as its body |
@@ -1248,7 +1254,8 @@ With `"shell": "powershell"` the command runs as written.
 
 `createPluginHost` composes what the modules below already do; it adds no behaviour of its own. The
 host takes plugins loaded once with `loadPlugin`, the ports, the settings and the saved options, and
-reads the Markdown components of the enabled plugins once. A session reads nothing again.
+reads the Markdown components of the enabled plugins once per `Plugin` object. A session reads nothing from
+disk; `host.update` replaces the plugins and settings, and open sessions follow (see "Updating").
 
 ```ts
 import { createPluginHost, loadPlugin } from '@rsaryev/claude-plugin-kit';
@@ -1276,14 +1283,26 @@ createPluginHost(options: PluginHostOptions): PluginHost;
 //   parentSettings?: ParentSettingsContext; userConfig?: Record<pluginId, OptionValues>;
 //   windows?: boolean; shells?: { bash; powershell } }
 // HostPlugin: { id: 'name@marketplace'; plugin: Plugin; enabled?: boolean; source?: SkillPluginSource }
-host.plugins: readonly { id; name; enabled }[]   // every plugin given, with whether it runs
-host.issues: readonly PluginIssue[]              // what the format readers found in enabled plugins
+host.plugins: readonly { id; name; enabled }[]   // every plugin given, with whether it runs; live
+host.issues: readonly PluginIssue[]              // what the format readers found in enabled plugins; live
+host.generation: number                          // how many times `update` ran
+host.update(update: HostUpdate): { plugins; issues };  // see "Updating"
+// HostUpdate: { plugins?: HostPlugin[]; settings?: PolicyView; parentSettings?: ParentSettingsContext;
+//   userConfig?: Record<pluginId, OptionValues> }
 host.openSession(options: SessionOptions): PluginSession;
 // SessionOptions: { sessionId; cwd; permissionMode; transcriptPath; effort?: { level };
 //   interactive? (true); trusted? (true); additionalDirectories?; addedDirectories?;
 //   permissions?: ShellPermission; agents? (the parsed `--agents` value);
 //   permissionRules?: PermissionRule[] (`Agent(name)` deny rules switch subagents off) }
 // HostPorts adds `folders?: FolderScan` (docs/API.md, "Skills and commands of the folders")
+
+//   interactive? (true); trusted? (true); additionalDirectories?; permissions?: ShellPermission;
+//   promptId?; scratchpadDir?; agent?: { id?; type? }; folderTrustAccepted?;
+//   limits?: SessionLimits }
+session.withTurn(turn: TurnOptions): PluginSession;
+// TurnOptions: Partial<Pick<SessionOptions, 'permissionMode' | 'effort' | 'cwd' |
+//   'additionalDirectories' | 'permissions' | 'promptId' | 'scratchpadDir' | 'agent' |
+//   'folderTrustAccepted' | 'interactive' | 'limits'>>
 ```
 
 A plugin runs when `HostPlugin.enabled` says so, else when `enabledPlugins` of the settings says so,
@@ -1298,11 +1317,123 @@ The session:
 | `reloadSkills({ signal })`, `touchFile(path, { signal })`, `addDirectory(path, { signal })`, `moveTo(cwd, { signal })` | The folders' skills and commands (docs/API.md, "Skills and commands of the folders"): `reloadSkills` reads the managed, personal, project, added and synced folders and lists them next to the plugins' skills; `touchFile` loads the `.claude/skills` below the working directory on the way to a file; `addDirectory` is `/add-dir` and `moveTo` is `/cd` on the live session. Each returns `{ issues, watch, plugins }`. Needs `HostPorts.folders`. |
 | `skillSources()` | Where each listed folder skill came from: `{ entries: { command, names, scope, origin, yielded }[], shadowed }` of the last read, for the `claude.ai sync` group and the note under it. |
 | `expandSkill(name, { arguments?, signal, invoker? })` | The `Expansion` of `expandSkill`: text with `$ARGUMENTS`, `${CLAUDE_PLUGIN_ROOT}` and the plugin's options substituted, shell placeholders run through the runner. `invoker` is `user` (default) or `model`. An unknown name, a skill of a disabled plugin or a refused invoker is `{ ok: false, issues }`. `disableSkillShellExecution` of the settings replaces the placeholders. Without `SessionOptions.permissions` a shell placeholder asks, which aborts the expansion. |
+
+| `expandSkill(name, { arguments?, signal, invoker?, permittedByMention? })` | The `Expansion` of `expandSkill`: text with `$ARGUMENTS`, `${CLAUDE_PLUGIN_ROOT}` and the plugin's options substituted, shell placeholders run through the runner. `invoker` is `user` (default) or `model`. An unknown name, a skill of a disabled plugin or a refused invoker is `{ ok: false, issues }`. `disableSkillShellExecution` of the settings replaces the placeholders. Without `SessionOptions.permissions` a shell placeholder asks, which aborts the expansion. `SessionOptions.limits` (`SessionLimits`: `models` allowlist, `maxEffort`, `supportedEfforts`) is passed as `ExpandRequest.limits`, so `Expansion.turn` carries the allowlisted model (`modelKept: 'excluded'` and no `model` when the skill's model is not allowed) and the capped effort, which `${CLAUDE_EFFORT}` in the text follows; `CLAUDE_CODE_EFFORT_LEVEL` is read from the `Environment` port. `permittedByMention: true` lets the model run a `disable-model-invocation` skill the user named in that message (never a `user-invocable: false` one for the user). |
+| `expandMessage(message, { signal, invoker? })` | `{ mentions, expansions, permitted }` for one typed message (skills.md, "Stack several skills in one message"). `readSkillMentions` runs with the turn's `interactive` and a `stackable` made from the catalog (`stackableOf`: inline, user-invocable, after `skillOverrides`); each direct or stacked mention that names a skill of the catalog is expanded in order by `expandSkill` with the shared trailing arguments, as `{ mention, expansion }` (a direct skill the user may not run is a failed expansion). A forked skill, an unknown name or the sixth stacked skill ends the stack; a non-interactive turn expands only the first. A `named` mention is not expanded: `permitted` is the set of such names, and the host passes `permittedByMention: permitted.has(name)` when the model calls that skill in this message. |
 | `dispatch(event, facts, { signal })` | The `HookOutcome<E>` of the engine. `facts` is the event's own fields (`EventFactsOf<E>`); the common fields come from the session. Handlers of every enabled plugin, then of the settings files, run with `if` read by the rules module and the policy of the settings: `disableAllHooks`, `allowManagedHooksOnly` (plugins force-enabled in managed `enabledPlugins` exempt), the `hooks` lock of `strictPluginOnlyCustomization`, `allowedHttpHookUrls`, `httpHookAllowedEnvVars`. A skill's `once` hook that ran is dropped after the dispatch. |
 | `agents(options?)` | `Resolved<SessionAgent>`: every subagent of the session (docs/API.md, "Sub-agents: the catalog") as the official `AgentDefinition` under the name a call uses (`<plugin>:<name>` for a plugin agent), `extras` (`color`, `isolation`, `cacheTtl`) and its `source`. A plugin agent's prompt has the plugin variables substituted; any other prompt is as written. `builtin: false` leaves the built-ins out (their prompt is empty, so an SDK with its own built-ins gets only the rest). |
 | `reloadAgents({ signal })`, `agentCatalog()` | Reads the managed, project, personal and added `.claude/agents/` folders through `HostPorts.folders` (the first call lists them at all) and returns `{ issues, watch }`; `agentCatalog()` is the `AgentCatalog` of the last read: built-ins, the `--agents` flag (`SessionOptions.agents`, already parsed), the folders and the enabled plugins, minus what `SessionOptions.permissionRules` deny with `Agent(name)` or `Agent` (`Task(...)` reads as `Agent(...)`). A host that rebuilds its run state per run passes `AgentOverrides` (`permissionRules`, `flag`, `interactive`) to `agentCatalog(overrides)` or `reloadAgents({ signal, overrides })`: they replace the session's values for that call only. `selectAgent({ flag, setting }, overrides?)` is `selectSessionAgent` over that catalog. |
 | `mcpServers(options?)`, `lspServers(options?)`, `monitors(options?)` | `Resolved<ResolvedMcpServer>`, `Resolved<ResolvedLspServer>`, `Resolved<ResolvedMonitor>`: the substituted configs, with `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}` and `${user_config.*}` resolved. A server that cannot start is left out and its issue is in `issues`. |
 | `outputStyles()` | The `OutputStyle` of each enabled plugin, `id` `<plugin>:<name>`. |
+| `withTurn(turn)` | The same session for one turn: a `PluginSession` that shares the session's state and replaces only the fields `turn` names (see "Turns"). |
+| `runScoped(turn, run)` | `withTurn` for one run: `run` gets the view of the turn, and the hooks added with `lifetime: 'turn'` through it are dropped when `run` settles (see "Scoped hooks"). |
+| `addHooks(prefix, hooks, source, options?)`, `removeHooks(prefix)` | Hooks of a run, an agent or a skill added to and removed from the session; `addHooks` returns `{ remove() }` (see "Scoped hooks"). |
+| `hasHooks(event)` | Whether a handler that passes this turn's gates would run for the event. |
+| `fileChangedWatchList()` | The literal names of the `FileChanged` matchers, then the dynamic `watchPaths` of the last SessionStart, CwdChanged or FileChanged output that returned the field. |
+| `takeBackground()` | The background deliveries that settled since the last call, as `{ additionalContext[], systemMessages[], wake? }` (see "Background hooks"). |
+| `onBackground(listener)` | Calls `listener` with each background delivery as it settles (a `wake` included) and returns the function that stops it; it takes nothing from the queue. |
+
+`SessionOptions.promptId`, `scratchpadDir`, `agent` and `folderTrustAccepted` are the common fields
+`prompt_id`, `scratchpad_dir`, `agent_id` and `agent_type` of every hook input, and the workspace trust
+the frontmatter hooks of a project subagent need (hooks.md, "Common input fields", "Hooks in skills
+and agents"). A field left out is left out of the input.
+
+### Turns
+
+A host that serves many turns opens the session once and calls `session.withTurn(turn)` for each
+one: the mode, effort, folders, shell answer, model limits, prompt and agent of a turn are the turn's, and what
+must outlive a turn is the session's. The view `withTurn` returns shares the hooks registered so far
+(a skill's hooks keep running "on turns after the skill's own turn"), the `once` keys already
+consumed and what skill hooks have used of their limits; it never reopens the session, so none of
+that is lost. The hook input (`permission_mode`, `effort`, `cwd`), the base of an `if` path rule,
+`${CLAUDE_EFFORT}`, the working directory of a shell placeholder and its `permissions` answer all
+read the turn, as do `scratchpad_dir` and `interactive` (a `-p` turn makes a forked skill wait for
+its result). An `if` path rule is anchored to the turn's `cwd`; additional directories do not widen it.
+
+```ts
+const session = host.openSession({ sessionId, cwd, permissionMode: 'default', transcriptPath });
+const turn = session.withTurn({
+  permissionMode: 'plan',
+  cwd: '/work/app/src',
+  permissions: (call) => rules.decide(call), // `ask` in the session, answered in this turn
+  promptId,
+});
+await turn.expandSkill('formatter:status', { signal });
+await turn.dispatch('PreToolUse', facts, { signal });
+```
+
+A turn replaces the fields it names and keeps the others; `agent` replaces whole. It may not change
+`sessionId`, `transcriptPath` or `trusted`, which belong to the session (spec/judgments.md), and a
+field given as `undefined` is ignored: a turn replaces a field but cannot unset it. The session
+`withTurn` is called on does not change, and `withTurn` on a view builds on that view's fields. Views
+of one session are one session for hooks: a skill expanded through one view fires through any other.
+
+### Scoped hooks
+
+An agent's frontmatter hooks or a host's own run need hooks that are neither a plugin's nor a skill's.
+`addHooks(prefix, hooks, source, options?)` registers a `hooks` object (the shape of the `hooks` key
+of settings) under `prefix`; the ids of its entries begin with it, and a prefix names one
+registration: adding it again replaces what it registered ("replaces, never stacks", as a skill
+invoked again does) and the handle of the replaced registration no longer removes anything.
+`removeHooks(prefix)` removes by prefix; an unknown prefix does nothing. `source` is
+`{ kind: 'agent' | 'session' | 'skill'; label; scope?; pluginName?; managed? }`: it decides the gates,
+as in hooks.md, "Hooks in skills and agents" (a project agent's hooks wait for `folderTrustAccepted`,
+a project skill's for workspace trust). `options.pluginId` names the plugin a skill or agent belongs to.
+
+```ts
+const handle = session.addHooks(
+  `agent:${agent.id}`,
+  { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: './guard.sh' }] }] },
+  { kind: 'agent', label: '[agent]', scope: 'user' },
+);
+await session.dispatch('PreToolUse', facts, { signal }); // runs ./guard.sh
+handle.remove();
+
+await session.runScoped({ promptId, agent: { id: agent.id, type: agent.type } }, async (turn) => {
+  turn.addHooks(`run:${promptId}`, hooks, { kind: 'session', label: '[run]' }, { lifetime: 'turn' });
+  return runAgent(turn); // the hooks are gone when this settles, even when it throws
+});
+```
+
+Lifetime: `session` (the default) lasts until removed, like a skill's hooks. `turn` ends with
+`runScoped`: the one end signal is that callback settling, whether it returns or throws; there is no
+separate `end()`. `lifetime: 'turn'` on a view that did not come from `runScoped` throws, since
+nothing would end it; the views `withTurn` makes from a scoped view stay scoped. Registrations belong
+to the session, not to a view: every view of the session fires them while they last, so concurrent
+turns use distinct prefixes. `hasHooks(event)` is true when a registered handler of the event passes
+the gates of the turn and has a type the event supports; the matcher and `if` are not read, since
+they need the occurrence. `fileChangedWatchList()` lists the static names first, then the dynamic
+paths, each once; the dynamic slot is the session's and each SessionStart, CwdChanged or FileChanged
+output that returns `watchPaths` replaces it (`[]` clears it; an output without the field leaves it).
+
+### Background hooks
+
+`session.dispatch` is unchanged: an `async` or `asyncRewake` hook returns at once and its promise is
+in `outcome.background`. A host takes the deliveries one of two ways:
+
+```ts
+// 1. wait for the promises of one dispatch
+const outcome = await session.dispatch('PostToolUse', facts, { signal });
+const late = await settleDeliveries(outcome.background); // { additionalContext, systemMessages, wake? }
+
+// 2. ask the session at a turn boundary, whatever dispatch started the hook
+const { additionalContext, systemMessages, wake } = session.takeBackground();
+```
+
+`additionalContext` and `systemMessages` are for Claude on the next turn (hooks.md, "How async hooks
+execute"). `wake` is the stderr (stdout when empty) of an `asyncRewake` hook that exited 2: the host
+opens a turn with it, which is why it is apart from the context; several wakes join with a newline.
+`takeBackground()` returns what settled since its last call, in the order it settled, and forgets
+it; it never waits, and a hook that has not ended appears in a later call. A background process the
+runner lost delivers nothing.
+
+`session.onBackground(listener)` is the push side, for a host that is idle: it calls `listener` with
+the `SettledDeliveries` of each hook that delivered something, as it settles (an `asyncRewake` exit 2
+arrives with its `wake`), and returns the function that stops it. It takes nothing: `takeBackground()`
+still returns the delivery, and a listener that throws hides nothing. Two things stay the host's: the
+queue holds every delivery until `takeBackground()` drains it, and it hands over repeats, so the
+check Claude Code makes for an async `SessionStart` hook (skip text equal to what Claude last
+received, deliver again after a compaction or `/clear`) is made by the host.
 
 `Resolved<T>` is `{ resolved: readonly T[]; issues: readonly PluginIssue[] }`. The saved options
 of a plugin are the `pluginConfigs` of the settings with the host's `userConfig` over them.
@@ -1326,8 +1457,51 @@ a managed layer only) decide whether a skill keeps its hooks and its `allowed-to
 command whose `allowedTools` holds a rule that does not parse is reported in `host.issues` as
 `loadCommandEntries` reports it, and loads without that rule.
 
-Not in the host: starting servers and monitors, the permission decision of a tool call (`decide` in the rules module),
-and mods, which stay their own entry (`MODS_API`, `modsTesting`).
+### Updating
+
+The host owns the disk: it reads plugin folders, caches the `Plugin` objects (by mtime, by version,
+however it likes) and feeds the ones that changed to `host.update`. One call replaces the plugins and
+the settings view, and every session already open stays consistent without being reopened.
+
+```ts
+const result = host.update({ plugins: [...kept, { id: 'review@acme', plugin: reloaded }] });
+result.plugins; // the new `host.plugins`: every plugin given, with whether it runs
+result.issues; // the new `host.issues`
+host.generation; // one more than before: a caller that kept the number sees that an update happened
+host.update({ settings: createPolicyView(layers) }); // settings only; the plugins stay
+```
+
+`update` takes `plugins`, `settings`, `parentSettings` and `userConfig`. Each part given replaces the
+host's whole (`userConfig` replaces the saved values of every plugin); a part left out, or given as
+`undefined`, stays, so to clear the settings give `createPolicyView([])`. The ports, `windows` and
+`shells` are fixed for the life of the host. `createHostState` is pure: `update` merges the options
+and builds the state again, and `host.plugins` and `host.issues` read the current one. The Markdown
+of a plugin is read once per `Plugin` object (`readCatalog` caches by identity), so an update that
+keeps a plugin does not read it again; a new object for the same id is read.
+
+A session, and each `withTurn` and `runScoped` view of it, holds no state: it reads the host's at each
+use, so the next call after an update sees the new one. What it does:
+
+| Part of the session | After an update |
+| --- | --- |
+| Hooks of the plugins and of the settings files | Rebuilt from the new state, plugins first. |
+| Hooks the session registered (a skill's, an agent's, `addHooks`) | Kept, unless their `pluginId` no longer runs or the new plugin-only lock (`strictPluginOnlyCustomization` on `hooks`) silences their source; they do not return when the plugin runs again or the lock is lifted. |
+| `once` keys | A `once` hook that ran stays consumed: only skill hooks honor `once`, and an update never rebuilds them. |
+| Skill-hook limits (1,024 hooks, 16,384 matcher characters) | Summed again from the skills whose plugin still runs; a plugin dropped and added back starts from zero. |
+| Gates: `disableAllHooks`, `allowManagedHooksOnly`, the plugin-only lock, the HTTP policy, force-enabled plugins | Read from the current settings at each dispatch, so a policy switched on mid-session applies at the next one. |
+| Skills, `skillOverrides`, `disableSkillShellExecution`, `allowManagedPermissionRulesOnly` | Read at each `skills()`, `expandSkill` and `expandMessage`. |
+| Agents, MCP and LSP servers, monitors, output styles | Resolved at each call over the current plugins and `userConfig`. |
+| The dynamic watch list, the background queue, the turn view's options | Kept. |
+
+A session takes an update up at its next use, so two updates before that count as one: a plugin
+removed and added back in between never left it. A host that needs each step uses the session between
+the calls. What the host held for a run (the hooks of `addHooks` with `lifetime: 'turn'`) is the
+run's: it ends with `runScoped` as before. A host no longer rebuilds the hooks of each run or hands
+the latest run's hooks to its sessions: it calls `update` when the plugins or settings change.
+
+Not in the host: reading plugin folders from disk and caching them (the host owns that and feeds new `Plugin` objects
+through `update`), starting servers and monitors, the permission decision of a tool call (`decide` in the rules
+module), and mods, which stay their own entry (`MODS_API`, `modsTesting`).
 
 ## Permission rules (done: syntax, bare, parameter and glob rules, precedence, Bash and PowerShell commands, hook `if`, path rules, domain, MCP, Agent and Skill rules, the six permission modes)
 
@@ -1985,3 +2159,11 @@ Split subagent context by responsibility: persistent memory, preloaded skills an
 ## Hook classifier annotations and auto-mode rewrites
 
 Hook output exposes classifierContext with its shared 2,000-character cap and classifierTrust; notes for unrecorded read-only lookups are discarded. reviewHookRewrite decides whether a changed call applies, is denied, or drops a further rewrite on a repeat. afterHandbackDenial counts the three retry notices; the host delivers them.
+
+### Live content across turns and updates
+
+Folder skills and agents share their scan state across turn views that keep the current directory. A view with an explicit different `cwd` has its own folder context and never moves the original session. `moveTo` changes the context's live cwd for later hooks and shell placeholders. `host.update` changes plugin catalogs, folder-source policy and settings environment on the next use; it preserves environment files and already-consumed hooks. Re-enabling a folder source that a scan omitted requires reloading it.
+
+### Root export names shared by modules
+
+At the package root, the CLI planners are `planCliInstall`, `planCliEnable`, `planCliDisable` and `planCliMarketplaceUpdate`; their names inside `cli` remain `planInstall`, `planEnable`, `planDisable` and `planMarketplaceUpdate`. Installed-state graph plans use `planInstalledPrune` and `planInstalledUninstall`, distinct from the catalog-aware dependency plans. `readTheme` and `readAgent` are file readers; `readThemeSetting` names the general-settings theme reader. Conflicting public types are qualified by responsibility (`Cli*`, `Update*`, `PolicyHelperRun`, `PolicyHelperOutput`, `WorkflowFailureCause`, `InstalledGraph*`).

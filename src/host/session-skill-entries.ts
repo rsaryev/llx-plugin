@@ -1,3 +1,4 @@
+import type { Invocable } from '../skills/index.ts';
 import type { Command, Skill } from '../format/skill-types.ts';
 import type { FolderEntry } from './session-folders.ts';
 import type { ActivePlugin, HostState } from './state.ts';
@@ -23,7 +24,11 @@ function bareName(invocable: Skill | Command): string | undefined {
   return bare === folderName(invocable.dir) ? undefined : bare;
 }
 
-export function pluginEntries(state: HostState): readonly Entry[] {
+const ENTRIES = new WeakMap<HostState, readonly Entry[]>();
+
+export function entriesOf(state: HostState): readonly Entry[] {
+  const cached = ENTRIES.get(state);
+  if (cached !== undefined) return cached;
   // Oracle 2.1.319: a command, not a skill, wins a plugin-local name collision.
   const entries = state.active.flatMap((plugin) => {
     const commands = new Set(plugin.catalog.commands.map((command) => command.command));
@@ -35,10 +40,15 @@ export function pluginEntries(state: HostState): readonly Entry[] {
     }));
   });
   const used = new Set(entries.map((entry) => entry.invocable.command));
-  return entries.map((entry) => {
+  const named = entries.map((entry) => {
     const bare = bareName(entry.invocable);
     if (bare === undefined || used.has(bare)) return entry;
     used.add(bare);
     return { ...entry, names: [...entry.names, bare] };
   });
+  ENTRIES.set(state, named);
+  return named;
 }
+
+export const invocablesOf = (entries: readonly Entry[]): readonly Invocable[] =>
+  entries.map((entry) => entry.invocable);

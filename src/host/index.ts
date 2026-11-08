@@ -1,11 +1,27 @@
 /** The host and its sessions (layer 5, docs/API.md, "Host and sessions"). */
-export { createPluginHost, type HostedPlugin, type PluginHost } from './host.ts';
+export { createPluginHost, type PluginHost, type UpdateResult } from './host.ts';
+export type { BackgroundListener } from './background-queue.ts';
+export type { PluginSession, TurnPart } from './session.ts';
+export type { SessionOptions } from './session-types.ts';
+export type { TurnOptions } from './turn.ts';
+export type {
+  AddHooksOptions,
+  HookHandle,
+  HookLifetime,
+  HookScope,
+  ScopedHookSource,
+} from './session-hook-scope.ts';
+export type {
+  MentionExpansion,
+  MentionPart,
+  MessageExpansion,
+  MessageOptions,
+} from './session-mentions.ts';
 export {
   permissionRulesOf,
   type PermissionRuleFacts,
   type PermissionRulesOf,
 } from './permission-rules.ts';
-export type { PluginSession } from './session.ts';
 export type { HookEnvironment } from './session-hooks.ts';
 export type {
   ExpandOptions,
@@ -17,11 +33,12 @@ export type { FolderSkillSource, FolderSkillSources, SkillsReload } from './sess
 export type { AgentsOptions, ResolveOptions, SessionAgent } from './session-components.ts';
 export type { AgentOverrides, AgentsReload } from './session-agents.ts';
 export type {
+  HostedPlugin,
   HostPlugin,
   HostPorts,
+  HostUpdate,
   PluginHostOptions,
   Resolved,
-  SessionOptions,
 } from './types.ts';
 export {
   startPermissions,

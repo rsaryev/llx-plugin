@@ -19,3 +19,5 @@ export type { DeferResolution, DeferTurn } from './defer.ts';
 export { preToolUseHookOutcome } from './pre-tool-use-outcome.ts';
 export { CLASSIFIER_CAP, isUnrecordedCall, restoredNote } from './classifier-note.ts';
 export type { ClassifierNote, ClassifierTrust } from './classifier-note.ts';
+export { groupDeliveries, settleDeliveries } from './background.ts';
+export type { SettledDeliveries } from './background.ts';

@@ -8,8 +8,10 @@ import type { HookSession, HookSourceKind, RegisteredHandler } from '../contract
  */
 
 type Lock = (entry: RegisteredHandler, session: HookSession) => boolean;
+/** A lock that reads the handler's source only. */
+type SourceLock = (entry: RegisteredHandler) => boolean;
 
-const open: Lock = () => true;
+const open: SourceLock = () => true;
 const blocked: Lock = () => false;
 const managed: Lock = (entry) => entry.source.managed === true;
 
@@ -46,13 +48,13 @@ const USER_OWNED_SCOPES: { readonly [S in SettingSource]: boolean } = {
  * it is "a plugin skill, a bundled skill, or a skill in the managed settings directory". A source
  * with no user or project scope (a bundled skill, a `--settings` file) is not the user's own.
  */
-const notUserOwned: Lock = (entry) => {
+const notUserOwned: SourceLock = (entry) => {
   const { managed: isManaged, pluginName, scope } = entry.source;
   if (isManaged === true || pluginName !== undefined || scope === undefined) return true;
   return !USER_OWNED_SCOPES[scope];
 };
 
-const PLUGIN_ONLY: { readonly [K in HookSourceKind]: Lock } = {
+const PLUGIN_ONLY: { readonly [K in HookSourceKind]: SourceLock } = {
   settings: notUserOwned,
   skill: notUserOwned,
   agent: notUserOwned,
@@ -60,7 +62,14 @@ const PLUGIN_ONLY: { readonly [K in HookSourceKind]: Lock } = {
   session: open,
 };
 
+/**
+ * Whether a plugin-only lock on `hooks` leaves the handler's source alone. It reads the source, not
+ * the session, so a host can tell which registered handlers a lock silences.
+ */
+export const pluginOnlyAllows = (entry: RegisteredHandler): boolean =>
+  PLUGIN_ONLY[entry.source.kind](entry);
+
 /** Whether neither managed lock the session has set keeps the handler's source from running. */
 export const passesLocks = (entry: RegisteredHandler, session: HookSession): boolean =>
   (session.allowManagedHooksOnly !== true || MANAGED_ONLY[entry.source.kind](entry, session)) &&
-  (session.pluginOnlyHooks !== true || PLUGIN_ONLY[entry.source.kind](entry, session));
+  (session.pluginOnlyHooks !== true || pluginOnlyAllows(entry));
