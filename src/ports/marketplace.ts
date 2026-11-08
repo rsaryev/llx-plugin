@@ -5,8 +5,10 @@
  * of them, so `src/ports/index.ts` stays the foundation's.
  *
  * Planning a fetch is pure; a port is needed only where the kit must hash, count or list something
- * it cannot compute without an effect.
+ * it cannot compute without an effect. An effect that did not happen (a corrupt zip, an
+ * unreachable git host) is a `PortFailure` in the result, never a throw (docs/ARCHITECTURE.md, "Ports").
  */
+import type { PortFailure } from './failure.ts';
 
 /** A SHA-256 digest of bytes as 64 lower-case hex digits (a port keeps `crypto` out of `src/`, L3). */
 export interface Sha256 {
@@ -27,14 +29,20 @@ export interface ArchiveStats {
   readonly topLevel: readonly string[];
 }
 
+/** `corrupt`: the bytes are not a readable zip, so the download is refused; `aborted`: the signal fired. */
+export type ArchiveFailure = PortFailure<'corrupt' | 'aborted'>;
+
 export interface ArchiveReader {
-  stats(bytes: Uint8Array, signal?: AbortSignal): Promise<ArchiveStats>;
+  /** Unzipping is work a host may need to cancel, so the signal is required, as for any request that does I/O. */
+  stats(bytes: Uint8Array, signal: AbortSignal): Promise<ArchiveStats | ArchiveFailure>;
 }
 
 /** The repository a tag listing is about: a GitHub `owner/repo` shorthand or a git URL. */
 export type GitRepository = { readonly shorthand: string } | { readonly url: string };
 
+export type GitTagsFailure = PortFailure<'connection' | 'timeout' | 'aborted'>;
+
 /** Lists the tags of a plugin's repository, so dependency tag resolution runs without git. */
 export interface GitTags {
-  list(repository: GitRepository, signal: AbortSignal): Promise<readonly string[]>;
+  list(repository: GitRepository, signal: AbortSignal): Promise<readonly string[] | GitTagsFailure>;
 }

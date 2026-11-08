@@ -142,6 +142,8 @@ export type MarketplaceSource =
       readonly ref?: string;
       readonly path: string;
       readonly sparsePaths?: readonly string[];
+      /** Accepted and has no effect (marketplace-reference.md, "Fields by type"); kept so a source round-trips. */
+      readonly skipLfs?: boolean;
     }
   | {
       readonly kind: 'git';
@@ -149,8 +151,16 @@ export type MarketplaceSource =
       readonly ref?: string;
       readonly path: string;
       readonly sparsePaths?: readonly string[];
+      /** Accepted and has no effect (marketplace-reference.md, "Fields by type"); kept so a source round-trips. */
+      readonly skipLfs?: boolean;
     }
-  | { readonly kind: 'npm'; readonly package: string }
+  | {
+      readonly kind: 'npm';
+      readonly package: string;
+      /** In the SDK's `source` shape; the marketplace-sources table lists only `package`. */
+      readonly version?: string;
+      readonly registry?: string;
+    }
   | { readonly kind: 'file'; readonly path: string }
   | { readonly kind: 'directory'; readonly path: string }
   | {

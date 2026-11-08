@@ -1,9 +1,10 @@
 /**
  * marketplace-reference.md § Plugin sources, § Marketplace sources and § Plugin entries: the
  * contract types every part of the marketplace stream shares. This file claims no requirement:
- * the readers prove the fields. It proves the closed lists are the ones the docs print, that each
- * kind has a documented example (a kind added to a list fails here until it has one), and that the
- * fixtures the readers' tests use are values of the contract types, which `typecheck` enforces.
+ * the readers prove the fields. It proves the closed lists are the ones the docs print, and that
+ * the kit's marketplace source union names the same kinds and fields as the SDK's `source` shape
+ * (`Settings['extraKnownMarketplaces']`), by type-level assertions `typecheck` enforces. The
+ * fixtures the readers' tests use are checked where they are inputs and outputs of real code.
  */
 import { describe, expect, test } from 'bun:test';
 import {
@@ -11,14 +12,7 @@ import {
   PLUGIN_SOURCE_KINDS,
 } from '../../../src/format/marketplace/index.ts';
 import type { MarketplaceSource, PluginSource } from '../../../src/format/marketplace/types.ts';
-import {
-  MARKETPLACE_SOURCES,
-  PLUGIN_SOURCES,
-  RELEVANCE_MARKETPLACE,
-  RENAMES_MARKETPLACE,
-  parsedMarketplace,
-  rawMarketplace,
-} from '../../support/marketplace-fixtures.ts';
+import type { Settings } from '../../../src/protocol/official.ts';
 
 const sorted = (list: readonly string[]): string[] => [...list].toSorted();
 
@@ -84,40 +78,49 @@ describe('the lists and the unions agree', () => {
   });
 });
 
-describe('the fixtures', () => {
-  test('every kind has a documented example, raw and parsed, of its own kind', () => {
-    for (const kind of PLUGIN_SOURCE_KINDS) expect(PLUGIN_SOURCES[kind].parsed.kind).toBe(kind);
-    for (const kind of MARKETPLACE_SOURCE_KINDS)
-      expect(MARKETPLACE_SOURCES[kind].parsed.kind).toBe(kind);
-  });
+// The SDK declares the ten marketplace sources; the kit's union is the parsed form of them: `kind`
+// for `source`, defaults applied (`path` always present on git sources) and read-only arrays. The
+// assertions below fail `typecheck` when the SDK adds, drops or renames a kind or a field.
+type SdkSource = NonNullable<Settings['extraKnownMarketplaces']>[string]['source'];
+type SdkSourceOf<Kind extends string> = Extract<SdkSource, { source: Kind }>;
+type MutableValue<Value> = Value extends readonly (infer Item)[] ? Item[] : Value;
+type Mutable<T> = { -readonly [Key in keyof T]: MutableValue<T[Key]> };
+type FieldNames<T, Tag extends string> = Exclude<keyof T, Tag>;
+type SameNames<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 
-  test('an object source names its type in `source`; the kit names the parsed field `kind`', () => {
-    for (const kind of PLUGIN_SOURCE_KINDS) {
-      const { raw } = PLUGIN_SOURCES[kind];
-      if (kind === 'relative') expect(typeof raw).toBe('string');
-      else expect(raw).toMatchObject({ source: kind });
-    }
-  });
+/** Per kind: the field names agree, and (but for `settings`, whose entries are parsed) each kit field fits the SDK's. */
+type KindAgrees<Kind extends MarketplaceSource['kind']> =
+  SameNames<
+    FieldNames<Extract<MarketplaceSource, { kind: Kind }>, 'kind'>,
+    FieldNames<SdkSourceOf<Kind>, 'source'>
+  > extends true
+    ? Kind extends 'settings'
+      ? true
+      : Mutable<Omit<Extract<MarketplaceSource, { kind: Kind }>, 'kind'>> extends Omit<
+            SdkSourceOf<Kind>,
+            'source'
+          >
+        ? true
+        : false
+    : false;
 
-  test('the smallest marketplace has the three required fields, and its parsed twin the defaults', () => {
-    expect(Object.keys(rawMarketplace())).toEqual(
-      expect.arrayContaining(['name', 'owner', 'plugins']),
-    );
-    const parsed = parsedMarketplace();
-    expect(parsed.plugins[0]?.strict).toBe(true);
-    expect(parsed.forceRemoveDeletedPlugins).toBe(false);
-    expect(parsed.allowCrossMarketplaceDependenciesOn).toEqual([]);
-  });
+const sdkKinds: SameNames<MarketplaceSource['kind'], SdkSource['source']> = true;
+const everyKindAgrees: { [Kind in MarketplaceSource['kind']]: KindAgrees<Kind> } = {
+  url: true,
+  github: true,
+  git: true,
+  npm: true,
+  file: true,
+  directory: true,
+  settings: true,
+  'skills-dir': true,
+  hostPattern: true,
+  pathPattern: true,
+};
 
-  test("the renames and relevance examples are the docs' own", () => {
-    expect(RENAMES_MARKETPLACE.renames).toEqual({
-      formatter: 'code-formatter',
-      'legacy-linter': null,
-    });
-    expect(RELEVANCE_MARKETPLACE.plugins).toMatchObject([
-      {
-        relevance: { topic: 'Terraform', signals: { cli: ['terraform'], filesRead: ['**/*.tf'] } },
-      },
-    ]);
+describe('the marketplace source union and the SDK', () => {
+  test('both name the same ten kinds, and each kind the same fields (checked by `typecheck`)', () => {
+    expect(sdkKinds).toBe(true);
+    expect(Object.keys(everyKindAgrees).toSorted()).toEqual(sorted(MARKETPLACE_SOURCE_KINDS));
   });
 });

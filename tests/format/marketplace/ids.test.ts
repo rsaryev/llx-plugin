@@ -178,6 +178,17 @@ describe('judgments (spec/judgments.md)', () => {
     expect(isPluginIdPart('x..y')).toBe(true);
   });
 
+  test('"/", "\\", ".." and "." fail the grammar too, so the path message comes with the cannot-install error', () => {
+    const path =
+      'Marketplace name cannot contain path separators (/ or \\), ".." sequences, or be "."';
+    for (const name of ['a/b', '..', '.']) {
+      expect(pluginIdIssues('marketplace', name, 'name')).toEqual([
+        { severity: 'error', path: 'name', message: path },
+        { severity: 'error', path: 'name', message: expect.stringContaining('cannot install') },
+      ]);
+    }
+  });
+
   test('"..": the docs forbid it in a marketplace name only, so a plugin entry named "x..y" has no id issue', () => {
     expect(pluginIdIssues('plugin', 'x..y', 'plugins[0].name')).toEqual([]);
   });

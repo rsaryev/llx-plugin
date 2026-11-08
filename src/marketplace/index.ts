@@ -15,9 +15,11 @@ export type {
 } from './types.ts';
 export type { HostFetchPlan, SourceFetcher } from './ports.ts';
 export type {
+  ArchiveFailure,
   ArchiveReader,
   ArchiveStats,
   GitRepository,
   GitTags,
+  GitTagsFailure,
   Sha256,
 } from '../ports/marketplace.ts';

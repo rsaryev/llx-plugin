@@ -69,6 +69,10 @@
 
 ### Fixed
 
+- Marketplace contracts: `ArchiveReader.stats` and `GitTags.list` report a corrupt zip, an
+  unreachable git host or a fired signal as a `PortFailure` instead of a rejection (`stats` now
+  takes a required `signal`); `MarketplaceSource` carries `skipLfs` on `github` and `git` and
+  `version` and `registry` on `npm`, and a type-level test ties its kinds and fields to the SDK's.
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
   parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
   (and `skill`) read `name:value` as a parameter.
