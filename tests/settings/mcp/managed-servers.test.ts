@@ -153,10 +153,14 @@ spec('mcpSettings.managed.What an entry can contain', () => {
   });
 });
 
+const reasonOf = (name: string, entry: Record<string, unknown>) =>
+  read({ [name]: entry }).issues[0]?.message ?? '';
+
 describe('managed server entry judgments', () => {
   // Judgment (spec/judgments.md): Unicode categories Cc, Cf, Zl and Zp are "control or invisible
   // formatting characters"; a name held by an invalid entry of a higher source does not fall back to
-  // the entry of a lower one; the wording of the notice.
+  // the entry of a lower one; the wording of the notice; the notice is the first failed check in the
+  // order of the page's list.
   test('line and paragraph separators count as invisible', () => {
     expect(loadedNames({ bad: { ...search, headers: { A: 'x y' } } })).toEqual([]);
   });
@@ -165,6 +169,17 @@ describe('managed server entry judgments', () => {
     const high = layerOf('managed', { managedMcpServers: { search: { type: 'stdio' } } });
     const low = layerOf('managed', { managedMcpServers: { search } });
     expect(readManagedMcpServers([high, low]).servers).toEqual([]);
+  });
+
+  test('an entry that fails several checks gets the notice of the first in the order of the page', () => {
+    // Name and invisible characters come last on the page, so every other check wins over them.
+    expect(reasonOf('bad name', { type: 'stdio', url: 'http://x' })).toContain('"type"');
+    expect(reasonOf('bad name', { ...search, command: 'x' })).toContain('"command"');
+    expect(reasonOf('bad name', { ...search, headers: { A: '${A}' } })).toContain('${VAR}');
+    expect(reasonOf('bad name', { ...search, headers: { A: 'x\u200Bx' } })).toContain(
+      'letters, numbers',
+    );
+    expect(reasonOf('ok', { ...search, headers: { A: 'x\u200Bx' } })).toContain('invisible');
   });
 
   test('a notice names the server and the reason', () => {

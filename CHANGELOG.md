@@ -39,6 +39,13 @@
 
 ### Fixed
 
+- Managed MCP review: the startup exits follow the page's order (`--mcp-config` before
+  `--strict-mcp-config`, a judgment when both apply); `/mcp` toggles no longer reach the servers of
+  `managed-mcp.json` (the page documents them for provided servers only); an entry that fails several
+  checks gets the notice of the first in the page's order; `reconcileManagedServers` and the hooks
+  merge share one `canonical` helper (plain key sort, no locale); the plan-level tests now cover the
+  allowlist split between file and provided servers, same-name precedence, `desktopManaged`, an empty
+  map with connectors or Chrome allowed, and the connectors switch together with `allowAllClaudeAiMcps`.
 - MCP allow and deny lists review: `PolicyEnv` is exported once and replaces the three hand-declared
   environment types; `createMcpServerPolicy` documents that it reads the lists at creation and a host
   rebuilds it when settings change before a reconnect. The tests no longer claim the reconnect line, the

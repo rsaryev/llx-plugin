@@ -1,3 +1,4 @@
+import { canonical } from '../canonical.ts';
 import type { McpCandidate } from './scope.ts';
 
 /**
@@ -74,14 +75,6 @@ export interface ManagedServerChanges {
   readonly add: readonly string[];
   readonly change: readonly string[];
   readonly remove: readonly string[];
-}
-
-/** The same value with the keys of every object in order, so two spellings of one definition compare equal. */
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  if (typeof value !== 'object' || value === null) return JSON.stringify(value);
-  const fields = Object.entries(value).toSorted(([a], [b]) => a.localeCompare(b));
-  return `{${fields.map(([key, each]) => `${JSON.stringify(key)}:${canonical(each)}`).join(',')}}`;
 }
 
 const NO_CHANGES: ManagedServerChanges = { add: [], change: [], remove: [] };

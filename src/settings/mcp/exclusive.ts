@@ -143,14 +143,18 @@ const SCOPE_GATES: { readonly [S in ConfiguredCandidate['scope']]: (gate: Gate) 
 
 type Exit = (input: McpLoadInput, exclusive: boolean) => string | undefined;
 
-/** The startup exits, in the order the page lists the cases; the first that applies is the one. */
+/**
+ * The startup exits, in the order the page lists the cases (`--mcp-config`, then `--strict-mcp-config`,
+ * then Chrome); the first that applies is the one. The page does not say which message wins when
+ * several apply (spec/judgments.md).
+ */
 const EXITS: readonly Exit[] = [
-  (input, exclusive) =>
-    exclusive && input.session.strictMcpConfig === true ? STRICT_MCP_CONFIG_EXIT : undefined,
   (input, exclusive) =>
     exclusive && !input.session.cloud && (input.session.mcpConfig ?? []).length > 0
       ? MCP_CONFIG_EXIT
       : undefined,
+  (input, exclusive) =>
+    exclusive && input.session.strictMcpConfig === true ? STRICT_MCP_CONFIG_EXIT : undefined,
   (input, exclusive) =>
     exclusive &&
     input.session.chrome?.flag === true &&
@@ -189,7 +193,11 @@ const EMPTY: McpLoadPlan = {
   chrome: false,
 };
 
-/** The candidates of the plan: the file's, the provided ones and the scopes that stay open. */
+/**
+ * The candidates of the plan: the file's, the provided ones and the scopes that stay open. `/mcp`
+ * toggles apply to the provided servers and the scopes that stay open; the page documents them for
+ * provided servers only, and a file server is always on (spec/judgments.md).
+ */
 function candidatesOf(input: McpLoadInput, exclusive: boolean): McpCandidate[] {
   if (input.session.strictMcpConfig === true) return [];
   const gate: Gate = {
@@ -200,10 +208,11 @@ function candidatesOf(input: McpLoadInput, exclusive: boolean): McpCandidate[] {
       (!exclusive || (input.settings.allowAllClaudeAiMcps && !input.session.cloud)),
   };
   const fromFile = Object.entries(input.managedFile?.servers ?? {}).map(
-    ([name, server]): McpCandidate => ({ scope: 'managed', name, server }),
+    ([name, server]): McpCandidate => ({ scope: 'managed', name, server, enabled: true }),
   );
   const rest = input.candidates.filter((each) => SCOPE_GATES[each.scope](gate));
-  return [...fromFile, ...input.managedServers, ...rest];
+  const toggles = input.toggles ?? { disabledMcpServers: [], enabledMcpServers: [] };
+  return [...fromFile, ...applyToggles([...input.managedServers, ...rest], toggles)];
 }
 
 /**
@@ -224,11 +233,8 @@ export function mcpLoadPlan(input: McpLoadInput): McpLoadPlan {
   const skipped = exclusive ? (input.session.mcpConfig ?? []).map((each) => each.name) : [];
   const flagNames = new Set(flagged.map((each) => each.name));
   const ranking = rankMcpServers(
-    applyToggles(
-      candidatesOf(input, exclusive).filter(
-        (each) => each.scope !== 'managed' || !flagNames.has(each.name),
-      ),
-      input.toggles ?? { disabledMcpServers: [], enabledMcpServers: [] },
+    candidatesOf(input, exclusive).filter(
+      (each) => each.scope !== 'managed' || !flagNames.has(each.name),
     ),
   );
   const planned: PlannedServer[] = [

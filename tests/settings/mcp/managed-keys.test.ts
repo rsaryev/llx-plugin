@@ -19,7 +19,6 @@ import { http } from '../../support/mcp-managed.ts';
 import {
   configured,
   managedLayer,
-  planOf,
   plannedNames,
   resolvedOnDevice,
 } from '../../support/mcp-managed.ts';
@@ -246,7 +245,9 @@ describe('managed MCP key judgments', () => {
   test('any other value of ENABLE_CLAUDEAI_MCP_SERVERS leaves the connectors on', () => {
     for (const value of ['true', '0', '', undefined]) {
       const policy = resolvedOnDevice([], [], { env: { ENABLE_CLAUDEAI_MCP_SERVERS: value } });
-      expect(plannedNames(planOf({ candidates: [slack] }))).toEqual(['claude.ai Slack']);
+      expect(
+        plannedNames(policy.mcp.loadPlan({ candidates: [slack], session: { cloud: false } })),
+      ).toEqual(['claude.ai Slack']);
       expect(policy.mcp.loadSettings().disableClaudeAiConnectors).toBe(false);
     }
   });

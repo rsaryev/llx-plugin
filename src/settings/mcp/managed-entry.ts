@@ -5,7 +5,8 @@ import { mentionsVariable } from './origins.ts';
 /**
  * What a `managedMcpServers` entry may contain (managed-mcp.md, "What an entry can contain"): "Claude
  * Code loads an entry only when it passes every check below". A check returns why the entry fails it,
- * or `undefined`; they run in the order of the page's list, the first failure is the notice.
+ * or `undefined`; they run in the order of the page's list (type, url, program members, `${VAR}`, then the
+ * name and the invisible characters), the first failure is the notice.
  */
 type Check = (name: string, entry: Record<string, unknown>) => string | undefined;
 
@@ -47,16 +48,6 @@ const isHttps = (url: unknown): boolean =>
   typeof url === 'string' && URL.canParse(url) && new URL(url).protocol === 'https:';
 
 const CHECKS: readonly Check[] = [
-  (name) =>
-    NAME.test(name)
-      ? undefined
-      : 'the name may hold only letters, numbers, hyphens and underscores',
-  (name, entry) => {
-    const { keys, values } = textsOf(entry);
-    return [name, ...keys, ...values].some((text) => INVISIBLE.test(text))
-      ? 'a key or value contains control or invisible formatting characters'
-      : undefined;
-  },
   (_, entry) =>
     TRANSPORTS.includes(entry.type) ? undefined : 'its "type" must be "http" or "sse"',
   (_, entry) => (isHttps(entry.url) ? undefined : 'its "url" must be an https:// URL'),
@@ -70,6 +61,16 @@ const CHECKS: readonly Check[] = [
     textsOf(entry).values.some(mentionsVariable)
       ? 'it contains a ${VAR} reference, and environment variables are not expanded in managed entries'
       : undefined,
+  (name) =>
+    NAME.test(name)
+      ? undefined
+      : 'the name may hold only letters, numbers, hyphens and underscores',
+  (name, entry) => {
+    const { keys, values } = textsOf(entry);
+    return [name, ...keys, ...values].some((text) => INVISIBLE.test(text))
+      ? 'a key or value contains control or invisible formatting characters'
+      : undefined;
+  },
 ];
 
 export interface ManagedEntryRead {

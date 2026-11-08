@@ -1,4 +1,5 @@
 import type { HookHandler, HookMatcherGroup, HooksSettings } from '../protocol/hook-config.ts';
+import { canonical } from './canonical.ts';
 import { isRecord } from './record.ts';
 
 /**
@@ -16,16 +17,6 @@ import { isRecord } from './record.ts';
 /** A value that has the shape of an event map (an object of arrays); the reader checks the rest. */
 export const isHooksSettings = (value: unknown): value is HooksSettings =>
   isRecord(value) && Object.values(value).every(Array.isArray);
-
-/** A JSON text of a value with its object keys sorted: two handlers equal in content, equal text. */
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  if (!isRecord(value)) return JSON.stringify(value) ?? 'undefined';
-  const fields = Object.keys(value)
-    .toSorted()
-    .map((name) => `${JSON.stringify(name)}:${canonical(value[name])}`);
-  return `{${fields.join(',')}}`;
-}
 
 /**
  * The matcher as a group key: `"*"`, `""` and an omitted matcher all match every occurrence of the

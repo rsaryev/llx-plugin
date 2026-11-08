@@ -9,7 +9,6 @@
  * Claude Code can read and parse" takes the control (the kit reads the text the host hands over).
  */
 import { describe, expect, test } from 'bun:test';
-import { expandMcpServer } from '../../../src/format/mcp-env.ts';
 import {
   loadManagedMcpFile,
   managedMcpFilePath,
@@ -17,6 +16,7 @@ import {
   readManagedMcpFile,
   type ManagedMcpPlatform,
 } from '../../../src/settings/mcp/index.ts';
+import { planOf } from '../../support/mcp-managed.ts';
 import { memoryFiles } from '../../support/ports.ts';
 import { spec } from '../../support/spec.ts';
 import { plain } from '../../support/settings-layers.ts';
@@ -118,18 +118,15 @@ spec('mcpSettings.managed.Authenticate with per-user credentials', () => {
   });
   const servers = readManagedMcpFile(text).file?.servers ?? {};
 
-  test("${VAR} stays a reference in the file and each user's environment fills it", () => {
-    const internal = servers.internal;
-    if (internal === undefined) throw new Error('internal server missing');
-    expect(JSON.stringify(internal)).not.toContain('alice-secret');
-    const header = (env: Record<string, string>) => {
-      const { server } = expandMcpServer('internal', internal, (name) => env[name]);
-      return server !== undefined && 'headers' in server
-        ? server.headers?.Authorization
-        : undefined;
-    };
-    expect(header({ COMPANY_TOKEN: 'alice-secret' })).toBe('Bearer alice-secret');
-    expect(header({ COMPANY_TOKEN: 'bob-secret' })).toBe('Bearer bob-secret');
+  test('a ${VAR} reference reaches the plan as written: nothing expands it at read time, so no secret is in the file', () => {
+    const { file } = readManagedMcpFile(text);
+    const plan = planOf({ managedFile: file });
+    const internal = plan.servers.find((each) => each.name === 'internal');
+    expect(plain(internal?.server)).toEqual({
+      type: 'http',
+      url: 'https://internal.example.com/mcp',
+      headers: { Authorization: 'Bearer ${COMPANY_TOKEN}' },
+    });
   });
 
   test('OAuth and headersHelper are kept as written, for each user to authenticate or mint a header', () => {
