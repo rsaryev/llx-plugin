@@ -94,6 +94,39 @@ reference, workflows, terminal configuration, output styles and channels).
 | `runtime` | Claude Code's own interface, sandbox, model and account settings and MCP client runtime (connections, reconnection, timeouts, tasks); a host brings its own. | sandbox.*, Automatic reconnection |
 | `duplicate` | Restates a rule a requirement already covers. | A settings key whose index row is a requirement |
 
+## Pages and scope
+
+The section audit only protects the pages it reads. A page nobody classified hides behaviour just
+as silently, so every page of the pulled docs is classified once, by a person:
+
+- **Audited**: in `SCOPES` (`scripts/spec/scope-*.ts`), section by section, as above.
+- **Excluded**: listed in `spec/out-of-scope-pages.json` as `{ "page", "reason" }` (a `duplicate`
+  also names the audited page in `of`). The file is written by hand and holds no doc text.
+
+`check:spec` (SP7) fails when the docs are pulled and a page is in neither list, when a listed page
+no longer exists or is also audited, when a reason is unknown (docs/SPEC.md must explain it), or
+when a `duplicate` names a page that is not audited. A page that appears in a new release therefore
+stops the gate until someone reads it and decides.
+
+A page is **audited** when it documents behaviour a plugin host reproduces: plugins and their
+components, hooks, skills, commands, subagents and teams, MCP servers, settings and managed policy
+that affect them, memory files hooks observe, worktrees, status lines, headless and CLI flags,
+model aliases agents and skills name, and the Agent SDK pages on plugins, hooks, skills, subagents,
+permissions, MCP and Claude Code features. A page is excluded when it is about something else:
+
+| Reason | Why a page is out of scope | Example |
+| --- | --- | --- |
+| `product` | Claude Code surfaces (IDE, desktop, mobile, chat apps, terminal UI) and named services. | VS Code, keybindings |
+| `hosting` | Cloud sessions, CI, self-hosted environments, gateways, containers and networking. | GitHub Actions, gateways |
+| `provider` | Model provider, account, install and authentication setup. | Amazon Bedrock, setup |
+| `billing` | Cost, usage analytics, telemetry, data handling, legal and compliance. | Costs, monitoring |
+| `marketing` | Launch kits, champion guides and prompt libraries. | Champion kit |
+| `digest` | Weekly digests and the changelog: a version index, with no rule of its own. | What's new |
+| `guide` | Overview, quickstart, glossary or advice; every rule it states is on an audited page. | Quickstart, glossary |
+| `engine` | Claude Code's own session, sandbox, context, cache and model machinery. | Sandboxing, checkpointing |
+| `sdk-api` | The Agent SDK's client API (options, streaming, sessions, cost); shapes are its types. | TypeScript reference |
+| `duplicate` | Restates an audited page; the entry names it in `of`. | Example settings files |
+
 ## Proof
 
 A test proves requirements by running under `spec(ids, body)` from `tests/support/spec.ts`, a

@@ -8,6 +8,8 @@
  * - SP4 docs pulled locally that are newer than the requirements must be extracted first.
  * - SP6 `spec/out-of-scope.json` names a known reason for every section it leaves out, and
  *   docs/SPEC.md explains each reason.
+ * - SP7 when the docs are pulled, every page is audited section by section or listed, with a
+ *   known reason, in `spec/out-of-scope-pages.json` (docs/SPEC.md, "Pages and scope").
  * - SP5 when the docs are pulled, the committed tables the tests read (`spec/docs-tables.json`,
  *   `tests/support/tool-table.ts`) are what the pulled pages say: tests never read the docs.
  */
@@ -16,7 +18,9 @@ import { z } from 'zod';
 import { DOCS_DIR, ROOT } from '../docs/location.ts';
 import { pulledDocsTables, readCommittedDocsTables } from './mods-reference.ts';
 import { OUT_OF_SCOPE_FILE, readRequirements } from './requirements.ts';
+import { docsPages, pageProblems, readOutOfScopePages } from './page-scope.ts';
 import { REASONS } from './scope.ts';
+import { SCOPES } from './scopes.ts';
 import { toolTableDrift } from './tool-table.ts';
 
 const problems: string[] = [];
@@ -90,6 +94,19 @@ for (const reason of reasons) {
   if (!specDoc.includes(`| \`${reason}\` |`))
     problems.push(`SP6 docs/SPEC.md has no row for "${reason}"`);
 }
+
+const pagesPulled = await pulled.exists();
+problems.push(
+  ...pageProblems(
+    pagesPulled ? await docsPages(DOCS_DIR) : undefined,
+    new Set(SCOPES.map((scope) => scope.page)),
+    await readOutOfScopePages().catch((error: unknown) => {
+      problems.push(`SP7 spec/out-of-scope-pages.json: ${String(error)}`);
+      return [];
+    }),
+    specDoc,
+  ),
+);
 
 for (const problem of problems) console.error(problem);
 process.exit(problems.length > 0 ? 1 : 0);

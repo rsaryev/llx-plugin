@@ -60,6 +60,12 @@
 
 ### Added
 
+- Spec: every page of the docs is classified (SP7). The 24 pages that document hooks, memory,
+  worktrees, status lines, headless runs, model settings, server-managed settings, agent teams,
+  goals, scheduling, auto mode, tools, the error catalogue and the Agent SDK's plugin, hook, skill,
+  subagent, permission and MCP behaviour are audited section by section, and the other 156 are
+  listed in `spec/out-of-scope-pages.json` with a reason docs/SPEC.md explains. A page that
+  appears in a new release fails `check:spec` until it is classified.
 - Spec: the requirement set now counts the docs' prose, not only their tables. Every heading of
   the plugin, mods, skills, subagents, hooks, MCP, managed MCP, settings, managed settings,
   permissions, environment, CLI, workflows, themes, output styles and channels pages is either

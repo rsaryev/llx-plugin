@@ -1,0 +1,629 @@
+[
+  {
+    "page": "accessibility.md",
+    "reason": "product"
+  },
+  {
+    "page": "admin-setup.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "advisor.md",
+    "reason": "engine"
+  },
+  {
+    "page": "agent-sdk/agent-loop.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/configuration.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/cost-tracking.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/custom-tools.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/examples.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/file-checkpointing.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/hosting.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "agent-sdk/migration-guide.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/modifying-system-prompts.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/observability.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/overview.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/python.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/quickstart.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/secure-deployment.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "agent-sdk/session-storage.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/sessions.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/streaming-output.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/streaming-vs-single-mode.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/structured-outputs.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/todo-tracking.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/tool-search.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/troubleshooting.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/typescript-v2-preview.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/typescript.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/user-input.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-view.md",
+    "reason": "product"
+  },
+  {
+    "page": "agents.md",
+    "reason": "guide"
+  },
+  {
+    "page": "amazon-bedrock.md",
+    "reason": "provider"
+  },
+  {
+    "page": "analytics.md",
+    "reason": "billing"
+  },
+  {
+    "page": "artifacts.md",
+    "reason": "product"
+  },
+  {
+    "page": "authentication.md",
+    "reason": "provider"
+  },
+  {
+    "page": "auto-mode-classifier-billing.md",
+    "reason": "billing"
+  },
+  {
+    "page": "best-practices.md",
+    "reason": "guide"
+  },
+  {
+    "page": "champion-kit.md",
+    "reason": "marketing"
+  },
+  {
+    "page": "changelog.md",
+    "reason": "digest"
+  },
+  {
+    "page": "checkpointing.md",
+    "reason": "engine"
+  },
+  {
+    "page": "chrome.md",
+    "reason": "product"
+  },
+  {
+    "page": "claude-apps-gateway-config.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "claude-apps-gateway-deploy.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "claude-apps-gateway-on-aws.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "claude-apps-gateway-on-gcp.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "claude-apps-gateway-spend-limits.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "claude-apps-gateway.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "claude-code-on-the-web.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "claude-platform-on-aws.md",
+    "reason": "provider"
+  },
+  {
+    "page": "claude-projects.md",
+    "reason": "product"
+  },
+  {
+    "page": "claude-security.md",
+    "reason": "product"
+  },
+  {
+    "page": "cloud-environments.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "code-review-costs.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "code-review-customize.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "code-review-local.md",
+    "reason": "product"
+  },
+  {
+    "page": "code-review-pull-requests.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "code-review-setup.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "code-review-troubleshooting.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "code-review.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "common-workflows.md",
+    "reason": "guide"
+  },
+  {
+    "page": "communications-kit.md",
+    "reason": "marketing"
+  },
+  {
+    "page": "computer-use.md",
+    "reason": "product"
+  },
+  {
+    "page": "context-window.md",
+    "reason": "engine"
+  },
+  {
+    "page": "corporate-launcher.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "costs.md",
+    "reason": "billing"
+  },
+  {
+    "page": "cross-session-messaging.md",
+    "reason": "engine"
+  },
+  {
+    "page": "data-usage.md",
+    "reason": "billing"
+  },
+  {
+    "page": "deep-links.md",
+    "reason": "product"
+  },
+  {
+    "page": "desktop-ios-simulator.md",
+    "reason": "product"
+  },
+  {
+    "page": "desktop-linux.md",
+    "reason": "product"
+  },
+  {
+    "page": "desktop-quickstart.md",
+    "reason": "product"
+  },
+  {
+    "page": "desktop-scheduled-tasks.md",
+    "reason": "product"
+  },
+  {
+    "page": "desktop-wsl.md",
+    "reason": "product"
+  },
+  {
+    "page": "desktop.md",
+    "reason": "product"
+  },
+  {
+    "page": "devcontainer.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "fast-mode.md",
+    "reason": "engine"
+  },
+  {
+    "page": "feature-availability.md",
+    "reason": "provider"
+  },
+  {
+    "page": "features-overview.md",
+    "reason": "guide"
+  },
+  {
+    "page": "fullscreen.md",
+    "reason": "product"
+  },
+  {
+    "page": "gateways.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "github-actions-cloud-providers.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "github-actions.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "github-enterprise-server.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "gitlab-ci-cd.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "glossary.md",
+    "reason": "guide"
+  },
+  {
+    "page": "google-vertex-ai.md",
+    "reason": "provider"
+  },
+  {
+    "page": "hipaa-setup.md",
+    "reason": "billing"
+  },
+  {
+    "page": "how-claude-code-works.md",
+    "reason": "guide"
+  },
+  {
+    "page": "interactive-mode.md",
+    "reason": "product"
+  },
+  {
+    "page": "jetbrains.md",
+    "reason": "product"
+  },
+  {
+    "page": "keybindings.md",
+    "reason": "product"
+  },
+  {
+    "page": "large-codebases.md",
+    "reason": "duplicate",
+    "of": "memory.md"
+  },
+  {
+    "page": "legal-and-compliance.md",
+    "reason": "billing"
+  },
+  {
+    "page": "llm-gateway-connect.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "llm-gateway-protocol.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "llm-gateway-rollout.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "llm-gateway.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "mcp-quickstart.md",
+    "reason": "duplicate",
+    "of": "mcp.md"
+  },
+  {
+    "page": "microsoft-foundry.md",
+    "reason": "provider"
+  },
+  {
+    "page": "mobile.md",
+    "reason": "product"
+  },
+  {
+    "page": "monitoring-usage.md",
+    "reason": "billing"
+  },
+  {
+    "page": "network-config.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "overview.md",
+    "reason": "guide"
+  },
+  {
+    "page": "platforms.md",
+    "reason": "guide"
+  },
+  {
+    "page": "prompt-caching.md",
+    "reason": "engine"
+  },
+  {
+    "page": "prompt-library.md",
+    "reason": "marketing"
+  },
+  {
+    "page": "quickstart.md",
+    "reason": "guide"
+  },
+  {
+    "page": "remote-control.md",
+    "reason": "product"
+  },
+  {
+    "page": "routines.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "sandbox-environments.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "sandboxing.md",
+    "reason": "engine"
+  },
+  {
+    "page": "security-guidance.md",
+    "reason": "product"
+  },
+  {
+    "page": "security.md",
+    "reason": "guide"
+  },
+  {
+    "page": "self-hosted-environments-configuration.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "self-hosted-environments-deploy.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "self-hosted-environments-identity.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "self-hosted-environments-quickstart.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "self-hosted-environments-reference.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "self-hosted-environments-testing.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "self-hosted-environments.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "sessions.md",
+    "reason": "engine"
+  },
+  {
+    "page": "settings-example.md",
+    "reason": "duplicate",
+    "of": "settings-reference.md"
+  },
+  {
+    "page": "setup.md",
+    "reason": "provider"
+  },
+  {
+    "page": "slack.md",
+    "reason": "product"
+  },
+  {
+    "page": "third-party-integrations.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "troubleshoot-install.md",
+    "reason": "provider"
+  },
+  {
+    "page": "troubleshooting.md",
+    "reason": "guide"
+  },
+  {
+    "page": "ultrareview.md",
+    "reason": "product"
+  },
+  {
+    "page": "voice-dictation.md",
+    "reason": "product"
+  },
+  {
+    "page": "vs-code.md",
+    "reason": "product"
+  },
+  {
+    "page": "web-quickstart.md",
+    "reason": "hosting"
+  },
+  {
+    "page": "whats-new/2026-w13.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w14.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w15.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w16.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w17.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w18.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w19.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w20.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w21.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w22.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w23.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w24.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w25.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w26.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w27.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w28.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w29.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w30.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w32.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w33.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w34.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w35.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w36.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/2026-w37.md",
+    "reason": "digest"
+  },
+  {
+    "page": "whats-new/index.md",
+    "reason": "digest"
+  },
+  {
+    "page": "zero-data-retention.md",
+    "reason": "billing"
+  }
+]

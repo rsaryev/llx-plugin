@@ -4013,5 +4013,2785 @@
     "page": "channels-reference.md",
     "section": "See also",
     "reason": "navigation"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "Set up your first hook",
+    "reason": "tutorial"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "What you can automate",
+    "reason": "container"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "Get notified when Claude needs input",
+    "reason": "tutorial"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "Auto-format code after edits",
+    "reason": "tutorial"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "Block edits to protected files",
+    "reason": "tutorial"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "Re-inject context after compaction",
+    "reason": "tutorial"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "Audit configuration changes",
+    "reason": "tutorial"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "Reload environment when directory or files change",
+    "reason": "tutorial"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "Auto-approve specific permission prompts",
+    "reason": "tutorial"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "Read input and return output",
+    "reason": "container"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "Limitations and troubleshooting",
+    "reason": "container"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "Hook not firing",
+    "reason": "advice"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "Hook error in output",
+    "reason": "advice"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "/hooks shows no hooks configured",
+    "reason": "advice"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "Hook JSON has no effect",
+    "reason": "container"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "Fields at the wrong level",
+    "reason": "advice"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "Check what a hook did",
+    "reason": "advice"
+  },
+  {
+    "page": "hooks-guide.md",
+    "section": "Learn more",
+    "reason": "navigation"
+  },
+  {
+    "page": "claude-directory.md",
+    "section": "Explore the directory",
+    "reason": "ui"
+  },
+  {
+    "page": "claude-directory.md",
+    "section": "Choose the right file",
+    "reason": "advice"
+  },
+  {
+    "page": "claude-directory.md",
+    "section": "Troubleshoot configuration",
+    "reason": "advice"
+  },
+  {
+    "page": "claude-directory.md",
+    "section": "Application data",
+    "reason": "container"
+  },
+  {
+    "page": "claude-directory.md",
+    "section": "Kept until you delete them",
+    "reason": "container"
+  },
+  {
+    "page": "claude-directory.md",
+    "section": "Clear local data",
+    "reason": "advice"
+  },
+  {
+    "page": "claude-directory.md",
+    "section": "Related resources",
+    "reason": "navigation"
+  },
+  {
+    "page": "memory.md",
+    "section": "CLAUDE.md vs auto memory",
+    "reason": "advice"
+  },
+  {
+    "page": "memory.md",
+    "section": "CLAUDE.md files",
+    "reason": "container"
+  },
+  {
+    "page": "memory.md",
+    "section": "When to add to CLAUDE.md",
+    "reason": "advice"
+  },
+  {
+    "page": "memory.md",
+    "section": "Set up a project CLAUDE.md",
+    "reason": "tutorial"
+  },
+  {
+    "page": "memory.md",
+    "section": "Write effective instructions",
+    "reason": "advice"
+  },
+  {
+    "page": "memory.md",
+    "section": "Audit your instruction files",
+    "reason": "advice"
+  },
+  {
+    "page": "memory.md",
+    "section": "How CLAUDE.md files load",
+    "reason": "container"
+  },
+  {
+    "page": "memory.md",
+    "section": "Organize rules with .claude/rules/",
+    "reason": "container"
+  },
+  {
+    "page": "memory.md",
+    "section": "Manage CLAUDE.md for large teams",
+    "reason": "container"
+  },
+  {
+    "page": "memory.md",
+    "section": "AGENTS.md",
+    "reason": "container"
+  },
+  {
+    "page": "memory.md",
+    "section": "Remove an earlier AGENTS.md workaround",
+    "reason": "advice"
+  },
+  {
+    "page": "memory.md",
+    "section": "Share one file with other coding tools",
+    "reason": "advice"
+  },
+  {
+    "page": "memory.md",
+    "section": "Migrate instructions from other tools",
+    "reason": "tutorial"
+  },
+  {
+    "page": "memory.md",
+    "section": "Audit and edit your memory",
+    "reason": "ui"
+  },
+  {
+    "page": "memory.md",
+    "section": "View and edit with /memory",
+    "reason": "ui"
+  },
+  {
+    "page": "memory.md",
+    "section": "Troubleshoot memory issues",
+    "reason": "advice"
+  },
+  {
+    "page": "memory.md",
+    "section": "Claude isn't following my CLAUDE.md",
+    "reason": "advice"
+  },
+  {
+    "page": "memory.md",
+    "section": "My AGENTS.md isn't loading",
+    "reason": "advice"
+  },
+  {
+    "page": "memory.md",
+    "section": "I don't know what auto memory saved",
+    "reason": "advice"
+  },
+  {
+    "page": "memory.md",
+    "section": "My CLAUDE.md is too large",
+    "reason": "advice"
+  },
+  {
+    "page": "memory.md",
+    "section": "Claude ignores the end of my subdirectory CLAUDE.md",
+    "reason": "advice"
+  },
+  {
+    "page": "memory.md",
+    "section": "Instructions seem lost after /compact",
+    "reason": "advice"
+  },
+  {
+    "page": "memory.md",
+    "section": "Related resources",
+    "reason": "navigation"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Set up a status line",
+    "reason": "container"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Use the /statusline command",
+    "reason": "ui"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Build a status line step by step",
+    "reason": "tutorial"
+  },
+  {
+    "page": "statusline.md",
+    "section": "How status lines work",
+    "reason": "container"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Prompt cache fields",
+    "reason": "container"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Examples",
+    "reason": "container"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Context window usage",
+    "reason": "tutorial"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Git status with colors",
+    "reason": "tutorial"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Cost and duration tracking",
+    "reason": "tutorial"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Display multiple lines",
+    "reason": "tutorial"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Clickable links",
+    "reason": "tutorial"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Rate limit usage",
+    "reason": "tutorial"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Cache expensive operations",
+    "reason": "tutorial"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Windows configuration",
+    "reason": "tutorial"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Subagent status lines",
+    "reason": "container"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Tips",
+    "reason": "advice"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Troubleshooting",
+    "reason": "container"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Status line not appearing",
+    "reason": "advice"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Status line shows -- or empty values",
+    "reason": "advice"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Context percentage shows unexpected values",
+    "reason": "advice"
+  },
+  {
+    "page": "statusline.md",
+    "section": "OSC 8 links not clickable",
+    "reason": "advice"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Display glitches with escape sequences",
+    "reason": "advice"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Script errors or hangs",
+    "reason": "advice"
+  },
+  {
+    "page": "statusline.md",
+    "section": "Notifications share the status line row",
+    "reason": "advice"
+  },
+  {
+    "page": "worktrees.md",
+    "section": "Claude has no EnterWorktree tool",
+    "reason": "advice"
+  },
+  {
+    "page": "worktrees.md",
+    "section": "Isolate subagents with worktrees",
+    "reason": "container"
+  },
+  {
+    "page": "worktrees.md",
+    "section": "Customize worktree creation",
+    "reason": "container"
+  },
+  {
+    "page": "worktrees.md",
+    "section": "Manage worktrees manually",
+    "reason": "machine"
+  },
+  {
+    "page": "worktrees.md",
+    "section": "Troubleshooting",
+    "reason": "advice"
+  },
+  {
+    "page": "worktrees.md",
+    "section": "Claude Code can't enter the worktree at startup",
+    "reason": "advice"
+  },
+  {
+    "page": "worktrees.md",
+    "section": "Worktree creation fails on a symlinked path",
+    "reason": "advice"
+  },
+  {
+    "page": "worktrees.md",
+    "section": "A worktree Claude Code created has the original content of replaced objects",
+    "reason": "advice"
+  },
+  {
+    "page": "worktrees.md",
+    "section": "Git LFS files are pointer files in a worktree Claude Code created",
+    "reason": "advice"
+  },
+  {
+    "page": "worktrees.md",
+    "section": "Worktree creation fails in a partial clone",
+    "reason": "advice"
+  },
+  {
+    "page": "worktrees.md",
+    "section": "Can only use --worktree in a git repository",
+    "reason": "advice"
+  },
+  {
+    "page": "worktrees.md",
+    "section": "The worktree directory belongs to a different repository",
+    "reason": "advice"
+  },
+  {
+    "page": "worktrees.md",
+    "section": "Claude Code refuses to use a worktree",
+    "reason": "advice"
+  },
+  {
+    "page": "worktrees.md",
+    "section": "The session resumes outside its worktree",
+    "reason": "advice"
+  },
+  {
+    "page": "worktrees.md",
+    "section": "See also",
+    "reason": "navigation"
+  },
+  {
+    "page": "headless.md",
+    "section": "Examples",
+    "reason": "container"
+  },
+  {
+    "page": "headless.md",
+    "section": "Pipe data through Claude",
+    "reason": "tutorial"
+  },
+  {
+    "page": "headless.md",
+    "section": "Add Claude to a build script",
+    "reason": "tutorial"
+  },
+  {
+    "page": "headless.md",
+    "section": "Create a commit",
+    "reason": "tutorial"
+  },
+  {
+    "page": "headless.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "How an eval run works",
+    "reason": "container"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "Create your first eval suite",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "Write and refine cases",
+    "reason": "container"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "Write a case manually",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "Choose and weight graders",
+    "reason": "container"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "Choose graders that give a stable signal",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "Set up fixtures and mocks",
+    "reason": "container"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "Run evals",
+    "reason": "container"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "Read the results",
+    "reason": "container"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "HTML report",
+    "reason": "ui"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "What a run can access",
+    "reason": "container"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "Eval suite reference",
+    "reason": "container"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "Grader frontmatter",
+    "reason": "container"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "Mock files",
+    "reason": "container"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "Troubleshooting",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "\"plugin eval is currently in early access\"",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "\"plugin eval is currently unavailable\"",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "\"is not a trusted plugin directory, and this run cannot stop to ask you about it\"",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "\"is too old for claude plugin eval\"",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "\"cannot be evaluated where sessions load it\"",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "\"No eval cases found\"",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "The baseline arm shows no plugin, or delta is zero",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "\"Agent type '...' not found\" for one of your plugin's agents",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "Everything scores zero although the right files were produced",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "A regex over the trace doesn't match text I can see",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "Tools are denied, MCP tools are missing, or Bash won't run",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "The run exits 1 but the results look fine",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "--json output path must end in .json",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "A grader shows passed: false under a run that scored 1.0",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "\"ended on an API error and scored 0 without grading\"",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "Runs fail with a usage-limit or rate-limit error partway through",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "\"mock call budget exceeded\"",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "Runs time out or hit the turn cap",
+    "reason": "advice"
+  },
+  {
+    "page": "plugin-evals.md",
+    "section": "See also",
+    "reason": "navigation"
+  },
+  {
+    "page": "server-managed-settings.md",
+    "section": "Requirements",
+    "reason": "service"
+  },
+  {
+    "page": "server-managed-settings.md",
+    "section": "Choose between server-managed and endpoint-managed settings",
+    "reason": "advice"
+  },
+  {
+    "page": "server-managed-settings.md",
+    "section": "Configure server-managed settings",
+    "reason": "service"
+  },
+  {
+    "page": "server-managed-settings.md",
+    "section": "Verify settings delivery",
+    "reason": "ui"
+  },
+  {
+    "page": "server-managed-settings.md",
+    "section": "Access control",
+    "reason": "service"
+  },
+  {
+    "page": "server-managed-settings.md",
+    "section": "Settings delivery",
+    "reason": "container"
+  },
+  {
+    "page": "server-managed-settings.md",
+    "section": "Platform availability",
+    "reason": "service"
+  },
+  {
+    "page": "server-managed-settings.md",
+    "section": "Audit logging",
+    "reason": "service"
+  },
+  {
+    "page": "server-managed-settings.md",
+    "section": "See also",
+    "reason": "navigation"
+  },
+  {
+    "page": "model-config.md",
+    "section": "Work with Fable",
+    "reason": "builtin"
+  },
+  {
+    "page": "model-config.md",
+    "section": "Fable and usage credits",
+    "reason": "service"
+  },
+  {
+    "page": "model-config.md",
+    "section": "A new session starts on a different model than you picked",
+    "reason": "advice"
+  },
+  {
+    "page": "model-config.md",
+    "section": "Mantle model IDs",
+    "reason": "runtime"
+  },
+  {
+    "page": "model-config.md",
+    "section": "Special model behavior",
+    "reason": "container"
+  },
+  {
+    "page": "model-config.md",
+    "section": "Security research and biology workloads",
+    "reason": "model"
+  },
+  {
+    "page": "model-config.md",
+    "section": "Choose an effort level",
+    "reason": "advice"
+  },
+  {
+    "page": "model-config.md",
+    "section": "Adaptive reasoning and fixed thinking budgets",
+    "reason": "model"
+  },
+  {
+    "page": "model-config.md",
+    "section": "Extended context",
+    "reason": "container"
+  },
+  {
+    "page": "model-config.md",
+    "section": "Haiku 5.5 context window and pricing",
+    "reason": "model"
+  },
+  {
+    "page": "model-config.md",
+    "section": "Context window and auto-compaction",
+    "reason": "container"
+  },
+  {
+    "page": "model-config.md",
+    "section": "Checking your current model",
+    "reason": "ui"
+  },
+  {
+    "page": "model-config.md",
+    "section": "Environment variables",
+    "reason": "container"
+  },
+  {
+    "page": "model-config.md",
+    "section": "Prompt caching configuration",
+    "reason": "model"
+  },
+  {
+    "page": "model-config.md",
+    "section": "Version history",
+    "reason": "navigation"
+  },
+  {
+    "page": "debug-your-config.md",
+    "section": "See what loaded into context",
+    "reason": "ui"
+  },
+  {
+    "page": "debug-your-config.md",
+    "section": "Check MCP servers",
+    "reason": "advice"
+  },
+  {
+    "page": "debug-your-config.md",
+    "section": "Check common causes",
+    "reason": "advice"
+  },
+  {
+    "page": "debug-your-config.md",
+    "section": "Related resources",
+    "reason": "navigation"
+  },
+  {
+    "page": "commands.md",
+    "section": "Commands across a typical workflow",
+    "reason": "tutorial"
+  },
+  {
+    "page": "commands.md",
+    "section": "See also",
+    "reason": "navigation"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "When to use agent teams",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Compare with subagents",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Start your first agent team",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Control your agent team",
+    "reason": "container"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Choose a display mode",
+    "reason": "ui"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Talk to teammates directly",
+    "reason": "ui"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "How agent teams work",
+    "reason": "container"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Token usage",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Use case examples",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Run a parallel code review",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Investigate with competing hypotheses",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Best practices",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Give teammates enough context",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Choose an appropriate team size",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Size tasks appropriately",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Wait for teammates to finish",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Start with research and review",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Avoid file conflicts",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Monitor and steer",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Troubleshooting",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Teammates not appearing",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Claude spawns teammates instead of subagents",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Too many permission prompts",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Agents stopping early",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Orphaned tmux sessions",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-teams.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "goal.md",
+    "section": "Compare ways to keep a session running",
+    "reason": "advice"
+  },
+  {
+    "page": "goal.md",
+    "section": "Use /goal",
+    "reason": "container"
+  },
+  {
+    "page": "goal.md",
+    "section": "Write an effective condition",
+    "reason": "advice"
+  },
+  {
+    "page": "goal.md",
+    "section": "Check status",
+    "reason": "ui"
+  },
+  {
+    "page": "goal.md",
+    "section": "How evaluation works",
+    "reason": "container"
+  },
+  {
+    "page": "goal.md",
+    "section": "When a turn fails",
+    "reason": "container"
+  },
+  {
+    "page": "goal.md",
+    "section": "Evaluation model and cost",
+    "reason": "model"
+  },
+  {
+    "page": "goal.md",
+    "section": "See also",
+    "reason": "navigation"
+  },
+  {
+    "page": "scheduled-tasks.md",
+    "section": "Compare scheduling options",
+    "reason": "advice"
+  },
+  {
+    "page": "scheduled-tasks.md",
+    "section": "Run the built-in maintenance prompt",
+    "reason": "builtin"
+  },
+  {
+    "page": "scheduled-tasks.md",
+    "section": "Stop a loop",
+    "reason": "container"
+  },
+  {
+    "page": "scheduled-tasks.md",
+    "section": "Detach without stopping a loop",
+    "reason": "ui"
+  },
+  {
+    "page": "scheduled-tasks.md",
+    "section": "Manage session-scoped scheduled tasks",
+    "reason": "ui"
+  },
+  {
+    "page": "scheduled-tasks.md",
+    "section": "How session-scoped scheduled tasks run",
+    "reason": "container"
+  },
+  {
+    "page": "scheduled-tasks.md",
+    "section": "Jitter",
+    "reason": "container"
+  },
+  {
+    "page": "auto-mode-config.md",
+    "section": "Common boundaries",
+    "reason": "advice"
+  },
+  {
+    "page": "auto-mode-config.md",
+    "section": "Add a human checkpoint",
+    "reason": "tutorial"
+  },
+  {
+    "page": "auto-mode-config.md",
+    "section": "Generate environment entries with /auto-mode-setup",
+    "reason": "container"
+  },
+  {
+    "page": "auto-mode-config.md",
+    "section": "What /auto-mode-setup reads",
+    "reason": "model"
+  },
+  {
+    "page": "auto-mode-config.md",
+    "section": "Review and save the draft",
+    "reason": "ui"
+  },
+  {
+    "page": "auto-mode-config.md",
+    "section": "/auto-mode-setup returns \"Unknown command\"",
+    "reason": "advice"
+  },
+  {
+    "page": "auto-mode-config.md",
+    "section": "Review denials",
+    "reason": "ui"
+  },
+  {
+    "page": "auto-mode-config.md",
+    "section": "Fix a denial with an allow rule, an environment entry, or a retry",
+    "reason": "advice"
+  },
+  {
+    "page": "auto-mode-config.md",
+    "section": "Fix repeated denials",
+    "reason": "advice"
+  },
+  {
+    "page": "auto-mode-config.md",
+    "section": "See also",
+    "reason": "navigation"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "AskUserQuestion tool behavior",
+    "reason": "container"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Bash tool behavior",
+    "reason": "container"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Timeout and output limits",
+    "reason": "container"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Background commands",
+    "reason": "container"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "PowerShell tool",
+    "reason": "container"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "SendFeedback tool behavior",
+    "reason": "service"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "What you see when Claude drafts",
+    "reason": "service"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Review and edit a draft",
+    "reason": "service"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Send a draft",
+    "reason": "service"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Discard or keep a draft",
+    "reason": "service"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Turn Claude-drafted feedback off",
+    "reason": "service"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Sessions without Claude-drafted feedback",
+    "reason": "service"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Check which tools are available",
+    "reason": "ui"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "See also",
+    "reason": "navigation"
+  },
+  {
+    "page": "errors.md",
+    "section": "Find your error",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Automatic retries",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "What you see while Claude Code retries or waits",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Waiting for API response",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "The waiting banner comes and goes behind a gateway",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Tune retry behavior",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Server errors",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "API Error: 500 Internal server error",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "API Error: Repeated 529 Overloaded errors",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Request timed out",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "No response from API",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "The response above may be incomplete",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Auto mode cannot determine the safety of an action",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "The server returned no safety verdict",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "a hook changed this call's input after auto mode reviewed it",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Was not reviewed and did not run",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Agent terminated early due to an API error",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Usage limits",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "You've hit your session limit",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Usage credits required for 1M context",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "The prompt to confirm went unanswered",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Server is temporarily limiting requests",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Request rejected (429)",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "You've hit your monthly spend limit",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Spend limit reached",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Credit balance is too low",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Could not update your spend limit",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Authentication errors",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Not logged in",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Could not resolve authentication method",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Invalid API key",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Your apiKeyHelper script is failing",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Claude Code didn't send your claude.ai login",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Invalid request header value",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "This organization has been disabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Your organization has disabled API key authentication",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Your organization has disabled Claude subscription access",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Scheduled tasks are off for your organization",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Remote Control requires the Anthropic API",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Remote Control couldn't refresh your login",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Remote Control could not renew this computer's connection",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Remote Control stopped because the signed-in account changed",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Remote Control stopped because the app running the session signed out or switched accounts",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "OAuth token revoked or expired",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "API Error: 401 Invalid authentication credentials",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Login expired",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Could not refresh your login because another Claude Code process is refreshing it",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Couldn't save your login",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Sign in again to take your previous account or API key off the config file",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Your account or API key may still be in the config file",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Couldn't start the local listener that receives the browser sign-in",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Claude login not accepted",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Artifacts need a claude.ai login",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Administrator policy requires a Cloud gateway sign-in",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Your account is on hold",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Anthropic profile login expired",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "OAuth scope requirement",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "claude.ai rejected the session token",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "MCP server needs you to sign in again",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Couldn't read the stored credentials for MCP server",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "MCP server URL is missing or not a valid URL",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Issuer mismatch in authorization response",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Refusing to send credentials to non-https token endpoint",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "AWS credentials expired or invalid",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "AWS authentication failed",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Google Cloud credentials expired or invalid",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Google Cloud authentication failed",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Microsoft Foundry authentication failed",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Could not load AWS or Google Cloud credentials",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "AWS default-chain credential resolve timed out",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Bedrock setup verification timed out waiting for AWS",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Cloud gateway session expired",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Sign-in timed out while waiting for you to continue",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Gateway refused the request",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Network and connection errors",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Unable to connect to API",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Unable to connect to Anthropic services",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Socket is closed",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "API returned an empty or malformed response",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Streaming response ended before any complete data was received",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Bedrock streaming response has an unexpected content-type",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "SSL certificate errors",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Host not allowed in a cloud session",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "The proxy refused the connection",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "The cloud environments service returned an empty or unexpected response",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Failed to fetch session from Sessions API",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Couldn't reconnect to your Remote Control session",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Sessions ended while this machine was offline",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Couldn't share the transcript",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Couldn't send feedback",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Feedback payload too large",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "MCP server connection timed out during a sleep or clock change",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Request errors",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Prompt is too long",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Context exceeds the token limit",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Request too large",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Image was too large",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Unable to resize image",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Request rejected as unprocessable by the model",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "PDF errors",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Extra inputs are not permitted",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Tool input schema is invalid",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "MCP tool name over 128 characters",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "tool\\_use.name over 200 characters",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "There's an issue with the selected model",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Model is not a recognized model id",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Model not found",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Couldn't confirm model with the API",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "API error when checking the picked model",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Claude Opus is not available with the Claude Pro plan",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Claude Code does not support this model",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Model is restricted by your organization's settings",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Can't switch to the default model",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Model switch was blocked by a PreModelSwitch hook",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Couldn't save it as your default",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Advisor is less capable than the current main model",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "thinking.type.enabled is not supported for this model",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Effort isn't available with thinking turned off",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Thinking budget exceeds output limit",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Response exceeded the output token maximum",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Tool use or thinking block mismatch",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Invalid data in redacted\\_thinking block",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Unsupported tool content removed",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "role 'system' must precede an 'assistant' message",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Invalid encrypted\\_content in search\\_result block",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Usage Policy refusal",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Safety measures flagged a cybersecurity topic",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Safeguards flagged a request for Claude's reasoning",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Output blocked by content filtering policy",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Command-line errors",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Conflict between --bg and --print",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Couldn't tell whether --bg is a flag or text",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Conflict between a system prompt flag and its file form",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Cloud sessions cannot be created from a --restricted session",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Cloud sessions are disabled by your organization's policy",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Cloud sessions use your claude.ai login",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Couldn't verify your organization's policy for cloud sessions",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Nothing was stashed because a folder replaced a tracked file",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "The --json-schema value is not a valid JSON Schema",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Configuration error in \\~/.claude.json",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Claude configuration file was empty and no backup holds anything",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "The current directory no longer exists",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Temp directory refused or cannot be created",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Directory couldn't be resolved to a real location",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Workspace not trusted when starting Remote Control",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Workspace not trusted when running claude ultrareview",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Not carried over to the sessions Remote Control starts",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "--sandbox or --no-sandbox is not supported by claude remote-control",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "claude import is not yet available in this build",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Could not read Claude Code config",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Could not import a server from Claude Desktop",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "MCP server was not saved or removed",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "MCP server may not have been saved or removed",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Server is Anthropic-hosted and doesn't support local OAuth",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Server rejected the Authorization header minted by the configured headersHelper",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "OAuth callback port is already in use",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "No available ports for OAuth redirect",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "/security-review fails without origin/HEAD",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Input must be provided when using --print",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Claude Code can't read the keyboard here",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Input contained only whitespace",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "stream-json input carried over 256M characters with no newline",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Unknown command",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Diff is too large for ultrareview",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Could not find merge-base with the base branch",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Your checkout has no branches",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "No GitHub account is connected to your Claude account",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Your connected GitHub account can't see the repository",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "The GitHub App preflight failed transiently",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "The repository upload can't follow a git setting",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "GitHub isn't connected to your Claude account",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "A GitHub organization policy is blocking Claude",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Single sign-on authorization needed",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Failed to resume the conversation",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "No conversation found with the session ID",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Windows reported an error (EBADF) when Claude Code read this session's transcript file",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Cannot switch renderers in this session",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Can't restart while work is running or Remote Control is connected",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Claude Code couldn't restart",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Couldn't open Claude Desktop",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "/terminal-setup left your Zed keymap unchanged",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Skill usage reports are not available on this connection",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Custom output styles can't be selected over Remote Control",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "/recap only runs when you ask for it yourself",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "/feedback is disabled by your organization's policy",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Plugin errors",
+    "reason": "container"
+  },
+  {
+    "page": "errors.md",
+    "section": "Tool errors",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "MCP server connection closed before the tool call was answered",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "MCP tool call timed out with the server's question unanswered",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "File is covered by a Read deny rule",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Setting blocks writes outside the working directories",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Writes to Claude Code settings files are blocked",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Path cannot contain null bytes",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Command contains an invisible character",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Command approved before Claude Code restarted was not run",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "File is too large to read as an image",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Memory index is over its read limit",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "pkill pattern matches the Claude Code process",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Failed to write to a teammate's inbox",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Teammate's agent definition was not restored",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Only a teammate can approve a shutdown request",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "A command-line deny rule cannot be handed to a teammate intact",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Message too large for cross-session delivery",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Too many messages to this session just now",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Cross-session message was dropped at the recipient session's inbox",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Refusing to send a cross-session message",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Refusing to read, write, or search a path",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Task output swap refused",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Disk full or disk quota used up",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "git is not installed on this Mac",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "File is not valid UTF-8",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "The source file is not valid UTF-8 text",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Not published: that file is on a network share",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Not published: Claude sent the same content again after a newer version of the artifact turned it away",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Reading a local file from outside the connected folders in a Cowork session",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "WebFetch cannot fetch localhost",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "WebFetch domain safety check failed",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Background session errors",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Commands refused in a background session",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Write or command blocked because the path cannot be safely resolved",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Write or command blocked because the path names a network location",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Command blocked by the worktree isolation checks",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "This session has no saved transcript",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "This session is running in another terminal",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "This session's saved conversation is no longer on disk",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Worktree has commits that are not pushed anywhere",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Terminal host process died",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Session isn't responding",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Session was stopped while the respawn was in flight",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Session agent no longer available",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "This session restarted after its next /loop wakeup was due",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "No LLM gateway: a gateway set in your shell isn't passed to a session opened from another folder",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "CLAUDE\\_CODE\\_PROCESS\\_WRAPPER launcher errors",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "EUNKNOWN when starting a background session",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "EACCES when starting a background session",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Background service exited before it became reachable",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Working directory no longer exists when starting a background session",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Workspace not trusted when dispatching a background session",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Wrapper and IDE errors",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Claude Code process exited with code N",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Could not locate the Claude CLI on PATH",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "The Claude Code program for this computer could not be found",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "The connection to Claude Code ended before this message completed",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Rewind warnings and errors",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Restored the code, but skipped files",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "No files were restored",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Session saving warnings",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Transcript writes are failing",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Transcript saving is off because CLAUDE\\_CODE\\_SKIP\\_PROMPT\\_HISTORY is set",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Transcript saving is off because of an inherited CLAUDE\\_CODE\\_CHILD\\_SESSION marker",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Configuration warnings",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Claude Code exited after an unrecoverable interface error",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Working directory is a network path",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Managed settings contain invalid entries, including PreToolUse/PermissionRequest hooks that are NOT loaded",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "otelHeadersHelper failed",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "headersHelper not run",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "ANTHROPIC\\_FOUNDRY\\_RESOURCE must be a Foundry resource name",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "The 200K limit isn't enforced",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Unrecognized model ID on a request",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Sandbox mask files left behind at write-deny paths",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Make this change again later: \\~/.claude.json could not be updated",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Responses seem lower quality than usual",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Report an error",
+    "reason": "runtime"
+  },
+  {
+    "page": "agent-sdk/plugins.md",
+    "section": "Loading plugins",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/plugins.md",
+    "section": "Complete example",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-sdk/plugins.md",
+    "section": "Troubleshooting",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/plugins.md",
+    "section": "Plugin not loading",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/plugins.md",
+    "section": "Skills not appearing",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/plugins.md",
+    "section": "See also",
+    "reason": "navigation"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Configure hooks",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Callback functions",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Block the action when a callback fails",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Examples",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Modify tool input",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Add context and block a tool",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Auto-approve specific tools",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Register multiple hooks",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Filter with multi-tool matchers",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Track subagent activity",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Make HTTP requests from hooks",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Forward notifications to Slack",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Fix common issues",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Hook not firing",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Matcher not filtering as expected",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Hook timeout",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Tool blocked unexpectedly",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Modified input not applied",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Session hooks not available in Python",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Subagent permission prompts multiplying",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Recursive hook loops with subagents",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "systemMessage not appearing in output",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/hooks.md",
+    "section": "Related resources",
+    "reason": "navigation"
+  },
+  {
+    "page": "agent-sdk/skills.md",
+    "section": "Use skills with the Agent SDK",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/skills.md",
+    "section": "Commands in Agent SDK sessions",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/skills.md",
+    "section": "Create skills",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/skills.md",
+    "section": "Create and dispatch your first skill",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-sdk/skills.md",
+    "section": "Troubleshooting",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/skills.md",
+    "section": "Skills not found",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/skills.md",
+    "section": "Skill not being used",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/skills.md",
+    "section": "Invalid skill name error",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/skills.md",
+    "section": "Additional troubleshooting",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/skills.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "agent-sdk/skills.md",
+    "section": "Related resources",
+    "reason": "navigation"
+  },
+  {
+    "page": "agent-sdk/subagents.md",
+    "section": "Benefits of using subagents",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/subagents.md",
+    "section": "Create subagents",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/subagents.md",
+    "section": "AgentDefinition configuration",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/subagents.md",
+    "section": "Invoke subagents",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/subagents.md",
+    "section": "Common tool combinations",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/subagents.md",
+    "section": "Run Opus 5 with subagents",
+    "reason": "model"
+  },
+  {
+    "page": "agent-sdk/subagents.md",
+    "section": "Troubleshooting",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/subagents.md",
+    "section": "Claude not delegating to subagents",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/subagents.md",
+    "section": "Filesystem-based agents not loading",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/subagents.md",
+    "section": "Related documentation",
+    "reason": "navigation"
+  },
+  {
+    "page": "agent-sdk/permissions.md",
+    "section": "Permission modes",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/permissions.md",
+    "section": "Mode details",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/permissions.md",
+    "section": "Related resources",
+    "reason": "navigation"
+  },
+  {
+    "page": "agent-sdk/mcp.md",
+    "section": "Quickstart",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-sdk/mcp.md",
+    "section": "Add an MCP server",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/mcp.md",
+    "section": "Allow MCP tools",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/mcp.md",
+    "section": "Transport types",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/mcp.md",
+    "section": "Authentication",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/mcp.md",
+    "section": "Examples",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-sdk/mcp.md",
+    "section": "List issues from a repository",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-sdk/mcp.md",
+    "section": "Query a database",
+    "reason": "tutorial"
+  },
+  {
+    "page": "agent-sdk/mcp.md",
+    "section": "Troubleshooting",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/mcp.md",
+    "section": "Server shows \"failed\" status",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/mcp.md",
+    "section": "Tools not being called",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/mcp.md",
+    "section": "A tool is missing from an SDK MCP server",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/mcp.md",
+    "section": "Connection timeouts",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/mcp.md",
+    "section": "Tool output exceeds maximum allowed tokens",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/mcp.md",
+    "section": "Related resources",
+    "reason": "navigation"
+  },
+  {
+    "page": "agent-sdk/claude-code-features.md",
+    "section": "Project instructions (CLAUDE.md and rules)",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/claude-code-features.md",
+    "section": "Hooks",
+    "reason": "container"
+  },
+  {
+    "page": "agent-sdk/claude-code-features.md",
+    "section": "Choose the right feature",
+    "reason": "advice"
+  },
+  {
+    "page": "agent-sdk/claude-code-features.md",
+    "section": "Related resources",
+    "reason": "navigation"
   }
 ]

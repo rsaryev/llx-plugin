@@ -66,23 +66,23 @@ Update the doc that owns a behaviour in the same commit as the code.
 
 Each rule is checked by a gate; a gate never gets a baseline or an exception without the owner.
 
-| Id     | Rule                                                                                                | Gate                |
-| ------ | --------------------------------------------------------------------------------------------------- | ------------------- |
-| L1     | A `src/` module imports only from its own folder and lower layers                                   | `check:layers`      |
-| L2     | `@anthropic-ai/*` only in `src/protocol/`, only `import type`                                       | `check:layers`      |
-| L3     | `src/` uses no `node:*`, `bun`, `Bun`, `process`, `Date`, `fetch` or timer: every effect is a port  | `check:layers`      |
-| L4     | `src/` never imports `tests/` or `scripts/`                                                         | `check:layers`      |
-| S1     | No file over 300 lines; split by responsibility                                                     | `check:size`        |
-| K1     | No `switch`: what differs per member is a strategy in a registry typed over the union               | `lint` (quality)    |
-| K2     | Never compare a kind-like field to a string, nor pass a member to a generic guard as one            | `lint` (quality)    |
-| Q1     | Complexity ≤ 10, cognitive ≤ 15, depth ≤ 3, ≤ 4 params, ≤ 25 statements, ≤ 80 lines per function    | `lint` (quality)    |
-| T1     | No focused or switched-off test                                                                     | `check:tests`       |
-| T2     | Tests only in `tests/<module>/`, support in `tests/support/`                                        | `check:test-layout` |
-| SP1–6  | Requirements valid; test ids exist; SDK and docs are the same release; pulled docs extracted; scope | `check:spec`        |
-| C1     | Every test passes and `docs/COMPATIBILITY.md` is current                                            | `compat --check`    |
-| DOC1–2 | Paths named in docs exist; every doc has a row above                                                | `check:docs`        |
-| D1     | No unused file, export or dependency                                                                | `check:deadcode`    |
-| G1–2   | Conventional Commits; `feat`/`fix`/`perf` add a CHANGELOG entry                                     | `commit-msg` hook   |
+| Id     | Rule                                                                                                                                                   | Gate                |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- |
+| L1     | A `src/` module imports only from its own folder and lower layers                                                                                      | `check:layers`      |
+| L2     | `@anthropic-ai/*` only in `src/protocol/`, only `import type`                                                                                          | `check:layers`      |
+| L3     | `src/` uses no `node:*`, `bun`, `Bun`, `process`, `Date`, `fetch` or timer: every effect is a port                                                     | `check:layers`      |
+| L4     | `src/` never imports `tests/` or `scripts/`                                                                                                            | `check:layers`      |
+| S1     | No file over 300 lines; split by responsibility                                                                                                        | `check:size`        |
+| K1     | No `switch`: what differs per member is a strategy in a registry typed over the union                                                                  | `lint` (quality)    |
+| K2     | Never compare a kind-like field to a string, nor pass a member to a generic guard as one                                                               | `lint` (quality)    |
+| Q1     | Complexity ≤ 10, cognitive ≤ 15, depth ≤ 3, ≤ 4 params, ≤ 25 statements, ≤ 80 lines per function                                                       | `lint` (quality)    |
+| T1     | No focused or switched-off test                                                                                                                        | `check:tests`       |
+| T2     | Tests only in `tests/<module>/`, support in `tests/support/`                                                                                           | `check:test-layout` |
+| SP1–7  | Requirements valid; test ids exist; SDK and docs are the same release; pulled docs extracted; scope; every docs page audited or excluded with a reason | `check:spec`        |
+| C1     | Every test passes and `docs/COMPATIBILITY.md` is current                                                                                               | `compat --check`    |
+| DOC1–2 | Paths named in docs exist; every doc has a row above                                                                                                   | `check:docs`        |
+| D1     | No unused file, export or dependency                                                                                                                   | `check:deadcode`    |
+| G1–2   | Conventional Commits; `feat`/`fix`/`perf` add a CHANGELOG entry                                                                                        | `commit-msg` hook   |
 
 Also: no `any`, no non-null `!`, no `as` casts outside a narrow, commented reason, no lint-disable
 comment without its reason, no legacy shims, no `git stash`/`reset`/`checkout` of others' work.
