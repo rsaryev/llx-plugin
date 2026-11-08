@@ -68,6 +68,18 @@
   and `parent_file_path` by `load_reason`), and the `Stop` task and cron entries capped at 1000
   characters with the `… [+N chars]` marker and per-type fields. `serializeHookInput` is the one
   JSON text for stdin and an HTTP body.
+- Command hook handler (`hooks/handlers`): `runHandler` runs a `command` hook through `CommandRunner`
+  in exec form (`args` present: the executable and one argument per element, no shell, placeholders
+  and `${user_config.*}` substituted as plain strings) or shell form (`bash` or `powershell`, the
+  placeholders rewritten to `${env:NAME}` for PowerShell, a plugin hook that references
+  `${user_config.*}` refused with the documented error), with the event JSON on stdin,
+  `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA` and `CLAUDE_PLUGIN_OPTION_<KEY>`
+  exported, `OTEL_*` removed and the documented working-directory fallbacks. `async` and
+  `asyncRewake` hooks return a background run at once (no timeout for `async`, a wake text on exit
+  code 2 for `asyncRewake`). `planTimeouts` and `handlerTimeoutMs` compute the limit the port
+  enforces (600/600/600/30/60, lowered on `UserPromptSubmit`, `PreModelSwitch`, `PostModelSwitch`
+  and `MessageDisplay`, the shared `SessionEnd` budget), and `statusMessage` reaches the host's
+  observer when a hook starts.
 
 ### Fixed
 

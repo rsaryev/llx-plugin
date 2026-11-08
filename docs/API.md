@@ -199,7 +199,9 @@ const { selected, issues, monitor } = selectHandlers(registry, {
 | `buildHookInput(event, facts, session)`    | done    | the input of an event as `{ input, issues }`: the common fields from the session, then the event's facts checked against the official input type; `input` is `undefined` when a fact has the wrong type or value |
 | `serializeHookInput(input)`                | done    | the one JSON text a command hook reads on stdin and an HTTP hook receives as its body |
 | `hookPermissionMode(mode)`                 | done    | the `permission_mode` a hook sees: the mode labeled Manual is `default` |
-| `runHandler`, `interpretRun`, `parseHookOutput`, `mergeOutputs`, `createHookEngine` | planned | the five handler types, exit codes and `onFailure`, the JSON output, the merged outcome |
+| `runHandler(entry, context)`               | done    | runs one handler and returns `{ run, issues }`: a `command` hook in exec form or shell form, in the foreground or the background; the other types report `skipped` until their runners land |
+| `planTimeouts(event, selected, environment)`, `handlerTimeoutMs(entry, plan)` | done | the limit in milliseconds the port enforces: defaults 600/600/600/30/60, lowered per event, none for `async`, the shared `SessionEnd` budget |
+| `interpretRun`, `parseHookOutput`, `mergeOutputs`, `createHookEngine` | planned | exit codes and `onFailure`, the JSON output, the merged outcome |
 
 Selection also applies the gates of hooks.md: `disableAllHooks` (managed hooks survive it unless the
 managed level sets it), workspace trust for settings-file hooks (and for a project skill's), the
@@ -208,6 +210,18 @@ handler defined in several files runs once; a plugin's or skill's copy stays sep
 call that reached a hook through a `Bash` matcher is reported in `monitor`, with whether the hook's
 `allow` and `updatedInput` apply to it. `EventFactsOf<E>` is the official input minus the fields
 every event shares, except a shared field an event requires (`agent_type` of `SubagentStart`).
+
+`runHandler` takes a `RunContext`: the ports (`runner`, `locations`, `environment`, and an optional
+observer with `started`), the serialized input, the session's `cwd`, whether the host is Windows and
+which shell a hook with no `shell` field uses (`bash`, or `powershell` on Windows without Git Bash:
+the kit cannot tell), the directory the session started in and the system temp directory (the
+working-directory fallbacks), each plugin's saved options, the timeout plan and the abort signal. A
+command hook with `args` (even `[]`) is exec form and `shell` is ignored; without it the command is
+one string for the named shell. The result's `run` is `exited`, `timed-out` (the output is discarded),
+`not-started`, `cancelled`, `skipped` (a shell-form plugin hook that references `${user_config.*}`
+runs nothing and carries the documented error) or `background`, whose `done` settles when the process
+ends, with `wake` set for an `asyncRewake` hook that exited with code 2. What an exit code means and
+what `onFailure` does with it are the interpret stage's (planned).
 
 `buildHookInput` puts `session_id`, `prompt_id` (absent until the first prompt), `transcript_path`,
 `cwd`, `scratchpad_dir` (absent without a scratchpad), `permission_mode` and `effort` (on the events
