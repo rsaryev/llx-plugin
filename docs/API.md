@@ -164,7 +164,7 @@ lspRestartDecision(resolved, restartsSoFar); // 'restart' | 'stay-stopped'
 | `mergeLspSources(reads)` | `.lsp.json` first, then each declared source in order; a later name replaces the earlier entry whole and keeps its first position |
 | `resolveLspServer(name, server, scope)` | `command`, `args`, `env`, `workspaceFolder` substituted (`${user_config.*}` allowed, `${VAR}` left to the process), `environment` = `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_PROJECT_DIR`; `transport` is always `stdio`; `requestTimeoutMs` 60000, `restartOnCrash` and `diagnostics` true by default; `shutdownTimeoutMs`, `startupTimeoutMs`, `maxRestarts` stay unset when unset |
 | `lspRestartDecision(server, restartsSoFar)` | `restartOnCrash: false` stays stopped; `restartsSoFar >= maxRestarts` stays stopped; unset `maxRestarts` is unbounded |
-| `languageIdFor(servers, filePath)`, `lspExtensionConflicts(servers)` | the server and language ID of a file (the first registered server keeps a shared extension; the longest extension wins); the `LSP server "<name>" is not used for <ext> files` warning |
+| `languageIdFor(servers, filePath)`, `lspExtensionConflicts(servers)` | the server and language ID of a file (the first registered server keeps a shared extension; the longest extension wins); the record key must be unique across plugins, so qualify it as `plugin:server`; the `LSP server "<name>" is not used for <ext> files` warning |
 | `initializeOptionsOf(server)`, `didChangeConfigurationOf(server)` | the `initializationOptions` of the initialize request and the `workspace/didChangeConfiguration` notification for `settings` |
 
 The kit never starts a language server and never enforces a timeout: the host's LSP client starts the

@@ -79,6 +79,10 @@
 
 ### Fixed
 
+- LSP: a refused `extensionToLanguage` now names the keys that lack a dot; `languageIdFor` and
+  `lspExtensionConflicts` document a plugin-qualified key (`plugin:server`) so two plugins with the
+  same server name stay apart; the integer-like-name ordering limit and the host-owned timeouts are
+  recorded in `spec/judgments.md`.
 - MCP servers: an entry with `type: "streamable-http"` now reads as `http` (mcp.md, "Option 2");
   an entry with a `url` and no `type` is dropped with the message mcp.md quotes instead of an
   unrelated stdio error (and no longer reads as stdio when it also has a `command`, so a stray `url`

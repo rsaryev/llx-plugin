@@ -137,6 +137,20 @@ describe('extension conflicts (components.md, "LSP servers")', () => {
       },
     ]);
   });
+  test('two plugins that share a server name are told apart by the qualified key', () => {
+    const servers = {
+      'alpha:go': { extensionToLanguage: { '.go': 'go' } },
+      'beta:go': { extensionToLanguage: { '.go': 'golang' } },
+    };
+    expect(languageIdFor(servers, 'main.go')).toEqual({ server: 'alpha:go', languageId: 'go' });
+    expect(lspExtensionConflicts(servers)).toEqual([
+      {
+        severity: 'warning',
+        path: 'beta:go',
+        message: 'LSP server "beta:go" is not used for .go files',
+      },
+    ]);
+  });
   test('no conflict, no warning', () => {
     expect(lspExtensionConflicts({ a: claiming('.go'), b: claiming('.rs') })).toEqual([]);
   });

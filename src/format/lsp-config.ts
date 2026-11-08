@@ -72,11 +72,23 @@ const command = text
     error: 'must not contain spaces unless it starts with "/"; put arguments in "args"',
   });
 
-const extensions = strings
-  .refine((map) => Object.keys(map).length > 0, { error: 'needs at least one entry' })
-  .refine((map) => Object.keys(map).every((key) => key.startsWith('.')), {
-    error: 'every key must start with a dot, such as ".go"',
-  });
+const withoutDot = (map: Readonly<Record<string, string>>): string[] =>
+  Object.keys(map).filter((key) => !key.startsWith('.'));
+
+const extensions = strings.check((context) => {
+  const map = context.value;
+  if (Object.keys(map).length === 0) {
+    context.issues.push({ code: 'custom', input: map, message: 'needs at least one entry' });
+  }
+  const bare = withoutDot(map);
+  if (bare.length > 0) {
+    context.issues.push({
+      code: 'custom',
+      input: map,
+      message: `every key must start with a dot, such as ".go"; no dot in ${bare.map((key) => `"${key}"`).join(', ')}`,
+    });
+  }
+});
 
 const lspServerSchema = z.strictObject({
   command,
@@ -167,7 +179,9 @@ const entriesOf = (reads: readonly { name: string; server: LspServer | undefined
  * (manifest-reference: "A server name declared later replaces an earlier one"; components.md: the
  * manifest server replaces the `.lsp.json` one of the same name). Judgment: replacement is of the
  * whole entry, and a replaced name keeps its first position, so the registration order that decides
- * which server keeps a shared extension is the order names first appeared.
+ * which server keeps a shared extension is the order names first appeared. Limitation: the result is
+ * a plain object, so integer-like names (`"9"`, `"10"`) come first in ascending order whatever their
+ * position (spec/judgments.md).
  */
 export function mergeLspSources(sources: readonly LspConfigRead[]): LspConfigRead {
   return {

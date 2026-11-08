@@ -100,7 +100,17 @@ spec('lsp.field.extensionToLanguage', () => {
   test('every key starts with a dot', () => {
     const message = refusal({ command: 'gopls', extensionToLanguage: { '.go': 'go', go: 'go' } });
     expect(message).toContain('extensionToLanguage');
-    expect(message).toContain('go');
+    expect(message).toContain('no dot in "go"');
+  });
+  test('every offending key is named, and a dotted key alone is accepted', () => {
+    const message = refusal({
+      command: 'gopls',
+      extensionToLanguage: { '.go': 'go', go: 'go', mod: 'gomod' },
+    });
+    expect(message).toContain('no dot in "go", "mod"');
+    expect(
+      accepted({ ...gopls, extensionToLanguage: { '.go': 'go' } })?.extensionToLanguage,
+    ).toEqual({ '.go': 'go' });
   });
   test('maps extension to language ID, both strings', () => {
     expect(refusal({ command: 'gopls', extensionToLanguage: { '.go': 3 } })).toContain(

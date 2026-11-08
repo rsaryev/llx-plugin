@@ -65,7 +65,9 @@ const lastSegment = (filePath: string): string => filePath.split(/[/\\]/).at(-1)
 
 /**
  * The server and language ID for a file: "each file extension gets one server" and "the first
- * registered handles those files". `servers` is in registration order (the order of the record).
+ * registered handles those files". `servers` is in registration order (the order of the record) and
+ * its key must be unique across every plugin, so qualify it (`plugin:server`): two plugins that
+ * each declare `go` would otherwise collide in the record and one would vanish.
  * Judgment: extensions match as written (case-sensitive) at the end of the last path segment, a name
  * that is only the extension (`.ts`) has none, and the longest matching extension wins (`.d.ts` over
  * `.ts`), the first registered server among equals.
@@ -89,7 +91,8 @@ export function languageIdFor(
 
 /**
  * The warning components.md quotes for a server that loses an extension to an earlier one:
- * `LSP server "<name>" is not used for <ext> files`. One per server and extension.
+ * `LSP server "<name>" is not used for <ext> files`. One per server and extension. `<name>` is the
+ * record key, so it is plugin-qualified (`plugin:server`) when the servers come from several plugins.
  */
 export function lspExtensionConflicts(servers: Readonly<Record<string, Routed>>): PluginIssue[] {
   const owner = new Map<string, string>();
