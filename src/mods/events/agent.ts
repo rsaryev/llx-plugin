@@ -8,7 +8,8 @@ type AgentEvent = (typeof MOD_EVENT_GROUPS.subagents)[number];
 /**
  * A resumed run (`e.resume` is `{ agentId }`) ignores a changed event: "If you pass a changed
  * event to `next` for a resumed run, such as a different `model`, Claude Code ignores the change".
- * The hooks after it still see what was passed.
+ * Judgment: the hooks after it still see what was passed; only Claude Code's own behaviour
+ * receives the event as fired.
  */
 function spawnedAs(original: unknown, passed: unknown): unknown {
   return isRecord(original) && original.resume !== undefined ? original : passed;

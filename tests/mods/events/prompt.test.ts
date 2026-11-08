@@ -5,7 +5,7 @@
  * the tests fire each through the chain and prove what the kit does with the documented answers.
  */
 import { describe, expect, test } from 'bun:test';
-import { autocompleteRows, eventInputProblem } from '../../../src/mods/events/index.ts';
+import { autocompleteRows } from '../../../src/mods/events/index.ts';
 import { deferred, flush, fn } from '../../support/mods-chain.ts';
 import { eventHarness, reasonsOf } from '../../support/mods-events.ts';
 import { spec } from '../../support/spec.ts';
@@ -92,8 +92,6 @@ describe('prompt.submit', () => {
         expect(await h.fire('prompt.submit', { text: 'x' })).toEqual({ core: { text: 'x' } });
         expect(reasonsOf(h)).toHaveLength(1);
       }
-      expect(eventInputProblem('prompt.submit', { text: 'x', context: ['a'] })).toBeUndefined();
-      expect(eventInputProblem('prompt.submit', {})).toContain('text');
     });
   });
 });
@@ -111,10 +109,8 @@ describe('prompt.fill and prompt.suggest', () => {
       }
     });
 
-    test('the event carries e.text; an answer whose text is not a string fails the hook', async () => {
+    test('an answer whose text is not a string fails the hook', async () => {
       for (const event of ['prompt.fill', 'prompt.suggest']) {
-        expect(eventInputProblem(event, { text: 'x' })).toBeUndefined();
-        expect(eventInputProblem(event, {})).toContain('text');
         const h = eventHarness();
         h.mod('my-mod', 'user', [fn(event, () => Promise.resolve({ text: 5 }))]);
         expect(await h.fire(event, { text: 'x' })).toEqual({ core: { text: 'x' } });
@@ -152,11 +148,6 @@ describe('prompt.autocomplete', () => {
   ];
 
   spec('mods.event.prompt.autocomplete', () => {
-    test('the event carries the word that ends at the cursor in e.token', () => {
-      expect(eventInputProblem('prompt.autocomplete', { token: 'fix' })).toBeUndefined();
-      expect(eventInputProblem('prompt.autocomplete', {})).toContain('token');
-    });
-
     test('{ suggestions } is a list of rows with text, label and description', async () => {
       const h = eventHarness();
       h.mod('my-mod', 'user', [

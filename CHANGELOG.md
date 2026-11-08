@@ -82,6 +82,11 @@
 
 ### Fixed
 
+- Mods events: `mergeToolCheck` honours `e.ceiling` (`ask` caps a mod's `allow` at `ask`, as
+  permissions.md says for connector tools an organization set to `ask`); `SESSION_END_REASONS` now
+  lives in `src/protocol/exit-reasons.ts`, tied to the SDK's `ExitReason`; tests prove that a hook's
+  `next(e)` rejects when a session message is not delivered, and the ordering, resumed-run and
+  input-shape assertions moved out of `spec(...)` into judgments (new rows in `spec/judgments.md`).
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
   parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
   (and `skill`) read `name:value` as a parameter.

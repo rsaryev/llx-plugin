@@ -5,7 +5,6 @@
  * prompt or adds a reminder is the host's; the tests fire each event through the chain.
  */
 import { describe, expect, test } from 'bun:test';
-import { eventInputProblem } from '../../../src/mods/events/index.ts';
 import { fn } from '../../support/mods-chain.ts';
 import { eventHarness, reasonsOf } from '../../support/mods-events.ts';
 import { spec } from '../../support/spec.ts';
@@ -24,9 +23,14 @@ describe('prompt.compose', () => {
     { id: 'rules', text: 'Be brief.', scope: 'session' },
   ];
   spec('mods.event.prompt.compose', () => {
-    test('{ sections } is the list of { id, text, scope } in the order they are sent', async () => {
+    test('{ sections } is a list of { id, text, scope }; the list is handed on as answered, in its order', async () => {
+      const reversed = sections.toReversed();
       expect(await answered('prompt.compose', {}, { sections })).toEqual({
         result: { sections },
+        skipped: false,
+      });
+      expect(await answered('prompt.compose', {}, { sections: reversed })).toEqual({
+        result: { sections: reversed },
         skipped: false,
       });
     });
@@ -52,7 +56,6 @@ describe('prompt.section', () => {
         fn('prompt.section', (_$, e) => Promise.resolve({ text: `[${String(e.name)}]` })),
       ]);
       expect(await h.fire('prompt.section', { name: 'rules' })).toEqual({ text: '[rules]' });
-      expect(eventInputProblem('prompt.section', {})).toContain('name');
     });
 
     test('{ text: null } omits the section; a text that is neither a string nor null fails the hook', async () => {
@@ -96,8 +99,6 @@ describe('prompt.attachment', () => {
       expect(await h.fire('prompt.attachment', reminder)).toEqual({
         text: 'todo_reminder: {"count":3}',
       });
-      expect(eventInputProblem('prompt.attachment', reminder)).toBeUndefined();
-      expect(eventInputProblem('prompt.attachment', { detail: 1 })).toContain('type');
     });
 
     test('{ text: null } omits the message; a text of another type fails the hook', async () => {
@@ -132,7 +133,6 @@ describe('prompt.mention', () => {
     test('a deny or a path that is not a string fails the hook', async () => {
       expect((await answered('prompt.mention', { path: 'a' }, { deny: 1 })).skipped).toBe(true);
       expect((await answered('prompt.mention', { path: 'a' }, { path: 1 })).skipped).toBe(true);
-      expect(eventInputProblem('prompt.mention', {})).toContain('path');
     });
   });
 });

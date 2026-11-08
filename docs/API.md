@@ -279,7 +279,7 @@ const result = await chain.dispatch('tool.call', event, {
 | `createBudget`, `deepFreeze`, `plainDataProblem`, `jsonChars`, `jsonBytes` | done | `foundation`: a time budget on the `Clock` port that stops while code waits, in-place deep freeze, a stack-safe walk with depth, node and character limits, JSON sizes |
 | `createEventRules()`, `EVENT_SPECS`   | done    | what the chain knows of the tool, prompt, command, `/config`, turn, session and subagent events: documented input fields, the shapes a hook can answer with, refused changes, what Claude Code receives, the cut reason (`createModChain({ clock, rules })`) |
 | `eventResultProblem`, `eventInputProblem` | done | why a result or an input does not fit an event, or `undefined`; unknown events are not checked |
-| `clampReason`, `mergeToolCheck`, `skillPromptEvent`, `autocompleteRows` | done | the 4,096-character reason cut; the `tool.check` decision with plan mode (a mod can tighten a call that is not read-only, not approve it); the `skill.prompt` event from a skill and its parsed frontmatter; Claude Code's autocomplete rows then the mods' |
+| `clampReason`, `mergeToolCheck`, `skillPromptEvent`, `autocompleteRows` | done | the 4,096-character reason cut; the `tool.check` decision with plan mode (a mod can tighten a call that is not read-only, not approve it) and the organization's `ceiling: 'ask'` (an `allow` still asks); the `skill.prompt` event from a skill and its parsed frontmatter; Claude Code's autocomplete rows then the mods' |
 | API, UI, loading, test kit            | planned | the other parts of mods                                                               |
 
 `register` takes the tier `prepend`, `user`, `append` or `builtin` (never `core`, which is Claude Code's own

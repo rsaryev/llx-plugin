@@ -6,7 +6,7 @@
  * tests fire each event through the chain the way the host will.
  */
 import { describe, expect, test } from 'bun:test';
-import { SESSION_END_REASONS, eventInputProblem } from '../../../src/mods/events/index.ts';
+import { SESSION_END_REASONS } from '../../../src/mods/events/index.ts';
 import { fn, record } from '../../support/mods-chain.ts';
 import { eventHarness, reasonsOf } from '../../support/mods-events.ts';
 import { spec } from '../../support/spec.ts';
@@ -23,6 +23,16 @@ const observed = async (event: string, input: Record<string, unknown>) => {
   return h.fire(event, input);
 };
 
+/** Claude Code's own behaviour when it could not deliver the message. */
+const notDelivered = () => Promise.reject(new Error('not delivered: the session is closed'));
+
+/** The message of the error a promise rejects with, or `undefined` when it resolves. */
+const failure = (pending: Promise<unknown>): Promise<string | undefined> =>
+  pending.then(
+    () => undefined,
+    (error: unknown) => (error instanceof Error ? error.message : String(error)),
+  );
+
 describe('the events a hook only observes', () => {
   spec('mods.event.session.start', () => {
     test('next(e) lets the session start unchanged', async () => {
@@ -32,40 +42,25 @@ describe('the events a hook only observes', () => {
 
   spec(['mods.event.session.attach', 'mods.event.session.detach'], () => {
     test('next(e) passes on an app connecting to or disconnecting from the session', async () => {
-      expect(await observed('session.attach', { app: 'desktop' })).toEqual({
-        core: { app: 'desktop' },
-      });
-      expect(await observed('session.detach', { app: 'desktop' })).toEqual({
-        core: { app: 'desktop' },
-      });
+      expect(await observed('session.attach', {})).toEqual({ core: {} });
+      expect(await observed('session.detach', {})).toEqual({ core: {} });
     });
   });
 
   spec('mods.event.session.measure', () => {
     test('next(e) passes on a measurement after a turn', async () => {
-      expect(await observed('session.measure', { usage: { percent: 40 } })).toEqual({
-        core: { usage: { percent: 40 } },
-      });
+      expect(await observed('session.measure', {})).toEqual({ core: {} });
     });
   });
 });
 
 describe('session.end', () => {
   spec('mods.event.session.end', () => {
-    test('e.reason is clear, resume, logout, prompt_input_exit or other', async () => {
-      expect([...SESSION_END_REASONS]).toEqual([
-        'clear',
-        'resume',
-        'logout',
-        'prompt_input_exit',
-        'other',
-      ]);
+    test('next(e) lets the session end for every reason, and /branch reports resume', async () => {
+      expect(SESSION_END_REASONS).toContain('resume');
       for (const reason of SESSION_END_REASONS) {
-        expect(eventInputProblem('session.end', { reason })).toBeUndefined();
         expect(await observed('session.end', { reason })).toEqual({ core: { reason } });
       }
-      expect(eventInputProblem('session.end', { reason: 'branch' })).toContain('reason');
-      expect(eventInputProblem('session.end', {})).toContain('reason');
     });
   });
 });
@@ -110,26 +105,55 @@ describe('session.receive and session.send', () => {
 
     test('next(e) passes the message through unchanged, and a consumed that is not a string fails the hook', async () => {
       expect(await observed('session.receive', received)).toEqual({ core: received });
-      for (const kind of ['peer', 'peer-send-message', 'task-notification', 'scheduled-trigger']) {
-        expect(
-          eventInputProblem('session.receive', { text: 'x', origin: { kind } }),
-        ).toBeUndefined();
-      }
       expect(await answered('session.receive', received, { consumed: 3 })).toEqual({
         result: { core: received },
         skipped: true,
       });
-      expect(eventInputProblem('session.receive', { text: 'x' })).toContain('origin');
+    });
+
+    test("next(e) rejects when the message isn't delivered: a hook that does not catch it is skipped, one that catches it can answer", async () => {
+      const h = eventHarness();
+      h.mod('my-mod', 'user', [fn('session.receive', (_$, e, next) => next(e))]);
+      expect(await failure(h.fire('session.receive', received, { core: notDelivered }))).toBe(
+        'not delivered: the session is closed',
+      );
+      expect(reasonsOf(h)).toEqual(['threw Error: not delivered: the session is closed']);
+
+      const catching = eventHarness();
+      catching.mod('my-mod', 'user', [
+        fn('session.receive', (_$, e, next) => next(e), {
+          handler: () => Promise.resolve({ consumed: 'not delivered anyway' }),
+        }),
+      ]);
+      expect(await catching.fire('session.receive', received, { core: notDelivered })).toEqual({
+        consumed: 'not delivered anyway',
+      });
     });
   });
 
   spec('mods.event.session.send', () => {
-    test('e.to, e.text and e.origin.kind (model or plugin) describe the message; next(e) lets it go', async () => {
-      expect(eventInputProblem('session.send', sent)).toBeUndefined();
-      expect(eventInputProblem('session.send', { ...sent, origin: { kind: 'peer' } })).toContain(
-        'origin',
-      );
+    test('next(e) lets the message go: Claude Code sends what the hook passed on', async () => {
       expect(await observed('session.send', sent)).toEqual({ core: sent });
+    });
+
+    test("next(e) rejects when the message isn't delivered: a hook that does not catch it is skipped, one that catches it can answer", async () => {
+      const h = eventHarness();
+      h.mod('my-mod', 'user', [fn('session.send', (_$, e, next) => next(e))]);
+      expect(await failure(h.fire('session.send', sent, { core: notDelivered }))).toBe(
+        'not delivered: the session is closed',
+      );
+      expect(reasonsOf(h)).toEqual(['threw Error: not delivered: the session is closed']);
+
+      const catching = eventHarness();
+      catching.mod('my-mod', 'user', [
+        fn('session.send', (_$, e, next) => next(e), {
+          handler: () => Promise.resolve({ isDelivered: false, reason: 'quiet hours' }),
+        }),
+      ]);
+      expect(await catching.fire('session.send', sent, { core: notDelivered })).toEqual({
+        isDelivered: false,
+        reason: 'quiet hours',
+      });
     });
 
     test('{ isDelivered: false, reason } refuses the delivery; the message is never sent', async () => {
@@ -228,14 +252,6 @@ describe('session.append', () => {
       await h.fire('session.append', row);
       await h.fire('session.append', { ...row, door: 'attachment' });
       expect(seen).toEqual(['attachment']);
-    });
-
-    test('the row carries a message with content, and a door that is a string', () => {
-      expect(eventInputProblem('session.append', row)).toBeUndefined();
-      expect(eventInputProblem('session.append', { door: 1, message: row.message })).toContain(
-        'door',
-      );
-      expect(eventInputProblem('session.append', { door: 'x' })).toContain('message');
     });
   });
 

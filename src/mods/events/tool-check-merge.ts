@@ -26,6 +26,8 @@ export interface ToolCheckContext {
   readonly mode: PermissionMode;
   /** `e.isReadOnly`: `true` when the tool reports the call as read-only, otherwise absent. */
   readonly isReadOnly?: true;
+  /** `e.ceiling`: `ask` for a connector tool the organization set to `ask`, otherwise absent. */
+  readonly ceiling?: 'ask';
 }
 
 /**
@@ -34,6 +36,8 @@ export interface ToolCheckContext {
  * not approved or loosened; in every other case, and for a read-only call, the mod's answer stands
  * (events.md, "Approve or refuse a tool call before the user is asked"; permissions.md, "Hook
  * approvals in plan mode"). A mod's own `deny` is a tightening, so a mod can still block there.
+ * A connector tool with `ceiling: 'ask'` still prompts when a mod allows it (permissions.md,
+ * "Hook approvals in plan mode": tools "your organization set to `ask`"), so an `allow` is `ask`.
  */
 export function mergeToolCheck(
   claudeCode: ToolDecision,
@@ -41,5 +45,9 @@ export function mergeToolCheck(
   context: ToolCheckContext,
 ): ToolDecision {
   const bound = TIGHTEN_ONLY[context.mode] && context.isReadOnly !== true;
-  return bound && STRICTNESS[mod.decision] < STRICTNESS[claudeCode.decision] ? claudeCode : mod;
+  const merged =
+    bound && STRICTNESS[mod.decision] < STRICTNESS[claudeCode.decision] ? claudeCode : mod;
+  return context.ceiling === 'ask' && merged.decision === 'allow'
+    ? { ...merged, decision: 'ask' }
+    : merged;
 }

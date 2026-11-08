@@ -4,7 +4,6 @@
  * `config.set` guard). Which row the user changes and when a command list is built is the host's.
  */
 import { describe, expect, test } from 'bun:test';
-import { eventInputProblem } from '../../../src/mods/events/index.ts';
 import { fn } from '../../support/mods-chain.ts';
 import { eventHarness, reasonsOf } from '../../support/mods-events.ts';
 import { spec } from '../../support/spec.ts';
@@ -47,8 +46,6 @@ describe('command.run', () => {
         result: { core: run },
         skipped: true,
       });
-      expect(eventInputProblem('command.run', run)).toBeUndefined();
-      expect(eventInputProblem('command.run', { args: '' })).toContain('command');
     });
   });
 });

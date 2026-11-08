@@ -4,7 +4,6 @@
  * to the model, is the host's; the tests fire the events through the chain, `turn.step` as a stream.
  */
 import { describe, expect, test } from 'bun:test';
-import { eventInputProblem } from '../../../src/mods/events/index.ts';
 import { consume, fn, gen, record } from '../../support/mods-chain.ts';
 import { eventHarness, reasonsOf } from '../../support/mods-events.ts';
 import { spec } from '../../support/spec.ts';
@@ -31,7 +30,6 @@ describe('turn.start', () => {
       h.mod('my-mod', 'user', [fn('turn.start', (_$, e, next) => (seen.push(e.turnId), next(e)))]);
       expect(await h.fire('turn.start', { turnId: 't-1' })).toEqual({ core: { turnId: 't-1' } });
       expect(seen).toEqual(['t-1']);
-      expect(eventInputProblem('turn.start', {})).toContain('turnId');
     });
   });
 });
@@ -91,7 +89,6 @@ describe('turn.step', () => {
     });
 
     test('e.agentId marks a subagent request, and a result whose usage is not a table fails the hook', async () => {
-      expect(eventInputProblem('turn.step', { ...step, agentId: 'agent-7' })).toBeUndefined();
       const h = eventHarness();
       h.mod('my-mod', 'user', [
         gen('turn.step', async function* () {
@@ -132,7 +129,6 @@ describe('turn.complete', () => {
       const h = eventHarness();
       h.mod('my-mod', 'user', [fn('turn.complete', (_$, e, next) => next(e))]);
       const event = { ...complete, isAborted: true, agentId: 'agent-1' };
-      expect(eventInputProblem('turn.complete', event)).toBeUndefined();
       expect(await h.fire('turn.complete', event)).toEqual({ core: event });
     });
 

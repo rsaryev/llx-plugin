@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SESSION_END_REASONS } from '../../protocol/exit-reasons.ts';
 import type { MOD_EVENT_GROUPS } from '../../protocol/mods-events.ts';
 import {
   answer,
@@ -13,15 +14,6 @@ import {
 
 /** The session events (reference.md, "Session"; api.md, "Send and receive messages between sessions"). */
 type SessionEvent = (typeof MOD_EVENT_GROUPS.session)[number];
-
-/** Why a session ends: `/branch` reports `resume`. */
-export const SESSION_END_REASONS = [
-  'clear',
-  'resume',
-  'logout',
-  'prompt_input_exit',
-  'other',
-] as const;
 
 /** `{ isDelivered: false, reason }`: a message that was not delivered says why. */
 const deliveryResult = answer({ isDelivered: flag.optional(), reason: text.optional() }).refine(

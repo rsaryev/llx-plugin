@@ -5,7 +5,6 @@
  * mode. Firing is the host's: these tests fire each event through the chain the way the host will.
  */
 import { describe, expect, test } from 'bun:test';
-import { eventInputProblem } from '../../../src/mods/events/index.ts';
 import { fn, record } from '../../support/mods-chain.ts';
 import { eventHarness, reasonsOf } from '../../support/mods-events.ts';
 import { spec } from '../../support/spec.ts';
@@ -102,11 +101,6 @@ describe('tool.call', () => {
       expect(reasonsOf(h)[0]).toContain(
         'returned a result that is refused: tool.call result: deny',
       );
-    });
-
-    test('the event names the tool in e.tool', () => {
-      expect(eventInputProblem('tool.call', bash)).toBeUndefined();
-      expect(eventInputProblem('tool.call', { command: 'ls' })).toContain('tool');
     });
   });
 });
@@ -205,17 +199,6 @@ describe('tool.check', () => {
       await h.fire('tool.check', { ...check, isReadOnly: true });
       await h.fire('tool.check', check);
       expect(seen).toEqual(['read-only']);
-      expect(eventInputProblem('tool.check', { ...check, isReadOnly: false })).toContain(
-        'isReadOnly',
-      );
-    });
-
-    test('e.agentId and e.ceiling are documented; ceiling is ask', () => {
-      expect(
-        eventInputProblem('tool.check', { ...check, agentId: 'agent-1', ceiling: 'ask' }),
-      ).toBeUndefined();
-      expect(eventInputProblem('tool.check', { ...check, ceiling: 'deny' })).toContain('ceiling');
-      expect(eventInputProblem('tool.check', { tool: 'Bash' })).toContain('input');
     });
   });
 });

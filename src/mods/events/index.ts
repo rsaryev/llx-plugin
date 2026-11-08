@@ -86,7 +86,7 @@ export function createEventRules(): EventRules {
 export { autocompleteRows } from './autocomplete.ts';
 export type { AutocompleteRow } from './prompt.ts';
 export { clampReason } from './reasons.ts';
-export { SESSION_END_REASONS } from './session.ts';
+export { SESSION_END_REASONS } from '../../protocol/exit-reasons.ts';
 export { skillPromptEvent, type SkillPromptEvent, type SkillSource } from './skill-prompt-event.ts';
 export { mergeToolCheck, type ToolCheckContext, type ToolDecision } from './tool-check-merge.ts';
 export type { EventSpec } from './spec.ts';

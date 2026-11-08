@@ -3,7 +3,11 @@
  * compatibility, so none of it is under `spec(...)`.
  */
 import { describe, expect, test } from 'bun:test';
-import { EVENT_SPECS, createEventRules } from '../../../src/mods/events/index.ts';
+import {
+  EVENT_SPECS,
+  createEventRules,
+  eventInputProblem,
+} from '../../../src/mods/events/index.ts';
 import { MOD_EVENT_GROUPS } from '../../../src/protocol/mods-events.ts';
 import { fn } from '../../support/mods-chain.ts';
 import { eventHarness, reasonsOf } from '../../support/mods-events.ts';
@@ -62,5 +66,47 @@ describe('the event table', () => {
       extra: 1,
     });
     expect(h.reports).toEqual([]);
+  });
+});
+
+describe("eventInputProblem (the kit's own helper: no chain rule calls it, the host may)", () => {
+  const check = { tool: 'Bash', input: { command: 'ls' } };
+  const fits: readonly (readonly [string, unknown])[] = [
+    ['tool.call', { tool: 'Bash', command: 'ls' }],
+    ['tool.check', { ...check, agentId: 'agent-1', ceiling: 'ask', isReadOnly: true }],
+    ['agent.spawn', { agent: 'reviewer', isTeammate: true, resume: { agentId: 'agent-1' } }],
+    ['session.end', { reason: 'prompt_input_exit' }],
+    ['session.receive', { text: 'x', origin: { kind: 'task-notification' } }],
+    ['session.send', { to: 'a', text: 'x', origin: { kind: 'model' } }],
+    ['session.append', { door: 'tool', message: { content: [] } }],
+    ['turn.step', { turnId: 't', agentId: 'agent-7' }],
+    ['no.such.event', 'anything'],
+  ];
+  const misfits: readonly (readonly [string, unknown, string])[] = [
+    ['tool.call', { command: 'ls' }, 'tool'],
+    ['tool.check', { ...check, isReadOnly: false }, 'isReadOnly'],
+    ['tool.check', { ...check, ceiling: 'deny' }, 'ceiling'],
+    ['tool.check', { tool: 'Bash' }, 'input'],
+    ['agent.spawn', { resume: {} }, 'resume'],
+    ['session.end', { reason: 'branch' }, 'reason'],
+    ['session.receive', { text: 'x' }, 'origin'],
+    ['session.send', { to: 'a', text: 'x', origin: { kind: 'peer' } }, 'origin'],
+    ['session.append', { door: 1, message: { content: [] } }, 'door'],
+    ['prompt.section', {}, 'name'],
+    ['prompt.mention', {}, 'path'],
+    ['prompt.fill', {}, 'text'],
+    ['prompt.autocomplete', {}, 'token'],
+    ['command.run', { args: '' }, 'command'],
+    ['turn.start', {}, 'turnId'],
+  ];
+
+  test('is undefined for an input that fits the documented fields, and for an event it does not know', () => {
+    for (const [event, input] of fits) expect(eventInputProblem(event, input)).toBeUndefined();
+  });
+
+  test('names the event and the field of an input that does not fit', () => {
+    for (const [event, input, field] of misfits) {
+      expect(eventInputProblem(event, input)).toMatch(new RegExp(`^${event} input: ${field}`));
+    }
   });
 });

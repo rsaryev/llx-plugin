@@ -4,7 +4,6 @@
  * fire both through the chain.
  */
 import { describe, expect, test } from 'bun:test';
-import { eventInputProblem } from '../../../src/mods/events/index.ts';
 import { fn } from '../../support/mods-chain.ts';
 import { eventHarness, reasonsOf } from '../../support/mods-events.ts';
 import { spec } from '../../support/spec.ts';
@@ -53,10 +52,7 @@ describe('agent.spawn', () => {
       expect(h.coreSeen).toEqual([]);
     });
 
-    test('e.isTeammate is true for a teammate; e.resume is { agentId } for a resumed run, and a hook that counts can skip those', async () => {
-      expect(eventInputProblem('agent.spawn', { ...spawn, isTeammate: true })).toBeUndefined();
-      expect(eventInputProblem('agent.spawn', resumed)).toBeUndefined();
-      expect(eventInputProblem('agent.spawn', { resume: {} })).toContain('resume');
+    test('e.resume is { agentId } for a resumed run, and a hook that counts can skip those', async () => {
       const h = eventHarness();
       let started = 0;
       h.mod('my-mod', 'user', [
@@ -76,13 +72,10 @@ describe('agent.spawn', () => {
       expect(h.coreSeen).toEqual([]);
     });
 
-    test('a changed event passed to next for a resumed run is ignored by Claude Code; the hooks after it still see it', async () => {
+    test('a changed event passed to next for a resumed run is ignored by Claude Code', async () => {
       const h = eventHarness();
-      const seen: unknown[] = [];
       h.mod('first', 'user', [fn('agent.spawn', (_$, e, next) => next({ ...e, model: 'haiku' }))]);
-      h.mod('second', 'user', [fn('agent.spawn', (_$, e, next) => (seen.push(e.model), next(e)))]);
       await h.fire('agent.spawn', resumed);
-      expect(seen).toEqual(['haiku']);
       expect(h.coreSeen).toEqual([resumed]);
     });
 
@@ -91,6 +84,18 @@ describe('agent.spawn', () => {
       h.mod('my-mod', 'user', [fn('agent.spawn', () => Promise.resolve({ deny: 1 }))]);
       expect(await h.fire('agent.spawn', spawn)).toEqual({ core: spawn });
       expect(reasonsOf(h)).toHaveLength(1);
+    });
+  });
+
+  describe('judgment (spec/judgments.md): the hooks after a resumed run still see the change', () => {
+    test('a changed event passed to next for a resumed run reaches the later hooks; only Claude Code ignores it', async () => {
+      const h = eventHarness();
+      const seen: unknown[] = [];
+      h.mod('first', 'user', [fn('agent.spawn', (_$, e, next) => next({ ...e, model: 'haiku' }))]);
+      h.mod('second', 'user', [fn('agent.spawn', (_$, e, next) => (seen.push(e.model), next(e)))]);
+      await h.fire('agent.spawn', resumed);
+      expect(seen).toEqual(['haiku']);
+      expect(h.coreSeen).toEqual([resumed]);
     });
   });
 });
