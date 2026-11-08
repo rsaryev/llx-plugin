@@ -1,6 +1,8 @@
 import { error, type PluginIssue } from '../format/issues.ts';
 import type { HttpClient, HttpFailure, HttpResponse } from '../ports/http-client.ts';
 import type { ArchiveReader, ArchiveStats, Sha256 } from '../ports/marketplace.ts';
+import { archiveStats, unsafeEntryIssue } from './archive-scan.ts';
+import { archiveIntegrityMessage } from './install-failures.ts';
 import { PLUGIN_CONTENT_DIRECTORIES } from './plugin-content.ts';
 import { archiveUrlIssues } from './source-safety.ts';
 import type { ArchiveFetchPlan, ArchiveLimits } from './types.ts';
@@ -10,7 +12,9 @@ import type { ArchiveFetchPlan, ArchiveLimits } from './types.ts';
  * plugins/host-marketplace.md, "Stay within the download limits for hosted files"): the download
  * goes through `HttpClient`, the digest through `Sha256`, the unzip is the host's (`ArchiveReader`
  * reports what the zip holds) and the kit judges every documented limit. A refusal is a
- * `PluginIssue`; nothing throws.
+ * `PluginIssue`; nothing throws. `ArchiveReader.scan` lists the entries; the totals, the plugin root
+ * and the paths and links that would leave the plugin directory are all judged here
+ * (`archive-scan.ts`), before a host unzips anything.
  */
 
 export interface ArchivePorts {
@@ -126,16 +130,17 @@ async function download(
 /** "When you set it, Claude Code refuses a download that doesn't match." Compared without regard to case. */
 async function digestIssue(
   bytes: Uint8Array,
-  expected: string | undefined,
+  plan: ArchiveFetchPlan,
   sha256: Sha256,
 ): Promise<PluginIssue | undefined> {
+  const expected = plan.sha256;
   if (expected === undefined) return undefined;
   const actual = await sha256.hex(bytes);
   return actual.toLowerCase() === expected.toLowerCase()
     ? undefined
     : issue(
         'source.sha256',
-        `The archive does not match its sha256: expected ${expected.toLowerCase()}, got ${actual.toLowerCase()}`,
+        archiveIntegrityMessage(plan.url, expected.toLowerCase(), actual.toLowerCase()),
       );
 }
 
@@ -192,12 +197,14 @@ export async function fetchArchive(
   if (blocked !== undefined) return blocked;
   const bytes = await download(plan, ports.http, signal);
   if (!(bytes instanceof Uint8Array)) return bytes;
-  const mismatch = await digestIssue(bytes, plan.sha256, ports.sha256);
+  const mismatch = await digestIssue(bytes, plan, ports.sha256);
   if (mismatch !== undefined) return mismatch;
-  const stats = await ports.archive.stats(bytes, signal);
-  if ('failure' in stats) return issue('source', `The archive cannot be read: ${stats.message}`);
+  const scan = await ports.archive.scan(bytes, signal);
+  if ('failure' in scan) return issue('source', `The archive cannot be read: ${scan.message}`);
+  const stats = archiveStats(scan, bytes.length);
   const oversized = extractionIssue(stats, bytes.length, plan.limits);
   if (oversized !== undefined) return oversized;
   const root = rootOf(stats.topLevel);
-  return typeof root === 'string' ? { bytes, stats, root } : root;
+  if (typeof root !== 'string') return root;
+  return unsafeEntryIssue(scan, root) ?? { bytes, stats, root };
 }

@@ -2,7 +2,7 @@ import type { PluginIssue } from '../../src/format/issues.ts';
 import { fetchArchive, type ArchivePorts } from '../../src/marketplace/archive-source.ts';
 import { ARCHIVE_LIMITS } from '../../src/marketplace/fetch-plan.ts';
 import type { ArchiveFetchPlan } from '../../src/marketplace/types.ts';
-import type { ArchiveFailure, ArchiveStats } from '../../src/ports/marketplace.ts';
+import type { ArchiveEntry, ArchiveFailure, ArchiveScan } from '../../src/ports/marketplace.ts';
 import type { HttpReply } from './ports.ts';
 import { fakeArchive, fakeSha256 } from './marketplace-ports.ts';
 import { recordingHttp } from './ports.ts';
@@ -14,14 +14,37 @@ const signal = new AbortController().signal;
 export const ZIP = new Uint8Array([80, 75, 3, 4]);
 export const MIB = 1024 * 1024;
 
-export const stats = (rest: Partial<ArchiveStats> = {}): ArchiveStats => ({
-  entries: 10,
-  largestFileBytes: 50,
-  uncompressedBytes: 100,
-  compressedBytes: 1,
-  topLevel: ['.claude-plugin', 'skills'],
-  ...rest,
-});
+/** What a test says of a zip: its top-level names, how many entries it lists and the sizes of its files. */
+interface Shape {
+  readonly topLevel?: readonly string[];
+  readonly entries?: number;
+  readonly sizes?: readonly number[];
+}
+
+/**
+ * The scan of a zip of that shape: each top-level name a directory entry, the files below the first
+ * of them, padded with empty files up to `entries`. The totals are the scan's, nothing is reported.
+ */
+export function stats({
+  topLevel = ['.claude-plugin', 'skills'],
+  sizes = [50, 50],
+  entries,
+}: Shape = {}): ArchiveScan {
+  const [first] = topLevel;
+  if (first === undefined) return { entries: [] };
+  const directories: ArchiveEntry[] = topLevel.map((name) => ({
+    path: `${name.replace(/\/+$/, '')}/`,
+    size: 0,
+    isSymlink: false,
+  }));
+  const wanted = Math.max(entries ?? 0, directories.length + sizes.length);
+  const files: ArchiveEntry[] = Array.from({ length: wanted - directories.length }, (_, index) => ({
+    path: `${first.replace(/\/+$/, '')}/f${index}`,
+    size: sizes[index] ?? 0,
+    isSymlink: false,
+  }));
+  return { entries: [...directories, ...files] };
+}
 
 const plan = (rest: Partial<ArchiveFetchPlan> = {}): ArchiveFetchPlan => ({
   kind: 'archive',
@@ -42,13 +65,13 @@ export function fetchWith(
   replies: readonly HttpReply[],
   options: {
     plan?: Partial<ArchiveFetchPlan>;
-    stats?: ArchiveStats | ArchiveFailure;
+    scan?: ArchiveScan | ArchiveFailure;
     digest?: string;
   } = {},
 ) {
   const http = recordingHttp(...replies);
   const sha256 = fakeSha256(options.digest ?? DIGEST);
-  const archive = fakeArchive(options.stats ?? stats());
+  const archive = fakeArchive(options.scan ?? stats());
   const ports: ArchivePorts = { http, sha256, archive };
   return { result: fetchArchive(plan(options.plan), ports, signal), http, sha256, archive };
 }
@@ -65,20 +88,30 @@ export const zipOf = (length: number): HttpReply => ({
   bytes: new Uint8Array(length),
 });
 
-/** Stats of an archive whose single file is `bytes` big. */
-export const oneFile = (bytes: number): ArchiveStats =>
-  stats({ largestFileBytes: bytes, uncompressedBytes: bytes });
+const HALF_GIB = 512 * MIB;
 
-/** Stats of an archive that holds `bytes` uncompressed in small files. */
-export const totalOf = (bytes: number): ArchiveStats =>
-  stats({ uncompressedBytes: bytes, largestFileBytes: 1 });
+/** A zip whose single file is `bytes` big. */
+export const oneFile = (bytes: number): ArchiveScan => stats({ sizes: [bytes] });
 
-/** Stats of an archive that holds `bytes` uncompressed. */
-export const ratioOf = (bytes: number): ArchiveStats =>
-  stats({ uncompressedBytes: bytes, largestFileBytes: 1 });
+/** A zip that holds `bytes` uncompressed in files of at most 512 MiB each. */
+export const totalOf = (bytes: number): ArchiveScan =>
+  stats({
+    sizes: Array.from({ length: Math.ceil(bytes / HALF_GIB) }, (_, index) =>
+      Math.min(HALF_GIB, bytes - index * HALF_GIB),
+    ),
+  });
+
+/** A zip that holds `bytes` uncompressed, in one file. */
+export const ratioOf = (bytes: number): ArchiveScan => stats({ sizes: [bytes] });
 
 /** The smallest zip the compression ratio lets `archive` hold, so a size-limit test reaches its own limit. */
-export const zipFor = (archive: ArchiveStats): HttpReply =>
+export const zipFor = (archive: ArchiveScan): HttpReply =>
   zipOf(
-    Math.max(ZIP.length, Math.ceil(archive.uncompressedBytes / ARCHIVE_LIMITS.maxCompressionRatio)),
+    Math.max(
+      ZIP.length,
+      Math.ceil(
+        archive.entries.reduce((total, one) => total + one.size, 0) /
+          ARCHIVE_LIMITS.maxCompressionRatio,
+      ),
+    ),
   );

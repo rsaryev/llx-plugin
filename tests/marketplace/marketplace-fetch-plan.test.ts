@@ -80,6 +80,7 @@ spec('marketplace.sourceField.url', () => {
       repo: { url: 'https://git.example.com/org/m.git' },
       ref: 'main',
       path: MARKETPLACE_FILE,
+      lfs: 'pointer-files',
     });
   });
 
@@ -104,6 +105,7 @@ spec('marketplace.sourceField.repo', () => {
       kind: 'git',
       repo: { shorthand: 'acme-corp/claude-plugins' },
       path: MARKETPLACE_FILE,
+      lfs: 'pointer-files',
     });
   });
 

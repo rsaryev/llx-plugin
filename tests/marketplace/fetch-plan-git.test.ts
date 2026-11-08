@@ -99,6 +99,7 @@ spec('marketplace.source.github', () => {
         checkout: 'default-branch',
         sparse: false,
         partialClone: false,
+        lfs: 'pointer-files',
       },
       issues: [],
     });
@@ -136,6 +137,7 @@ spec('marketplace.source.url', () => {
         checkout: 'default-branch',
         sparse: false,
         partialClone: false,
+        lfs: 'pointer-files',
       });
     }
   });
@@ -187,6 +189,7 @@ spec('marketplace.source.git-subdir', () => {
         checkout: 'default-branch',
         sparse: true,
         partialClone: true,
+        lfs: 'pointer-files',
       },
       issues: [],
     });
@@ -197,6 +200,7 @@ spec('marketplace.source.git-subdir', () => {
       expect(plan({ kind: 'git-subdir', url, path: 'p' }).plan).toMatchObject({
         sparse: true,
         partialClone: true,
+        lfs: 'pointer-files',
       });
     }
   });
@@ -212,6 +216,7 @@ spec('marketplace.source.git-subdir', () => {
       expect(plan({ kind: 'git-subdir', url, path: 'p' }).plan).toMatchObject({
         sparse: true,
         partialClone: false,
+        lfs: 'pointer-files',
       });
     }
   });

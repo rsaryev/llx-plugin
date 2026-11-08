@@ -1,11 +1,17 @@
+import { createHash } from 'node:crypto';
 import type { PluginFiles } from '../../src/ports/index.ts';
 import type {
   ArchiveFailure,
   ArchiveReader,
-  ArchiveStats,
+  ArchiveScan,
   Sha256,
 } from '../../src/ports/marketplace.ts';
-import type { PluginDirectories } from '../../src/marketplace/ports.ts';
+import type {
+  CommitFailure,
+  PluginDirectories,
+  StagedCommit,
+  StagedDirectory,
+} from '../../src/marketplace/ports.ts';
 
 /**
  * Fakes of the ports only marketplaces use, for the engines' tests: `PluginDirectories` over a
@@ -55,16 +61,37 @@ export function fakeSha256(hex: string): Sha256 & { readonly hashed: Uint8Array[
   };
 }
 
-/** An `ArchiveReader` that reports `answer` for any bytes (stats or a failure) and counts its calls. */
+/** A `Sha256` that hashes the bytes for real, so a digest depends on its input. */
+export const realSha256: Sha256 = {
+  hex: (bytes) => Promise.resolve(createHash('sha256').update(bytes).digest('hex')),
+};
+
+/** An `ArchiveReader` that reports `answer` for any bytes (a scan or a failure) and counts its calls. */
 export function fakeArchive(
-  answer: ArchiveStats | ArchiveFailure,
+  answer: ArchiveScan | ArchiveFailure,
 ): ArchiveReader & { calls: number } {
   const reader = {
     calls: 0,
-    stats: () => {
+    scan: () => {
       reader.calls += 1;
       return Promise.resolve(answer);
     },
   };
   return reader;
+}
+
+/** A `StagedDirectory` whose `commit` answers `failure` (or succeeds) and that records every call. */
+export function fakeStaged(
+  failure?: CommitFailure,
+): StagedDirectory & { readonly commits: StagedCommit[] } {
+  const commits: StagedCommit[] = [];
+  return {
+    commits,
+    open: () => Promise.resolve(undefined),
+    commit: (request) => {
+      commits.push(request);
+      return Promise.resolve(failure);
+    },
+    remove: () => Promise.resolve(undefined),
+  };
 }

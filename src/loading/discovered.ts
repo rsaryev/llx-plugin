@@ -1,6 +1,6 @@
 import type { PluginIssue } from '../format/issues.ts';
 import type { PluginManifest, CommandEntry } from '../format/manifest-schema.ts';
-import type { PluginFiles } from '../ports/index.ts';
+import type { LocateContext } from './locate.ts';
 
 /**
  * What discovery finds: paths and names only, no file is parsed (the readers do that), so what the
@@ -49,12 +49,10 @@ export interface Discovered {
 }
 
 /** What every discovery step needs. */
-export interface DiscoverContext {
-  readonly files: PluginFiles;
+export interface DiscoverContext extends LocateContext {
   readonly manifest: PluginManifest | undefined;
   /** The name components are namespaced under; also names a skill at the plugin root. */
   readonly pluginName: string;
-  readonly signal?: AbortSignal;
 }
 
 /** One step's result: what it found and what it reported. */

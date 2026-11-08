@@ -41,6 +41,12 @@ export type GitFetchPlan = {
   readonly subdir?: string;
   readonly sparse: boolean;
   readonly partialClone: boolean;
+  /**
+   * "The clone never downloads LFS content, so LFS-tracked files arrive as pointer files"
+   * (host-marketplace.md, "Keep plugin files out of Git LFS"): a host runs the clone without
+   * fetching LFS objects.
+   */
+  readonly lfs: 'pointer-files';
 };
 
 export type NpmFetchPlan = {
@@ -110,6 +116,8 @@ export type MarketplaceFetchPlan =
       readonly ref?: string;
       readonly path: string;
       readonly sparsePaths?: readonly string[];
+      /** As for a plugin's clone: LFS content is never downloaded, whatever `skipLfs` says. */
+      readonly lfs: 'pointer-files';
     }
   | {
       readonly kind: 'http-file';

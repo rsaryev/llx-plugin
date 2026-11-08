@@ -23,11 +23,24 @@ export interface Facts {
   /** The path of a `file` or `directory` source. */
   readonly filePath: string | undefined;
   readonly registry: string | undefined;
+  /** A `settings` source's inline catalog, in a form two identical catalogs share (key order aside). */
+  readonly catalog: string | undefined;
   /** The host a `hostPattern` is matched against; the blocklist reads `wide` forms of git addresses. */
   readonly host: (wide: boolean) => string | undefined;
 }
 
 const NO_HOST = (): undefined => undefined;
+
+/** JSON with the keys of every object in order, so two catalogs that differ only in key order agree. */
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (typeof value !== 'object' || value === null) return JSON.stringify(value) ?? 'null';
+  const members = Object.entries(value)
+    .filter(([, member]) => member !== undefined)
+    .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([key, member]) => `${JSON.stringify(key)}:${canonicalJson(member)}`);
+  return `{${members.join(',')}}`;
+}
 
 const BASE: Facts = {
   kind: 'skills-dir',
@@ -39,6 +52,7 @@ const BASE: Facts = {
   cloned: false,
   filePath: undefined,
   registry: undefined,
+  catalog: undefined,
   host: NO_HOST,
 };
 
@@ -91,7 +105,12 @@ const FACTS: ByKind<Facts> = {
     locator: source.package,
     registry: source.registry,
   }),
-  settings: (source) => ({ ...BASE, kind: source.source, locator: source.name }),
+  settings: (source) => ({
+    ...BASE,
+    kind: source.source,
+    locator: source.name,
+    catalog: canonicalJson(source.plugins),
+  }),
   hostPattern: (source) => notAPlace(source.source, source.hostPattern),
   pathPattern: (source) => notAPlace(source.source, source.pathPattern),
   'skills-dir': (source) => notAPlace(source.source, ''),

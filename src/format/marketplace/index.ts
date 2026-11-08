@@ -65,3 +65,4 @@ export {
   type MarketplaceSourceOptions,
 } from './marketplace-source.ts';
 export { validateRenames, type Renames } from './renames.ts';
+export { listingFields, type DisplayFields, type ListingStage } from './display-fields.ts';

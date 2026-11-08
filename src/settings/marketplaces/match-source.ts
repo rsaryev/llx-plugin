@@ -134,10 +134,17 @@ const hostMatch =
 const pathMatch: Matcher<'pathPattern'> = (entry, _own, source) =>
   source.concrete && matchesPattern(entry.pathPattern, source.filePath);
 
+/**
+ * An inline marketplace on the allowlist "allows an entry with the same `name` and identical
+ * `plugins`" (marketplace-reference.md, "Marketplace sources"); the blocklist "blocks the same
+ * `name`", whatever its catalog.
+ */
+const strictSettings: Matcher<'settings'> = (entry, own, source) =>
+  exact(entry, own, source) && own.catalog === source.catalog;
+
 const COMMON = {
   file: exact,
   directory: exact,
-  settings: exact,
   npm: npmMatch,
   pathPattern: pathMatch,
   'skills-dir': never,
@@ -145,6 +152,7 @@ const COMMON = {
 
 const STRICT: Matchers = {
   ...COMMON,
+  settings: strictSettings,
   github: strictGithub,
   git: exact,
   url: exact,
@@ -153,6 +161,7 @@ const STRICT: Matchers = {
 
 const BLOCKED: Matchers = {
   ...COMMON,
+  settings: exact,
   github: blockedGithub,
   git: blockedGit,
   url: blockedUrl,

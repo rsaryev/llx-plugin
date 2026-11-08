@@ -45,7 +45,7 @@ async function defaultLocations(
   if (kind !== 'skills' || declaredKey(context.manifest, kind) !== undefined) return standard;
   const folder = await context.files.stat(STANDARD_LAYOUT.skills.location, context.signal);
   if (folder?.isDirectory) return standard;
-  const root = await locate(context.files, kind, 'SKILL.md', context.signal);
+  const root = await locate(context, kind, 'SKILL.md');
   if (root.issue) return { found: standard.found, issues: [root.issue] };
   return root.stat?.isFile ? { found: ['.'], issues: [] } : standard;
 }
@@ -59,7 +59,7 @@ async function commandMap(
     Object.entries(map).map(async ([name, entry]): Promise<Found<DiscoveredFile>> => {
       const { source } = entry;
       if (source === undefined) return { found: [{ path: undefined, name, entry }], issues: [] };
-      const located = await locate(context.files, 'commands', source, context.signal);
+      const located = await locate(context, 'commands', source);
       if (located.issue) return { found: [], issues: [located.issue] };
       if (!located.stat) {
         return { found: [], issues: [error('commands', pathNotFound('commands', source))] };
@@ -80,7 +80,7 @@ async function walkOne(
   written: string | undefined,
   context: DiscoverContext,
 ): Promise<Found<DiscoveredFile>> {
-  const located = await locate(context.files, kind, written ?? path, context.signal);
+  const located = await locate(context, kind, written ?? path);
   if (located.issue) return { found: [], issues: [located.issue] };
   if (!located.stat) {
     const missing: PluginIssue[] =

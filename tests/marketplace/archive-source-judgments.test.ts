@@ -35,7 +35,7 @@ describe('judgments: archive download', () => {
 
   test('a single top-level entry that is not a directory is still taken as the wrapping directory (the host verifies the content)', async () => {
     expect(
-      await fetchWith([ok], { stats: stats({ topLevel: ['formatter.zip'] }) }).result,
+      await fetchWith([ok], { scan: stats({ topLevel: ['formatter.zip'] }) }).result,
     ).toMatchObject({
       root: 'formatter.zip',
     });

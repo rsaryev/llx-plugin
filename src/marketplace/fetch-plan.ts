@@ -6,6 +6,7 @@ import type {
   PluginSourceOf,
 } from '../format/marketplace/types.ts';
 import { LINKS_NEED_POSIX, linkOnWindowsIssue } from './command-mode.ts';
+import { UNSUPPORTED_SOURCE_TYPE } from './install-failures.ts';
 import type { ArchiveLimits, FetchPlan, FetchPlanContext } from './types.ts';
 import {
   archiveUrlIssues,
@@ -108,6 +109,7 @@ function planGithub(source: PluginSourceOf<'github'>): Planned {
     ...pinned(source),
     sparse: false,
     partialClone: false,
+    lfs: 'pointer-files',
   });
 }
 
@@ -120,6 +122,7 @@ function planUrl(source: PluginSourceOf<'url'>): Planned {
     ...pinned(source),
     sparse: false,
     partialClone: false,
+    lfs: 'pointer-files',
   });
 }
 
@@ -135,6 +138,7 @@ function planGitSubdir(source: PluginSourceOf<'git-subdir'>): Planned {
     subdir: source.path,
     sparse: true,
     partialClone: reading.partialClone,
+    lfs: 'pointer-files',
   });
 }
 
@@ -215,7 +219,15 @@ function planOf<K extends PluginSourceKind>(
   return PLANNERS[kind](source, context);
 }
 
-/** How `source` is fetched, or why it may not be. */
+/**
+ * How `source` is fetched, or why it may not be. A source kind this build has no planner for (an
+ * entry written for a newer Claude Code) is refused with the message the docs print, "Update
+ * Claude Code and try again" (plugins/troubleshooting.md, "This plugin uses a source type your
+ * Claude Code version does not support"), instead of failing in the planner lookup.
+ */
 export function planPluginFetch(source: PluginSource, context: FetchPlanContext): Planned {
+  if (!Object.hasOwn(PLANNERS, source.kind)) {
+    return refused([error('source', UNSUPPORTED_SOURCE_TYPE)]);
+  }
   return planOf(source.kind, source, context);
 }

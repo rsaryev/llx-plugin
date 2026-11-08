@@ -2,6 +2,46 @@
 
 ## [Unreleased]
 
+### Added
+
+- Repository plugins and workspace trust: `decideRepositoryPlugin` (the folder itself must be trusted;
+  a parent's trust and `-p` never suffice; `~/.claude/skills/` is exempt; the primary directory, a
+  worktree's main checkout and a managed block), `loadRepositoryPlugin` and its component limits (MCP
+  servers wait for per-server approval, bundles and files outside the directory are skipped, monitors do
+  not load), `contentGate` (the table of what runs before a folder is trusted), `workspaceTrustKey`,
+  `workspaceTrustState`, `settingsHooksMayRun`, `localSettingsVerdict`, `projectEntryApplies` and the
+  `WorkspaceTrust` port. The folder-is-a-plugin probe (`probeFolder`: `@skills-dir` needs a manifest,
+  `--plugin-dir` does not), `planPluginScaffold` (`claude plugin init`) and `pluginDebugSteps`. An inline
+  (`settings`) marketplace on `strictKnownMarketplaces` now needs identical `plugins` as well as the name.
+
+- The install and cache lifecycle: `decideInstallMode` (in place, copied or linked, and the printed
+  directory refusals), `planTreeCopy` (the symlink rule of a cache copy), `escapedPathIssue`,
+  `planInstallStart` and `planInstallFinish` (fetch plan, cache folder, record change, orphaned
+  version folders), the troubleshooting messages of a failed install (`install-failures`),
+  `commitStagedPlugin`, `selectUninstall` (the Windows spelling rule), `readLfsPointer`, the
+  session-only plugins (`readPluginDirectory`, `fetchSessionArchives`, `folderChanges`, `@inline`,
+  `@skills-dir`) and the install commands per surface (`planInstallCommand`, `installSummary`).
+  Ports: `ArchiveReader.scan` lists a zip's entries (the kit derives the totals and checks the paths
+  and links itself, so `ArchiveReader.stats` is gone), `SourceFetcher` may return a staged directory,
+  and the new `StagedDirectory` port moves it into the cache. Git fetch plans carry
+  `lfs: 'pointer-files'`; an npm `package` refusal and an archive digest mismatch are the
+  documented messages.
+
+- Plugin versions and names: `computePluginVersion` (manifest, entry, then the source's commit,
+  digest or `unknown`; command sources hashed, the entry's version ignored), `copyModeHash`,
+  `linkModeHash`, `subdirectoryPathHash`, `unknownVersionSteps`, `pluginNames`, `lookupPlugin`,
+  `folderCollisions` and `listingFields`, with the strict-mode and display-field merge rules proven.
+
+- The Node.js package dependencies of a plugin: `planNodeDepsInstall` (a copied plugin with a
+  `package.json` and `bun.lock`, `npm-shrinkwrap.json` or `package-lock.json` gets a frozen,
+  script-free install in a separate folder under a 60-second timeout; in-place and link-mode plugins,
+  unsupported or unreadable lockfiles, a missing package manager, overrides, patches, non-registry
+  dependencies, `http` downloads and a `package.json` that differs from the lockfile skip it),
+  `nodeDepsRun`, `readLockfile`, `readPackageJson`, `nodeDepsNote` (the `are not installed` and
+  `were not installed, because ...` notes, a warning: the plugin loads), `installOutcome` and the
+  registry-only rule (`classifySpecifier`, `dependencyRefusal`, `downloadLinkRefusal`) that the npm
+  source's `package` check now shares.
+
 ### Fixed
 
 - The spec gate preserves apostrophes and quoted words inside requirement IDs, and checks static template literals too.
@@ -46,6 +86,57 @@
   skill folder reached twice loads once; a skill folder named by a manifest path or the plugin
   root takes its frontmatter `name`; a `SKILL.md` directly in `skills/` is no skill.
 
+- Node.js package dependencies (review fixes): a lockfile download link that does not use `https`
+  (`ftp:`, another scheme, none) is refused, not only `http`; a `bun.lock` id with a link is a
+  tarball dependency and so no registry package; a registry package that is not pinned to an exact
+  version in the lockfile gets no install (`unpinned-dependency`); the install-folder guard compares
+  Windows paths and ignores case; a `package.json` that is not a JSON object is its own reason
+  (`package-json-unreadable`). A skip is now a union over its reason with typed fields instead of a
+  `detail` list, `skipReasonText` gives its clause, `LOCKFILE_NAMES` and `UNSUPPORTED_LOCKFILES` are
+  exported, and `stage.moveBack.replaceExisting` says an existing `node_modules` is replaced. Tests
+  assert the documented link-mode and npm-source sentences, every reason's whole clause, and the
+  plan-level cases for workspace, linked and git dependencies.
+
+- Install and cache lifecycle (review fixes): an install of a source kind the kit cannot fetch is
+  refused with `This plugin uses a source type your Claude Code version does not support...`; a
+  link-mode install without the printed directory or its entries, or with an entry name that is
+  empty, `.`, `..` or holds a `/`, plans nothing, and a plan reports `copy` and `mustStayAt`; a
+  version that cannot name a folder no longer refuses a plugin loaded in place; two spellings of one
+  project folder on Windows are one install (`planInstallFinish` takes `platform`); `dirsToOrphan`
+  and `orphanSweep` take the store layout and skip folders outside the cache, and `selectUninstall`
+  (now taking `plugin` and `layout`) returns the `orphaned` folders and the not-installed issue and
+  removes nothing at project or local scope without a folder; `planTreeCopy` skips a link that
+  closes a cycle (`copying`), and its too-large message names the limit given; the loader's
+  `locate` now decides every declared path through `escapedPathIssue` (moved to `format/path-escape`;
+  a backslash on macOS and Linux, a drive path, and links between plugins of one marketplace;
+  `loadPlugin` and `discoverComponents` take `platform` and `roots`); `lfsPointerIssues` warns for
+  each pointer file of a cloned plugin and CRLF pointers are read; `StagedDirectory.commit` takes
+  a `StagedCommit` with the `TreePlan`; the host surfaces gained the desktop app and VS Code, what
+  `/plugin` opens, the scope choices, when an install applies and the official marketplace at the
+  first interactive start (`planPluginCommand`, `planPluginApply`, `scopeChoices`,
+  `marketplacesAddedAtStart`; `INSTALL_HOSTS` is no longer public).
+
+- Plugin versions (review fixes): a stated or computed version that is not one folder name (`../x`,
+  `a/b`) no longer reaches the cache path (`isVersionSegment`; it is skipped for the next source of a
+  version, else `unknown`); a `git-subdir` input always carries its `subdir`; `inGitMarketplace` is
+  now `inGitRepository` (the plugin directory or its marketplace); `unknownVersionSteps` takes
+  `{ name, marketplace }` and reruns each scope once; the SP2 gate reads ids that hold quotes, so the
+  folder-collision section is proven; links, empty directories, `strict` and same-event hook
+  replacement gained tests.
+- Install records and plans (review fixes): a `__proto__` key in `installed_plugins.json` or
+  `known_marketplaces.json` is kept like any other (it was dropped); the default plugins root honours
+  `CLAUDE_CONFIG_DIR`; a session prints `✔ Updated N marketplaces` where a shell prints `Successfully
+  updated ...`, and a shell `marketplace remove` needs its name; dependency plans work per scope (a
+  dependency installed only at another scope is installed at the target scope, a plugin already
+  installed there says `is already installed (scope: ...)`, `defaultEnabled: false` stays off) and
+  `planEnable` fails for a dependency the organization's policy blocks or that is `false` above the
+  target scope; an install decides `Plugin is now active.` or `Run /reload-plugins to apply.` from
+  the prompt-cache and activation facts, and closing the panel queues the reload while a response
+  streams; the untrusted-source and refused-name cases of an ignored marketplace come from
+  `loadNameIssues` with the entry's source; an empty `known_marketplaces.json` reports the documented
+  `JSON Parse error: Unexpected EOF`; the dated copies age out on `cleanupPeriodDays` (`PluginStateStore`
+  gains `modifiedAt` and `remove`; the host serialises rewrites of the records); the tests that echoed
+  constants now assert the documented decisions (a real SHA-256, failing writes, the `--json` line).
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
   short label and the amounts of each row of the Limits table, not the page's sentences, so the
   repository holds facts and identifiers only.
@@ -108,6 +199,22 @@
   subagent, permission and MCP behaviour are audited section by section, and the other 156 are
   listed in `spec/out-of-scope-pages.json` with a reason docs/SPEC.md explains. A page that
   appears in a new release fails `check:spec` until it is classified.
+- Install records: the state Claude Code keeps under the plugins root, and the texts it prints about it
+  (plugins/loading.md, plugins/troubleshooting.md, plugins/install.md, plugins/cli-reference.md).
+  `createStoreLayout` and `resolvePluginsRoot` name every path (`cache/<marketplace>/<plugin>/<version>`,
+  `data/<id>`, `marketplaces/<name>`, `synced/`, `.trash/`, the JSON records, the dated copies);
+  `parseInstalledPlugins` reads `installed_plugins.json` and decides what is rebuilt, set aside or
+  left unwritten, `loadInstalledPlugins` carries it out through the new `PluginStateStore` port;
+  `parseKnownMarketplaces` reads `known_marketplaces.json` (a source is `kind: 'directory'` or
+  `'file'`, never `local`) with `installLocationFor` and `sameMarketplaceSource`; `stageReport` says
+  how far a plugin got (declared, fetched, loaded) and `planMarketplaceStartup` what happens to
+  marketplaces missing on disk at the start; `decideEnabledFetch` and `overriddenUserDisable` answer
+  "enabled in project settings but not installed" and "disabled but still loads"; the exact
+  troubleshooting texts (`pluginNotFound`, `notCached`, `ignoredLine`, `failedToInstall`,
+  `refuseForUnreadableRecords`, ...); plans for the panel, marketplaces, plugins with dependencies
+  (`planInstall`, `planEnable`, `planDisable`, `planUninstall`, `planPrune`), scopes (`scopeReach`,
+  `defaultScope`), `/reload-plugins` (`reloadSummary`, `reloadGate`) and the 14-day orphan sweep
+  (`orphanSweep`). Pure decisions; effects only through ports.
 - Spec: the requirement set now counts the docs' prose, not only their tables. Every heading of
   the plugin, mods, skills, subagents, hooks, MCP, managed MCP, settings, managed settings,
   permissions, environment, CLI, workflows, themes, output styles and channels pages is either
