@@ -117,3 +117,11 @@
   and the Agent, Skill and WebFetch matchers read behaviour and specifier form through a registry
   and a named guard, and their input fields are tied to the SDK's `AgentInput`, `WebFetchInput`
   and `ArtifactInput`.
+- Marketplace file and names (`marketplace`): `readMarketplace` and `validateMarketplace` read the
+  top level of `marketplace.json` (`name`, `owner`, `plugins`, `$schema`, `description`, `version`,
+  `metadata`, the removal and rename keys) as Claude Code loads it and as `claude plugin validate`
+  reports it, hand each entry to an `EntryReader` alone, and report unknown keys; the reserved-name
+  rules (`marketplaceNameIssues`: official, community and directory names with the
+  `github.com/anthropics/` exemption, impersonation, another spelling, `inline`, `npm`, JavaScript
+  member names, `claudeai-`, the download-folder clash); `effectiveDescription` and
+  `effectiveVersion`.

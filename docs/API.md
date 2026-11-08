@@ -71,7 +71,11 @@ const { plan } = planPluginFetch(entry.source, { platform: 'posix' }); // data: 
 | `FetchPlan`, `FetchPlanContext`, `ArchiveLimits`, `MarketplaceFetchPlan` | done | what planning returns, as data a host executes                    |
 | `Sha256`, `ArchiveReader`, `GitTags`, `SourceFetcher` | done | ports only marketplaces use (`src/ports/marketplace.ts`, `src/marketplace/ports.ts`), exported by the marketplace barrel |
 | `NormalizedDependency`, `RenameStatus`          | done    | values the dependency and rename decisions return                                 |
-| `readMarketplace`, `validateMarketplace`, `parsePluginSource`, `mergeEntryWithManifest` | planned | the readers and the strict-mode merge |
+| `readMarketplace(raw, context?, readEntry?)`, `validateMarketplace(...)` | done (file and names) | the top-level fields and the marketplace's name as Claude Code loads them (a bad top-level field or name keeps the marketplace from loading) and as `claude plugin validate` reports them; each entry goes to an `EntryReader` on its own, so a bad one is dropped alone. Until the entry reader lands the default `unreadEntry` drops every entry with an error |
+| `effectiveDescription`, `effectiveVersion` | done | `description` or `version`, else the one under `metadata` |
+| `marketplaceNameIssues(name, { origin?, hostedOnClaudeAi? })`, `validationNameIssues`, `loadNameIssues`, `downloadFolderIssues(name, registered)`, `spellingOf` | done | the reserved-name rules: `validationNameIssues` is what `validate` prints, `loadNameIssues` what adding or loading refuses (official names outside `github.com/anthropics/`, another spelling, JavaScript member names, `claudeai-`), `marketplaceNameIssues` both |
+| `OFFICIAL_NAMES`, `COMMUNITY_NAMES`, `DIRECTORY_NAMES`, `NON_MARKETPLACE_NAMES`, `ANY_CASING_NAMES`, `OBJECT_MEMBER_NAMES` | done | the lists of "Reserved names" |
+| `parsePluginSource`, `mergeEntryWithManifest` | planned | the plugin source parser and the strict-mode merge |
 | `planPluginFetch`, `planMarketplaceFetch`, `parseMarketplaceInput` | planned | pure plans and the `marketplace add` input forms                |
 | `runCommandSource`, `fetchArchive`, `mergeHeaders`, `helperAllowed` | planned | engines through `CommandRunner`, `HttpClient` and the ports above |
 | `validateRenames`, `resolveRename`, `migrateSettingsKeys`, `removedPlugins` | planned | renames and removal                                          |
