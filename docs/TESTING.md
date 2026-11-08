@@ -76,3 +76,15 @@ loader, as mcp.md says, while the validator reports nothing for that file.
 | Tests and the report           | `bun run compat`                       |
 | Everything CI and pre-push run | `bun run check`                        |
 | Real plugins against the oracle | `bun run corpus:fetch`, then `bun run corpus` |
+
+## Benchmark
+
+`bun run bench` times what a host repeats, over the real plugins of the corpus (`bun run
+corpus:fetch` first), with effects stubbed so the numbers are the kit's own cost:
+
+- `loadPlugin` per plugin, from disk (the corpus disk adapter) and from memory (kit CPU only);
+- `createPluginHost`, `openSession`, `session.skills()` and `dispatch('PreToolUse')` for 20 plugins
+  and for every loaded plugin at once (a stress case no host meets).
+
+It prints a table and writes `.cache/bench.json`. Timings depend on the machine, so they are not a
+gate; compare runs on one machine before and after a change that touches loading, the host or hooks.
