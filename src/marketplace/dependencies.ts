@@ -132,6 +132,16 @@ export function normalizeDependency(
   return dep;
 }
 
+/**
+ * Whether a `dependencies` item names a marketplace itself (`"name@marketplace"`, or an object with
+ * `marketplace`), as opposed to resolving to the declaring plugin's. Normalizing hides it, and it
+ * decides whether a `--plugin-dir` copy meets the entry on Claude Code before 2.1.242.
+ */
+export const namesMarketplace = (value: unknown): boolean =>
+  typeof value === 'string'
+    ? value.includes('@')
+    : isRecord(value) && typeof value.marketplace === 'string';
+
 /** A dependency as the host found it: its version, whether it is enabled, and whether it is a `--plugin-dir` copy. */
 export interface InstalledDependency {
   /** The tag's version for a tag-resolved copy, else the `version` of its `plugin.json`. */

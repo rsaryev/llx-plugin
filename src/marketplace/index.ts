@@ -96,6 +96,7 @@ export {
   checkDependency,
   checkInstalledDependency,
   dependencyId,
+  namesMarketplace,
   normalizeDependency,
   type DependencyCopies,
   type DependencyErrorType,
@@ -108,6 +109,7 @@ export {
   parseReleaseTag,
   releaseTag,
   resolveDependencyVersion,
+  resolvedVersionLabel,
   selectTag,
   type AutoUpdateDecision,
   type AutoUpdateInput,
@@ -115,6 +117,48 @@ export {
   type ReleaseTag,
   type ResolvedVersion,
 } from './dependency-tags.ts';
+export {
+  checkDeclaredDependency,
+  constraintsOn,
+  dependentsOf,
+  disableDecision,
+  effectiveEnabled,
+  findDependencyCopy,
+  type CatalogPlugin,
+  type Constraint,
+  type CopyLookup,
+  type DeclaredDependency,
+  type DisableDecision,
+  type EnabledPlugins,
+  type GraphFacts,
+  type InstalledRecord,
+  type LocalCopy,
+} from './dependency-graph.ts';
+export {
+  DEPENDENCY_INSTALL_OPERATIONS,
+  installClosure,
+  type DependencyInstallOperation,
+  type InstallPlan,
+  type InstallRequest,
+  type InstallStep,
+  type StepAction,
+} from './dependency-install-plan.ts';
+export type { LeftOut, LeftOutReason } from './dependency-install-walk.ts';
+export {
+  enablePlan,
+  type EnableBlock,
+  type EnableIssue,
+  type EnablePlan,
+} from './dependency-enable.ts';
+export {
+  orphanedAutoInstalled,
+  planPrune,
+  planUninstall,
+  type PruneOutcome,
+  type PruneRun,
+  type UninstallPlan,
+} from './dependency-prune.ts';
+export { pluginDirFolders, type PluginDirListing } from './plugin-dir-folders.ts';
 export {
   crossMarketplaceDecision,
   type CrossMarketplaceDecision,

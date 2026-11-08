@@ -74,10 +74,11 @@ type FactsOf<K extends PluginSourceKind> = Extract<SourceFacts, { kind: K }>;
 export const declaredVersion = (value: string | undefined): string | undefined =>
   value === undefined || value.trim() === '' ? undefined : value;
 
-const short = (hex: string): string => hex.toLowerCase().slice(0, SHORT_LENGTH);
+/** A commit or digest, lower-cased and shortened to 12 characters. */
+export const shortHash = (hex: string): string => hex.toLowerCase().slice(0, SHORT_LENGTH);
 
 const shortOr = (hex: string | undefined): string =>
-  hex === undefined || hex === '' ? UNKNOWN_VERSION : short(hex);
+  hex === undefined || hex === '' ? UNKNOWN_VERSION : shortHash(hex);
 
 const COUNTS: { readonly [R in RepositoryRoot]: boolean } = {
   'plugin-directory': true,
@@ -96,10 +97,10 @@ const FROM_SOURCE: { readonly [K in PluginSourceKind]: (facts: FactsOf<K>) => st
   'git-subdir': (facts) =>
     facts.commit === undefined || facts.commit === ''
       ? UNKNOWN_VERSION
-      : `${short(facts.commit)}-${facts.pathHash}`,
+      : `${shortHash(facts.commit)}-${facts.pathHash}`,
   npm: () => UNKNOWN_VERSION,
   archive: (facts) => shortOr(facts.pin ?? facts.downloadedDigest),
-  command: (facts) => short(facts.hash),
+  command: (facts) => shortHash(facts.hash),
 };
 
 type Pick<K extends PluginSourceKind> = (

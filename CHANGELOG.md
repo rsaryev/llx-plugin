@@ -23,6 +23,15 @@
 
 ### Added
 
+- Marketplace dependencies: a pure dependency graph over plain facts. `installClosure` plans the
+  transitive install of a plugin's dependencies (dependencies first, each step with who asked, every
+  range, what the ranges resolve against and the shown `2.1.0-8713c5b11005` version; cycles end, a
+  diamond combines its ranges, a conflict or an allowlist refusal installs nothing, a `command`
+  source and a `headersHelper` entry are left to the user); `enablePlan` (missing, policy-blocked and
+  higher-scope `false` dependencies), `disableDecision` (the dependents to disable first and the
+  chained command), `orphanedAutoInstalled`, `planPrune` and `planUninstall` (`--prune`, the range
+  released with the last constraining plugin); `checkDeclaredDependency` and `pluginDirFolders` for
+  the `--plugin-dir` copy. The dependencies guide is now proven section by section.
 - Updates: a new `updates` module with the refresh before an install (`refreshBeforeInstall`: named
   and bare references, the five skips, the managed block that also refuses the install,
   `refreshFailed`), the auto-update precedence (`marketplaceAutoUpdate`, `autoUpdatePassAllowed`,

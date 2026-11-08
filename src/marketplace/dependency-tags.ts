@@ -1,6 +1,7 @@
 import { error, type PluginIssue } from '../format/issues.ts';
 import type { PluginSource, PluginSourceKind } from '../format/marketplace/types.ts';
 import { dependencyId } from './dependencies.ts';
+import { shortHash } from './plugin-version.ts';
 import {
   highestSatisfying,
   highestVersion,
@@ -161,6 +162,11 @@ export interface ResolvedVersion {
 
 export interface DependencyResolution {
   readonly dep: NormalizedDependency;
+  /**
+   * Every range that constrains the dependency when several installed plugins do (`dep.range` is
+   * the one of the plugin being installed); absent, `dep.range` alone applies.
+   */
+  readonly ranges?: readonly string[];
   readonly source: PluginSource;
   /** The tags of the repository that hosts the plugin (empty for a source with none, or a folder that is not a git repository). */
   readonly tags: readonly string[];
@@ -179,31 +185,60 @@ const byTag = (found: ReleaseTag): ResolvedVersion => ({
   version: found.version,
 });
 
-/** The highest satisfying tag, or `undefined` when the dependency has no range or no tag fits. */
-const tagFor = (input: DependencyResolution): ReleaseTag | undefined =>
-  input.dep.range === undefined
-    ? undefined
-    : selectTag(input.tags, input.dep.name, input.dep.range);
+/** The distinct ranges that apply: the ones given, else the dependency's own. */
+const rangesOf = (input: DependencyResolution): readonly string[] => [
+  ...new Set(input.ranges ?? (input.dep.range === undefined ? [] : [input.dep.range])),
+];
+
+/**
+ * The highest satisfying tag, a conflict between the ranges, or `undefined` when there is no range
+ * or no tag fits. One range selects directly; several must overlap (`combineRanges`).
+ */
+const tagFor = (input: DependencyResolution): ReleaseTag | PluginIssue | undefined => {
+  const [only, ...more] = rangesOf(input);
+  if (only === undefined) return undefined;
+  return more.length === 0
+    ? selectTag(input.tags, input.dep.name, only)
+    : combineRanges([only, ...more], input.tags, input.dep);
+};
 
 /** A plugin with its own repository: no tag in range fails the install. */
 const ownRepository = (input: DependencyResolution): ResolvedVersion | PluginIssue => {
   const found = tagFor(input);
-  if (found !== undefined) return byTag(found);
-  if (input.dep.range === undefined) return currentCopy(input);
+  if (found !== undefined) return 'severity' in found ? found : byTag(found);
+  const ranges = rangesOf(input);
+  if (ranges.length === 0) return currentCopy(input);
   return error(
     `dependencies.${dependencyId(input.dep)}`,
-    `Dependency "${dependencyId(input.dep)}" has no git tag satisfying ${input.dep.range}`,
+    `Dependency "${dependencyId(input.dep)}" has no git tag satisfying ${ranges.join(' ')}`,
   );
 };
 
 /** A plugin in the marketplace repository: no tag in range installs the current copy, checked at load. */
-const marketplaceRepository = (input: DependencyResolution): ResolvedVersion => {
+const marketplaceRepository = (input: DependencyResolution): ResolvedVersion | PluginIssue => {
   const found = tagFor(input);
-  return found === undefined ? currentCopy(input) : byTag(found);
+  if (found === undefined) return currentCopy(input);
+  return 'severity' in found ? found : byTag(found);
 };
 
 /** `npm`, `archive` and `command`: the range does not choose the version, the plugin.json version is checked at load. */
 const pluginJson = (input: DependencyResolution): ResolvedVersion => currentCopy(input);
+
+/**
+ * The version `claude plugin list` shows for a resolved dependency (plugins/dependencies.md,
+ * "Confirm the resolved version"): a tag-resolved copy carries "a 12-character commit suffix, such as
+ * `2.1.0-8713c5b11005`"; the commit is the one the tag names, which the host knows. A copy with no
+ * commit known shows the bare tag version (judgment), a current copy its `plugin.json` version.
+ */
+export function resolvedVersionLabel(
+  resolved: ResolvedVersion,
+  commit: string | undefined,
+): string | undefined {
+  if (resolved.version === undefined || commit === undefined || resolved.via === 'current-copy') {
+    return resolved.version;
+  }
+  return `${resolved.version}-${shortHash(commit)}`;
+}
 
 const RESOLVERS: {
   readonly [K in PluginSourceKind]: (input: DependencyResolution) => ResolvedVersion | PluginIssue;
