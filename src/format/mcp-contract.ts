@@ -22,6 +22,7 @@ export {
 } from './mcp-oauth.ts';
 export {
   MCP_ADD_SCOPES,
+  mcpAddKey,
   mcpServerExistsMessage,
   readMcpAddJson,
   type McpAddOptions,
@@ -45,6 +46,7 @@ export {
   excludedToolsNotice,
   prepareMcpTool,
   refusedSchemaFallback,
+  type McpListedTool,
   type McpToolDeclaration,
   type McpToolPolicy,
   type McpToolPreparation,
@@ -121,3 +123,23 @@ export {
 export { redactPluginServer, type RedactedPluginServer } from './mcp-plugin-display.ts';
 export { droppedServerLogLine } from './mcp-config.ts';
 export { configFlagApplies, readConfigFlag, type ConfigFlag } from './mcp-bundles.ts';
+export {
+  mcpBackgrounding,
+  mcpCacheDiscardedAfterFailures,
+  mcpCacheEntryUse,
+  mcpClientSettings,
+  mcpConnectionBatches,
+  mcpDiscoveryCache,
+  mcpFirstTurnWaitMs,
+  mcpStartupWaitsFor,
+  type McpBackgrounding,
+  type McpCacheUse,
+  type McpClientRuntime,
+  type McpClientSettings,
+  type McpConnectionBatches,
+  type McpDiscoveryCache,
+  type McpFirstTurnServer,
+  type McpProtocolNegotiation,
+  type McpStartupRun,
+  type McpStartupServer,
+} from './mcp-startup.ts';

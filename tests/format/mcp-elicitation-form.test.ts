@@ -29,15 +29,14 @@ const form: ElicitationRequest = {
 
 describe('what the docs leave open', () => {
   test('a schema that is no object of properties has no fields', () => {
-    for (const schema of [
+    const schemas: readonly (Record<string, unknown> | undefined)[] = [
       undefined,
       {},
       { type: 'object' },
       { properties: [] },
       { properties: 'x' },
-    ]) {
-      expect(elicitationFormFields(schema as Record<string, unknown> | undefined)).toEqual([]);
-    }
+    ];
+    for (const schema of schemas) expect(elicitationFormFields(schema)).toEqual([]);
   });
 
   test('field kinds: string, number, integer, boolean, enum (enum or oneOf of const) and a list of enum values', () => {
@@ -63,6 +62,20 @@ describe('what the docs leave open', () => {
     ]);
     expect(fields[1]?.options).toEqual(['x', 'y']);
     expect(fields[2]?.options).toEqual(['p', 'q']);
+  });
+
+  test('a value that does not fit the field is a problem, and nothing is sent', () => {
+    const missing = answerElicitation(form, { action: 'accept', values: { username: 'ada' } });
+    expect(missing).toEqual({ problems: ['password is required'] });
+    const wrong = answerElicitation(form, {
+      action: 'accept',
+      values: { username: 'ada', password: 'x', retries: 9, region: 'asia', remember: 'yes' },
+    });
+    expect('problems' in wrong && wrong.problems).toEqual([
+      'remember must be a boolean',
+      'retries must be at most 5',
+      'region must be one of eu, us',
+    ]);
   });
 
   test('a list of enum values takes only those values', () => {

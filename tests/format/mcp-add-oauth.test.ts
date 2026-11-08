@@ -4,8 +4,8 @@
  * servers (a second `claude mcp add` of the same name at the same scope fails with a quoted message).
  * The transports of `claude mcp add` are in mcp-add.test.ts.
  */
-import { expect, test } from 'bun:test';
-import { mcpServerExistsMessage, readMcpAdd } from '../../src/index.ts';
+import { describe, expect, test } from 'bun:test';
+import { mcpAddKey, readMcpAdd, readMcpAddJson } from '../../src/index.ts';
 import { spec } from '../support/spec.ts';
 
 const none = (): undefined => undefined;
@@ -80,12 +80,16 @@ spec('mcp.behavior.Use pre-configured OAuth credentials', () => {
 
 spec('mcp.behavior.Authenticate with remote MCP servers', () => {
   test('adding the same name again at the same scope fails with "MCP server sentry already exists in local config"', () => {
-    expect(mcpServerExistsMessage('sentry', 'local')).toBe(
-      'MCP server sentry already exists in local config',
+    const existing = new Set([mcpAddKey('local', 'sentry')]);
+    const again = readMcpAdd(
+      ['--transport', 'http', 'sentry', 'https://mcp.sentry.dev/mcp'],
+      none,
+      existing,
     );
-    expect(mcpServerExistsMessage('sentry', 'user')).toBe(
-      'MCP server sentry already exists in user config',
-    );
+    expect(again.server).toBeUndefined();
+    expect(again.issues.map((issue) => [issue.severity, issue.message])).toEqual([
+      ['error', 'MCP server sentry already exists in local config'],
+    ]);
   });
 
   test('the sentry command of step 1 adds an http server', () => {
@@ -93,5 +97,35 @@ spec('mcp.behavior.Authenticate with remote MCP servers', () => {
       type: 'http',
       url: 'https://mcp.sentry.dev/mcp',
     });
+  });
+});
+
+describe('what the docs leave open', () => {
+  const existing = new Set([mcpAddKey('local', 'sentry')]);
+  const url = 'https://mcp.sentry.dev/mcp';
+
+  test('the same name at another scope, or another name at the same scope, is added', () => {
+    const user = readMcpAdd(['-s', 'user', '-t', 'http', 'sentry', url], none, existing);
+    expect(user.issues).toEqual([]);
+    expect(user.server).toEqual({ type: 'http', url });
+    const other = readMcpAdd(['-t', 'http', 'other', url], none, existing);
+    expect(other.server).toEqual({ type: 'http', url });
+  });
+
+  test('add-json refuses a name stored at its scope, with the message of add', () => {
+    const json = JSON.stringify({ type: 'http', url });
+    const again = readMcpAddJson('sentry', json, { existing }, none);
+    expect(again.server).toBeUndefined();
+    expect(again.issues.map((issue) => issue.message)).toEqual([
+      'MCP server sentry already exists in local config',
+    ]);
+    const stored = new Set([mcpAddKey('project', 'sentry')]);
+    const project = readMcpAddJson('sentry', json, { scope: 'project', existing: stored }, none);
+    expect(project.issues.map((issue) => issue.message)).toEqual([
+      'MCP server sentry already exists in project config',
+    ]);
+    expect(
+      readMcpAddJson('sentry', json, { scope: 'user', existing: stored }, none).server,
+    ).toEqual({ type: 'http', url });
   });
 });

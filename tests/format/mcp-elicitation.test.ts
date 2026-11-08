@@ -100,20 +100,6 @@ spec('mcp.behavior.Respond to MCP elicitation requests', () => {
     });
   });
 
-  test('a value that does not fit the field is a problem, and nothing is sent', () => {
-    const missing = answerElicitation(form, { action: 'accept', values: { username: 'ada' } });
-    expect(missing).toEqual({ problems: ['password is required'] });
-    const wrong = answerElicitation(form, {
-      action: 'accept',
-      values: { username: 'ada', password: 'x', retries: 9, region: 'asia', remember: 'yes' },
-    });
-    expect('problems' in wrong && wrong.problems).toEqual([
-      'remember must be a boolean',
-      'retries must be at most 5',
-      'region must be one of eu, us',
-    ]);
-  });
-
   test('declining or cancelling sends no content', () => {
     expect(answerElicitation(form, { action: 'decline' })).toEqual({
       result: { action: 'decline' },

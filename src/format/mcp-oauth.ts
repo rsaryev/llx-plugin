@@ -210,13 +210,16 @@ export type McpAuthState =
 /** "A remote server as needing authentication when it responds with `401 Unauthorized` or `403 Forbidden`". */
 const REJECTING_STATUSES: ReadonlySet<number> = new Set([401, 403]);
 
+const UNAUTHORIZED = 401;
+
 type Reaction = (input: McpAuthRejectionInput) => McpAuthState;
 
 const REACTIONS: { readonly [S in McpAuthRejectionInput['source']]: Reaction } = {
   server: ({ authorizationConfigured }) =>
     authorizationConfigured ? 'failed' : 'needs-authentication',
-  connector: ({ authorizationConfigured, sessionTokenRejected }) => {
-    if (sessionTokenRejected === true) return 'session-token-rejected';
+  // "A `401` caused by claude.ai rejecting your session token": a `403` is flagged like any other.
+  connector: ({ status, authorizationConfigured, sessionTokenRejected }) => {
+    if (status === UNAUTHORIZED && sessionTokenRejected === true) return 'session-token-rejected';
     return authorizationConfigured ? 'failed' : 'needs-authentication';
   },
   // The session's proxy authenticates with the authorization granted in claude.ai: no sign-in flow here.

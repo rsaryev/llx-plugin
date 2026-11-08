@@ -80,7 +80,7 @@ describe('Tools with invalid input schemas', () => {
     });
 
     test('valid schemas of every shape pass the check', () => {
-      const valid = [
+      const valid: Record<string, unknown>[] = [
         {},
         { type: 'object' },
         { type: ['object', 'null'] },
@@ -113,7 +113,7 @@ describe('Tools with invalid input schemas', () => {
         },
       ];
       for (const schema of valid) {
-        expect(prepareMcpTool(tool(schema as Record<string, unknown>), ON).sent).toBe(true);
+        expect(prepareMcpTool(tool(schema), ON).sent).toBe(true);
       }
     });
 
@@ -165,10 +165,7 @@ describe('Tools with invalid input schemas', () => {
   });
 
   test('a schema root that is not an object is no schema the API takes', () => {
-    const result = prepareMcpTool(
-      { name: 'odd', inputSchema: 'oops' as unknown as Record<string, unknown> },
-      ON,
-    );
+    const result = prepareMcpTool({ name: 'odd', inputSchema: 'oops' }, ON);
     expect(result.sent).toBe(false);
   });
 });

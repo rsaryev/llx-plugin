@@ -250,6 +250,14 @@ spec('mcp.behavior.Authenticate with remote MCP servers', () => {
     expect(mcpAuthRejection(connector)).toBe('needs-authentication');
   });
 
+  test('the session-token-rejected state is for a 401 only: a 403 flags the connector', () => {
+    const connector = { ...base, source: 'connector', sessionTokenRejected: true } as const;
+    expect(mcpAuthRejection({ ...connector, status: 403 })).toBe('needs-authentication');
+    expect(mcpAuthRejection({ ...connector, status: 403, authorizationConfigured: true })).toBe(
+      'failed',
+    );
+  });
+
   test('a connector delivered to a cloud session runs no sign-in flow: reconnect it in claude.ai', () => {
     expect(mcpAuthRejection({ ...base, source: 'cloud-connector' })).toBe('reconnect-in-claude-ai');
   });

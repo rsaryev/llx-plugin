@@ -18,7 +18,7 @@ const TRANSPORTS = ['stdio', 'sse', 'http'] as const;
 type CliTransport = (typeof TRANSPORTS)[number];
 
 const isTransport = (text: string): text is CliTransport =>
-  (TRANSPORTS as readonly string[]).includes(text);
+  TRANSPORTS.some((transport) => transport === text);
 
 interface Parsed {
   readonly values: { [flag: string]: string | undefined };
@@ -231,7 +231,11 @@ const isRefused = (made: ReturnType<typeof entryOf>): made is readonly PluginIss
  * `add-json`, since "the `claude mcp add --transport` flag doesn't accept `ws`"; the wording of every
  * refusal is the kit's.
  */
-export function readMcpAdd(argv: readonly string[], lookup: EnvLookup): McpAddRead {
+export function readMcpAdd(
+  argv: readonly string[],
+  lookup: EnvLookup,
+  existing: ReadonlySet<string> = new Set(),
+): McpAddRead {
   const parsed = parse(argv);
   const [name = '', ...rest] = parsed.positionals;
   const scope = readAddScope(name, parsed.values['--scope']);
@@ -240,7 +244,7 @@ export function readMcpAdd(argv: readonly string[], lookup: EnvLookup): McpAddRe
   if (typeof scope !== 'string') return refusal(name, known, [scope]);
   const made = entryOf(parsed, name, rest);
   if (isRefused(made)) return refusal(name, known, made);
-  const options: McpAddOptions = { clientSecret: parsed.flags.has('--client-secret') };
+  const options: McpAddOptions = { clientSecret: parsed.flags.has('--client-secret'), existing };
   const done = completeMcpAdd({ name, scope }, made.entry, options, lookup);
   const useless = made.transport === 'stdio' && parsed.headers.length > 0;
   return useless

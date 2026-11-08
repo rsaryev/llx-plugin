@@ -1,5 +1,6 @@
 import type {
   BaseHookInput,
+  ClientCapabilities,
   ElicitationHookInput,
   ElicitationHookSpecificOutput,
   ElicitationRequest,
@@ -17,10 +18,7 @@ import { contentOf, formAnswer, type ElicitationAnswer } from './mcp-elicitation
 export type ElicitationMode = 'form' | 'url';
 
 /** What the client declares in `capabilities.elicitation`: both modes, or the bare `{}` (form only). */
-export interface ElicitationCapability {
-  readonly form?: Readonly<Record<string, never>>;
-  readonly url?: Readonly<Record<string, never>>;
-}
+export type ElicitationCapability = NonNullable<ClientCapabilities['elicitation']>;
 
 export interface McpConnection {
   /** The MCP protocol revision the connection runs on, such as `2026-07-28`. */

@@ -48,7 +48,7 @@ spec('mcp.behavior.Option 1: Add a remote HTTP server', () => {
     expect(bad.issues[0]?.severity).toBe('error');
   });
 
-  test('a url with no type in a JSON entry is the documented configuration error; the CLI always writes the type', () => {
+  test('the CLI always writes the transport type for a url', () => {
     expect(add('--transport', 'http', 'n', 'https://x.test/mcp').server).toHaveProperty(
       'type',
       'http',

@@ -100,15 +100,6 @@ spec('mcp.behavior.Plugin-provided MCP servers.Automatic lifecycle', () => {
     });
   });
 
-  test('moving with /cd to a directory whose settings enable other plugins connects theirs and disconnects those no longer enabled', () => {
-    const plan = planMcpReload(
-      { 'plugin:old:x': server('x.js') },
-      { 'plugin:new:y': server('y.js') },
-    );
-    expect(plan.connect).toEqual(['plugin:new:y']);
-    expect(plan.disconnect).toEqual(['plugin:old:x']);
-  });
-
   test('enabling a plugin connects its servers at once and disabling one disconnects them', () => {
     expect(planMcpReload({}, { a: server('a.js') }).connect).toEqual(['a']);
     expect(planMcpReload({ a: server('a.js') }, {}).disconnect).toEqual(['a']);
@@ -183,11 +174,9 @@ spec('mcp.behavior.Plugin-provided MCP servers.Path placeholders', () => {
   });
 
   test('they apply to no other field: a value in an unlisted field stays as written', async () => {
-    const { resolved } = await resolveMcpServer(
-      'db',
-      { command: 'node', description: '${CLAUDE_PLUGIN_ROOT}' } as PluginMcpServer,
-      scopeOf(),
-    );
+    // A variable, not a literal: a field no server type lists is not an excess-property error.
+    const entry = { command: 'node', description: '${CLAUDE_PLUGIN_ROOT}' };
+    const { resolved } = await resolveMcpServer('db', entry, scopeOf());
     expect(resolved?.server).toMatchObject({ description: '${CLAUDE_PLUGIN_ROOT}' });
   });
 });

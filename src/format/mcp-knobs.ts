@@ -10,7 +10,7 @@ import type { EnvLookup } from './mcp-env.ts';
  */
 
 /** A positive whole number in plain digits; anything else is `undefined` (judgment, spec/judgments.md, for the timeouts). */
-function positiveWhole(text: string | undefined): number | undefined {
+export function positiveWhole(text: string | undefined): number | undefined {
   if (text === undefined || !/^\d+$/.test(text)) return undefined;
   const value = Number(text);
   return Number.isSafeInteger(value) && value > 0 ? value : undefined;
@@ -24,6 +24,9 @@ const DEFAULT_TOOL_MS = 100_000_000;
 const REQUEST_FLOOR_MS = 60_000;
 /** "Values below 1000 are floored to one second" (the variable) and "ignored" (the per-server field). */
 const MIN_TOOL_MS = 1_000;
+/** "Overrides the per-transport defaults of 300000 (5 minutes) for network servers and 1800000 (30 minutes) for stdio servers." */
+const NETWORK_IDLE_MS = 300_000;
+const STDIO_IDLE_MS = 1_800_000;
 /** "How long blocking MCP startup waits, in milliseconds, for the connection batch ... (default: 5000)". */
 const DEFAULT_CONNECT_MS = 5_000;
 
@@ -34,11 +37,16 @@ export interface McpTimeouts {
   readonly toolMs: number;
   /** The per-request timer of an HTTP, SSE or connector server; none for stdio and WebSocket. */
   readonly requestMs: number | undefined;
+  /**
+   * How long a call may go with no response and no progress notification before it aborts; `undefined`
+   * when there is no idle check (`CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT` is `0`, or an IDE or SDK server).
+   */
+  readonly idleMs: number | undefined;
 }
 
 export interface McpTimeoutServer {
-  /** `connector` is a claude.ai connector. */
-  readonly transport: McpTransport | 'connector';
+  /** `connector` is a claude.ai connector; `ide` and `sdk` are an IDE's server and an in-process SDK server. */
+  readonly transport: McpTransport | 'connector' | 'ide' | 'sdk';
   /** The per-server `timeout` as written; anything but a number of at least 1000 is ignored. */
   readonly timeout?: unknown;
 }
@@ -50,8 +58,43 @@ const HAS_REQUEST_TIMER: { readonly [T in McpServerKind]: boolean } = {
   connector: true,
   stdio: false,
   ws: false,
+  ide: false,
+  sdk: false,
+};
+
+/** The idle window of each kind of server; "doesn't apply to IDE servers or SDK in-process servers". */
+const DEFAULT_IDLE_MS: { readonly [T in McpServerKind]: number | undefined } = {
+  http: NETWORK_IDLE_MS,
+  sse: NETWORK_IDLE_MS,
+  ws: NETWORK_IDLE_MS,
+  connector: NETWORK_IDLE_MS,
+  stdio: STDIO_IDLE_MS,
+  ide: undefined,
+  sdk: undefined,
 };
 type McpServerKind = McpTimeoutServer['transport'];
+
+/**
+ * The idle window of one server. `CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT` replaces the default of its kind:
+ * `0` turns the check off, "values below 1000 are raised to one second, and the value is capped at the
+ * effective `MCP_TOOL_TIMEOUT`"; "a per-server `timeout` of at least 1000 raises that server's idle
+ * window to at least the `timeout` value". A value that is not plain digits is ignored (judgment,
+ * spec/judgments.md).
+ */
+function idleWindow(
+  lookup: EnvLookup,
+  transport: McpServerKind,
+  limits: { readonly toolMs: number; readonly own: number | undefined },
+): number | undefined {
+  const fallback = DEFAULT_IDLE_MS[transport];
+  if (fallback === undefined) return undefined;
+  const text = lookup('CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT');
+  const written = /^\d+$/.test(text ?? '') ? Number(text) : undefined;
+  if (written === 0) return undefined;
+  const set =
+    written === undefined ? fallback : Math.min(Math.max(written, MIN_TOOL_MS), limits.toolMs);
+  return Math.max(set, limits.own ?? 0);
+}
 
 /**
  * `MCP_TIMEOUT`, `MCP_TOOL_TIMEOUT` and the server's own `timeout`. The tool timeout is the per-server
@@ -68,9 +111,11 @@ export function mcpTimeouts(lookup: EnvLookup, server: McpTimeoutServer): McpTim
       ? server.timeout
       : undefined;
   const applies = own ?? fromVariable;
+  const toolMs = applies ?? DEFAULT_TOOL_MS;
   return {
     startupMs,
-    toolMs: applies ?? DEFAULT_TOOL_MS,
+    toolMs,
+    idleMs: idleWindow(lookup, server.transport, { toolMs, own }),
     requestMs: HAS_REQUEST_TIMER[server.transport]
       ? Math.max(REQUEST_FLOOR_MS, applies ?? 0, startupMs)
       : undefined,
@@ -125,7 +170,7 @@ const SWITCHES: Readonly<Record<string, boolean>> = {
 };
 
 /** `true`, `false`, or `undefined` for an unset, empty or unrecognised value. */
-function switchOf(text: string | undefined): boolean | undefined {
+export function switchOf(text: string | undefined): boolean | undefined {
   const key = text?.toLowerCase();
   return key !== undefined && Object.hasOwn(SWITCHES, key) ? SWITCHES[key] : undefined;
 }

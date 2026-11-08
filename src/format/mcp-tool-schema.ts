@@ -1,3 +1,4 @@
+import type { Tool } from '../protocol/official.ts';
 import { checksMetaSchema, metaSchemaProblems, propertyNameProblems } from './mcp-schema-check.ts';
 
 /**
@@ -7,11 +8,14 @@ import { checksMetaSchema, metaSchemaProblems, propertyNameProblems } from './mc
  * whose schema the API would refuse is excluded (and Claude is told), and a tool the API did refuse
  * is declared without parameters. Pure over data; the log is returned, never written.
  */
-export interface McpToolDeclaration {
-  readonly name: string;
-  readonly description?: string;
+export type McpToolDeclaration = Pick<Tool, 'name' | 'description'> & {
   readonly inputSchema: Readonly<Record<string, unknown>>;
-}
+};
+
+/** A tool as a server listed it: its input schema is whatever the server sent, checked here. */
+export type McpListedTool = Pick<Tool, 'name' | 'description'> & {
+  readonly inputSchema: unknown;
+};
 
 export interface McpToolPolicy {
   /** The remote configuration that enables the rewrite of root-level combinators was received. */
@@ -186,14 +190,12 @@ const excluded = (name: string, reasons: readonly string[]): McpToolPreparation 
  * properties two branches define differently are kept nested in an `anyOf`; the wording of the log
  * lines other than the phrases the docs quote.
  */
-export function prepareMcpTool(
-  tool: McpToolDeclaration,
-  policy: McpToolPolicy,
-): McpToolPreparation {
-  if (!isRecord(tool.inputSchema))
-    return excluded(tool.name, ['the input schema is not an object']);
+export function prepareMcpTool(listed: McpListedTool, policy: McpToolPolicy): McpToolPreparation {
+  const { inputSchema } = listed;
+  if (!isRecord(inputSchema)) return excluded(listed.name, ['the input schema is not an object']);
+  const tool: McpToolDeclaration = { ...listed, inputSchema };
   let prepared = tool;
-  if (hasRootCombinator(tool.inputSchema)) {
+  if (hasRootCombinator(inputSchema)) {
     if (!policy.rewriteRootCombinators) {
       return excluded(tool.name, [
         'the input schema has a root-level combinator and the rewrite is not enabled',

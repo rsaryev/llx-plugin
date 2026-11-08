@@ -4,6 +4,16 @@
 
 ### Added
 
+- MCP startup and call-timing variables, pure over an environment lookup: `CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT`
+  (`McpTimeouts.idleMs`: 5 minutes for network servers, 30 for stdio, `0` off, raised to one second,
+  capped at the tool timeout, floored by the per-server `timeout`, none for IDE and SDK servers),
+  `mcpConnectionBatches` (`MCP_SERVER_CONNECTION_BATCH_SIZE`, `MCP_REMOTE_SERVER_CONNECTION_BATCH_SIZE`),
+  `mcpBackgrounding` (`CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS`, `CLAUDE_CODE_DISABLE_MCP_TASK_BACKGROUND`),
+  `mcpStartupWaitsFor` (`MCP_CONNECTION_NONBLOCKING`), `mcpFirstTurnWaitMs`
+  (`CLAUDE_CODE_MCP_STARTUP_WAIT_MS`), `mcpDiscoveryCache`, `mcpCacheEntryUse` and
+  `mcpCacheDiscardedAfterFailures` (`MCP_DISCOVERY_CACHE` and its `_TTL_S`, `_MAX_STALE_S` and
+  `_STRIKES`) and `mcpClientSettings` (`MCP_SDK_GENERATION`, `MCP_PROTOCOL_NEGOTIATION`).
+
 - MCP contracts, pure over data: the `oauth` block, redirect, discovery and scopes; `claude mcp add`
   and `add-json`; tool names, hints, root-combinator rewriting and invalid-schema exclusion; result
   limits, persistence and images; MCP prompts; elicitation (modes, forms, URL cap, hooks); the
@@ -64,6 +74,17 @@
   Invalid entries are stripped per the fail-closed rules; the three keys join the policy keys.
 
 ### Fixed
+
+- MCP contracts review: `claude mcp add` and `add-json` refuse a name already stored at the scope
+  (`McpAddOptions.existing`, `readMcpAdd`'s third argument, `mcpAddKey`) with `MCP server <name> already
+  exists in <scope> config`; the session-token-rejected state of a connector is for a `401` only, a
+  `403` flags it; the shapes of a tool, a prompt and the elicitation capability are the MCP SDK's
+  (`Tool`, `Prompt`, `PromptArgument`, `ClientCapabilities`, re-exported by `protocol/official.ts`) and
+  `prepareMcpTool` takes an input schema of any type (`McpListedTool`); result limits read the SDK's
+  content parts directly; `as` casts are gone from the add readers and the tests. The tests assert what
+  their titles claim: the elicitation form validation moved out of `spec(...)`, titles that claimed
+  more than they checked were trimmed, the `/cd` and `https://` echoes were removed with judgments
+  recording what is the host's, and the 11,001-character error boundary is covered.
 
 - MCP `headersHelper` review: a project or local server with no helper in an untrusted folder no
   longer gets the `headersHelper not run` notice (an agent file's server stays unloaded);

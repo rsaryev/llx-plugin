@@ -43,6 +43,14 @@ spec('mcp.behavior.MCP output limits and warnings.Error results', () => {
     });
   });
 
+  test('error text one character over 11,000 is cut: the boundary is exclusive', () => {
+    const verdict = limitMcpResult(
+      { isError: true, content: [{ type: 'text', text: 'x'.repeat(11_001) }] },
+      limitsOf(),
+    );
+    expect(verdict).toMatchObject({ action: 'error', removed: 1_001 });
+  });
+
   test('longer error text keeps its first 5,000 and last 5,000 characters with a marker that says how many were removed', () => {
     const verdict = limitMcpResult(failed(20_000), limitsOf());
     expect(verdict.action).toBe('error');
@@ -54,7 +62,7 @@ spec('mcp.behavior.MCP output limits and warnings.Error results', () => {
     expect(marker).toContain('10000');
   });
 
-  test('an error result is never saved to a file and never warned about, however large', () => {
+  test('an error result is an error verdict, never saved to a file, however large', () => {
     const verdict = limitMcpResult(failed(500_000), limitsOf());
     expect(verdict.action).toBe('error');
   });
@@ -93,7 +101,7 @@ spec('mcp.behavior.MCP output limits and warnings.Response size from HTTP and SS
 spec('mcp.behavior.MCP output limits and warnings.Message size from WebSocket servers', () => {
   const MIB = 1024 * 1024;
 
-  test('one message over 16 MiB closes the connection, and calls in progress on that server fail', () => {
+  test('one message over 16 MiB closes the connection', () => {
     expect(oversizedMcpMessage('ws', 16 * MIB)).toBeUndefined();
     expect(oversizedMcpMessage('ws', 16 * MIB + 1)).toBe('close-connection');
   });

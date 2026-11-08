@@ -89,36 +89,28 @@ export type McpResultVerdict =
       readonly removed: number;
     };
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+type McpContentPart = McpCallToolResult['content'][number];
 
-type PartText = (part: Record<string, unknown>) => string | undefined;
-
-const asText = (value: unknown): string | undefined =>
-  typeof value === 'string' ? value : undefined;
-
-/** The text each kind of content part holds; a kind not listed holds none. */
-const TEXT_OF: Readonly<Record<string, PartText>> = {
-  text: (part) => asText(part.text),
-  // Judgment: an embedded resource's text is text content (the docs speak of "text content").
-  resource: (part) => (isRecord(part.resource) ? asText(part.resource.text) : undefined),
-};
-
-const textOf = (part: unknown): string | undefined =>
-  isRecord(part) && typeof part.type === 'string' && Object.hasOwn(TEXT_OF, part.type)
-    ? TEXT_OF[part.type]?.(part)
-    : undefined;
+/**
+ * The text each kind of content part holds; a kind with none holds none. Judgment: an embedded
+ * resource's text is text content (the docs speak of "text content"); a binary resource has none.
+ */
+function textOf(part: McpContentPart): string | undefined {
+  if ('resource' in part) return 'text' in part.resource ? part.resource.text : undefined;
+  return 'text' in part ? part.text : undefined;
+}
 
 interface ImagePart {
   readonly data: string;
-  readonly mimeType: string | undefined;
+  readonly mimeType: string;
 }
 
-const IMAGE_TYPES: ReadonlySet<unknown> = new Set(['image']);
+/** Audio parts carry `data` and `mimeType` too: the kind decides, the fields narrow. */
+const IMAGE_TYPES: ReadonlySet<string> = new Set(['image']);
 
-const imageOf = (part: unknown): ImagePart | undefined =>
-  isRecord(part) && IMAGE_TYPES.has(part.type) && typeof part.data === 'string'
-    ? { data: part.data, mimeType: asText(part.mimeType) }
+const imageOf = (part: McpContentPart): ImagePart | undefined =>
+  IMAGE_TYPES.has(part.type) && 'data' in part && 'mimeType' in part
+    ? { data: part.data, mimeType: part.mimeType }
     : undefined;
 
 const joined = (result: McpCallToolResult): string =>
@@ -197,16 +189,11 @@ export function mcpImageFiles(result: McpCallToolResult, persist: boolean): McpI
   if (!persist) return [];
   return result.content.flatMap((part) => {
     const image = imageOf(part);
-    const mimeType = image?.mimeType;
-    if (
-      image === undefined ||
-      mimeType === undefined ||
-      !Object.hasOwn(IMAGE_EXTENSIONS, mimeType)
-    ) {
-      return [];
-    }
-    const extension = IMAGE_EXTENSIONS[mimeType];
-    return extension === undefined ? [] : [{ mimeType, extension, data: image.data }];
+    if (image === undefined || !Object.hasOwn(IMAGE_EXTENSIONS, image.mimeType)) return [];
+    const extension = IMAGE_EXTENSIONS[image.mimeType];
+    return extension === undefined
+      ? []
+      : [{ mimeType: image.mimeType, extension, data: image.data }];
   });
 }
 

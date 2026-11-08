@@ -1,3 +1,4 @@
+import type { Prompt, PromptArgument } from '../protocol/official.ts';
 import { normalizeMcpServerName } from './mcp-tool.ts';
 
 /**
@@ -7,17 +8,11 @@ import { normalizeMcpServerName } from './mcp-tool.ts';
  * host listed with `prompts/list`; `prompts/get` and injecting the result into the conversation are the
  * host's.
  */
-export interface McpPromptDefinition {
+export type McpPromptDefinition = Pick<Prompt, 'name' | 'description'> & {
   readonly server: string;
-  readonly name: string;
-  readonly description?: string;
   /** The prompt's defined parameters, in order. */
-  readonly arguments?: readonly {
-    readonly name: string;
-    readonly description?: string;
-    readonly required?: boolean;
-  }[];
-}
+  readonly arguments?: readonly Pick<PromptArgument, 'name' | 'description' | 'required'>[];
+};
 
 /** The parameters of `prompts/get`. */
 export interface McpPromptInvocation {

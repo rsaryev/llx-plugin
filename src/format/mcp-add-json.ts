@@ -23,6 +23,8 @@ export interface McpAddOptions {
   readonly scope?: string;
   /** `--client-secret`. */
   readonly clientSecret?: boolean;
+  /** The servers already stored, as `mcpAddKey(scope, name)`: an add of one of them fails. */
+  readonly existing?: ReadonlySet<string>;
 }
 
 export interface McpAddRead {
@@ -59,7 +61,7 @@ const refusal = (name: string, scope: McpAddScope | undefined, issue: PluginIssu
 const pathOf = (name: string): string => `mcpServers.${name}`;
 
 const isScope = (text: string): text is McpAddScope =>
-  (MCP_ADD_SCOPES as readonly string[]).includes(text);
+  MCP_ADD_SCOPES.some((scope) => scope === text);
 
 /** The scope an add writes to: "Each command writes to local scope unless you add `--scope project` or `--scope user`". */
 export function readAddScope(name: string, scope: string | undefined): McpAddScope | PluginIssue {
@@ -75,6 +77,12 @@ export function readAddScope(name: string, scope: string | undefined): McpAddSco
 /** "Claude Code adds no server named like that": the message of `claude mcp add` for a name taken at that scope. */
 export const mcpServerExistsMessage = (name: string, scope: McpAddScope): string =>
   `MCP server ${name} already exists in ${scope} config`;
+
+/**
+ * How the host names a stored server for `McpAddOptions.existing`: the scope and the name, which
+ * together make "the same server name at the same scope". A name has no `:` (see `NAME`).
+ */
+export const mcpAddKey = (scope: McpAddScope, name: string): string => `${scope}:${name}`;
 
 /** A port written the way a redirect URI carries it. Judgment: anything else is no port. */
 function portOf(text: string | undefined): number | undefined {
@@ -129,8 +137,9 @@ function oauthOf(
 }
 
 /**
- * Finishes an add whose entry is known: reads it as a server and settles the OAuth setup and the
- * secret. Judgments (spec/judgments.md): `MCP_OAUTH_CALLBACK_PORT` fills the port only when the entry
+ * Finishes an add whose entry is known: refuses a name already stored at the scope, reads the entry as
+ * a server and settles the OAuth setup and the secret. Judgments (spec/judgments.md): `add-json`
+ * refuses a taken name as `add` does; `MCP_OAUTH_CALLBACK_PORT` fills the port only when the entry
  * names none; the secret is requested only by `--client-secret`, never by the environment variable
  * alone ("Avoids the interactive prompt when adding a server with `--client-secret`"); an invalid
  * `oauth` block is an error and leaves the entry itself read.
@@ -142,6 +151,9 @@ export function completeMcpAdd(
   lookup: EnvLookup,
 ): McpAddRead {
   const { name, scope } = target;
+  if (options.existing?.has(mcpAddKey(scope, name)) === true) {
+    return refusal(name, scope, error(pathOf(name), mcpServerExistsMessage(name, scope)));
+  }
   const read = readMcpServer(name, entry, pathOf(name));
   if (read.server === undefined) {
     return {

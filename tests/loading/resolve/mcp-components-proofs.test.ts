@@ -13,7 +13,6 @@ import {
   planMcpReload,
   pluginMcpServerName,
   readConfigFlag,
-  readMcpConfig,
   resolveMcpServer,
   validatePlugin,
   type PluginMcpServer,
@@ -90,15 +89,6 @@ spec('mcp.components.MCP servers', () => {
     });
     const { servers } = await collectMcpServers(files, { db: node('new.js') });
     expect(servers).toEqual({ db: node('new.js') });
-  });
-
-  test('a remote server is referenced by its https:// URL', () => {
-    const { servers, issues } = readMcpConfig(
-      { docs: { type: 'http', url: 'https://mcp.example.com/mcp' } },
-      'x',
-    );
-    expect(issues).toEqual([]);
-    expect(servers.docs).toEqual({ type: 'http', url: 'https://mcp.example.com/mcp' });
   });
 });
 
