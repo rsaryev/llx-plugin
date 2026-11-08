@@ -20,10 +20,21 @@
   fake.
 - `EFFORT_LEVELS`, asserted equal to the SDK's `EffortLevel`, and the official `EffortLevel`,
   `SlashCommand` and `ResolvedSettingSource` types re-exported.
+- Variable substitution in `loading/resolve`: `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}`
+  (created on first reference, `pluginDataId`), `${CLAUDE_PROJECT_DIR}`, `${user_config.KEY}`,
+  `${VAR}` and `${VAR:-default}` in one pass (`substituteTemplate`, `substituteDeep`), the
+  per-component policies (`SURFACE_POLICY`, `VARIABLE_FIELDS`), the environment a process receives
+  (`exportedEnvironment`, `CLAUDE_PLUGIN_OPTION_<KEY>`) and Windows path rendering.
 
 ### Fixed
 
 - `readFlag` no longer reads `constructor` or `__proto__` as a flag, and `readList` no longer splits
   a glob such as `src/**/*.{ts,tsx}` or a path with a space.
+- Variable substitution: a remote MCP server now reads the documented credential variables
+  (`ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `AWS_BEARER_TOKEN_BEDROCK`, `HTTPS_PROXY`,
+  `NPM_TOKEN`) as empty in `url` and `headers`; `UserConfigValue` is derived from the SDK's
+  `Settings`; `substituteDeep` returns `unknown` instead of an unchecked cast; the table "Where each
+  variable resolves" is asserted row by row, and the path variables are checked against the port
+  calls they make.
 - The layer check now rejects `Date`, timers, `fetch`, `crypto`, `performance` and `globalThis` in
   `src/`, as the docs state.

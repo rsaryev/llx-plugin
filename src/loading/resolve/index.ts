@@ -1,0 +1,55 @@
+/**
+ * Variable substitution for plugin components (plugins/manifest-reference.md, "Environment
+ * variables"): the three path variables, `${user_config.KEY}`, `${VAR}`, and what differs per
+ * component. Hooks, skills, MCP, LSP and monitors resolve their fields through this folder and
+ * write no placeholder code of their own (docs/ARCHITECTURE.md, "Homes shared between streams").
+ */
+export { pluginDataId } from './data-id.ts';
+export { substituteDeep, type DeepSubstituted, type ValuePath } from './deep.ts';
+export { exportedEnvironment } from './exported-environment.ts';
+export {
+  OPTION_VARIABLES,
+  VARIABLE_COMPONENTS,
+  VARIABLE_FIELDS,
+  type ComponentVariables,
+  type ExportedVariable,
+  type VariableComponent,
+  type VariableField,
+} from './field-map.ts';
+export type {
+  EnvironmentExpansion,
+  FieldPolicy,
+  PathRendering,
+  SubstitutionScope,
+  UserConfigPolicy,
+} from './scope.ts';
+export {
+  SENSITIVE_PLACEHOLDER,
+  substituter,
+  substituteTemplate,
+  type Substituted,
+  type Substituter,
+  type TokenReference,
+} from './substitute.ts';
+export {
+  SURFACE_COMPONENT,
+  SURFACE_POLICY,
+  SURFACES,
+  substituteSurface,
+  type Surface,
+} from './surfaces.ts';
+export {
+  optionEnvironment,
+  optionEnvName,
+  referencesUserConfig,
+  userConfigText,
+  userConfigValue,
+  type ResolvedUserConfig,
+  type UserConfigValue,
+} from './user-config.ts';
+export {
+  isPluginVariable,
+  PLUGIN_VARIABLES,
+  pluginVariableValue,
+  type PluginVariable,
+} from './variables.ts';
