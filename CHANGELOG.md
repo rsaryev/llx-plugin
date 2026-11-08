@@ -72,6 +72,25 @@
 
 ### Added
 
+- Settings: the managed sources (`src/settings/managed`). `composeManaged(documents, { parentRestrictive })`
+  chooses among remote settings, the MDM policy (plist or HKLM), the managed files and the HKCU
+  registry as managed-settings.md ranks them: by default the highest source that delivers a policy
+  key, with `managedSourcesBehavior: "merge"` every admin source combined by kind of key (lists union,
+  locks take the strictest value, restriction allowlists and values taken whole from the highest
+  source, provided MCP servers by name, `env` per variable, login keys from the machine policy), and
+  the keys read from every admin source under both. `readAdminDocument` decides when a document is
+  present, empty, broken (fatal) or unreadable; `readFileDocument` merges `managed-settings.json` with
+  `managed-settings.d/` in alphabetical order; `wslChain` orders the Windows and `/etc/claude-code`
+  documents under `wslInheritsWindowsSettings`; `parentSettingsOf` applies `parentSettingsBehavior` and
+  the managed values that block a host's parent settings. `readPolicyHelper`, `readHelperOutput` and
+  `runPolicyHelper` (through the `CommandRunner` port and the new `HelperFileProbe` of this module)
+  judge a `policyHelper` and its failures; `withHelperSettings` makes its output the only managed
+  settings. The delivery catalog (`managedFilePaths`, `MECHANISM_TRAITS`, registry and plist names,
+  symlink verdict, `cacheAfterFetch`), `sourcesLoadedBy`, `reachOfPlace`, `serverChangeTiming`,
+  `startupFetchOf` and `fetchesRemoteSettings` answer where and when a policy applies.
+  `SettingsSources.managed` lets a host hand over every source so `loadSettingsLayers` composes the
+  tier, `resolvePolicy({ managed })` takes `hasManagedSettings` and `parentMerge` from it, and
+  `autoCompactWindow` joins the per-session overrides (`--autocompact`, `CLAUDE_CODE_AUTO_COMPACT_WINDOW`).
 - Settings: the merge core. `createGeneralView(layers)` extends the policy view with `merged()`, the
   whole of settings.md's precedence as one object: a block merges key by key, a list combines with the
   duplicates removed (the highest file's entries first), any other value comes from the highest file,

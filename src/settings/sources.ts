@@ -1,6 +1,8 @@
 import type { PluginIssue } from '../format/issues.ts';
 import { brokenSource, stopsStartup } from './broken-file.ts';
 import { POLICY_SCOPES, type PolicyScope, type PolicyLayer } from './layers.ts';
+import { composeManagedReads, type ManagedReads } from './managed/load.ts';
+import { parentSettingsOf } from './managed/parent.ts';
 import { readSettingsLayer } from './read-layer.ts';
 import { isRecord } from './record.ts';
 
@@ -19,6 +21,13 @@ export interface SettingsSources {
    * could not be parsed"). Without it a report names no source.
    */
   label?(scope: PolicyScope): string | undefined;
+  /**
+   * What a machine holds at every managed source (remote settings, MDM policy, the managed files, the
+   * HKCU registry). When the host has it, the kit chooses among them and composes the managed tier
+   * (`managedSourcesBehavior`, managed-settings.md, "How Claude Code combines managed sources") and
+   * `read('managed')` is not asked.
+   */
+  managed?(signal: AbortSignal): Promise<ManagedReads>;
 }
 
 type Parsed = { readonly value: unknown } | { readonly issue: PluginIssue };
@@ -48,14 +57,11 @@ export interface LoadedSettings {
   readonly fatal: boolean;
 }
 
-/**
- * Reads every scope the host has, in precedence order, into layers. A broken user, project, local or
- * `--settings` source is skipped; a broken managed one is `fatal`.
- */
-export async function loadSettingsLayers(
+/** Reads each of `scopes` through `sources.read`, a source at a time into a layer. */
+async function loadScopes(
   sources: SettingsSources,
   signal: AbortSignal,
-  scopes: readonly PolicyScope[] = POLICY_SCOPES,
+  scopes: readonly PolicyScope[],
 ): Promise<LoadedSettings> {
   const raws = await Promise.all(scopes.map((scope) => sources.read(scope, signal)));
   const layers: PolicyLayer[] = [];
@@ -77,4 +83,57 @@ export async function loadSettingsLayers(
     issues.push(...read.issues);
   });
   return { layers: fatal ? [] : layers, issues, fatal };
+}
+
+/**
+ * The managed tier from every managed source the machine holds, with the host's parent settings
+ * beside it: the parent layer is dropped, or cut down to what the managed policy lets stand
+ * (managed-settings.md, "Let an embedding host add policy"), and the HKCU registry applies only when no
+ * restrictive parent settings were passed.
+ */
+async function loadWithManaged(
+  sources: SettingsSources,
+  readManaged: () => Promise<ManagedReads>,
+  signal: AbortSignal,
+  scopes: readonly PolicyScope[],
+): Promise<LoadedSettings> {
+  const others = await loadScopes(
+    sources,
+    signal,
+    scopes.filter((scope) => scope !== 'managed'),
+  );
+  const parent = others.layers.find((layer) => layer.scope === 'parent');
+  const parentRestrictive = parent !== undefined && Object.keys(parent.settings).length > 0;
+  const composition = composeManagedReads(await readManaged(), { parentRestrictive });
+  const issues = [...composition.issues, ...others.issues];
+  if (composition.fatal || others.fatal) return { layers: [], issues, fatal: true };
+  const kept = others.layers.flatMap((layer): PolicyLayer[] => {
+    if (layer.scope !== 'parent') return [layer];
+    const { settings } = parentSettingsOf(composition, layer.settings);
+    return settings === undefined ? [] : [{ scope: 'parent', settings }];
+  });
+  const hasManaged =
+    composition.used.length > 0 || Object.keys(composition.layer.settings).length > 0;
+  return { layers: hasManaged ? [composition.layer, ...kept] : kept, issues, fatal: false };
+}
+
+/**
+ * Reads every scope the host has, in precedence order, into layers. A broken user, project, local or
+ * `--settings` source is skipped; a broken managed one is `fatal`. A host that says what each managed
+ * source holds (`SettingsSources.managed`) gets the managed tier composed by the kit.
+ */
+export function loadSettingsLayers(
+  sources: SettingsSources,
+  signal: AbortSignal,
+  scopes: readonly PolicyScope[] = POLICY_SCOPES,
+): Promise<LoadedSettings> {
+  if (sources.managed === undefined || !scopes.includes('managed')) {
+    return loadScopes(sources, signal, scopes);
+  }
+  return loadWithManaged(
+    sources,
+    () => sources.managed?.(signal) ?? Promise.resolve({}),
+    signal,
+    scopes,
+  );
 }

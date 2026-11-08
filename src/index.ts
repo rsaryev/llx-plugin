@@ -165,6 +165,7 @@ export * from './settings/workflows/index.ts';
 export * from './settings/channels/index.ts';
 export * from './settings/customization/index.ts';
 export * from './settings/general/index.ts';
+export * from './settings/managed/index.ts';
 export {
   readOutputStyle,
   type OutputStyle,

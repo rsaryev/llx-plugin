@@ -55,6 +55,25 @@ const modelAllowed: NonNullable<OverrideSource['admit']> = (value, { availableMo
   });
 };
 
+/**
+ * A usable `CLAUDE_CODE_AUTO_COMPACT_WINDOW`: "from `100000` to `1000000` tokens", written as a number,
+ * or with `k` or `M` ("`200k`", "`1M`"). A number with no suffix is read as that many tokens. Any other
+ * value is one "Claude Code ignores" (model-config.md, "Values and warnings"). The grammar of the
+ * suffix beyond those two examples is a judgment (spec/judgments.md).
+ */
+const COMPACT_WINDOW = /^(\d+(?:\.\d+)?)([kKmM]?)$/;
+const COMPACT_UNIT: Readonly<Record<string, number>> = { '': 1, k: 1000, m: 1_000_000 };
+const usableWindow: NonNullable<OverrideSource['admit']> = (value) => {
+  const match = COMPACT_WINDOW.exec(value.trim());
+  if (match === null) return false;
+  const tokens = Number(match[1]) * (COMPACT_UNIT[(match[2] ?? '').toLowerCase()] ?? 1);
+  return tokens >= 100_000 && tokens <= 1_000_000;
+};
+const variableWhen = (name: string, admit: OverrideSource['admit']): OverrideSource => ({
+  ...variable(name),
+  ...(admit === undefined ? {} : { admit }),
+});
+
 /** `--effort` for the level, with `CLAUDE_CODE_EFFORT_LEVEL` over both and the files under. */
 const EFFORT = [variable('CLAUDE_CODE_EFFORT_LEVEL'), flag('--effort'), files()] as const;
 
@@ -75,6 +94,13 @@ export const SESSION_OVERRIDES = {
   modelSettings: EFFORT,
   // permission-modes.md, "Which mode a session starts in": "The `--permission-mode` flag" comes first, then `permissions.defaultMode`.
   'permissions.defaultMode': [flag('--permission-mode'), files()],
+  // "`--autocompact` takes precedence over this key for one session, and `CLAUDE_CODE_AUTO_COMPACT_WINDOW`
+  // takes precedence over both unless Claude Code ignores the variable's value" (settings-reference.md).
+  autoCompactWindow: [
+    variableWhen('CLAUDE_CODE_AUTO_COMPACT_WINDOW', usableWindow),
+    flag('--autocompact'),
+    files(),
+  ],
   // "Claude Code reads the variable first and uses the `autoConnectIde` setting only when the variable is unset."
   autoConnectIde: [variable('CLAUDE_CODE_AUTO_CONNECT_IDE'), files()],
 } as const satisfies Readonly<Record<string, readonly OverrideSource[]>>;
