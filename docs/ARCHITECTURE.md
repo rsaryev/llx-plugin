@@ -22,7 +22,7 @@ agent, not a model client and not a sandbox. It runs anywhere JavaScript runs.
 | 3     | `loading`     | A plugin folder to a typed `Plugin`; `loading/resolve` holds variable substitution (done), the rest planned |
 | 3     | `foundation`  | Shared by mods and the layer-4 streams: budgets, result shapes (planned)      |
 | 4     | `agents`      | Sub-agent definitions and their scoping (planned)                             |
-| 4     | `hooks`       | The hook engine: select, run through ports, merge outputs (planned)           |
+| 4     | `hooks`       | The hook engine: select, run through ports, merge outputs; `hooks/contracts.ts` holds the shared stage types, `hooks/select` the event catalog, matchers, `if`, dedupe and gates (done), the rest planned |
 | 4     | `skills`      | Skill and command expansion (planned)                                         |
 | 4     | `mods`        | The mods runtime: events, guest hooks through a host runtime (planned)        |
 | 5     | `host`        | `createPluginHost`, sessions: composition of the modules above (planned)      |

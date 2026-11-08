@@ -168,6 +168,44 @@ applied) and the host starts them. Tests use the fakes in `tests/support/ports.t
 `scriptedRunner`, `recordingHttp`, `fakeModel`, `fakeMcp`, `fixedClock`, `locations`,
 `fakeEnvironment`, `memoryScratch`).
 
+## Hooks (select done; input, handlers, verdict and output planned)
+
+The hook engine picks the handlers an event runs, runs them through ports, and merges what they
+return. The first stage, selection, is pure over data: no port, no I/O.
+
+```ts
+import { createHookRegistry, ifEvaluatorFor, selectHandlers } from '@rsaryev/claude-plugin-kit';
+
+const registry = createHookRegistry(entries); // RegisteredHandler[]: event, matcher, official handler, source
+const { selected, issues, monitor } = selectHandlers(registry, {
+  event: 'PreToolUse',
+  facts: { tool_name: 'Bash', tool_input: { command: 'rm -rf /tmp/build' }, tool_use_id: 't1' },
+  session, // trusted, disableAllHooks, enabledPlugins...
+  ifEvaluator: ifEvaluatorFor(matchContext), // reads each handler's `if`
+  modelCatalog, // names the canonical model of a model switch
+});
+```
+
+| Function                                   | Status  | Does                                                                         |
+| ------------------------------------------ | ------- | ---------------------------------------------------------------------------- |
+| `createHookRegistry(entries)`              | done    | an immutable registry: `entries`, `with`, `without`                          |
+| `selectHandlers(registry, request)`        | done    | the handlers an event runs, in registry order: event, gates, settings dedupe, handler type, matcher, `if`; `{ selected, issues, monitor }` |
+| `EVENT_CATALOG`, `supportsHandlerType`, `eventsSupporting`, `firesForTool` | done | per event: cadence, the handler types it supports, the tools whose calls never fire it (`EndConversation` on `PreToolUse` and `PostToolUse`) |
+| `MATCHER_TARGETS`, `MATCHER_VALUES`        | done    | per event, the input field its matcher filters on (or none: the matcher is ignored, `FileChanged` and `StopFailure` read in the narrow grammar), and the documented values, tied to the SDK unions |
+| `canonicalMatcherModel(toModel, catalog)`  | done    | the canonical name a model-switch matcher is tested against, `[1m]` stripped; none means every hook runs |
+| `ifEvaluatorFor(context)`                  | done    | an `if` reader over `evaluateIf`; a handler with `if` never runs on a non-tool event |
+| `fileChangedWatchList(entries)`            | done    | the literal file names a `FileChanged` matcher registers to watch            |
+| `consumedByRun(entry, succeeded)`          | done    | whether `once: true` removes the handler: skill frontmatter and a successful run only |
+| `buildHookInput`, `runHandler`, `interpretRun`, `parseHookOutput`, `mergeOutputs`, `createHookEngine` | planned | the input of each event, the five handler types, exit codes and `onFailure`, the JSON output, the merged outcome |
+
+Selection also applies the gates of hooks.md: `disableAllHooks` (managed hooks survive it unless the
+managed level sets it), workspace trust for settings-file hooks (and for a project skill's), the
+stricter folder trust for a project subagent's frontmatter hooks, and plugin enablement. A settings
+handler defined in several files runs once; a plugin's or skill's copy stays separate. A Monitor
+call that reached a hook through a `Bash` matcher is reported in `monitor`, with whether the hook's
+`allow` and `updatedInput` apply to it. `EventFactsOf<E>` is the official input minus the fields
+every event shares, except a shared field an event requires (`agent_type` of `SubagentStart`).
+
 ## Host and sessions (planned)
 
 ```ts

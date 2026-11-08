@@ -106,3 +106,11 @@
   and the Agent, Skill and WebFetch matchers read behaviour and specifier form through a registry
   and a named guard, and their input fields are tied to the SDK's `AgentInput`, `WebFetchInput`
   and `ArtifactInput`.
+- Hook selection (`hooks/select`): `createHookRegistry` and `selectHandlers` pick the handlers an
+  event runs: the event catalog (cadence, supported handler types per event, `EndConversation`
+  skipping both tool events), the field each event's matcher filters on (`MATCHER_TARGETS`, with
+  the narrow grammar of `FileChanged` and `StopFailure`, the canonical model of a model switch, and
+  the events that ignore a matcher), the documented matcher values tied to the SDK unions, `if`
+  evaluated on tool events only, Monitor commands matched by a `Bash` matcher, settings-handler
+  dedupe, `disableAllHooks` with managed precedence, workspace and folder trust, plugin enablement,
+  `once` for skill frontmatter, and the `FileChanged` watch list.

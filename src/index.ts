@@ -39,3 +39,4 @@ export {
   type SdkOnlyTool,
 } from './protocol/tool-names.ts';
 export type * from './protocol/official-tools.ts';
+export * from './hooks/index.ts';
