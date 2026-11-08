@@ -93,9 +93,15 @@ spec('environment.component.Monitor commands', () => {
     expect(resolved.when).toEqual({ kind: 'on-skill-invoke', skill: '${CLAUDE_PLUGIN_ROOT}' });
   });
 
-  test('nothing is exported to the process: no path variable, no option variable', async () => {
-    const resolved = await resolve(monitor({ command: `echo ${everywhere}` }));
-    expect(resolved.environment).toEqual({});
+  test('configured options are not exported: no variable starts with CLAUDE_PLUGIN_OPTION_', async () => {
+    const configured = scopeOf({
+      userConfig: { declared: userConfig.declared, values: { api_token: 's3cret', region: 'eu' } },
+    });
+    const resolved = await resolve(monitor({ command: `echo ${everywhere}` }), configured);
+    const prefixed = Object.keys(resolved.environment).filter((key) =>
+      key.startsWith('CLAUDE_PLUGIN_OPTION_'),
+    );
+    expect(prefixed).toEqual([]);
   });
 
   test('a Windows host gets forward slashes in the command, so a quoted path stays one word', async () => {

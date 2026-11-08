@@ -130,7 +130,7 @@ spec('monitors.field.description', () => {
     }
   });
 
-  test('is kept for the task panel and the notification summaries', () => {
+  test('is kept as declared', () => {
     expect(only([errorLog])[0]?.description).toBe('Application error log');
   });
 });

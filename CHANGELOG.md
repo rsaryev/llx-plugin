@@ -85,6 +85,11 @@
 
 ### Fixed
 
+- Monitors: the duplicate-name error and the first-wins rule, the error for any other `when` string,
+  and the host-owned `description` display and `command` process behaviour are recorded in
+  `spec/judgments.md` (the docs say only "Identifier unique within the plugin"); the `description`
+  test no longer claims the task panel, and the option-variable test now checks the
+  `CLAUDE_PLUGIN_OPTION_` prefix against a scope with configured options.
 - LSP: a refused `extensionToLanguage` now names the keys that lack a dot; `languageIdFor` and
   `lspExtensionConflicts` document a plugin-qualified key (`plugin:server`) so two plugins with the
   same server name stay apart; the integer-like-name ordering limit and the host-owned timeouts are

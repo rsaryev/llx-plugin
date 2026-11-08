@@ -106,7 +106,8 @@ export interface MonitorsRead {
  * Every problem is an error issue, which keeps the plugin from loading. Judgment: an invalid entry
  * is left out and a later entry of a name already taken is left out too (the first keeps the name),
  * while the valid entries are still returned, so a caller that reports and carries on has the rest;
- * the docs say the plugin does not load and give no partial result.
+ * the docs say only "Identifier unique within the plugin" for `name` (the error and the first-wins rule
+ * are the kit's), and give no partial result.
  */
 export function readMonitors(raw: unknown, origin: string): MonitorsRead {
   if (!Array.isArray(raw)) {
