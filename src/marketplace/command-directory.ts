@@ -20,8 +20,11 @@ export interface CopyLimits {
 /** The two ways a directory is too large to copy: the verdict, once a limit is broken. */
 export const tooManyEntries = (maxEntries: number): PluginIssue =>
   error('source', `The printed directory has more than ${maxEntries} entries, too many to copy`);
-export const tooLarge = (): PluginIssue =>
-  error('source', 'The printed directory is larger than 256 MiB, too large to copy');
+/** `256 MiB` for a whole number of MiB (the docs' limit), else the bytes. */
+const sizeText = (bytes: number): string =>
+  bytes % MIB === 0 ? `${bytes / MIB} MiB` : `${bytes} bytes`;
+export const tooLarge = (maxBytes: number): PluginIssue =>
+  error('source', `The printed directory is larger than ${sizeText(maxBytes)}, too large to copy`);
 
 const problem = (message: string): PluginIssue => error('source', message);
 
@@ -64,7 +67,7 @@ async function countEntry(
   if (stat === undefined || stat.isSymlink) return undefined;
   if (stat.isDirectory) tally.pending.push(path);
   tally.bytes += stat.isFile ? stat.size : 0;
-  return tally.bytes > COPY_LIMITS.maxBytes ? tooLarge() : undefined;
+  return tally.bytes > COPY_LIMITS.maxBytes ? tooLarge(COPY_LIMITS.maxBytes) : undefined;
 }
 
 /** In copy mode: the directory is at most 256 MiB with at most 20,000 entries. */

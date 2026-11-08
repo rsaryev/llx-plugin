@@ -1,6 +1,7 @@
 import type { PluginIssue } from '../format/issues.ts';
 import type { PluginFiles } from '../ports/files.ts';
 import type { PortFailure } from '../ports/failure.ts';
+import type { TreePlan } from './copy-plan.ts';
 import type { ArchiveFetchPlan, CommandFetchPlan, FetchPlan } from './types.ts';
 
 /**
@@ -57,24 +58,40 @@ export interface CommitFailure extends PortFailure<'busy' | 'held' | 'permission
 
 export type StagedRemoveFailure = PortFailure<'remove' | 'aborted'>;
 
+/** One install of a staged directory into the cache. */
+export interface StagedCommit {
+  readonly stagedPath: string;
+  /** A version folder of the cache. */
+  readonly destination: string;
+  /**
+   * What the copy does with each symbolic link (`planTreeCopy`): a link within the plugin is
+   * relinked, one elsewhere in the marketplace is replaced by a copy of its target, one outside
+   * the marketplace is left out. Absent when the staged tree holds no link: only then is moving
+   * the directory whole the whole install.
+   */
+  readonly plan?: TreePlan;
+}
+
 /**
  * A directory a host staged a fetched plugin in, so it installs by moving that directory rather
  * than copying files the kit read. It is the host's folder: the kit reads it, asks for it to be
  * moved and removes it, and never writes into it.
+ *
+ * The host does the two other writes of an install itself, from what the kit plans: it creates a
+ * link-mode entry from `InstallFinished.links` (and keeps `mustStayAt` where it is), and it writes
+ * the `.orphaned_at` marker (`orphanMarkerPath`) into each directory of `InstallFinished.orphaned`
+ * or `UninstallSelection.orphaned`.
  */
 export interface StagedDirectory {
   /** The directory as read-only plugin files rooted there; `undefined` when it is not a directory. */
   open(stagedPath: string, signal: AbortSignal): Promise<PluginFiles | undefined>;
   /**
-   * Moves the directory to `destination` (a version folder of the cache) so a reader sees the old
-   * copy or the new, never a mix; an earlier copy at `destination` is moved aside first and moved
-   * back when the move fails. Resolves to `undefined` on success.
+   * Installs the directory at `destination` so a reader sees the old copy or the new, never a mix;
+   * an earlier copy at `destination` is moved aside first and moved back when the install fails.
+   * With a `plan`, the tree is materialized as the plan says (relink, dereference, skip) before it
+   * takes the place; without one it is moved whole. Resolves to `undefined` on success.
    */
-  commit(
-    stagedPath: string,
-    destination: string,
-    signal: AbortSignal,
-  ): Promise<undefined | CommitFailure>;
+  commit(request: StagedCommit, signal: AbortSignal): Promise<undefined | CommitFailure>;
   /** Removes the directory; one that is already gone is removed. Resolves to `undefined` on success. */
   remove(stagedPath: string, signal: AbortSignal): Promise<undefined | StagedRemoveFailure>;
 }

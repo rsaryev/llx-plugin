@@ -202,6 +202,20 @@ spec(`${COPY_LINK}.Include node_modules`, () => {
   test('a plugin loaded in place from a local marketplace gets no install into the source directory either', () => {
     expect(decide(from('directory', relative)).dependencyInstall).toBe(false);
   });
+
+  test('a plugin loaded from a session directory or a skills directory installs no Node.js packages (judgment)', () => {
+    for (const kind of ['session-directory', 'skills-directory'] as const) {
+      expect(decide({ kind })).toMatchObject({
+        mode: 'in-place',
+        cached: false,
+        dependencyInstall: false,
+      });
+    }
+    expect(decide({ kind: 'session-archive' })).toMatchObject({
+      mode: 'in-place',
+      dependencyInstall: false,
+    });
+  });
 });
 
 spec(`${COPY_LINK}.Not on Windows`, () => {

@@ -9,6 +9,7 @@ import type {
 import type {
   CommitFailure,
   PluginDirectories,
+  StagedCommit,
   StagedDirectory,
 } from '../../src/marketplace/ports.ts';
 
@@ -82,13 +83,13 @@ export function fakeArchive(
 /** A `StagedDirectory` whose `commit` answers `failure` (or succeeds) and that records every call. */
 export function fakeStaged(
   failure?: CommitFailure,
-): StagedDirectory & { readonly commits: { stagedPath: string; destination: string }[] } {
-  const commits: { stagedPath: string; destination: string }[] = [];
+): StagedDirectory & { readonly commits: StagedCommit[] } {
+  const commits: StagedCommit[] = [];
   return {
     commits,
     open: () => Promise.resolve(undefined),
-    commit: (stagedPath, destination) => {
-      commits.push({ stagedPath, destination });
+    commit: (request) => {
+      commits.push(request);
       return Promise.resolve(failure);
     },
     remove: () => Promise.resolve(undefined),

@@ -1,13 +1,13 @@
 /**
  * plugins/host-marketplace.md § Share files within a marketplace with symlinks ("When Claude Code
- * copies the plugin into its cache, it handles each symlink by where the target resolves"); plugins/
- * loading.md § Paths that escape the plugin directory; plugins/marketplace-reference.md § Output
- * that fails the install or update (Too large to copy). A plan over real paths a host resolved.
+ * copies the plugin into its cache, it handles each symlink by where the target resolves");
+ * plugins/marketplace-reference.md § Output that fails the install or update (Too large to copy).
+ * A plan over real paths a host resolved. (plugins/loading.md § Paths that escape the plugin
+ * directory is proven through the loader in tests/loading/path-escape.test.ts.)
  */
 import { describe, expect, test } from 'bun:test';
 import { planTreeCopy, pluginRootIssue, type TreeEntry } from '../../src/marketplace/copy-plan.ts';
-import { relativeFrom } from '../../src/marketplace/link-rule.ts';
-import { escapedPathIssue } from '../../src/marketplace/path-escape.ts';
+import { relativeFrom } from '../../src/format/link-rule.ts';
 import { spec } from '../support/spec.ts';
 
 const PLUGIN = '/m/plugins/meta';
@@ -123,6 +123,55 @@ describe('judgments: the copy plan', () => {
     ]);
   });
 
+  test.each([
+    ['the marketplace root', '/m'],
+    ["the plugin's own parent", '/m/plugins'],
+  ])(
+    'a link to %s would copy the plugin into itself without end, so it is skipped as a cycle',
+    (_, target) => {
+      const plan = planTreeCopy([link('everything', target), file('a.md')], roots);
+      expect(plan.skipped).toEqual([{ path: 'everything', reason: 'cycle' }]);
+      expect(plan.dereferences).toEqual([]);
+      expect(plan.copy).toEqual(['a.md']);
+    },
+  );
+
+  test('a link in a dereferenced directory back to the directory it came from ends there', () => {
+    const shared = '/m/plugins/shared-plugin';
+    const first = planTreeCopy([link('skills', `${shared}/skills`)], roots);
+    expect(first.dereferences.map((one) => one.from)).toEqual([`${shared}/skills`]);
+    // the host plans the dereferenced directory again, below the link, remembering where it is
+    const again = planTreeCopy(
+      [
+        link('skills/back', `${shared}/skills`),
+        link('skills/up', shared),
+        link('skills/home', PLUGIN),
+      ],
+      { ...roots, copying: [`${shared}/skills`] },
+    );
+    expect(again.skipped.map((one) => [one.path, one.reason])).toEqual([
+      ['skills/back', 'cycle'],
+      ['skills/up', 'cycle'],
+    ]);
+    // a link back to the plugin itself stays a relative link, which copies nothing
+    expect(again.relinks.map((one) => one.path)).toEqual(['skills/home']);
+    expect(again.dereferences).toEqual([]);
+  });
+
+  test('two links to one shared directory are not a cycle: both are dereferenced', () => {
+    const plan = planTreeCopy(
+      [link('a', '/m/plugins/shared-plugin/skills'), link('b', '/m/plugins/shared-plugin/skills')],
+      roots,
+    );
+    expect(plan.dereferences).toHaveLength(2);
+    expect(plan.skipped).toEqual([]);
+  });
+
+  test('a link to a file that lies in a directory being copied is not a cycle', () => {
+    const plan = planTreeCopy([link('l', '/m/LICENSE', false)], roots);
+    expect(plan.skipped).toEqual([]);
+  });
+
   test('a plugin directory that leaves its marketplace is refused with the listing line', () => {
     const refused = pluginRootIssue({
       entryPath: './my-plugin',
@@ -144,12 +193,6 @@ describe('judgments: the copy plan', () => {
   });
 });
 
-describe('judgments: component paths', () => {
-  test('a drive-letter path is absolute, on Windows too', () => {
-    expect(COMPONENT('C:\\x\\y.md', { platform: 'windows' })?.severity).toBe('error');
-  });
-});
-
 describe('limits: a tree copied whole (a command source in copy mode)', () => {
   const limits = { maxBytes: 100, maxEntries: 3 };
 
@@ -163,82 +206,19 @@ describe('limits: a tree copied whole (a command source in copy mode)', () => {
 
   test('more bytes than the limit is too large to copy', () => {
     const plan = planTreeCopy([file('a', 60), file('b', 41)], roots, limits);
-    expect(plan.refusals[0]?.message).toContain('too large to copy');
+    expect(plan.refusals.map((one) => one.message)).toEqual([
+      'The printed directory is larger than 100 bytes, too large to copy',
+    ]);
+    expect(
+      planTreeCopy([file('a', 256 * 1024 * 1024 + 1)], roots, {
+        maxBytes: 256 * 1024 * 1024,
+        maxEntries: 9,
+      }).refusals[0]?.message,
+    ).toBe('The printed directory is larger than 256 MiB, too large to copy');
     expect(planTreeCopy([file('a', 60), file('b', 40)], roots, limits).refusals).toEqual([]);
   });
 
   test('without limits nothing is refused for size', () => {
     expect(planTreeCopy([file('a', 10 ** 12)], roots).refusals).toEqual([]);
-  });
-});
-
-const COMPONENT = (written: string, rest: Record<string, unknown> = {}) =>
-  escapedPathIssue({
-    component: 'commands',
-    written,
-    platform: 'posix',
-    pluginRoot: PLUGIN,
-    marketplaceRoot: '/m',
-    ...rest,
-  });
-
-spec('install.loading.Paths that escape the plugin directory', () => {
-  test('a path that points outside the plugin as written is rejected, whether declared in plugin.json or in an entry', () => {
-    expect(COMPONENT('./../shared.md')?.message).toBe(
-      'commands path escapes plugin directory: ./../shared.md',
-    );
-    expect(COMPONENT('../shared-utils')?.severity).toBe('error');
-    expect(COMPONENT('/etc/commands.md')?.message).toContain('path escapes plugin directory');
-  });
-
-  test('a symlink that leads outside the plugin is rejected, and the message says where it resolves', () => {
-    expect(
-      COMPONENT('./commands/deploy.md', { resolvesTo: '/home/user/shared/deploy.md' })?.message,
-    ).toBe(
-      'commands path escapes plugin directory: ./commands/deploy.md — it resolves to /home/user/shared/deploy.md, outside the plugin directory',
-    );
-  });
-
-  test('a link to another plugin within the same marketplace is not rejected', () => {
-    expect(
-      COMPONENT('./skills/foo', { resolvesTo: '/m/plugins/shared-plugin/skills/foo' }),
-    ).toBeUndefined();
-  });
-
-  test('without a marketplace, a link to a sibling directory is outside the plugin', () => {
-    const issue = escapedPathIssue({
-      component: 'skills',
-      written: './skills/foo',
-      platform: 'posix',
-      pluginRoot: PLUGIN,
-      resolvesTo: '/m/plugins/shared-plugin/skills/foo',
-    });
-    expect(issue?.path).toBe('skills');
-  });
-
-  test('on macOS and Linux a path that contains a backslash anywhere is rejected, even when it stays inside', () => {
-    for (const written of [
-      './commands\\deploy.md',
-      '.\\commands/deploy.md',
-      './commands/de\\ploy.md',
-    ]) {
-      expect(COMPONENT(written)?.message).toBe(
-        `commands path escapes plugin directory: ${written}`,
-      );
-    }
-  });
-
-  test('on Windows a backslash is a separator, so a path with forward or back slashes that stays inside loads', () => {
-    for (const written of ['./commands/deploy.md', './commands\\deploy.md']) {
-      expect(COMPONENT(written, { platform: 'windows' })).toBeUndefined();
-    }
-    expect(COMPONENT('.\\..\\shared.md', { platform: 'windows' })?.severity).toBe('error');
-  });
-
-  test('a path inside the plugin, a link within it and a plain relative path are fine', () => {
-    expect(COMPONENT('./commands/deploy.md')).toBeUndefined();
-    expect(
-      COMPONENT('./commands/link.md', { resolvesTo: `${PLUGIN}/shared/deploy.md` }),
-    ).toBeUndefined();
   });
 });

@@ -1,6 +1,6 @@
 import { error, type PluginIssue } from '../format/issues.ts';
 import { tooLarge, tooManyEntries, type CopyLimits } from './command-directory.ts';
-import { isWithin, linkReach, relativeFrom, type LinkReach } from './link-rule.ts';
+import { isWithin, linkReach, relativeFrom, type LinkReach } from '../format/link-rule.ts';
 
 /**
  * What copying a plugin tree into the cache does with each entry (plugins/host-marketplace.md,
@@ -15,7 +15,9 @@ import { isWithin, linkReach, relativeFrom, type LinkReach } from './link-rule.t
  * dereference into, only a link within the plugin's own directory is kept.
  *
  * A dereferenced directory is the host's to list and plan again, with its children's paths below
- * the link's; the host copies each real directory once, so a cycle of links ends (spec/
+ * the link's and its real path added to `TreeRoots.copying`. A link to a directory that is, or
+ * contains, one being copied (the marketplace root, the plugin's own parent, a sibling that links
+ * back) would copy the same tree again without end, so it is skipped as a `cycle` (spec/
  * judgments.md). A link whose target does not exist is skipped (judgment).
  */
 
@@ -35,6 +37,11 @@ export interface TreeRoots {
   readonly pluginRoot: string;
   /** The marketplace's real path; absent for a plugin installed from a local path or in copy mode. */
   readonly marketplaceRoot?: string;
+  /**
+   * The real paths of the directories already being copied above the one planned now: each
+   * dereferenced directory the host went into, in order. The plugin root is always one.
+   */
+  readonly copying?: readonly string[];
 }
 
 export interface Relink {
@@ -50,7 +57,7 @@ export interface Dereference {
   readonly isDirectory: boolean;
 }
 
-export type SkipReason = 'outside-marketplace' | 'dangling';
+export type SkipReason = 'outside-marketplace' | 'dangling' | 'cycle';
 
 export interface TreePlan {
   /** Files and directories copied as they are. */
@@ -75,6 +82,11 @@ const withinPlugin = (link: Link, target: { path: string }, roots: TreeRoots): D
   return { relink: relativeFrom(directoryOf(link.path), rel) };
 };
 
+/** A directory that is, or contains, one being copied: copying it would copy that one again. */
+const closesCycle = (target: { path: string; isDirectory: boolean }, roots: TreeRoots): boolean =>
+  target.isDirectory &&
+  [roots.pluginRoot, ...(roots.copying ?? [])].some((open) => isWithin(target.path, open));
+
 /** What each reach does with a link: the rule of the docs' three bullets, one entry per reach. */
 const BY_REACH: {
   readonly [R in LinkReach]: (
@@ -84,9 +96,10 @@ const BY_REACH: {
   ) => Decision;
 } = {
   'within-plugin': withinPlugin,
-  'within-marketplace': (link, target) => ({
-    dereference: { path: link.path, from: target.path, isDirectory: target.isDirectory },
-  }),
+  'within-marketplace': (link, target, roots) =>
+    closesCycle(target, roots)
+      ? { skip: 'cycle' }
+      : { dereference: { path: link.path, from: target.path, isDirectory: target.isDirectory } },
   outside: () => ({ skip: 'outside-marketplace' }),
 };
 
@@ -100,7 +113,7 @@ function decideLink(link: Link, roots: TreeRoots): Decision {
 function limitRefusals(entries: readonly TreeEntry[], limits: CopyLimits): readonly PluginIssue[] {
   if (entries.length > limits.maxEntries) return [tooManyEntries(limits.maxEntries)];
   const bytes = entries.reduce((total, one) => total + one.bytes, 0);
-  return bytes > limits.maxBytes ? [tooLarge()] : [];
+  return bytes > limits.maxBytes ? [tooLarge(limits.maxBytes)] : [];
 }
 
 /** A plan of copying `entries`; `limits` apply to a tree that is copied whole (a `command` source in copy mode). */

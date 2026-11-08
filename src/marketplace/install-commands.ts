@@ -1,4 +1,5 @@
 import { error, type PluginIssue } from '../format/issues.ts';
+import { OFFICIAL_MARKETPLACE_ADD } from './install-hosts.ts';
 import { PLUGIN_ACTIVE, RELOAD_TO_APPLY, type InstallSurface } from './install-errors.ts';
 import { defaultScope, type ChosenScope } from './install-scopes.ts';
 
@@ -97,11 +98,6 @@ export function shellInstallLines(input: {
   return [...added, `Successfully installed plugin: ${input.pluginId} (scope: ${input.scope})`];
 }
 
-/** `claude plugin install` in a shell: "plugins it installs load the next time you start Claude Code, or when you run `/reload-plugins` in a session that's already open". */
-export const SHELL_INSTALL_LOADS = ['next-start', 'reload-plugins'] as const;
-
-const OFFICIAL = { name: 'claude-plugins-official', source: 'anthropics/claude-plugins-official' };
-
 /**
  * "On a machine where no one has opened an interactive Claude Code session yet, the official
  * marketplace isn't registered, so a script that installs from it runs `claude plugin marketplace
@@ -111,8 +107,10 @@ export function shellInstallPrelude(input: {
   readonly marketplace: string;
   readonly registered: readonly string[];
 }): readonly string[] {
-  const needed = input.marketplace === OFFICIAL.name && !input.registered.includes(OFFICIAL.name);
-  return needed ? [`claude plugin marketplace add ${OFFICIAL.source}`] : [];
+  const needed =
+    input.marketplace === OFFICIAL_MARKETPLACE_ADD.name &&
+    !input.registered.includes(OFFICIAL_MARKETPLACE_ADD.name);
+  return needed ? [`claude plugin marketplace add ${OFFICIAL_MARKETPLACE_ADD.source}`] : [];
 }
 
 // ---- the install summary ----
@@ -157,48 +155,3 @@ export function installSummary(facts: SummaryFacts): InstallSummary {
   const setup = facts.bundledServerNeedsSetup ? [SETUP] : [];
   return { lines: [PLUGIN_ACTIVE, ...setup], runsReload: false, pending: false };
 }
-
-// ---- where a plugin can be installed from ----
-
-export type InstallHost = 'terminal' | 'jetbrains' | 'non-interactive' | 'agent-sdk' | 'cloud';
-
-export interface InstallHostFacts {
-  /** `/plugin` runs here. */
-  readonly pluginPanel: boolean;
-  /** What to use to install and manage plugins here. */
-  readonly installWith:
-    | 'panel'
-    | 'terminal-steps'
-    | 'shell-commands'
-    | 'sdk-plugins-option'
-    | 'none';
-  /** The reply to `/plugin` where it does not run. */
-  readonly panelReply?: string;
-  /** Plugins already installed on the machine, or enabled by the repository's settings, load. */
-  readonly loadsInstalled: boolean | undefined;
-}
-
-export const INSTALL_HOSTS: { readonly [H in InstallHost]: InstallHostFacts } = {
-  terminal: { pluginPanel: true, installWith: 'panel', loadsInstalled: true },
-  // "the JetBrains plugin runs Claude Code in the IDE's terminal, so use the Terminal tab's steps there"
-  jetbrains: { pluginPanel: true, installWith: 'terminal-steps', loadsInstalled: true },
-  // "`/plugin` doesn't run ... Plugins you already installed do load."
-  'non-interactive': {
-    pluginPanel: false,
-    installWith: 'shell-commands',
-    panelReply: "/plugin isn't available in this environment.",
-    loadsInstalled: true,
-  },
-  'agent-sdk': { pluginPanel: false, installWith: 'sdk-plugins-option', loadsInstalled: undefined },
-  // "has no plugin browser and doesn't load the plugins you installed on your own machine or the
-  // ones your repository's `.claude/settings.json` turns on"
-  cloud: { pluginPanel: false, installWith: 'none', loadsInstalled: false },
-};
-
-/** What `/plugin` answers on a host: its own reply where the panel does not run and has one, else nothing (the panel opens or the host has none). */
-export const pluginCommandReply = (host: InstallHost): string | undefined =>
-  INSTALL_HOSTS[host].panelReply;
-
-/** Whether plugins installed on the machine, or enabled by the repository, load on the host; `undefined` where the docs say nothing. */
-export const loadsInstalledPlugins = (host: InstallHost): boolean | undefined =>
-  INSTALL_HOSTS[host].loadsInstalled;

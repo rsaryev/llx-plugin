@@ -4,6 +4,7 @@ export type {
   CommitFailure,
   FetchedPlugin,
   PreviousCopy,
+  StagedCommit,
   StagedDirectory,
   StagedRemoveFailure,
 } from './ports.ts';
@@ -18,7 +19,7 @@ export {
   type ModeInput,
   type PrintedDirectory,
 } from './install-mode.ts';
-export { isWithin, linkReach, relativeFrom, type LinkReach } from './link-rule.ts';
+export { isWithin, linkReach, relativeFrom, type LinkReach } from '../format/link-rule.ts';
 export {
   planTreeCopy,
   pluginRootIssue,
@@ -29,7 +30,7 @@ export {
   type TreePlan,
   type TreeRoots,
 } from './copy-plan.ts';
-export { escapedPathIssue, type DeclaredPath } from './path-escape.ts';
+export { escapedPathIssue, type DeclaredPath } from '../format/path-escape.ts';
 export {
   planInstallFinish,
   planInstallStart,
@@ -53,7 +54,6 @@ export {
 } from './install-failures.ts';
 export { commitStagedPlugin } from './staged-commit.ts';
 export {
-  notInstalledInScope,
   selectUninstall,
   type UninstallSelection,
   type UninstallSelector,
@@ -61,6 +61,7 @@ export {
 export {
   MAX_POINTER_BYTES,
   lfsPointerIssue,
+  lfsPointerIssues,
   readLfsPointer,
   type LfsPointer,
 } from './lfs-pointer.ts';
@@ -84,18 +85,27 @@ export {
   type SessionOnlyRow,
 } from './session-origins.ts';
 export {
-  INSTALL_HOSTS,
-  SHELL_INSTALL_LOADS,
   installSummary,
-  loadsInstalledPlugins,
   planInstallCommand,
-  pluginCommandReply,
   shellInstallLines,
   shellInstallPrelude,
-  type InstallHostFacts,
   type InstallCommand,
   type InstallCommandPlan,
   type InstallSummary,
-  type InstallHost,
   type SummaryFacts,
 } from './install-commands.ts';
+export {
+  OFFICIAL_MARKETPLACE_ADD,
+  installWith,
+  loadsInstalledPlugins,
+  marketplacesAddedAtStart,
+  planPluginApply,
+  planPluginCommand,
+  scopeChoices,
+  type ApplyMoment,
+  type ApplyOrigin,
+  type InstallHost,
+  type InstallWith,
+  type MarketplaceAdd,
+  type PluginCommandPlan,
+} from './install-hosts.ts';

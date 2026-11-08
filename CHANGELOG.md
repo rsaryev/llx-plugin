@@ -24,6 +24,25 @@
 
 ### Fixed
 
+- Install and cache lifecycle (review fixes): an install of a source kind the kit cannot fetch is
+  refused with `This plugin uses a source type your Claude Code version does not support...`; a
+  link-mode install without the printed directory or its entries, or with an entry name that is
+  empty, `.`, `..` or holds a `/`, plans nothing, and a plan reports `copy` and `mustStayAt`; a
+  version that cannot name a folder no longer refuses a plugin loaded in place; two spellings of one
+  project folder on Windows are one install (`planInstallFinish` takes `platform`); `dirsToOrphan`
+  and `orphanSweep` take the store layout and skip folders outside the cache, and `selectUninstall`
+  (now taking `plugin` and `layout`) returns the `orphaned` folders and the not-installed issue and
+  removes nothing at project or local scope without a folder; `planTreeCopy` skips a link that
+  closes a cycle (`copying`), and its too-large message names the limit given; the loader's
+  `locate` now decides every declared path through `escapedPathIssue` (moved to `format/path-escape`;
+  a backslash on macOS and Linux, a drive path, and links between plugins of one marketplace;
+  `loadPlugin` and `discoverComponents` take `platform` and `roots`); `lfsPointerIssues` warns for
+  each pointer file of a cloned plugin and CRLF pointers are read; `StagedDirectory.commit` takes
+  a `StagedCommit` with the `TreePlan`; the host surfaces gained the desktop app and VS Code, what
+  `/plugin` opens, the scope choices, when an install applies and the official marketplace at the
+  first interactive start (`planPluginCommand`, `planPluginApply`, `scopeChoices`,
+  `marketplacesAddedAtStart`; `INSTALL_HOSTS` is no longer public).
+
 - Plugin versions (review fixes): a stated or computed version that is not one folder name (`../x`,
   `a/b`) no longer reaches the cache path (`isVersionSegment`; it is skipped for the next source of a
   version, else `unknown`); a `git-subdir` input always carries its `subdir`; `inGitMarketplace` is

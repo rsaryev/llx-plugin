@@ -2,12 +2,13 @@ import { error, type PluginIssue } from '../format/issues.ts';
 import { STANDARD_LAYOUT } from '../format/layout.ts';
 import { readManifest } from '../format/manifest.ts';
 import type { PluginManifest } from '../format/manifest-schema.ts';
+import type { LinkRoots } from '../format/path-escape.ts';
 import type { CollectOptions } from '../format/mcp-sources.ts';
 import { nameLoadIssues } from '../format/names.ts';
 import type { PluginFiles } from '../ports/index.ts';
 import { channelIssues } from './channels.ts';
 import { COMPONENT_READERS } from './component-readers.ts';
-import { discoverComponents } from './discover.ts';
+import { discoverComponents, type DiscoverOptions } from './discover.ts';
 import type { LoadedPlugin, Plugin } from './plugin-model.ts';
 import { readJson } from './read-json.ts';
 import type { ComponentValues, ReaderContext } from './reader-types.ts';
@@ -25,6 +26,10 @@ export interface LoadPluginInput {
   readonly bundles?: CollectOptions['bundles'];
   /** The values saved for each bundled server's `user_config`. */
   readonly bundleSettings?: CollectOptions['bundleSettings'];
+  /** The platform the host runs on; a backslash in a declared path escapes the plugin on `posix`. Defaults to `posix`. */
+  readonly platform?: 'posix' | 'windows';
+  /** Where the plugin and its marketplace really are, so a link to another plugin of the marketplace loads. */
+  readonly roots?: LinkRoots;
   readonly signal?: AbortSignal;
 }
 
@@ -120,6 +125,13 @@ async function readComponents(
   };
 }
 
+/** What decides whether a declared path leaves the plugin, from the input. */
+const discoverOptionsOf = (input: LoadPluginInput): DiscoverOptions => ({
+  ...(input.platform && { platform: input.platform }),
+  ...(input.roots && { roots: input.roots }),
+  ...(input.signal && { signal: input.signal }),
+});
+
 /**
  * Loads a plugin folder into a typed `Plugin` (docs/API.md, "Loading"): the optional manifest, every
  * component in the standard layout and the manifest's paths, each reader's issues collected. Never
@@ -135,7 +147,12 @@ export async function loadPlugin(input: LoadPluginInput): Promise<LoadedPlugin> 
   const named = nameOf(step.manifest, input.fallbackName);
   const issues: PluginIssue[] = [...step.issues, ...named.issues];
   if (named.name === undefined) return { plugin: undefined, issues };
-  const discovered = await discoverComponents(files, step.manifest, named.name, signal);
+  const discovered = await discoverComponents(
+    files,
+    step.manifest,
+    named.name,
+    discoverOptionsOf(input),
+  );
   const context: ReaderContext = {
     files,
     manifest: step.manifest,

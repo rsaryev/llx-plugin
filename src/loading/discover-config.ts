@@ -48,7 +48,7 @@ async function resolveItem(
   context: DiscoverContext,
 ): Promise<Found<ConfigInput>> {
   if ('inline' in item) return { found: [{ inline: item.inline }], issues: [] };
-  const located = await locate(context.files, kind, item.written, context.signal);
+  const located = await locate(context, kind, item.written);
   if (located.issue) return { found: [], issues: [located.issue] };
   if (!located.stat) {
     const missing: PluginIssue[] = declared ? [error(kind, pathNotFound(kind, item.written))] : [];
@@ -89,7 +89,7 @@ export async function discoverConfig(
 /** The `settings.json` at the plugin root, when it is there and inside the plugin. */
 export async function discoverSettings(context: DiscoverContext): Promise<Found<string>> {
   const { location } = STANDARD_LAYOUT.settings;
-  const located = await locate(context.files, 'settings', location, context.signal);
+  const located = await locate(context, 'settings', location);
   if (located.issue) return { found: [], issues: [located.issue] };
   return { found: located.stat?.isFile ? [location] : [], issues: [] };
 }
@@ -97,7 +97,7 @@ export async function discoverSettings(context: DiscoverContext): Promise<Found<
 /** `bin/`: whether it exists (a plugin "that has this directory") and the files directly in it. */
 export async function discoverBin(context: DiscoverContext): Promise<Discovered['bin']> {
   const { location } = STANDARD_LAYOUT.bin;
-  const located = await locate(context.files, 'bin', location, context.signal);
+  const located = await locate(context, 'bin', location);
   if (!located.stat?.isDirectory) return { present: false, files: [] };
   const entries = (await context.files.list(location, context.signal)) ?? [];
   return {

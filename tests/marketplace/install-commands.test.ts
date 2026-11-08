@@ -4,19 +4,14 @@
  * in a session, Add and install from your shell), § JetBrains, non-interactive runs, and the Agent
  * SDK. Plans of what each command opens, adds, asks and prints.
  */
-import { describe, expect, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import {
-  INSTALL_HOSTS,
   installSummary,
-  loadsInstalledPlugins,
-  pluginCommandReply,
   planInstallCommand,
-  SHELL_INSTALL_LOADS,
   shellInstallLines,
   shellInstallPrelude,
   type InstallCommandPlan,
 } from '../../src/marketplace/install-commands.ts';
-import { inlinePluginId } from '../../src/marketplace/session-origins.ts';
 import { spec } from '../support/spec.ts';
 
 const plan = (...args: Parameters<typeof planInstallCommand>): InstallCommandPlan => {
@@ -71,19 +66,9 @@ spec('install.guide.Install a plugin', () => {
       }),
     ).toEqual({ lines: ['Run /reload-plugins to apply.'], runsReload: false, pending: true });
   });
-
-  test('a cloud session has no plugin browser and does not load the plugins installed on your machine or turned on by the repository', () => {
-    expect(INSTALL_HOSTS.cloud).toMatchObject({ pluginPanel: false, installWith: 'none' });
-    expect(loadsInstalledPlugins('cloud')).toBe(false);
-    expect(loadsInstalledPlugins('terminal')).toBe(true);
-  });
 });
 
 spec('install.guide.Install from your shell.When the plugins load', () => {
-  test('plugins it installs load the next time you start Claude Code, or on /reload-plugins in an open session', () => {
-    expect(SHELL_INSTALL_LOADS).toEqual(['next-start', 'reload-plugins']);
-  });
-
   test('the command installs now, at user scope unless told otherwise, and prints the success line', () => {
     expect(
       plan({ surface: 'shell', plugin: 'formatter@your-org', scope: 'project' }),
@@ -189,51 +174,5 @@ spec('install.guide.Add and install from your shell', () => {
       'Successfully added marketplace: plugins (declared in user settings)',
       'Successfully installed plugin: deploy-helper@plugins (scope: user)',
     ]);
-  });
-});
-
-const NON_INTERACTIVE = 'install.guide.JetBrains, non-interactive runs, and the Agent SDK';
-
-spec(`${NON_INTERACTIVE}.JetBrains IDEs`, () => {
-  test('the plugin runs Claude Code in the IDE terminal, so the Terminal tab steps apply there', () => {
-    expect(INSTALL_HOSTS.jetbrains).toMatchObject({
-      pluginPanel: true,
-      installWith: 'terminal-steps',
-    });
-  });
-});
-
-spec(`${NON_INTERACTIVE}.claude -p and other non-interactive runs`, () => {
-  test('/plugin does not run and Claude replies it is not available; plugins already installed do load, and are managed from the shell', () => {
-    expect(pluginCommandReply('non-interactive')).toBe(
-      "/plugin isn't available in this environment.",
-    );
-    expect(loadsInstalledPlugins('non-interactive')).toBe(true);
-    expect(INSTALL_HOSTS['non-interactive']).toMatchObject({
-      pluginPanel: false,
-      installWith: 'shell-commands',
-    });
-    expect(pluginCommandReply('terminal')).toBeUndefined();
-  });
-});
-
-spec(`${NON_INTERACTIVE}.Agent SDK`, () => {
-  test('plugins load through the SDK plugins option, which is a session-only <name>@inline plugin like --plugin-dir', () => {
-    expect(INSTALL_HOSTS['agent-sdk']).toMatchObject({
-      pluginPanel: false,
-      installWith: 'sdk-plugins-option',
-    });
-    expect(inlinePluginId('my-plugin')).toBe('my-plugin@inline');
-  });
-});
-
-describe('judgments: install commands', () => {
-  test('the docs say nothing of whether installed plugins load through the Agent SDK', () => {
-    expect(loadsInstalledPlugins('agent-sdk')).toBeUndefined();
-  });
-
-  test('a terminal installs through the panel, and no host but the terminal and JetBrains has one', () => {
-    expect(INSTALL_HOSTS.terminal.installWith).toBe('panel');
-    expect(Object.values(INSTALL_HOSTS).filter((host) => host.pluginPanel)).toHaveLength(2);
   });
 });

@@ -16,7 +16,9 @@ import {
   settingsIgnoredWarning,
   UNSUPPORTED_SOURCE_TYPE,
 } from '../../src/marketplace/install-failures.ts';
+import { planInstallStart } from '../../src/marketplace/install-plan.ts';
 import type { CommitFailure } from '../../src/marketplace/ports.ts';
+import type { PluginSource } from '../../src/format/marketplace/types.ts';
 import { spec } from '../support/spec.ts';
 
 const T = 'install.troubleshooting';
@@ -61,10 +63,30 @@ spec(`${T}.An npm plugin source must name a registry package`, () => {
 });
 
 spec(`${T}.This plugin uses a source type your Claude Code version does not support`, () => {
-  test('stops with the message and the line that follows it', () => {
-    expect(UNSUPPORTED_SOURCE_TYPE).toBe(
-      'This plugin uses a source type your Claude Code version does not support. Update Claude Code and try again.',
-    );
+  // An entry written for a newer Claude Code names a kind this build cannot type: the source
+  // parser cannot produce it, a marketplace file read at install time can.
+  const future: PluginSource = JSON.parse('{ "kind": "future-kind" }');
+
+  test('an install of a source kind the kit cannot fetch stops with the message and the line that follows it', () => {
+    const started = planInstallStart({ source: future, fetch: { platform: 'posix' } });
+    expect(started.fetch).toBeUndefined();
+    expect(started.decision).toBeUndefined();
+    expect(started.issues).toEqual([
+      expect.objectContaining({
+        severity: 'error',
+        message:
+          'This plugin uses a source type your Claude Code version does not support. Update Claude Code and try again.',
+      }),
+    ]);
+    expect(started.issues[0]?.message).toBe(UNSUPPORTED_SOURCE_TYPE);
+  });
+
+  test('a source kind the kit can fetch is not refused with it', () => {
+    const started = planInstallStart({
+      source: { kind: 'github', repo: 'acme/f' },
+      fetch: { platform: 'posix' },
+    });
+    expect(started.issues).toEqual([]);
   });
 });
 

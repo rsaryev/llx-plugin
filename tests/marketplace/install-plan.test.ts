@@ -8,57 +8,20 @@
 import { describe, expect, test } from 'bun:test';
 import type { PluginSource } from '../../src/format/marketplace/types.ts';
 import { decideInstallMode } from '../../src/marketplace/install-mode.ts';
-import {
-  planInstallFinish,
-  planInstallStart,
-  type InstallFinish,
-} from '../../src/marketplace/install-plan.ts';
-import type { InstalledRecords, InstallRecord } from '../../src/marketplace/installed-plugins.ts';
+import { planInstallFinish, planInstallStart } from '../../src/marketplace/install-plan.ts';
+import type { InstalledRecords } from '../../src/marketplace/installed-plugins.ts';
 import { computePluginVersion } from '../../src/marketplace/plugin-version.ts';
 import { copyModeHash } from '../../src/marketplace/version-hash.ts';
-import { createStoreLayout } from '../../src/marketplace/store-layout.ts';
+import { AT, copy, LATER, record } from '../support/install-finish.ts';
 import { realSha256 } from '../support/marketplace-ports.ts';
 import { memoryFiles } from '../support/ports.ts';
 import { spec } from '../support/spec.ts';
-
-const join = (base: string, rel: string): string => `${base}/${rel}`;
-const layout = createStoreLayout('/p', join);
-const AT = '2026-11-08T10:00:00.000Z';
-const LATER = '2026-11-09T10:00:00.000Z';
 
 const start = (source: PluginSource, marketplaceOrigin?: { kind: 'directory'; path: string }) =>
   planInstallStart({
     source,
     fetch: { platform: 'posix', ...(marketplaceOrigin === undefined ? {} : { marketplaceOrigin }) },
   });
-
-const copy = (rest: Partial<InstallFinish> = {}): InstallFinish => {
-  const decided = decideInstallMode({
-    origin: { kind: 'marketplace', source: { kind: 'github', repo: 'acme/f' } },
-    platform: 'posix',
-  });
-  if ('severity' in decided) throw new Error('expected a decision');
-  return {
-    name: 'formatter',
-    marketplace: 'acme',
-    decision: decided,
-    version: { version: '1.0.0', origin: 'manifest' },
-    layout,
-    join,
-    scope: 'user',
-    existing: {},
-    at: AT,
-    ...rest,
-  };
-};
-
-const record = (installPath: string, rest: Partial<InstallRecord> = {}): InstallRecord => ({
-  scope: 'user',
-  installPath,
-  version: 'v',
-  installedAt: AT,
-  ...rest,
-});
 
 describe('planInstallStart', () => {
   test('a github source is cloned and then copied into the cache', () => {
@@ -144,56 +107,6 @@ spec(`${COPY_LINK}.copy`, () => {
     const done = planInstallFinish(copy({ version }));
     expect(version.version).toBe(commandHash);
     expect(done.destination).toBe(`/p/cache/acme/formatter/${commandHash}`);
-  });
-});
-
-spec(`${COPY_LINK}.link`, () => {
-  test('the cache entry is filled with a link to each top-level entry of the printed directory', () => {
-    const decided = decideInstallMode({
-      origin: {
-        kind: 'marketplace',
-        source: { kind: 'command', command: 'tool path', timeoutSeconds: 60, mode: 'link' },
-      },
-      platform: 'posix',
-    });
-    if ('severity' in decided) throw new Error('expected a decision');
-    const done = planInstallFinish(
-      copy({
-        decision: decided,
-        sourceDirectory: '/opt/tool/out',
-        topLevel: ['.claude-plugin', 'skills', 'node_modules'],
-      }),
-    );
-    expect(done.destination).toBe('/p/cache/acme/formatter/1.0.0');
-    expect(done.links).toEqual([
-      { name: '.claude-plugin', target: '/opt/tool/out/.claude-plugin' },
-      { name: 'skills', target: '/opt/tool/out/skills' },
-      { name: 'node_modules', target: '/opt/tool/out/node_modules' },
-    ]);
-  });
-
-  test('a copy has no links', () => {
-    expect(planInstallFinish(copy({ topLevel: ['skills'] })).links).toEqual([]);
-  });
-});
-
-spec(`${COPY_LINK}.Keep the directory in place`, () => {
-  test('every link points into the printed directory, which is the one place the plugin loads from', () => {
-    const decided = decideInstallMode({
-      origin: {
-        kind: 'marketplace',
-        source: { kind: 'command', command: 'tool path', timeoutSeconds: 60, mode: 'link' },
-      },
-      platform: 'posix',
-    });
-    if ('severity' in decided) throw new Error('expected a decision');
-    const done = planInstallFinish(
-      copy({ decision: decided, sourceDirectory: '/opt/tool/out', topLevel: ['skills', 'hooks'] }),
-    );
-    expect(done.links.every((one) => one.target.startsWith('/opt/tool/out/'))).toBe(true);
-    // nothing of the printed directory is copied, so nothing else holds its files
-    expect(done.links).toHaveLength(2);
-    expect(decided.linked).toBe(true);
   });
 });
 
@@ -284,5 +197,54 @@ describe('records', () => {
     expect(done.records).toBe(existing);
     expect(done.issues).toHaveLength(1);
     expect(done.destination).toBeUndefined();
+  });
+
+  test('a plugin loaded in place has no cache folder, so a version that could not name one is still recorded', () => {
+    const decided = decideInstallMode({ origin: { kind: 'skills-directory' }, platform: 'posix' });
+    if ('severity' in decided) throw new Error('expected a decision');
+    const done = planInstallFinish(
+      copy({
+        decision: decided,
+        sourceDirectory: '/s/skills',
+        version: { version: '2026/11 beta', origin: 'manifest' },
+      }),
+    );
+    expect(done.issues).toEqual([]);
+    expect(done.destination).toBeUndefined();
+    expect(done.record).toMatchObject({ installPath: '/s/skills', version: '2026/11 beta' });
+  });
+
+  test('on Windows two spellings of one project folder are one install: the second replaces the first', () => {
+    const first = record('/p/cache/acme/formatter/1.0.0', {
+      scope: 'project',
+      projectPath: 'C:\\work\\app',
+    });
+    const done = planInstallFinish(
+      copy({
+        platform: 'windows',
+        scope: 'project',
+        projectPath: 'c:/work/app',
+        existing: { 'formatter@acme': [first] },
+        version: { version: '1.1.0', origin: 'manifest' },
+      }),
+    );
+    expect(done.records['formatter@acme']).toHaveLength(1);
+    expect(done.record).toMatchObject({ projectPath: 'c:/work/app', installedAt: AT });
+    expect(done.orphaned).toEqual(['/p/cache/acme/formatter/1.0.0']);
+  });
+
+  test('elsewhere two spellings are two folders and two installs', () => {
+    const first = record('/p/cache/acme/formatter/1.0.0', {
+      scope: 'project',
+      projectPath: '/Work/App',
+    });
+    const done = planInstallFinish(
+      copy({
+        scope: 'project',
+        projectPath: '/work/app',
+        existing: { 'formatter@acme': [first] },
+      }),
+    );
+    expect(done.records['formatter@acme']).toHaveLength(2);
   });
 });

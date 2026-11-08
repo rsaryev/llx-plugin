@@ -8,7 +8,12 @@
 import { describe, expect, test } from 'bun:test';
 import { planMarketplaceFetch } from '../../src/marketplace/marketplace-fetch-plan.ts';
 import { planPluginFetch } from '../../src/marketplace/fetch-plan.ts';
-import { lfsPointerIssue, readLfsPointer } from '../../src/marketplace/lfs-pointer.ts';
+import {
+  lfsPointerIssue,
+  lfsPointerIssues,
+  readLfsPointer,
+} from '../../src/marketplace/lfs-pointer.ts';
+import { memoryFiles } from '../support/ports.ts';
 import { spec } from '../support/spec.ts';
 
 const OID = 'a'.repeat(64);
@@ -48,6 +53,40 @@ spec('marketplace.hosting.Keep plugin files out of Git LFS', () => {
     );
     expect(lfsPointerIssue('skills/model.bin').severity).toBe('warning');
   });
+
+  test('a cloned plugin with a pointer file for a component gets a warning that names the file', async () => {
+    const files = memoryFiles({
+      '.claude-plugin/plugin.json': '{"name":"p"}',
+      'skills/review/SKILL.md': '# Review\n',
+      'skills/review/model.bin': POINTER,
+      'hooks/hooks.json': POINTER.replaceAll('\n', '\r\n'),
+    });
+    const issues = await lfsPointerIssues(files);
+    expect(issues.map((one) => [one.severity, one.path])).toEqual([
+      ['warning', 'hooks/hooks.json'],
+      ['warning', 'skills/review/model.bin'],
+    ]);
+    expect(issues[0]?.message).toContain('hooks/hooks.json is a Git LFS pointer file');
+    expect(issues[0]?.message).toContain('Keep plugin files out of Git LFS');
+  });
+
+  test('a plugin whose files are real content gets no warning, however small', async () => {
+    const files = memoryFiles({
+      'skills/a/SKILL.md': '# A\n',
+      'commands/x.md': 'version 1\n',
+      'big.txt': POINTER.padEnd(5000, ' '),
+    });
+    expect(await lfsPointerIssues(files)).toEqual([]);
+  });
+
+  test('a pointer in .git, behind a link or past 1 KiB is not reported', async () => {
+    const files = memoryFiles({
+      '.git/lfs/pointer': POINTER,
+      'linked.bin': { symlink: 'skills/model.bin' },
+      'skills/model.bin': 'real content',
+    });
+    expect(await lfsPointerIssues(files)).toEqual([]);
+  });
 });
 
 describe('judgments: LFS pointers', () => {
@@ -63,5 +102,9 @@ describe('judgments: LFS pointers', () => {
     ]) {
       expect(readLfsPointer(text)).toBeUndefined();
     }
+  });
+
+  test('a pointer whose lines end with CRLF, as a checkout that converts line ends leaves it, is one', () => {
+    expect(readLfsPointer(POINTER.replaceAll('\n', '\r\n'))).toEqual({ oid: OID, size: 12345 });
   });
 });

@@ -1,5 +1,5 @@
-import { error, type PluginIssue } from '../format/issues.ts';
-import { pathEscapes } from '../format/messages.ts';
+import type { PluginIssue } from '../format/issues.ts';
+import { escapedPathIssue, type LinkRoots } from '../format/path-escape.ts';
 import type { FileStat, PluginFiles } from '../ports/index.ts';
 
 /**
@@ -21,28 +21,42 @@ export interface Located {
   readonly issue?: PluginIssue;
 }
 
-const leavesFolder = (path: string): boolean => path.startsWith('/') || /^\.\.(\/|$)/.test(path);
+/** What `locate` needs: the folder, and what decides whether a path leaves it. */
+export interface LocateContext {
+  readonly files: PluginFiles;
+  /** The backslash rule is the platform's: "on macOS and Linux" a backslash escapes. */
+  readonly platform: 'posix' | 'windows';
+  /** Where the plugin and its marketplace really are, so links between plugins of one marketplace load. */
+  readonly roots?: LinkRoots;
+  readonly signal?: AbortSignal;
+}
 
 /**
  * Containment and existence (plugins/manifest-reference.md, "Containment and existence"; loading.md,
- * "Paths that escape the plugin directory"): a path with `..`, or a symlink that leads outside the
- * plugin, "doesn't load" and is reported as `<component> path escapes plugin directory: <path>`; a
- * path that is not there is `undefined` and the caller decides whether it was declared.
- * `written` is the spelling the message quotes.
+ * "Paths that escape the plugin directory"): a path with `..`, an absolute path, a backslash on
+ * macOS and Linux, or a symlink that leads outside the plugin (other than to another plugin of
+ * its marketplace) "doesn't load" and is reported as `<component> path escapes plugin directory:
+ * <path>` (`escapedPathIssue`); a path that is not there is `undefined` and the caller decides
+ * whether it was declared. `written` is the spelling the message quotes.
  */
 export async function locate(
-  files: PluginFiles,
+  context: LocateContext,
   component: string,
   written: string,
-  signal?: AbortSignal,
 ): Promise<Located> {
-  const path = rootRelative(written);
-  if (written.split('/').includes('..') || written.startsWith('/')) {
-    return { issue: error(component, pathEscapes(component, written)) };
-  }
-  const stat = await files.stat(path, signal);
-  if (stat?.isSymlink === true && stat.realPath !== undefined && leavesFolder(stat.realPath)) {
-    return { issue: error(component, pathEscapes(component, written, stat.realPath)) };
-  }
+  const declared = { component, written, platform: context.platform };
+  const asWritten = escapedPathIssue(declared);
+  if (asWritten) return { issue: asWritten };
+  const stat = await context.files.stat(rootRelative(written), context.signal);
+  const resolvesTo = stat?.isSymlink === true ? stat.realPath : undefined;
+  const linked =
+    resolvesTo === undefined
+      ? undefined
+      : escapedPathIssue({
+          ...declared,
+          resolvesTo,
+          ...(context.roots && { roots: context.roots }),
+        });
+  if (linked) return { issue: linked };
   return stat && (stat.isFile || stat.isDirectory) ? { stat } : {};
 }
