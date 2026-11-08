@@ -97,6 +97,10 @@
 
 ### Fixed
 
+- Tool responses: `parseAgentResponse` keeps `modelsUsed` as received instead of collapsing repeats
+  and dropping short lists; `parseBashEditDiff` no longer warns on a file marked both created and
+  deleted, and accepts a `hunks` of any shape. Agent tests now cover non-text content blocks and each
+  launch field, and the two judgments moved out of `spec()`.
 - Tool semantics: the limits tools-reference.md states are decided by pure functions instead of
   only the empty-file and default cases. Read: `classifyReadTarget` (binary extensions, images over
   128 MB, notebooks over 100 MB), `classifyReadSize` and `readTokenLimit` (256 KB whole-file

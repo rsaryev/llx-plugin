@@ -39,6 +39,14 @@ describe('agent response (judgments, spec/judgments.md)', () => {
     });
   });
 
+  test('modelsUsed is kept as received: repeats are not collapsed and a short list is not dropped', () => {
+    for (const modelsUsed of [['a', 'a', 'b', 'b', 'a'], ['a', 'a'], ['a'], []]) {
+      const parsed = parseAgentResponse({ ...COMPLETED, modelsUsed });
+      expect(parsed.issues).toEqual([]);
+      expect(parsed.response).toMatchObject({ modelsUsed });
+    }
+  });
+
   test('the response does not alias the input', () => {
     const raw = structuredClone(COMPLETED);
     const parsed = parseAgentResponse(raw);

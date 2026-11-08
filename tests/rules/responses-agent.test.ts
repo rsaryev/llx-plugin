@@ -58,6 +58,15 @@ spec('tools.input.Agent.status', () => {
     );
   });
 
+  test('a launch needs agentId, description, prompt and outputFile, each text', () => {
+    for (const field of ['agentId', 'description', 'prompt', 'outputFile']) {
+      expect(messages(without(LAUNCHED, field))).toEqual([`tool_response.${field}: is required`]);
+      expect(messages({ ...LAUNCHED, [field]: 42 })).toEqual([
+        `tool_response.${field}: expected a string`,
+      ]);
+    }
+  });
+
   test('a status the table does not list is an issue, a missing one too, and no response comes back', () => {
     for (const raw of [{ ...COMPLETED, status: 'finished' }, without(COMPLETED, 'status')]) {
       const parsed = parseAgentResponse(raw);
@@ -103,19 +112,18 @@ spec('tools.input.Agent.content', () => {
     });
   });
 
-  test("a SubagentHandback note is a text block in the report's place and reads the same way", () => {
-    const note = [{ type: 'text', text: 'The report was delivered through SubagentHandback.' }];
-    const parsed = parseAgentResponse({ ...COMPLETED, content: note });
-    expect(parsed.issues).toEqual([]);
-    expect(parsed.response).toMatchObject({ content: note });
-  });
-
   test('a block without text, with a text that is not a string, or that is not text is an issue at its index', () => {
     expect(messages({ ...COMPLETED, content: [{ type: 'text' }] })).toEqual([
       'tool_response.content.0.text: is required',
     ]);
     expect(messages({ ...COMPLETED, content: [{ type: 'text', text: 1 }] })).toEqual([
       'tool_response.content.0.text: expected a string',
+    ]);
+    expect(messages({ ...COMPLETED, content: [{ type: 'image', text: 'x' }] })).toEqual([
+      'tool_response.content.0.type: expected "text"',
+    ]);
+    expect(messages({ ...COMPLETED, content: [{ text: 'x' }] })).toEqual([
+      'tool_response.content.0.type: expected "text"',
     ]);
     expect(messages({ ...COMPLETED, content: 'Found 12 endpoints' })).toEqual([
       'tool_response.content: expected an array',
@@ -136,13 +144,6 @@ spec('tools.input.Agent.resolvedModel', () => {
     expect(parseAgentResponse(COMPLETED).response).toMatchObject({
       resolvedModel: 'claude-sonnet-4-5',
     });
-  });
-
-  test('it may differ from the requested model: "which can differ from the model value in tool_input"', () => {
-    // A request for the alias "sonnet" can resolve to another model when availableModels or an override applies.
-    const parsed = parseAgentResponse({ ...COMPLETED, resolvedModel: 'claude-haiku-4-5' });
-    expect(parsed.issues).toEqual([]);
-    expect(parsed.response).toMatchObject({ resolvedModel: 'claude-haiku-4-5' });
   });
 
   test('on a launch it is the model in use when the agent moved to the background', () => {
@@ -171,34 +172,15 @@ spec('tools.input.Agent.modelsUsed', () => {
     expect(parsed.response).toMatchObject({ modelsUsed: swapped });
   });
 
-  test('consecutive repeats are collapsed, a return to an earlier model is kept', () => {
-    const parsed = parseAgentResponse({
-      ...COMPLETED,
-      modelsUsed: ['a', 'a', 'b', 'b', 'b', 'a'],
-    });
-    expect(parsed.response).toMatchObject({ modelsUsed: ['a', 'b', 'a'] });
-  });
-
-  test('it is set only when the model was swapped: a run on one model has no modelsUsed', () => {
-    for (const modelsUsed of [
-      ['claude-sonnet-4-5'],
-      ['claude-sonnet-4-5', 'claude-sonnet-4-5'],
-      [],
-    ]) {
-      const parsed = parseAgentResponse({ ...COMPLETED, modelsUsed });
-      expect(parsed.issues).toEqual([]);
-      expect(parsed.response).not.toHaveProperty('modelsUsed');
-    }
+  test('a response without modelsUsed has none: it is set only when the model was swapped', () => {
     expect(parseAgentResponse(COMPLETED).response).not.toHaveProperty('modelsUsed');
+    expect(parseAgentResponse(LAUNCHED).response).not.toHaveProperty('modelsUsed');
   });
 
-  test('a launch carries it too, with the same rule', () => {
+  test('a launch carries it too', () => {
     expect(parseAgentResponse({ ...LAUNCHED, modelsUsed: ['a', 'b'] }).response).toMatchObject({
       modelsUsed: ['a', 'b'],
     });
-    expect(parseAgentResponse({ ...LAUNCHED, modelsUsed: ['a'] }).response).not.toHaveProperty(
-      'modelsUsed',
-    );
   });
 
   test('a list of something other than text is an issue at its index', () => {

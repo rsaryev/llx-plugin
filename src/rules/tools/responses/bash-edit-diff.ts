@@ -12,7 +12,7 @@ import { issuesOf, objectOf, RESPONSE_ROOT } from './shape.ts';
  */
 export interface BashEditFile {
   readonly filePath: string;
-  readonly hunks?: readonly unknown[] | undefined;
+  readonly hunks?: unknown;
   /** `true` for a file the command added. */
   readonly created?: boolean | undefined;
   /** `true` for a file the command removed. */
@@ -56,7 +56,7 @@ const SCHEMA = objectOf({
   files: list(
     objectOf({
       filePath: text,
-      hunks: list(z.unknown()).optional(),
+      hunks: z.unknown().optional(),
       created: flag.optional(),
       deleted: flag.optional(),
     }),
@@ -115,12 +115,6 @@ const CHECKS: readonly Check[] = [
       })),
     ),
   ],
-  ({ files = [] }) =>
-    files.flatMap((file, index) =>
-      file.created === true && file.deleted === true
-        ? [warning(`${FIELD}.files.${index}`, 'is marked both created and deleted')]
-        : [],
-    ),
   ({ skipped, files = [] }) =>
     skipped === true && files.length > 0
       ? [

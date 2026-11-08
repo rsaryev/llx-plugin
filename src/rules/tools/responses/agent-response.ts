@@ -59,23 +59,18 @@ export interface AgentResponseParse {
   readonly issues: readonly PluginIssue[];
 }
 
-/** Consecutive repeats collapsed: `a a b b a` is `a b a` ("with consecutive repeats collapsed"). */
-function collapseRepeats(models: readonly string[]): string[] {
-  return models.filter((model, index) => index === 0 || model !== models[index - 1]);
-}
-
 /**
- * `resolvedModel` and `modelsUsed` of either member. `modelsUsed` is "set only when the model was
- * swapped mid-run", so a list that collapses to fewer than two models is not set.
+ * `resolvedModel` and `modelsUsed` of either member, kept as received: the docs describe what
+ * Claude Code emits ("consecutive repeats collapsed; set only when the model was swapped"), not a
+ * rule for the reader.
  */
 function modelFields(
   resolvedModel: string | undefined,
-  modelsUsed: readonly string[] | undefined,
+  modelsUsed: string[] | undefined,
 ): Pick<Completed, 'resolvedModel' | 'modelsUsed'> {
-  const swapped = collapseRepeats(modelsUsed ?? []);
   return {
     ...(resolvedModel === undefined ? {} : { resolvedModel }),
-    ...(swapped.length > 1 ? { modelsUsed: swapped } : {}),
+    ...(modelsUsed === undefined ? {} : { modelsUsed }),
   };
 }
 

@@ -126,15 +126,6 @@ spec('tools.input.Bash.files', () => {
     ]);
   });
 
-  test('a file cannot be both added and removed by one command: a warning', () => {
-    expect(
-      problems({
-        changedFiles: [APP],
-        files: [{ filePath: APP, hunks: [], created: true, deleted: true }],
-      }),
-    ).toEqual(['warning tool_response.bashEditDiff.files.0: is marked both created and deleted']);
-  });
-
   test('a diff entry needs a filePath of text; created and deleted are booleans', () => {
     expect(problems({ changedFiles: [], files: [{ hunks: [] }] })).toEqual([
       'error tool_response.bashEditDiff.files.0.filePath: is required',
@@ -252,6 +243,19 @@ describe('bash edit diff (judgments, spec/judgments.md)', () => {
     expect(read({ changedFiles: [APP], files: [{ filePath: APP, created: true }] }).issues).toEqual(
       [],
     );
+  });
+
+  test('hunks is kept as it came whatever its shape: the docs show it and do not type it', () => {
+    for (const hunks of [{ a: 1 }, 'diff', 3, null]) {
+      const parsed = read({ changedFiles: [APP], files: [{ filePath: APP, hunks }] });
+      expect(parsed.issues).toEqual([]);
+      expect(parsed.diff?.files?.[0]?.hunks).toEqual(hunks);
+    }
+  });
+
+  test('created and deleted together are not refused: the docs do not make them exclusive', () => {
+    const files = [{ filePath: APP, hunks: [], created: true, deleted: true }];
+    expect(problems({ changedFiles: [APP], files })).toEqual([]);
   });
 
   test('fields the table does not list are not part of the diff', () => {
