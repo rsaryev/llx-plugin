@@ -1,4 +1,5 @@
 import { blocksLoading, error, warning, type PluginIssue } from '../issues.ts';
+import { withoutDuplicates, type IndexedEntry } from './entry-checks.ts';
 import { pluginIdIssues, desktopNameIssues } from './ids.ts';
 import { marketplaceNameIssues, validationNameIssues } from './marketplace-names.ts';
 import { isRecord, readTopLevel, typeName, type TopLevel } from './marketplace-schema.ts';
@@ -7,6 +8,7 @@ import type {
   MarketplaceContext,
   MarketplaceEntry,
   MarketplaceResult,
+  ReadMode,
 } from './types.ts';
 
 /**
@@ -29,6 +31,8 @@ export interface EntrySlot {
   /** `metadata.pluginRoot`: the directory bare relative sources resolve under. */
   readonly pluginRoot?: string;
   readonly context: MarketplaceContext;
+  /** `load` unless the marketplace is being validated. */
+  readonly mode?: ReadMode;
 }
 
 /** Reads one raw `plugins[i]` into an entry; never throws, an entry that cannot load is `undefined`. */
@@ -46,10 +50,8 @@ export const unreadEntry: EntryReader = (_raw, slot) => ({
 const NO_DESCRIPTION =
   'No marketplace description provided. Adding a description helps users understand what this marketplace offers';
 
-type Mode = 'load' | 'validate';
-
 /** The name's reports: the grammar, Claude Desktop, and the reserved names (`validate` leaves out what only adding or loading refuses). */
-function nameIssues(name: string, mode: Mode, context: MarketplaceContext): PluginIssue[] {
+function nameIssues(name: string, mode: ReadMode, context: MarketplaceContext): PluginIssue[] {
   return [
     ...pluginIdIssues('marketplace', name, 'name'),
     ...desktopNameIssues('marketplace', name, 'name'),
@@ -79,24 +81,26 @@ function readEntries(
   top: TopLevel,
   context: MarketplaceContext,
   readEntry: EntryReader,
+  mode: ReadMode,
 ): { entries: MarketplaceEntry[]; issues: PluginIssue[] } {
-  const entries: MarketplaceEntry[] = [];
+  const read: IndexedEntry[] = [];
   const issues: PluginIssue[] = [];
   const pluginRoot = top.metadata?.pluginRoot;
   top.plugins.forEach((raw, index) => {
-    const slot = { index, context, ...(pluginRoot === undefined ? {} : { pluginRoot }) };
+    const slot = { index, context, mode, ...(pluginRoot === undefined ? {} : { pluginRoot }) };
     const reading = readEntry(raw, slot);
     issues.push(...reading.issues);
-    if (reading.entry !== undefined) entries.push(reading.entry);
+    if (reading.entry !== undefined) read.push({ index, entry: reading.entry });
   });
-  return { entries, issues };
+  const unique = withoutDuplicates(read);
+  return { entries: unique.entries, issues: [...issues, ...unique.issues] };
 }
 
 function assemble(
   raw: unknown,
   context: MarketplaceContext,
   readEntry: EntryReader,
-  mode: Mode,
+  mode: ReadMode,
 ): MarketplaceResult {
   if (!isRecord(raw)) {
     return {
@@ -109,7 +113,7 @@ function assemble(
   const { top, issues: topIssues } = readTopLevel(raw);
   const named = typeof raw.name === 'string' ? nameIssues(raw.name, mode, context) : [];
   if (top === undefined) return { marketplace: undefined, issues: [...topIssues, ...named] };
-  const { entries, issues: entryIssues } = readEntries(top, context, readEntry);
+  const { entries, issues: entryIssues } = readEntries(top, context, readEntry, mode);
   const issues = [...topIssues, ...named, ...completenessIssues(top), ...entryIssues];
   if (blocksLoading([...topIssues, ...named])) return { marketplace: undefined, issues };
   const marketplace: Marketplace = {

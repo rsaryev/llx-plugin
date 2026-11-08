@@ -113,7 +113,7 @@ function readMetadata(value: unknown): Read<MarketplaceMetadata> {
 }
 
 /** The warning the docs quote for a key Claude Code does not read, at `path`. */
-const unknownField = (key: string, path: string): PluginIssue =>
+export const unknownField = (key: string, path: string): PluginIssue =>
   warning(path, `Unknown field '${key}'. Claude Code ignores it at load time.`);
 
 function readStringList(value: unknown, path: string): Read<readonly string[]> {

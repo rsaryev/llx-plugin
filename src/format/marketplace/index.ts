@@ -15,6 +15,7 @@ export {
   type PluginSource,
   type PluginSourceKind,
   type PluginSourceOf,
+  type ReadMode,
   type Relevance,
   type RelevanceSignals,
   type SourceParseResult,
@@ -54,3 +55,6 @@ export {
   type EntryReading,
   type EntrySlot,
 } from './marketplace.ts';
+export { createEntryReader, readEntry, type SourceParser, type SourceReading } from './entries.ts';
+export { DIRECTORY_LISTING_FIELDS, ENTRY_KEYS } from './entry-schema.ts';
+export { mergeEntryWithManifest, type EntryMerge } from './entry-merge.ts';

@@ -130,3 +130,19 @@
   `github.com/anthropics/` exemption, impersonation, another spelling, `inline`, `npm`, JavaScript
   member names, `claudeai-`, the download-folder clash); `effectiveDescription` and
   `effectiveVersion`.
+- Marketplace entries and the strict-mode merge (`marketplace`): `createEntryReader` and `readEntry`
+  read each `plugins[i]` of `marketplace.json` alone (`name` as an install id with the documented
+  messages, `source` handed to the plugin source parser, `description`, `version`, `category`,
+  `tags`, `strict`, `dependencies`, `defaultEnabled`, `displayName`, `metadata`, every other
+  `plugin.json` field, unknown keys, the archive-only `headers` and `headersHelper` reports, the
+  version-versus-plugin.json warning, duplicate names, the quoted `relevance`, `metadata` and
+  `experimental` warnings, and the typed `relevance` model with its limits and the `signals.hosts`
+  rule); `mergeEntryWithManifest` combines an entry with the plugin's `plugin.json` as the strict-mode
+  table says (the entry is the manifest without one; strict appends the component fields and the
+  entry's hooks replace the manifest's per event; strict false with components is the
+  `has conflicting manifests` error; the entry-only fields are ignored beside a `plugin.json`;
+  `defaultEnabled` and the display fields come from the entry, `version` from the manifest, the
+  entry name is the install id and the manifest name the namespace; a root-source entry that lists
+  skills does not scan the default `skills/`; hooks as a path or an array are reported as not yet
+  supported in a marketplace entry). `EntrySlot.mode`, `ReadMode` and duplicate-name detection join
+  the marketplace assembly.

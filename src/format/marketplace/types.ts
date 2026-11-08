@@ -93,7 +93,11 @@ export interface Relevance {
   readonly signals?: RelevanceSignals;
 }
 
-/** The plugin.json fields an entry may carry beside its own (marketplace-reference.md, "Plugin entries"). */
+/**
+ * The plugin.json fields an entry may carry beside its own (marketplace-reference.md, "Plugin
+ * entries": "an entry also accepts every `plugin.json` field"). With no `plugin.json` they all
+ * apply; the strict-mode table is about the first six (`entry-merge.ts`).
+ */
 type ComponentKey =
   | 'commands'
   | 'agents'
@@ -104,7 +108,12 @@ type ComponentKey =
   | 'mcpServers'
   | 'lspServers'
   | 'userConfig'
-  | 'channels';
+  | 'channels'
+  | 'settings'
+  | 'workflows'
+  | 'monitors'
+  | 'experimental'
+  | 'types';
 type DisplayKey = 'author' | 'homepage' | 'repository' | 'license' | 'keywords';
 
 export interface MarketplaceEntry {
@@ -212,6 +221,9 @@ export interface Marketplace {
   /** Old plugin name to the new one, or `null` for a plugin that was removed. */
   readonly renames: Readonly<Record<string, string | null>>;
 }
+
+/** Loading drops what Claude Code refuses; validating also reports what only `claude plugin validate` checks. */
+export type ReadMode = 'load' | 'validate';
 
 /** What the host knows about the marketplace it hands to the reader. */
 export interface MarketplaceContext {
