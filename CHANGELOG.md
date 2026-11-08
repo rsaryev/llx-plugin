@@ -4,6 +4,12 @@
 
 ### Added
 
+- Host: model limits and message expansion. `SessionOptions.limits` and `TurnOptions.limits`
+  (`SessionLimits`: model allowlist, `maxEffort`, `supportedEfforts`) reach `session.expandSkill`,
+  so `Expansion.turn` carries the allowlisted model and the capped effort. `session.expandMessage`
+  reads the mentions of a typed message (`stackableOf` over the catalog, the turn's interactivity)
+  and expands the direct and stacked skills in order with the shared arguments; named mentions come
+  back as `permitted`, and `expandSkill` takes `permittedByMention` for the model's call.
 - Host: scoped hooks, `hasHooks`, the watch list and background deliveries. `session.addHooks(prefix,
   hooks, source, options?)` and `removeHooks(prefix)` register hooks of a run, an agent or a skill
   (replacing by prefix, never stacking; the handle's `remove()`); `lifetime: 'turn'` ends when

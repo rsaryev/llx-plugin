@@ -1,28 +1,24 @@
-import { error, warning, type PluginIssue } from '../format/issues.ts';
-import type { Command, Skill } from '../format/skill-types.ts';
+import { error } from '../format/issues.ts';
 import type { SlashCommand } from '../protocol/official.ts';
 import { createSkillSettingsPolicy } from '../settings/skills/index.ts';
-import { registerHooks, type RegisteredHandler } from '../hooks/index.ts';
 import {
-  admitSkillHooks,
   checkInvocation,
   expandSkill,
-  hookSourceOf,
-  NO_HOOKS_YET,
   menuEntries,
   modelListing,
   type ExpandPorts,
   type Expansion,
-  type Invocable,
   type Invoker,
   type ListingOptions,
   type ModelListingResult,
   type ShellPermission,
 } from '../skills/index.ts';
-import type { SessionCore, SkillHookLedger } from './session-core.ts';
+import type { SessionCore } from './session-core.ts';
 import type { SkillHooksRegistrar } from './session-hooks.ts';
+import { entriesOf, invocablesOf } from './session-skill-entries.ts';
+import { skillHookRegistration, withHooks } from './session-skill-hooks.ts';
 import type { SessionOptions } from './session-types.ts';
-import type { ActivePlugin, HostState } from './state.ts';
+import type { HostState } from './state.ts';
 
 /** Who asks for the skill: the user typing `/name`, or the model calling it. */
 export type SkillInvoker = Extract<Invoker, 'user' | 'model'>;
@@ -33,6 +29,12 @@ export interface ExpandOptions {
   readonly signal: AbortSignal;
   /** Default `user`: the skill is checked against `user-invocable`; `model` against `disable-model-invocation`. */
   readonly invoker?: SkillInvoker;
+  /**
+   * The user's message names this skill after plain text (`go ahead and /deploy`): for the model's
+   * invocation in that message it lifts `disable-model-invocation` (skills.md, "Where you write the
+   * skill's name"). `session.expandMessage` says which names the message permits.
+   */
+  readonly permittedByMention?: boolean;
 }
 
 /** What the model is told and what the `/` menu offers; `usage`, `activated` and the budget as `modelListing`. */
@@ -48,21 +50,14 @@ export interface SkillPart {
   expandSkill(name: string, options: ExpandOptions): Promise<Expansion>;
 }
 
-interface Entry {
-  readonly plugin: ActivePlugin;
-  readonly invocable: Skill | Command;
-}
-
 /** Without an answer from the host a shell placeholder asks, and an `ask` aborts the expansion (skills.md, "Permission checks on injected commands"). */
 const ASKS: ShellPermission = () => 'ask';
 
-const entriesOf = (state: HostState): readonly Entry[] =>
-  state.active.flatMap((plugin) =>
-    [...plugin.catalog.skills, ...plugin.catalog.commands].map((invocable) => ({
-      plugin,
-      invocable,
-    })),
-  );
+/** The session effort `${CLAUDE_EFFORT}` falls back to, and the model limits, of the turn. */
+const turnLimits = (options: SessionOptions) => ({
+  ...(options.effort === undefined ? {} : { effort: options.effort.level }),
+  ...(options.limits === undefined ? {} : { limits: options.limits }),
+});
 
 function failed(name: string, message: string): Expansion {
   return { ok: false, issues: [error(`/${name}`, message)] };
@@ -88,62 +83,6 @@ function shellDisabled(state: HostState): boolean {
 }
 
 /**
- * hooks.md, "Hooks in skills and agents": a skill's hooks are registered when it is invoked and
- * keep running for the rest of the session; "Limits on skill hooks": each source of skills registers
- * at most 1,024 hooks and 16,384 matcher characters per session, and a skill past the limit
- * "registers none of its hooks". Judgment: invoking a skill again replaces its own hooks and counts
- * them once (spec/judgments.md).
- */
-function skillHookRegistration(registrar: SkillHooksRegistrar, ledger: SkillHookLedger) {
-  const { used, counted } = ledger;
-  return (entry: Entry, hooks: NonNullable<Extract<Expansion, { ok: true }>['hooks']>) => {
-    const source = hookSourceOf(entry.invocable.origin);
-    const prefix = `skill:${entry.plugin.id}:${entry.invocable.command}`;
-    const others = used.get(source) ?? NO_HOOKS_YET;
-    const own = counted.get(prefix) ?? NO_HOOKS_YET;
-    const base = {
-      hooks: others.hooks - own.hooks,
-      matcherChars: others.matcherChars - own.matcherChars,
-    };
-    const admission = admitSkillHooks(base, hooks);
-    if (!admission.admitted) {
-      return [
-        warning(
-          `/${entry.invocable.command}`,
-          `Skill "${entry.invocable.command}" registers none of its hooks: ${source} is past its limit of 1,024 hooks or 16,384 matcher characters`,
-        ),
-      ];
-    }
-    used.set(source, admission.used);
-    counted.set(prefix, {
-      hooks: admission.used.hooks - base.hooks,
-      matcherChars: admission.used.matcherChars - base.matcherChars,
-    });
-    const entries: readonly RegisteredHandler[] = registerHooks(hooks, {
-      idPrefix: prefix,
-      source: { kind: 'skill', label: '[skill]' },
-      pluginId: entry.plugin.id,
-    });
-    registrar.registerSkillHooks(prefix, entries);
-    return [] as readonly PluginIssue[];
-  };
-}
-
-/** The expansion with the warnings of registering its hooks, when it has hooks to register. */
-function withHooks(
-  expansion: Expansion,
-  register: (
-    hooks: NonNullable<Extract<Expansion, { ok: true }>['hooks']>,
-  ) => readonly PluginIssue[],
-): Expansion {
-  if (!expansion.ok || expansion.hooks === undefined) return expansion;
-  const issues = register(expansion.hooks);
-  return issues.length === 0
-    ? expansion
-    : { ...expansion, issues: [...expansion.issues, ...issues] };
-}
-
-/**
  * The skills of one turn: the cwd, effort, mode, interactivity and shell answer are the turn's, the
  * limits on skill hooks are the session's (`core`), so a skill invoked in an earlier turn still
  * counts and a later turn cannot register past them.
@@ -160,7 +99,7 @@ export function createSkillPart(
   const entries = entriesOf(state);
   const overrides = state.view.get('skillOverrides');
   const hooksLocked = core.gates.pluginOnlyHooks;
-  const invocables: readonly Invocable[] = entries.map((entry) => entry.invocable);
+  const invocables = invocablesOf(entries);
   const expandPorts: ExpandPorts = {
     runner: ports.commands,
     locations: ports.locations,
@@ -176,14 +115,16 @@ export function createSkillPart(
       const entry = entries.find((each) => each.invocable.command === name);
       if (entry === undefined) return failed(name, `Unknown skill: ${name}`);
       const invoker = request.invoker ?? 'user';
-      const verdict = checkInvocation(entry.invocable, invoker, overrides);
+      const verdict = checkInvocation(entry.invocable, invoker, overrides, {
+        permittedByMention: request.permittedByMention === true,
+      });
       if (!verdict.allowed) return failed(name, verdict.message);
       const expansion = await expandSkill(
         entry.invocable,
         {
           arguments: request.arguments ?? '',
           sessionId: options.sessionId,
-          ...(options.effort === undefined ? {} : { effort: options.effort.level }),
+          ...turnLimits(options),
           permissionMode: options.permissionMode,
           disableShellExecution: shellDisabled(state),
           shells: state.options.shells ?? { bash: true, powershell: windows },

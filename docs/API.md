@@ -137,7 +137,10 @@ skill sets its own, pass the one `resolveTurnOverrides` chose.
 Who may run a skill, what the model and the `/` menu are told, when `paths` activate it and how it
 runs once invoked (skills.md, "Control who invokes a skill", "Override skill visibility from
 settings", "Skill descriptions are cut short", "Run skills in a subagent"). All pure: the host passes
-the settings, the usage counts and what it knows of the session.
+the settings, the usage counts and what it knows of the session. A host that works through a session
+uses `session.expandSkill` and `session.expandMessage` instead, which pass the turn's limits as
+`ExpandRequest.limits` and build the `stackable` of `readSkillMentions` with `stackableOf` (see "Host and
+sessions").
 
 ```ts
 import { checkInvocation, modelListing, menuEntries, resolveExecution } from '@rsaryev/claude-plugin-kit';
@@ -742,11 +745,12 @@ host.issues: readonly PluginIssue[]              // what the format readers foun
 host.openSession(options: SessionOptions): PluginSession;
 // SessionOptions: { sessionId; cwd; permissionMode; transcriptPath; effort?: { level };
 //   interactive? (true); trusted? (true); additionalDirectories?; permissions?: ShellPermission;
-//   promptId?; scratchpadDir?; agent?: { id?; type? }; folderTrustAccepted? }
+//   promptId?; scratchpadDir?; agent?: { id?; type? }; folderTrustAccepted?;
+//   limits?: SessionLimits }
 session.withTurn(turn: TurnOptions): PluginSession;
 // TurnOptions: Partial<Pick<SessionOptions, 'permissionMode' | 'effort' | 'cwd' |
 //   'additionalDirectories' | 'permissions' | 'promptId' | 'scratchpadDir' | 'agent' |
-//   'folderTrustAccepted' | 'interactive'>>
+//   'folderTrustAccepted' | 'interactive' | 'limits'>>
 ```
 
 A plugin runs when `HostPlugin.enabled` says so, else when `enabledPlugins` of the settings says so,
@@ -758,7 +762,8 @@ The session:
 | Method | Returns |
 | --- | --- |
 | `skills(options?)` | `{ model, menu }`: `modelListing` and `menuEntries` over the skills and commands of every enabled plugin, named `<plugin>:<name>`. The two invocation flags and the budget apply; `skillOverrides` leaves a plugin skill alone, as skills.md says. |
-| `expandSkill(name, { arguments?, signal, invoker? })` | The `Expansion` of `expandSkill`: text with `$ARGUMENTS`, `${CLAUDE_PLUGIN_ROOT}` and the plugin's options substituted, shell placeholders run through the runner. `invoker` is `user` (default) or `model`. An unknown name, a skill of a disabled plugin or a refused invoker is `{ ok: false, issues }`. `disableSkillShellExecution` of the settings replaces the placeholders. Without `SessionOptions.permissions` a shell placeholder asks, which aborts the expansion. |
+| `expandSkill(name, { arguments?, signal, invoker?, permittedByMention? })` | The `Expansion` of `expandSkill`: text with `$ARGUMENTS`, `${CLAUDE_PLUGIN_ROOT}` and the plugin's options substituted, shell placeholders run through the runner. `invoker` is `user` (default) or `model`. An unknown name, a skill of a disabled plugin or a refused invoker is `{ ok: false, issues }`. `disableSkillShellExecution` of the settings replaces the placeholders. Without `SessionOptions.permissions` a shell placeholder asks, which aborts the expansion. `SessionOptions.limits` (`SessionLimits`: `models` allowlist, `maxEffort`, `supportedEfforts`) is passed as `ExpandRequest.limits`, so `Expansion.turn` carries the allowlisted model (`modelKept: 'excluded'` and no `model` when the skill's model is not allowed) and the capped effort, which `${CLAUDE_EFFORT}` in the text follows; `CLAUDE_CODE_EFFORT_LEVEL` is read from the `Environment` port. `permittedByMention: true` lets the model run a `disable-model-invocation` skill the user named in that message (never a `user-invocable: false` one for the user). |
+| `expandMessage(message, { signal, invoker? })` | `{ mentions, expansions, permitted }` for one typed message (skills.md, "Stack several skills in one message"). `readSkillMentions` runs with the turn's `interactive` and a `stackable` made from the catalog (`stackableOf`: inline, user-invocable, after `skillOverrides`); each direct or stacked mention that names a skill of the catalog is expanded in order by `expandSkill` with the shared trailing arguments, as `{ mention, expansion }` (a direct skill the user may not run is a failed expansion). A forked skill, an unknown name or the sixth stacked skill ends the stack; a non-interactive turn expands only the first. A `named` mention is not expanded: `permitted` is the set of such names, and the host passes `permittedByMention: permitted.has(name)` when the model calls that skill in this message. |
 | `dispatch(event, facts, { signal })` | The `HookOutcome<E>` of the engine. `facts` is the event's own fields (`EventFactsOf<E>`); the common fields come from the session. Handlers of every enabled plugin, then of the settings files, run with `if` read by the rules module and the policy of the settings: `disableAllHooks`, `allowManagedHooksOnly` (plugins force-enabled in managed `enabledPlugins` exempt), the `hooks` lock of `strictPluginOnlyCustomization`, `allowedHttpHookUrls`, `httpHookAllowedEnvVars`. A skill's `once` hook that ran is dropped after the dispatch. |
 | `agents(options?)` | `Resolved<SessionAgent>`: the official `AgentDefinition` of each plugin agent under `<plugin>:<name>`, its prompt with the plugin variables substituted, and `extras` (`color`, `isolation`, `cacheTtl`). |
 | `mcpServers(options?)`, `lspServers(options?)`, `monitors(options?)` | `Resolved<ResolvedMcpServer>`, `Resolved<ResolvedLspServer>`, `Resolved<ResolvedMonitor>`: the substituted configs, with `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}` and `${user_config.*}` resolved. A server that cannot start is left out and its issue is in `issues`. |
@@ -779,7 +784,7 @@ and agents"). A field left out is left out of the input.
 ### Turns
 
 A host that serves many turns opens the session once and calls `session.withTurn(turn)` for each
-one: the mode, effort, folders, shell answer, prompt and agent of a turn are the turn's, and what
+one: the mode, effort, folders, shell answer, model limits, prompt and agent of a turn are the turn's, and what
 must outlive a turn is the session's. The view `withTurn` returns shares the hooks registered so far
 (a skill's hooks keep running "on turns after the skill's own turn"), the `once` keys already
 consumed and what skill hooks have used of their limits; it never reopens the session, so none of

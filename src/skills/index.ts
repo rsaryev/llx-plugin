@@ -30,7 +30,12 @@ export {
   loadCommandEntries,
   type CommandEntriesLoaded,
 } from './command-entries.ts';
-export { readSkillMentions, type SkillMention } from './mention.ts';
+export {
+  readSkillMentions,
+  stackableOf,
+  type MentionOptions,
+  type SkillMention,
+} from './mention.ts';
 export {
   listingLine,
   menuEntries,

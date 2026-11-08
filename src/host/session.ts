@@ -3,6 +3,7 @@ import { createComponentPart, type ComponentPart } from './session-components.ts
 import { createSessionCore, type SessionCore } from './session-core.ts';
 import { createTurnScope, type HookScope, type TurnScope } from './session-hook-scope.ts';
 import { createHookPart, type HookPart } from './session-hooks.ts';
+import { createMentionPart, type MentionPart } from './session-mentions.ts';
 import { createSkillPart, type SkillPart } from './session-skills.ts';
 import type { SessionOptions } from './session-types.ts';
 import { applyTurn, type TurnOptions } from './turn.ts';
@@ -27,7 +28,12 @@ export interface TurnPart {
  * One session over the host's plugins: what to list and expand, the hooks to dispatch, and the
  * components to resolve. Each part is its own file; this only puts them together.
  */
-export type PluginSession = SkillPart & HookPart & HookScope & ComponentPart & TurnPart;
+export type PluginSession = SkillPart &
+  MentionPart &
+  HookPart &
+  HookScope &
+  ComponentPart &
+  TurnPart;
 
 /** The session over a core for the given options: `openSession` makes the core, `withTurn` reuses it. */
 function viewOf(
@@ -37,8 +43,10 @@ function viewOf(
   scope?: TurnScope,
 ): PluginSession {
   const { part, skills } = createHookPart(state, core, options, scope);
+  const skillPart = createSkillPart(state, core, options, skills);
   return {
-    ...createSkillPart(state, core, options, skills),
+    ...skillPart,
+    ...createMentionPart(state, options, skillPart),
     ...part,
     ...createComponentPart(state),
     withTurn: (turn) => viewOf(state, core, applyTurn(options, turn), scope),

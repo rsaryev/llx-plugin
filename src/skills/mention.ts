@@ -1,3 +1,5 @@
+import { invocationPolicy, type Invocable, type SkillOverrides } from './invocation.ts';
+
 /**
  * Where a message names a skill (skills.md, "Control who invokes a skill", "Where you write the
  * skill's name"). A name at the start runs the skill directly; after plain text, "as a separate word
@@ -93,4 +95,24 @@ export function readSkillMentions(message: string, options: MentionOptions = {})
     mentions.push({ how: 'named', command: name });
   }
   return mentions;
+}
+
+/**
+ * `MentionOptions.stackable` over a catalog: a command is stackable when it names an inline
+ * (`context` is not `fork`), user-invocable skill ("Expansion stops at the first token that isn't an
+ * inline user-invocable skill"). A `skillOverrides` state that hides the skill from the user counts
+ * as not user-invocable. Judgment (spec/judgments.md): the docs' other stop, "one whose arguments may
+ * start with another command, such as `/loop`", has no frontmatter marker, so only `context: fork`
+ * and the invocation policy decide.
+ */
+export function stackableOf(
+  invocables: readonly Invocable[],
+  overrides: SkillOverrides = {},
+): (command: string) => boolean {
+  const stackable = new Set(
+    invocables
+      .filter((each) => each.context !== 'fork' && invocationPolicy(each, overrides).user)
+      .map((each) => each.command),
+  );
+  return (command) => stackable.has(command);
 }

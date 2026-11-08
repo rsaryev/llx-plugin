@@ -1,5 +1,5 @@
 import type { EffortLevel, PermissionMode } from '../protocol/official.ts';
-import type { ShellPermission } from '../skills/index.ts';
+import type { SessionLimits, ShellPermission } from '../skills/index.ts';
 
 /**
  * What one session is opened with. The fields that change from one turn to the next are the
@@ -33,4 +33,11 @@ export interface SessionOptions {
    * project subagent need (hooks.md, "Hooks in skills and agents"); a `-p` session never sets it.
    */
   readonly folderTrustAccepted?: boolean;
+  /**
+   * What the host knows of the model: the `availableModels` allowlist, the effort cap
+   * (`maxEffortLevel`) and the levels the active model supports. `session.expandSkill` applies them
+   * to a skill's own `model` and `effort` (skills.md, "Frontmatter reference"); absent, none limits.
+   * `CLAUDE_CODE_EFFORT_LEVEL` is not here: the kit reads it from the environment port.
+   */
+  readonly limits?: SessionLimits;
 }

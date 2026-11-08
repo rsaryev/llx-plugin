@@ -1,0 +1,150 @@
+/**
+ * skills.md § Frontmatter reference (`model`: "A value excluded by your organization's
+ * `availableModels` allowlist isn't used, and the session keeps its current model"; `effort`:
+ * "Overrides the session effort level, but not the `CLAUDE_CODE_EFFORT_LEVEL` environment
+ * variable"; `${CLAUDE_EFFORT}` is the current effort level), model-config.md § Restrict model
+ * selection and § Adjust effort level (`maxEffortLevel` caps the level, an unsupported level falls
+ * back to the highest supported one at or below it). The host's limits reach `session.expandSkill`
+ * through `SessionOptions.limits` and `TurnOptions.limits`; integration tests of the host,
+ * outside `spec()`.
+ */
+import { describe, expect, test } from 'bun:test';
+import type { PluginSession } from '../../src/host/index.ts';
+import type { ModelAvailability } from '../../src/skills/index.ts';
+import { hostOf, loaded, SESSION, signal } from '../support/host.ts';
+
+const json = (value: unknown): string => JSON.stringify(value);
+
+const skill = (name: string, front: string): [string, string] => [
+  `skills/${name}/SKILL.md`,
+  `---\ndescription: ${name}\n${front}\n---\nEffort is \${CLAUDE_EFFORT}.`,
+];
+
+async function tuned(env: Record<string, string> = {}) {
+  const plugin = await loaded({
+    '.claude-plugin/plugin.json': json({ name: 'tuned' }),
+    ...Object.fromEntries([
+      skill('deep', 'model: opus\neffort: max'),
+      skill('quick', 'model: haiku\neffort: low'),
+      skill('plain', 'argument-hint: none'),
+    ]),
+  });
+  return hostOf({ plugins: [{ id: 'tuned@acme', plugin }], env });
+}
+
+const ALLOWED: ModelAvailability = { allowed: (model) => model !== 'opus' };
+
+const expand = (session: Pick<PluginSession, 'expandSkill'>, name: string) =>
+  session.expandSkill(name, { signal: signal() });
+
+const turnOf = (expansion: Awaited<ReturnType<typeof expand>>) =>
+  expansion.ok ? expansion.turn : undefined;
+
+describe('the model allowlist of the limits', () => {
+  test('a skill model outside the allowlist is dropped from turn.model and the session keeps its model', async () => {
+    const { host } = await tuned();
+    const session = host.openSession({ ...SESSION, limits: { models: ALLOWED } });
+    const result = await expand(session, 'tuned:deep');
+    expect(result.ok && result.turn.model).toBeUndefined();
+    expect(result.ok && result.turn.modelKept).toBe('excluded');
+  });
+
+  test('a model inside the allowlist is the turn model', async () => {
+    const { host } = await tuned();
+    const session = host.openSession({ ...SESSION, limits: { models: ALLOWED } });
+    const result = await expand(session, 'tuned:quick');
+    expect(result.ok && result.turn.model).toBe('haiku');
+    expect(result.ok && result.turn.modelKept).toBeUndefined();
+  });
+
+  test('without limits every model is used', async () => {
+    const { host } = await tuned();
+    const result = await expand(host.openSession(SESSION), 'tuned:deep');
+    expect(result.ok && result.turn.model).toBe('opus');
+  });
+
+  test('a model that auto mode does not support is kept out for that turn', async () => {
+    const { host } = await tuned();
+    const models: ModelAvailability = {
+      allowed: () => true,
+      supportedInMode: (m) => m !== 'haiku',
+    };
+    const result = await expand(
+      host.openSession({ ...SESSION, limits: { models } }),
+      'tuned:quick',
+    );
+    expect(result.ok && result.turn.modelKept).toBe('unsupported-in-mode');
+  });
+});
+
+describe('the effort cap of the limits', () => {
+  test('maxEffort caps the skill effort, and ${CLAUDE_EFFORT} in the text follows the cap', async () => {
+    const { host } = await tuned();
+    const session = host.openSession({ ...SESSION, limits: { maxEffort: 'high' } });
+    const result = await expand(session, 'tuned:deep');
+    expect(result.ok && result.turn.effort?.level).toBe('high');
+    expect(result.ok && result.text).toBe('Effort is high.');
+  });
+
+  test('a level below the cap is left alone', async () => {
+    const { host } = await tuned();
+    const result = await expand(
+      host.openSession({ ...SESSION, limits: { maxEffort: 'high' } }),
+      'tuned:quick',
+    );
+    expect(result.ok && result.turn.effort?.level).toBe('low');
+  });
+
+  test('an unsupported level falls back to the highest supported level at or below it', async () => {
+    const { host } = await tuned();
+    const limits = { supportedEfforts: ['low', 'medium', 'high'] } as const;
+    const result = await expand(host.openSession({ ...SESSION, limits }), 'tuned:deep');
+    expect(result.ok && result.turn.effort?.level).toBe('high');
+    expect(result.ok && result.text).toBe('Effort is high.');
+  });
+
+  test('CLAUDE_CODE_EFFORT_LEVEL wins over the skill, and the cap still limits it', async () => {
+    const { host } = await tuned({ CLAUDE_CODE_EFFORT_LEVEL: 'max' });
+    const result = await expand(
+      host.openSession({ ...SESSION, limits: { maxEffort: 'medium' } }),
+      'tuned:quick',
+    );
+    expect(result.ok && result.turn.effort).toEqual({ level: 'medium', source: 'environment' });
+    expect(result.ok && result.text).toBe('Effort is medium.');
+  });
+
+  test('a skill without an effort leaves the session effort in ${CLAUDE_EFFORT}', async () => {
+    const { host } = await tuned();
+    const session = host.openSession({
+      ...SESSION,
+      effort: { level: 'medium' },
+      limits: { maxEffort: 'low' },
+    });
+    const result = await expand(session, 'tuned:plain');
+    expect(result.ok && result.turn.effort).toBeUndefined();
+    expect(result.ok && result.text).toBe('Effort is medium.');
+  });
+});
+
+describe('limits of a turn', () => {
+  test('withTurn replaces the limits for that view only', async () => {
+    const { host } = await tuned();
+    const session = host.openSession({ ...SESSION, limits: { maxEffort: 'high' } });
+    const turn = session.withTurn({ limits: { maxEffort: 'low' } });
+    expect(turnOf(await expand(turn, 'tuned:deep'))?.effort?.level).toBe('low');
+    expect(turnOf(await expand(session, 'tuned:deep'))?.effort?.level).toBe('high');
+  });
+
+  test('a turn without limits keeps the ones the session had', async () => {
+    const { host } = await tuned();
+    const session = host.openSession({ ...SESSION, limits: { models: ALLOWED } });
+    const result = await expand(session.withTurn({ cwd: '/work/other' }), 'tuned:deep');
+    expect(result.ok && result.turn.modelKept).toBe('excluded');
+  });
+
+  test('a turn can add limits to a session that had none', async () => {
+    const { host } = await tuned();
+    const turn = host.openSession(SESSION).withTurn({ limits: { models: ALLOWED } });
+    expect(turnOf(await expand(turn, 'tuned:deep'))?.modelKept).toBe('excluded');
+  });
+});

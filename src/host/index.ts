@@ -12,6 +12,12 @@ export type {
   ScopedHookSource,
 } from './session-hook-scope.ts';
 export type {
+  MentionExpansion,
+  MentionPart,
+  MessageExpansion,
+  MessageOptions,
+} from './session-mentions.ts';
+export type {
   ExpandOptions,
   SkillInvoker,
   SkillsListing,
