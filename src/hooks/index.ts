@@ -12,3 +12,4 @@ export type {
 } from './contracts.ts';
 export { createHookRegistry } from './registry.ts';
 export * from './select/index.ts';
+export * from './input/index.ts';

@@ -196,7 +196,10 @@ const { selected, issues, monitor } = selectHandlers(registry, {
 | `ifEvaluatorFor(context)`                  | done    | an `if` reader over `evaluateIf`; a handler with `if` never runs on a non-tool event |
 | `fileChangedWatchList(entries, session)`   | done    | the literal file names the `FileChanged` matchers of handlers that can run register to watch |
 | `consumedByRun(entry, succeeded)`          | done    | whether `once: true` removes the handler: skill frontmatter and a successful run only |
-| `buildHookInput`, `runHandler`, `interpretRun`, `parseHookOutput`, `mergeOutputs`, `createHookEngine` | planned | the input of each event, the five handler types, exit codes and `onFailure`, the JSON output, the merged outcome |
+| `buildHookInput(event, facts, session)`    | done    | the input of an event as `{ input, issues }`: the common fields from the session, then the event's facts checked against the official input type; `input` is `undefined` when a fact has the wrong type or value |
+| `serializeHookInput(input)`                | done    | the one JSON text a command hook reads on stdin and an HTTP hook receives as its body |
+| `hookPermissionMode(mode)`                 | done    | the `permission_mode` a hook sees: the mode labeled Manual is `default` |
+| `runHandler`, `interpretRun`, `parseHookOutput`, `mergeOutputs`, `createHookEngine` | planned | the five handler types, exit codes and `onFailure`, the JSON output, the merged outcome |
 
 Selection also applies the gates of hooks.md: `disableAllHooks` (managed hooks survive it unless the
 managed level sets it), workspace trust for settings-file hooks (and for a project skill's), the
@@ -205,6 +208,16 @@ handler defined in several files runs once; a plugin's or skill's copy stays sep
 call that reached a hook through a `Bash` matcher is reported in `monitor`, with whether the hook's
 `allow` and `updatedInput` apply to it. `EventFactsOf<E>` is the official input minus the fields
 every event shares, except a shared field an event requires (`agent_type` of `SubagentStart`).
+
+`buildHookInput` puts `session_id`, `prompt_id` (absent until the first prompt), `transcript_path`,
+`cwd`, `scratchpad_dir` (absent without a scratchpad), `permission_mode` and `effort` (on the events
+that have them), `hook_event_name`, and `agent_id` and `agent_type` (inside an agent, or `agent_type`
+under `--agent`) from the session, so a host passes only the event's own facts. A fact with the wrong
+type or an unlisted value makes an error issue and no input; a field that belongs to other cases (the
+cost fields of `SessionStart` outside resume and fork, `globs` of `InstructionsLoaded` outside
+`path_glob_match`, a task field of another task type) or to no field of the event is dropped with a
+warning. The free text of `Stop` and `SubagentStop` tasks and crons is capped at 1000 characters with
+the `… [+N chars]` marker.
 
 ## Host and sessions (planned)
 

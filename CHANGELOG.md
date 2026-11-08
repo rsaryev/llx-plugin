@@ -59,6 +59,15 @@
   describes (events, matcher groups, the five handler types and their fields), into the official
   `HooksSettings`; and `matchesMatcher`, the matcher grammar of hooks.md (match-all, exact list,
   unanchored regular expression, the narrower set of `FileChanged` and `StopFailure`).
+- Hook input (`hooks/input`): `buildHookInput` makes the JSON a hook reads from the session and the
+  event's facts: the common fields (`session_id`, `prompt_id` absent before the first prompt,
+  `scratchpad_dir`, `permission_mode` with Manual as `default`, `effort` on tool-context events,
+  `agent_id` and `agent_type`, `hook_event_name`), facts checked against the official input type of
+  each of the 33 events (a wrong type or value is an issue and no input), the conditional fields
+  (`SessionStart` cost fields for resume and fork, `InstructionsLoaded` `globs`, `trigger_file_path`
+  and `parent_file_path` by `load_reason`), and the `Stop` task and cron entries capped at 1000
+  characters with the `… [+N chars]` marker and per-type fields. `serializeHookInput` is the one
+  JSON text for stdin and an HTTP body.
 
 ### Fixed
 
