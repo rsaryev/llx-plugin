@@ -53,3 +53,4 @@ export * from './settings/index.ts';
 export * from './settings/plugins/index.ts';
 export * from './settings/marketplaces/index.ts';
 export * from './settings/hooks/index.ts';
+export * from './settings/skills/index.ts';

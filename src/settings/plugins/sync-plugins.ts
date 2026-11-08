@@ -12,7 +12,8 @@ export interface SyncDecision {
   readonly moveToTrash: boolean;
 }
 
-const KEY = 'syncClaudeAiPlugins' satisfies PolicyKey;
+/** The two keys that stop the claude.ai sync; they read the same way (settings.md, "Exceptions"). */
+export type SyncKey = Extract<PolicyKey, 'syncClaudeAiPlugins' | 'syncClaudeAiSkills'>;
 
 /** The files whose `false` also moves the synced plugins (settings-reference.md: "user or managed"). */
 const MOVES: readonly PolicyScope[] = ['user', 'managed'];
@@ -28,7 +29,16 @@ const MOVES: readonly PolicyScope[] = ['user', 'managed'];
  * a higher file only stops the sync.
  */
 export function syncDecision(view: PolicyView): SyncDecision {
-  const off = view.eachFromHighest(KEY).filter((holder) => !holder.value);
+  return syncDecisionOf(view, 'syncClaudeAiPlugins');
+}
+
+/**
+ * The reading both sync keys share: `syncClaudeAiSkills` has the same scope line, the same
+ * honored-only-`false` rule and the same move to the trash (settings-reference.md, skills.md "How
+ * synced skills behave"), only into `~/.claude/skills/.trash/`.
+ */
+export function syncDecisionOf(view: PolicyView, key: SyncKey): SyncDecision {
+  const off = view.eachFromHighest(key).filter((holder) => !holder.value);
   if (off.length === 0) return { download: true, loadSynced: true, moveToTrash: false };
   return {
     download: false,

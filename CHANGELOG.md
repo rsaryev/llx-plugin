@@ -99,6 +99,14 @@
   merged across files. The Agent SDK's `managedSettings` rules (ignored beside an administrator
   unless `parentSettingsBehavior` is `merge`; an empty allowlist ignored when the administrator ships
   hooks or enables a plugin) are applied before any decision.
+- Skill keys (`settings/skills`): `createSkillSettingsPolicy(view, context)` answers
+  `skillOverrides` as `visibility(name, subject)` (the four states over what Claude sees, the `/`
+  menu and the Remote Control and SDK command lists, the `skillOverrides` error for an `off` skill,
+  plugin skills untouched, bundled-skill alias entries from managed settings and `--settings` files
+  that can only restrict further), `disableBundledSkills` with `CLAUDE_CODE_DISABLE_BUNDLED_SKILLS`
+  (neither undoes the other), `disableSkillShellExecution` as a per-origin verdict with the
+  `[shell command execution disabled by policy]` replacement (a managed `true` is never overridden),
+  and `syncClaudeAiSkills` as the same decision `syncClaudeAiPlugins` gives.
 
 ### Fixed
 
