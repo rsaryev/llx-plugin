@@ -60,8 +60,9 @@ export interface DecideContext {
   readonly sessionDirectories?: readonly string[];
   /**
    * The "Permission required" column of the tools table, as the host knows it. A tool it answers
-   * `false` for runs without a prompt; with no function every tool outside the read-only set asks
-   * (spec/judgments.md).
+   * `false` for runs without a prompt, except a file read (Read, Grep, Glob), whose path decides;
+   * with no function every tool outside the read-only set asks (spec/judgments.md). `toolRequiresPermission`
+   * (`rules/tools`) is the kit's own.
    */
   readonly requiresPermission?: (toolName: string) => boolean;
   /** MCP tools marked `requiresUserInteraction`; `AskUserQuestion` always requires it. */

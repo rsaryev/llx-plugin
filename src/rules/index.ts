@@ -46,3 +46,17 @@ export type {
   ProtectedPathOptions,
 } from './decide/context.ts';
 export { decide } from './decide/decide.ts';
+export {
+  catalogEntry,
+  isKnownTool,
+  KNOWN_TOOLS,
+  TOOL_CATALOG,
+  toolRequiresPermission,
+  type ToolEntry,
+} from './tools/catalog.ts';
+export { availableTools, type ToolSession } from './tools/availability.ts';
+export {
+  resolveSubagentTools,
+  type SubagentRequest,
+  type SubagentTools,
+} from './tools/subagent-tools.ts';

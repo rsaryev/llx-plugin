@@ -59,6 +59,12 @@
   describes (events, matcher groups, the five handler types and their fields), into the official
   `HooksSettings`; and `matchesMatcher`, the matcher grammar of hooks.md (match-all, exact list,
   unanchored regular expression, the narrower set of `FileChanged` and `StopFailure`).
+- The tool catalog (`TOOL_CATALOG`, `isKnownTool`, `KNOWN_TOOLS`, `toolRequiresPermission`): the
+  "Permission required" column and the rule format of each of the 46 documented tools, now the
+  source of `ruleFormatOf`; `availableTools` (bare deny rules and globs remove a tool, the
+  `EndConversation` exception, Glob and Grep absent by default on posix) and `resolveSubagentTools`
+  (`tools`, `disallowedTools`, the filters of the tools available to subagents, the zero-tools
+  refusal as an issue).
 
 ### Fixed
 

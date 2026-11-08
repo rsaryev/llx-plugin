@@ -222,7 +222,9 @@ const verdict = evaluateRules(rules, { toolName: 'Agent', input: { model: 'opus'
 | `mcpToolRuleMatches`, `normalizeMcpServerName`, `pluginMcpServerName`, `mcpToolName` | done | `mcp__server`, `mcp__server__*`, `mcp__server__tool`; deny and ask rules also cover a server whose name holds `__`, allow rules do not; the Cowork tools of a bare `Bash` or `WebFetch` deny rule |
 | `decide(call, context)`           | done    | allow, ask, deny or classify for one call in one of the six permission modes: rules, hook and mod outcomes, protected paths, critical-path removals, network reads (see below) |
 | `settleClassification(decision, { call, mode, classifier })`, `PermissionClassifier` | done | the host's auto-mode reviewer as a port; a `classify` decision is settled by its answer, and with no reviewer by a denial |
-| tool catalog                      | planned | the tools table                                                              |
+| `TOOL_CATALOG`, `catalogEntry`, `isKnownTool`, `KNOWN_TOOLS`, `toolRequiresPermission` | done | the 46 tools of the tools table: the "Permission required" column and the rule format of each (`command`, `powershell-command`, `read-path`, `edit-path`, `skill-name`, `subagent-type`, `domain`, `bare`); `KNOWN_TOOLS` feeds `ruleIssues`, `toolRequiresPermission` feeds `DecideContext.requiresPermission` |
+| `availableTools(candidates, session)` | done | the tools Claude sees: a bare deny rule or glob removes a tool, a scoped rule does not, `EndConversation` stays while another tool remains, Glob and Grep are absent by default on posix |
+| `resolveSubagentTools(request)`   | done    | the tools of a non-fork subagent from `tools` and `disallowedTools`, the two filters of the tools available to subagents, and the zero-tools refusal as an issue |
 
 `parseRule` returns the official `{ toolName, ruleContent? }` in `rule.value` and the read form in
 `rule.specifier` (`param`, `domain` or `text`), so matching never parses text again. Deny and ask
@@ -268,6 +270,12 @@ commands, or runs everything in an interactive session with bypass permissions a
 approves reads and in-scope edits and returns `classify` for the rest, `dontAsk` turns every prompt
 into a denial, `bypassPermissions` approves what is left. A mod can block, and can approve what its
 reach allows (`ModOutcome.policyEnforced` is managed settings or a Team or Enterprise login).
+
+The tool catalog (`src/rules/tools`) is the one place that says which rule format a tool takes
+(`ruleFormatOf` reads it) and whether it prompts in Manual mode. What the host's model, provider and
+surface offer (the task tools by model, `EndConversation`'s surface and provider conditions, the
+`SubagentHandback` conditions) is not modelled: the host passes the candidate tools, and
+`availableTools` and `resolveSubagentTools` narrow them by the documented rules.
 
 What the kit does not decide is the classifier's judgement of an action in auto mode: `decide`
 returns `classify` and the host's `PermissionClassifier` answers. Also not modelled: the PowerShell
