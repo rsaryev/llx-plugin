@@ -21,6 +21,21 @@
 
 ### Fixed
 
+- Managed key classes, review of the fail-closed findings. A managed `forceLoginOrgUUID` list with
+  one non-text entry is unreadable whole and admits no organization. `gatewayInternalNetworks`
+  refuses the ranges claude-apps-gateway.md names (loopback, link-local, CGNAT, the VPN and NAT64
+  ranges, the three documentation ranges, `0.0.0.0/8`, `192.88.99.0/24`, multicast). `disableAutoMode`
+  and `skipDangerousModePermissionPrompt` fail closed (`"disable"` and `false`), `forceRemoteSettingsRefresh`
+  reads as `true` when unreadable, every restrictive lock of `permissions` is repaired in a managed
+  source, and `worktree` and `attribution` are repaired per field. `sandbox.credentials` enforces the
+  `name` rule and the per-list mask field rules, the warning of a degraded `files` entry notes the
+  unenforced read block, and `sandbox.filesystem.disabled` is pinned to managed settings by a
+  `deny` entry or a `sandbox.filesystem` block; `allowManagedMcpServersOnly` makes only the managed
+  `allowedMcpServers` count. An empty list in a managed `sandbox` block stays. `merged()` carries the
+  hold of an unrecognized `crossSessionInbound`. `sideloadRefusal` and `pluginDirsOf` delegate to
+  `sideloadVerdict`, so `--agents`, `--mcp-config` and `CLAUDE_CODE_PLUGIN_DIRS` exit at startup as the
+  docs say; new `midSessionMcpUpdates` for cloud sessions.
+
 - Managed sources, review of the composition findings. An unreadable source now carries the
   underlying error (`{ unreadable: 'denied' | 'failed', reason }`), and the exit message names the
   failed path or registry value in its `Detail:` line as errors.md shows it. An unlistable

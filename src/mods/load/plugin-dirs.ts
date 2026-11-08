@@ -1,6 +1,7 @@
 import { MOD_SETTINGS } from '../../protocol/mods-settings.ts';
+import { sideloadVerdict, type SideloadVerdict } from '../../settings/managed/index.ts';
+import { createPolicyView } from '../../settings/view.ts';
 import type { ModsPolicyInput } from './policy-input.ts';
-import { flagSetting } from './policy-input.ts';
 
 /**
  * Plugin directories loaded for a session (plugins/mods/reference.md, "Settings and environment
@@ -23,14 +24,10 @@ export function parsePluginDirs(
 }
 
 /**
- * Every directory the session loads "as `--plugin-dir` does": the flags, then the variable. The
- * variable is read from the process environment, else from `env` in `~/.claude/settings.json` (its
- * homes in `MOD_SETTINGS`). A directory named twice loads once. Judgment: managed
- * `disableSideloadFlags` also keeps the directories of the variable from loading (they load "as
- * `--plugin-dir` does"), though only a flag makes startup exit.
+ * The directories `CLAUDE_CODE_PLUGIN_DIRS` names: the variable is read from the process environment,
+ * else from `env` in `~/.claude/settings.json` (its homes in `MOD_SETTINGS`).
  */
-export function pluginDirsOf(policy: ModsPolicyInput): readonly string[] {
-  if (flagSetting(policy.managed, 'disableSideloadFlags')) return [];
+function variableDirs(policy: ModsPolicyInput): readonly string[] {
   const homes: readonly string[] = MOD_SETTINGS.CLAUDE_CODE_PLUGIN_DIRS.homes;
   const fromEnvironment = homes.includes('environment')
     ? policy.env.CLAUDE_CODE_PLUGIN_DIRS
@@ -38,25 +35,45 @@ export function pluginDirsOf(policy: ModsPolicyInput): readonly string[] {
   const fromSettings = homes.includes('user-env')
     ? policy.user.env?.CLAUDE_CODE_PLUGIN_DIRS
     : undefined;
-  const listed = parsePluginDirs(fromEnvironment ?? fromSettings, policy.platform);
-  return [...new Set([...policy.flags.pluginDirs, ...listed])];
+  return parsePluginDirs(fromEnvironment ?? fromSettings, policy.platform);
 }
 
 /**
- * The refusal at startup when managed `disableSideloadFlags` is set and a plugin was named by flag:
- * `--plugin-dir` has the documented message (admin.md, "Test what users see"); `--plugin-url` has the
- * same, naming its own flag (judgment).
+ * What managed `disableSideloadFlags` does with the session's flags and the variable: the one verdict
+ * of `settings/managed/sideload.ts`, read from the managed file of the policy (which alone carries
+ * the key, `MOD_SETTINGS`).
+ */
+function verdictOf(policy: ModsPolicyInput): SideloadVerdict {
+  const view = createPolicyView([{ scope: 'managed', settings: policy.managed ?? {} }]);
+  return sideloadVerdict(view, {
+    pluginDirs: policy.flags.pluginDirs,
+    pluginUrls: policy.flags.pluginUrls ?? [],
+    agents: policy.flags.agents ?? false,
+    mcpServers: policy.flags.mcpServers ?? [],
+    pluginDirsVariable: variableDirs(policy),
+    cloud: policy.cloud ?? false,
+  });
+}
+
+/**
+ * Every directory the session loads "as `--plugin-dir` does": the flags, then the variable. A
+ * directory named twice loads once. When managed `disableSideloadFlags` makes startup exit
+ * (`sideloadRefusal`), nothing loads.
+ */
+export function pluginDirsOf(policy: ModsPolicyInput): readonly string[] {
+  if (verdictOf(policy).refusals.length > 0) return [];
+  return [...new Set([...policy.flags.pluginDirs, ...variableDirs(policy)])];
+}
+
+/**
+ * The error startup exits with when managed `disableSideloadFlags` is set and a plugin, agent or MCP
+ * server was sideloaded by flag, or `CLAUDE_CODE_PLUGIN_DIRS` names a plugin folder: one line per
+ * rejected flag or variable, from `sideloadVerdict`. `--plugin-dir` has the documented message
+ * (admin.md, "Test what users see"); the others are judgments recorded beside it.
  */
 export function sideloadRefusal(policy: ModsPolicyInput): string | undefined {
-  if (!flagSetting(policy.managed, 'disableSideloadFlags')) return undefined;
-  const flags = [
-    { name: '--plugin-dir', given: policy.flags.pluginDirs },
-    { name: '--plugin-url', given: policy.flags.pluginUrls ?? [] },
-  ];
-  const named = flags.find((flag) => flag.given.length > 0);
-  return named === undefined
-    ? undefined
-    : `${named.name} is disabled by your organization's managed settings (disableSideloadFlags)`;
+  const { refusals } = verdictOf(policy);
+  return refusals.length === 0 ? undefined : refusals.join('\n');
 }
 
 /**

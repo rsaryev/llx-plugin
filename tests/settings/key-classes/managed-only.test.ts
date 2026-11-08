@@ -4,6 +4,21 @@
  * settings-reference.md, each key's **Scope: Managed** line ("Claude Code ignores the key in user,
  * project, and local settings and in `--settings`, with a warning"; `managedMcpServers`: "drops the
  * key with a warning in user, project, and local settings").
+ *
+ * The loop below proves each key's scope; a row's own effect is proven where the key's area is
+ * tested, and by the tests of this file where it is not:
+ * - `allowedChannelPlugins` "requires `channelsEnabled: true`" and "replaces the default allowlist":
+ *   tests/settings/channels/allowlist.test.ts.
+ * - `allowManagedHooksOnly`: tests/settings/hooks/managed-only.test.ts.
+ * - `allowManagedMcpServersOnly`: below ("only `allowedMcpServers` from managed settings are
+ *   respected", "`deniedMcpServers` still merges from all sources") and, for which admin source may
+ *   set it, tests/settings/managed/first-wins.test.ts.
+ * - `disableCommandPluginSources` "when unset, follows `allowManagedHooksOnly`":
+ *   tests/settings/marketplaces/command-sources.test.ts.
+ * - `allowAllClaudeAiMcps`: the kit carries the key and its cross-source rule (first-wins.test.ts);
+ *   fetching the claude.ai connectors is the host's.
+ * - `sandbox.filesystem.allowManagedReadPathsOnly` has no requirement id (the docs extractor merges
+ *   its row into the next one): its scope is proven at the end of this file, outside `spec(...)`.
  */
 import { describe, expect, test } from 'bun:test';
 import { compose } from '../../support/managed.ts';
@@ -97,5 +112,86 @@ spec(`${ID}.parentSettingsBehavior`, () => {
     expect(compose({ plist: { parentSettingsBehavior: 'merge', model: 'a' } }).parentMerge).toBe(
       true,
     );
+  });
+});
+
+spec(`${ID}.allowManagedMcpServersOnly`, () => {
+  const server = (name: string) => [{ serverName: name }];
+  const lock = [
+    'managed',
+    { allowManagedMcpServersOnly: true, allowedMcpServers: server('org') },
+  ] as const;
+
+  test('only allowedMcpServers from managed settings are respected', () => {
+    const view = viewOf(
+      lock,
+      ['flag', { allowedMcpServers: server('flag') }],
+      ['local', { allowedMcpServers: server('local') }],
+      ['project', { allowedMcpServers: server('project') }],
+      ['user', { allowedMcpServers: server('user') }],
+    );
+    expect(view.get('allowedMcpServers')).toEqual(server('org'));
+  });
+
+  test('without the lock the lists of every file combine', () => {
+    const view = viewOf(
+      ['managed', { allowedMcpServers: server('org') }],
+      ['user', { allowedMcpServers: server('user') }],
+    );
+    expect(view.get('allowedMcpServers')).toEqual([...server('org'), ...server('user')]);
+    const off = viewOf(
+      ['managed', { allowManagedMcpServersOnly: false, allowedMcpServers: server('org') }],
+      ['user', { allowedMcpServers: server('user') }],
+    );
+    expect(off.get('allowedMcpServers')).toEqual([...server('org'), ...server('user')]);
+  });
+
+  test('with no managed list the files add nothing, and the parent list applies only when no admin source sets one', () => {
+    const noList = viewOf(
+      ['managed', { allowManagedMcpServersOnly: true }],
+      ['user', { allowedMcpServers: server('user') }],
+    );
+    expect(noList.get('allowedMcpServers')).toBeUndefined();
+    const parent = ['parent', { allowedMcpServers: server('host') }] as const;
+    expect(
+      viewOf(['managed', { allowManagedMcpServersOnly: true }], parent).get('allowedMcpServers'),
+    ).toEqual(server('host'));
+    expect(viewOf(lock, parent).get('allowedMcpServers')).toEqual(server('org'));
+  });
+
+  test('deniedMcpServers still merges from all sources', () => {
+    const view = viewOf(
+      ['managed', { allowManagedMcpServersOnly: true, deniedMcpServers: server('a') }],
+      ['project', { deniedMcpServers: server('b') }],
+      ['user', { deniedMcpServers: server('c') }],
+    );
+    expect(view.get('deniedMcpServers')).toEqual([...server('a'), ...server('b'), ...server('c')]);
+  });
+});
+
+describe('sandbox.filesystem.allowManagedReadPathsOnly: a managed source only (no requirement id)', () => {
+  const KEY = 'sandbox.filesystem.allowManagedReadPathsOnly';
+  const raw = nest(KEY, true);
+
+  test('a managed source sets it', () => {
+    expect(viewOf(['managed', raw]).get(KEY)).toBe(true);
+  });
+
+  for (const scope of [...FILES, 'parent'] as const) {
+    test(`placed in a ${scope} file it has no effect, with a warning that names the key`, () => {
+      expect(viewOf([scope, raw]).get(KEY)).toBeUndefined();
+      if (scope !== 'parent') {
+        expect(messagesOf(scope, raw).some((message) => message.includes(`"${KEY}"`))).toBe(true);
+      }
+    });
+  }
+
+  test('the rest of the sandbox block of that file stays', () => {
+    const block = {
+      sandbox: { filesystem: { allowManagedReadPathsOnly: true, allowRead: ['/d'] } },
+    };
+    expect(plain(viewOf(['project', block]).get('sandbox'))).toEqual({
+      filesystem: { allowRead: ['/d'] },
+    });
   });
 });

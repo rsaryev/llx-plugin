@@ -26,8 +26,15 @@ describe('MCP server entries', () => {
 });
 
 describe('forceLoginOrgUUID', () => {
-  test('a list that loses every entry permits no organization', () => {
+  test('the empty list stands for "no organization is permitted", also for a list with a non-text entry', () => {
     expect(plain(managed({ forceLoginOrgUUID: [1, 2] }).get('forceLoginOrgUUID'))).toEqual([]);
+    expect(plain(managed({ forceLoginOrgUUID: ['a', 2] }).get('forceLoginOrgUUID'))).toEqual([]);
+  });
+
+  test('outside the policy tier a non-text entry is stripped and the rest stays', () => {
+    expect(
+      plain(viewOf(['user', { forceLoginOrgUUID: ['a', 2] }]).get('forceLoginOrgUUID')),
+    ).toEqual(['a']);
   });
 });
 
@@ -51,20 +58,15 @@ describe('the parent settings carry', () => {
   });
 });
 
-describe('gatewayInternalNetworks and private space', () => {
+describe('gatewayInternalNetworks, the empty list', () => {
   const refused = (networks: unknown) =>
     gatewaySignInRefused(compose({ file: { gatewayInternalNetworks: networks } }).layer);
 
-  test('RFC 1918 is private space, the next block outside it is not', () => {
-    for (const block of [
-      '10.0.0.0/8',
-      '172.16.0.0/12',
-      '192.168.0.0/16',
-      '172.31.0.0/16',
-      '192.168.1.0/24',
-    ]) {
-      expect(refused([block])).toBe(true);
-    }
+  test('an empty list is a valid list of at most four blocks, so it refuses nothing', () => {
+    expect(refused([])).toBe(false);
+  });
+
+  test('the blocks next to the private ranges are not private space', () => {
     for (const block of ['172.15.0.0/16', '172.32.0.0/16', '192.169.0.0/16', '11.0.0.0/8']) {
       expect(refused([block])).toBe(false);
     }
@@ -98,6 +100,24 @@ describe('sandbox stances not named by the docs', () => {
   });
 });
 
+describe('sandbox lists', () => {
+  const block = (raw: unknown) => viewOf(['managed', { sandbox: raw }]).get('sandbox');
+
+  test('an empty list is a valid list: kept without a warning', () => {
+    const raw = { excludedCommands: [], network: { allowedDomains: [], deniedDomains: [] } };
+    const sandbox = block(raw);
+    expect(sandbox?.excludedCommands).toEqual([]);
+    expect(sandbox?.network?.allowedDomains).toEqual([]);
+    expect(messagesOf('managed', { sandbox: raw })).toEqual([]);
+  });
+
+  test('a list whose every entry is invalid does not apply, with a warning', () => {
+    expect(messagesOf('managed', { sandbox: { excludedCommands: [1] } })).toEqual([
+      '"sandbox.excludedCommands" is not a list with a valid entry; the list does not apply',
+    ]);
+  });
+});
+
 describe('credential entry fields', () => {
   const files = (entry: unknown) =>
     managed({ sandbox: { credentials: { files: [entry] } } }).get('sandbox')?.credentials?.files;
@@ -118,6 +138,27 @@ describe('credential entry fields', () => {
     }
   });
 
+  test('a field the docs do not list degrades a mask entry: the kit cannot tell what it would loosen', () => {
+    expect(files({ path: '~/.x', mode: 'mask', futureField: 1 })).toEqual([
+      { path: '~/.x', mode: 'deny' },
+    ]);
+  });
+
+  test('maskDuplicates is a field of files only: the table for environment variables does not list it', () => {
+    const envVars = (entry: unknown) =>
+      managed({ sandbox: { credentials: { envVars: [entry] } } }).get('sandbox')?.credentials
+        ?.envVars;
+    expect(envVars({ name: 'T', mode: 'mask', maskDuplicates: true })).toEqual([
+      { name: 'T', mode: 'deny' },
+    ]);
+  });
+
+  test('a deny entry accepts mask fields and ignores them: it is kept as written, without a warning', () => {
+    const entry = { path: '~/.x', mode: 'deny', extract: 'no group', futureField: 1 };
+    expect(plain(files(entry))).toEqual([entry]);
+    expect(messagesOf('managed', { sandbox: { credentials: { files: [entry] } } })).toEqual([]);
+  });
+
   test('a mask entry with valid fields is kept', () => {
     const entry = {
       path: '~/.x',
@@ -130,6 +171,72 @@ describe('credential entry fields', () => {
       extract: '"t":"(.+)"',
     };
     expect(plain(files(entry))).toEqual([entry]);
+  });
+});
+
+describe('the worktree and attribution blocks in a managed source', () => {
+  const worktree = (raw: unknown) => managed({ worktree: raw }).get('worktree');
+  const attribution = (raw: unknown) => managed({ attribution: raw }).get('attribution');
+
+  test('an invalid worktree field is dropped with a warning and the rest of the block stays', () => {
+    const raw = { baseRef: 'sideways', symlinkDirectories: ['node_modules'], sparsePaths: [1] };
+    expect(plain(worktree(raw))).toEqual({ symlinkDirectories: ['node_modules'] });
+    expect(messagesOf('managed', { worktree: raw })).toEqual([
+      '"worktree.baseRef" is invalid; the field is dropped',
+      '"worktree.sparsePaths" is invalid; the field is dropped',
+    ]);
+  });
+
+  test('an invalid worktree.bgIsolation reads as worktree, its restrictive default', () => {
+    expect(plain(worktree({ bgIsolation: 'sometimes' }))).toEqual({ bgIsolation: 'worktree' });
+    expect(messagesOf('managed', { worktree: { bgIsolation: 3 } })).toEqual([
+      '"worktree.bgIsolation" was present but invalid; it is treated as "worktree"',
+    ]);
+  });
+
+  test('an invalid attribution field is dropped with a warning and the rest of the block stays', () => {
+    const raw = { commit: 5, pr: 'text', sessionUrl: 'no' };
+    expect(plain(attribution(raw))).toEqual({ pr: 'text' });
+    expect(messagesOf('managed', { attribution: raw })).toEqual([
+      '"attribution.commit" is invalid; the field is dropped',
+      '"attribution.sessionUrl" is invalid; the field is dropped',
+    ]);
+  });
+
+  test('valid blocks, a field of a newer version and the Boolean form of attribution stay as written', () => {
+    const block = { baseRef: 'head', bgIsolation: 'none', location: '~/wt', future: [1] };
+    expect(plain(worktree(block))).toEqual(block);
+    expect(plain(attribution({ commit: '', pr: '', sessionUrl: false, future: 1 }))).toEqual({
+      commit: '',
+      pr: '',
+      sessionUrl: false,
+      future: 1,
+    });
+    expect(attribution(false)).toBe(false);
+    expect(messagesOf('managed', { worktree: block, attribution: false })).toEqual([]);
+  });
+
+  test('a value that is no block is dropped whole, in any source', () => {
+    expect(worktree('head')).toBeUndefined();
+    expect(attribution('none')).toBeUndefined();
+    expect(viewOf(['user', { worktree: 5 }]).get('worktree')).toBeUndefined();
+  });
+
+  test('a user file keeps the block as written', () => {
+    const raw = { worktree: { baseRef: 'sideways' }, attribution: { commit: 5 } };
+    const view = viewOf(['user', raw]);
+    expect(plain(view.get('worktree'))).toEqual(raw.worktree);
+    expect(plain(view.get('attribution'))).toEqual(raw.attribution);
+  });
+});
+
+describe('skipDangerousModePermissionPrompt', () => {
+  test('its restrictive value is false: the dialog before bypassPermissions stays', () => {
+    expect(
+      viewOf(['managed', { skipDangerousModePermissionPrompt: 'x' }]).get(
+        'skipDangerousModePermissionPrompt',
+      ),
+    ).toBe(false);
   });
 });
 

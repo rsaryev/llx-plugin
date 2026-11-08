@@ -80,3 +80,36 @@ export function addPluginsRefusal(view: PolicyView): string | undefined {
     ? 'reload_plugins add_plugins is disabled by managed settings (disableSideloadFlags)'
     : undefined;
 }
+
+/** The facts of a mid-session MCP update. */
+export interface McpUpdateFacts {
+  /** The session is a cloud session. */
+  readonly cloud: boolean;
+}
+
+export interface McpUpdateVerdict {
+  /** The servers of the update the session applies. */
+  readonly applied: readonly ConfiguredServer[];
+  /** The servers it ignores. */
+  readonly ignored: readonly ConfiguredServer[];
+}
+
+/**
+ * Server-delivered mid-session MCP updates, "the path behind cloud session configuration and SDK
+ * `setMcpServers()` calls that reach those sessions" (settings-reference.md, `disableSideloadFlags`):
+ * under managed `disableSideloadFlags` a cloud session ignores them, except "in-process `type: "sdk"`
+ * entries and a Claude Tag session's Slack tools". Any other session applies the update.
+ */
+export function midSessionMcpUpdates(
+  view: PolicyView,
+  facts: McpUpdateFacts,
+  servers: readonly ConfiguredServer[],
+): McpUpdateVerdict {
+  if (!facts.cloud || view.get('disableSideloadFlags') !== true) {
+    return { applied: servers, ignored: [] };
+  }
+  return {
+    applied: servers.filter(survivesInCloud),
+    ignored: servers.filter((server) => !survivesInCloud(server)),
+  };
+}

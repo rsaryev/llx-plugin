@@ -1,4 +1,5 @@
 import type { Settings, UserConfigValue } from '../../protocol/official.ts';
+import type { ConfiguredServer } from '../../settings/managed/index.ts';
 import {
   GUARD_CONFIG_ID,
   MOD_SETTINGS,
@@ -42,10 +43,16 @@ export interface ModsPolicyInput {
   /** The process environment. */
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly platform: 'posix' | 'windows';
+  /** The session is a cloud session (Claude Code on the web): `disableSideloadFlags` drops its `--mcp-config` servers instead of exiting. */
+  readonly cloud?: boolean;
   readonly flags: {
     readonly pluginDirs: readonly string[];
     /** `--plugin-url` archives: `disableSideloadFlags` rejects them at startup as it does `--plugin-dir`. */
     readonly pluginUrls?: readonly string[];
+    /** `--agents` was given: `disableSideloadFlags` rejects it at startup too. */
+    readonly agents?: boolean;
+    /** The servers of `--mcp-config`, when the flag was given. */
+    readonly mcpServers?: readonly ConfiguredServer[];
     readonly bare?: boolean;
     readonly safeMode?: boolean;
   };

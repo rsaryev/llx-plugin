@@ -18,8 +18,8 @@ export const messagesOf = (scope: PolicyScope, raw: unknown): readonly string[] 
   saidAbout(scope, raw).map((issue) => issue.message);
 
 /** `{ a: { b: value } }` for the dotted path `a.b`. */
-export const nest = (path: string, value: unknown): Record<string, unknown> =>
-  path
-    .split('.')
-    .toReversed()
-    .reduce<unknown>((inner, name) => ({ [name]: inner }), value) as Record<string, unknown>;
+export function nest(path: string, value: unknown): Record<string, unknown> {
+  const [name, ...rest] = path.split('.');
+  if (name === undefined) return {};
+  return { [name]: rest.length === 0 ? value : nest(rest.join('.'), value) };
+}

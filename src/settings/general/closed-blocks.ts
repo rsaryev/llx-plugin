@@ -1,6 +1,7 @@
 import { PERMISSION_MODES } from '../../protocol/permission-modes.ts';
 import { isRecord } from '../record.ts';
 import { closedFound, drop, keep, type Check, type Checked, type Found } from './check-support.ts';
+import { DISABLE_LOCK, TRUE_LOCK, type LockKind } from './closed-locks.ts';
 
 /**
  * The `permissions` and `autoMode` blocks of a managed source, repaired per field (managed-settings.md,
@@ -29,24 +30,41 @@ function withheldFound(block: string, grants: readonly string[], set: Block, why
 }
 
 /**
+ * The locks of `permissions` (settings-reference.md, `permissions`; the SDK's `Settings` types each as
+ * a restrictive value): `"disable"` for the two mode locks, `true` for the Boolean ones.
+ */
+const PERMISSION_LOCKS: Readonly<Record<string, LockKind>> = {
+  disableBypassPermissionsMode: DISABLE_LOCK,
+  disableAutoMode: DISABLE_LOCK,
+  blockReadsOutsideWorkingDirectories: TRUE_LOCK,
+  blockWritesOutsideWorkingDirectories: TRUE_LOCK,
+  denyInsteadOfPrompting: TRUE_LOCK,
+};
+
+/** The block with every lock the source wrote repaired, and what was said. */
+function repairLocks(raw: Block, block: Block): { fixed: Block; found: Found[] } {
+  const fixed: Record<string, unknown> = { ...block };
+  const found: Found[] = [];
+  for (const [field, lock] of Object.entries(PERMISSION_LOCKS)) {
+    const repaired =
+      raw[field] === undefined ? undefined : lock(raw[field], `permissions.${field}`, `.${field}`);
+    if (repaired === undefined) continue;
+    fixed[field] = repaired.value;
+    found.push(repaired.found);
+  }
+  return { fixed, found };
+}
+
+/**
  * The block `permissions` after the managed per-field repairs, given what the general check kept of
  * it (`kept`) and the block as the source wrote it (`raw`).
  */
 export function failClosedPermissions(raw: Block, kept: Checked): Checked {
   const block: Block = isRecord(kept.value) ? kept.value : {};
-  const found: Found[] = [...kept.found];
-  const fixed: Record<string, unknown> = { ...block };
-  const { disableBypassPermissionsMode: lock, defaultMode } = raw;
-  if (lock !== undefined && lock !== 'disable') {
-    fixed.disableBypassPermissionsMode = 'disable';
-    found.push(
-      closedFound(
-        'permissions.disableBypassPermissionsMode',
-        'it is treated as "disable"',
-        '.disableBypassPermissionsMode',
-      ),
-    );
-  }
+  const locked = repairLocks(raw, block);
+  const found: Found[] = [...kept.found, ...locked.found];
+  const fixed: Record<string, unknown> = { ...locked.fixed };
+  const { defaultMode } = raw;
   if (defaultMode !== undefined && !isMode(defaultMode)) {
     fixed.defaultMode = 'default';
     found.push(

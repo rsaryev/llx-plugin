@@ -64,6 +64,31 @@ spec('settings.key.crossSessionInbound', () => {
       });
     }
 
+    for (const scope of ['user', 'project', 'local', 'flag'] as const) {
+      test(`the merged settings carry the hold of a lone ${scope} unrecognized value`, () => {
+        expect(viewOf([scope, { ...mode('reject'), model: 'a' }]).merged()).toEqual({
+          crossSessionInbound: 'hold',
+          model: 'a',
+        });
+      });
+
+      test(`the merged settings agree with get over a managed accept and a ${scope} unrecognized value`, () => {
+        const view = viewOf(['managed', mode('accept')], [scope, mode('reject')]);
+        expect(view.merged().crossSessionInbound).toBe('hold');
+        expect(view.merged().crossSessionInbound).toBe(view.get('crossSessionInbound'));
+      });
+    }
+
+    test('the merged settings keep a stricter value over the floor', () => {
+      expect(
+        viewOf(['managed', mode('refuse')], ['user', mode('reject')]).merged().crossSessionInbound,
+      ).toBe('refuse');
+    });
+
+    test('the merged settings carry nothing for it once the value is removed', () => {
+      expect(viewOf(['user', { model: 'a' }]).merged()).toEqual({ model: 'a' });
+    });
+
     test('clears when the value is fixed or removed', () => {
       expect(get(['managed', mode('accept')], ['user', mode('accept')])).toBe('accept');
       expect(get(['managed', mode('accept')], ['user', { model: 'a' }])).toBe('accept');

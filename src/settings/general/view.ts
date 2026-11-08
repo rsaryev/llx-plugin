@@ -43,10 +43,15 @@ function withValueAt(settings: Settings, path: readonly string[], value: unknown
   return Object.fromEntries(absent ? entries : [...entries, [name, written]]);
 }
 
-/** The top-level names any layer carries, first the highest layer's. */
+/**
+ * The top-level names any layer carries, first the highest layer's. A key a layer recorded as invalid
+ * counts: no value is kept for it, but its floor still applies (`crossSessionInbound` holds messages).
+ */
 function namesOf(layers: readonly PolicyLayer[]): readonly string[] {
   const names = layers.flatMap((layer) =>
-    Object.keys(layer.settings).filter((name) => scopeCarries(layer.scope, name)),
+    [...Object.keys(layer.settings), ...(layer.invalid ?? [])].filter((name) =>
+      scopeCarries(layer.scope, name),
+    ),
   );
   return [...new Set(names)];
 }

@@ -27,7 +27,7 @@ const VALID: Readonly<Record<PolicyKey, unknown>> = {
   disableSideloadFlags: true,
   forceLoginOrgUUID: '11111111-1111-4111-8111-111111111111',
   forceRemoteSettingsRefresh: true,
-  gatewayInternalNetworks: ['203.0.113.0/24'],
+  gatewayInternalNetworks: ['11.22.33.0/24'],
   managedMcpServers: { search: { type: 'http', url: 'https://mcp.example.com' } },
   managedSourcesBehavior: 'merge',
   parentSettingsBehavior: 'merge',
@@ -111,8 +111,15 @@ const USER_OR_MANAGED: readonly PolicyKey[] = ['appendPlugins', 'pluginConfigs',
 const USER_LOCAL_MANAGED_FLAG: readonly PolicyKey[] = ['syncClaudeAiPlugins', 'syncClaudeAiSkills'];
 
 /**
- * Where a parent (the SDK `managedSettings`) is documented to pass a key: the gateway page's
- * restrictive keys and the four managed-settings.md, "Let an embedding host add policy", checks.
+ * Where a parent (the SDK `managedSettings`) is documented to pass a key, among the policy keys:
+ * the keys managed-settings.md, "Let an embedding host add policy", checks (`forceLoginOrgUUID`,
+ * `allowedMcpServers`, `strictKnownMarketplaces`, `allowedProviders`, `blockedMarketplaces`; the
+ * sixth bullet, `availableModels`, is a general key), claude-apps-gateway.md, "Settings the locks
+ * don't cover" (`strictPluginOnlyCustomization`) and "How hook and skill keys in parent settings
+ * take effect" (`disableAllHooks`, `disableSkillShellExecution`, and the two hook lists empty), and
+ * `deniedMcpServers`, which the same page names beside the parent's `allowedMcpServers`. Judgment
+ * (spec/judgments.md): `deniedModels` and `availableModelsMatch` are not carried, because no page
+ * says a parent supplies them.
  */
 const PARENT_KEYS: readonly PolicyKey[] = [
   'allowedMcpServers',

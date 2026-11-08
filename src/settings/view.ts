@@ -23,6 +23,19 @@ export interface PolicyView {
 const MANAGED_TIER: readonly string[] = ['managed', 'parent'];
 
 /**
+ * The holders a pinned key counts: those of the managed settings, else the parent's: "the list from
+ * the highest-ranked admin source that sets one applies and blocks the parent's. The parent's list
+ * applies only when no admin source sets one" (managed-settings.md, "Let an embedding host add
+ * policy").
+ */
+function adminOrParent<K extends SettingsKey>(
+  holders: readonly KeyHolder<K>[],
+): readonly KeyHolder<K>[] {
+  const admin = holders.filter((holder) => holder.scope === 'managed');
+  return admin.length > 0 ? admin : holders.filter((holder) => holder.scope === 'parent');
+}
+
+/**
  * What the layers that set `key` come to: the row's merge over the values, highest first. A key
  * whose managed value is not an override then lets a restrictive value of a lower scope stand
  * (settings.md, "Exceptions to managed settings precedence"); a key managed settings own takes the
@@ -32,10 +45,15 @@ function combine<K extends SettingsKey>(
   key: K,
   holders: readonly KeyHolder<K>[],
   floors: readonly ValueOf<K>[],
+  pinned: boolean,
 ): ValueOf<K> | undefined {
   const spec = SPECS[key];
   const managed = holders.filter((holder) => MANAGED_TIER.includes(holder.scope));
-  const counted = spec.managedOwns && managed.length > 0 ? managed : holders;
+  const counted = pinned
+    ? adminOrParent(holders)
+    : spec.managedOwns && managed.length > 0
+      ? managed
+      : holders;
   const { exception } = spec;
   const byPrecedence = exception
     ? counted.filter((holder) => !exception.onlyWhenStricter.includes(holder.scope))
@@ -56,6 +74,12 @@ function floorsOf<K extends SettingsKey>(layers: readonly PolicyLayer[], key: K)
   );
 }
 
+/** Whether the managed tier's settings pin `key` to the managed tier (`ValueSpec.pinnedToManaged`). */
+const isPinned = (layers: readonly PolicyLayer[], key: SettingsKey): boolean =>
+  SPECS[key].pinnedToManaged?.(
+    layers.filter((layer) => layer.scope === 'managed').map((layer) => layer.settings),
+  ) ?? false;
+
 const valuesOf = <K extends SettingsKey>(holders: readonly KeyHolder<K>[]) =>
   holders.map((holder) => holder.value);
 
@@ -67,7 +91,7 @@ export function createPolicyView(layers: readonly PolicyLayer[]): PolicyView {
       const floors = floorsOf(layers, key);
       return holders.length === 0 && floors.length === 0
         ? undefined
-        : combine(key, holders, floors);
+        : combine(key, holders, floors, isPinned(layers, key));
     },
     winner: (key) => holdersOf(layers, key)[0],
     eachFromHighest: (key) => holdersOf(layers, key),

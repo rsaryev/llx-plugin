@@ -223,6 +223,18 @@ spec(`${ID}.forceLoginOrgUUID`, () => {
     ]);
   });
 
+  test('a list that is not an array of strings permits no organization: one non-text entry makes the whole value unreadable', () => {
+    for (const value of [['org-a', 5], [5], ['org-a', null], ['org-a', ['org-b']]]) {
+      const raw = { forceLoginOrgUUID: value };
+      expect(managed(raw).get('forceLoginOrgUUID')).toEqual([]);
+      expect(hasMessage(raw, 'no organization is permitted to log in')).toBe(true);
+    }
+  });
+
+  test('an empty array stays empty: no organization is permitted either', () => {
+    expect(managed({ forceLoginOrgUUID: [] }).get('forceLoginOrgUUID')).toEqual([]);
+  });
+
   test('in a user file an unreadable value is only dropped', () => {
     expect(viewOf(['user', { forceLoginOrgUUID: 42 }]).get('forceLoginOrgUUID')).toBeUndefined();
   });
@@ -247,22 +259,5 @@ spec(`${ID}.strictKnownMarketplaces`, () => {
     };
     expect(managed(raw).get('strictKnownMarketplaces')).toEqual([github]);
     expect(said(raw)).toHaveLength(2);
-  });
-});
-
-spec(`${ID}.strictPluginOnlyCustomization`, () => {
-  describe('a value that is neither a boolean nor an array is treated as true, locking all four surfaces', () => {
-    for (const value of ['skills', 5, { skills: true }]) {
-      test(JSON.stringify(value), () => {
-        const raw = { strictPluginOnlyCustomization: value };
-        expect(managed(raw).get('strictPluginOnlyCustomization')).toBe(true);
-        expect(hasMessage(raw, 'was present but invalid')).toBe(true);
-      });
-    }
-  });
-
-  test('an array entry this version does not recognize stays in the list and locks nothing', () => {
-    const raw = { strictPluginOnlyCustomization: ['skills', 'skils'] };
-    expect(plain(managed(raw).get('strictPluginOnlyCustomization'))).toEqual(['skills', 'skils']);
   });
 });

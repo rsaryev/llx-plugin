@@ -42,8 +42,11 @@ export { parentSettingsOf, type ParentOutcome } from './parent.ts';
 export {
   SIDELOAD_FLAGS,
   addPluginsRefusal,
+  midSessionMcpUpdates,
   sideloadVerdict,
   type ConfiguredServer,
+  type McpUpdateFacts,
+  type McpUpdateVerdict,
   type SideloadFacts,
   type SideloadFlag,
   type SideloadVerdict,

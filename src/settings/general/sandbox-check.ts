@@ -68,19 +68,23 @@ const booleanStep =
         };
   };
 
-/** What a list comes to, and whether it or any entry was invalid. */
+/**
+ * What a list comes to, and whether it or any entry was invalid. A list that is no array, or that
+ * lost every entry it had, does not apply (`entries` is `undefined`); an empty list has no invalid
+ * entry and stays (spec/judgments.md).
+ */
 function readList(value: unknown): { entries: readonly string[] | undefined; faulty: boolean } {
   if (!Array.isArray(value)) return { entries: undefined, faulty: true };
   const entries = value.filter(isText);
   return {
-    entries: entries.length === 0 ? undefined : entries,
+    entries: value.length > 0 && entries.length === 0 ? undefined : entries,
     faulty: entries.length < value.length,
   };
 }
 
 const listStep: Step = (value, path) => {
   const { entries, faulty } = readList(value);
-  if (!faulty && entries !== undefined) return undefined;
+  if (!faulty) return undefined;
   const message =
     entries === undefined
       ? `"${field(path)}" is not a list with a valid entry; the list does not apply`

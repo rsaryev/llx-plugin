@@ -17,6 +17,8 @@ import {
   type Checked,
 } from './check-support.ts';
 import { autoMode, failClosedPermissions } from './closed-blocks.ts';
+import { attribution, worktree } from './closed-fields.ts';
+import { DISABLE_LOCK, FALSE_LOCK, type LockKind } from './closed-locks.ts';
 import { sandbox } from './sandbox-check.ts';
 import { envIgnored } from './env-ignored.ts';
 import type { GeneralKey } from './keys.ts';
@@ -47,6 +49,19 @@ const lock: Check = (value, context) => {
   }
   return keep(true, [closedFound(context.name, 'it is treated as true')]);
 };
+
+/**
+ * A top-level key with one restrictive value (`disableAutoMode`, `skipDangerousModePermissionPrompt`):
+ * in the policy tier a value Claude Code cannot read reads as it; elsewhere `unreadable` says what to
+ * drop (managed-settings.md, "Keys that fail closed").
+ */
+const closedLock =
+  (kind: LockKind, unreadable: Check): Check =>
+  (value, context) => {
+    const fixed = context.closed ? kind(value, context.name, '') : undefined;
+    if (fixed !== undefined) return keep(fixed.value, [fixed.found]);
+    return context.closed ? keep(value) : unreadable(value, context);
+  };
 
 const text: Check = (value, { name }) =>
   typeof value === 'string' ? keep(value) : drop(name, 'a string');
@@ -181,10 +196,12 @@ const anyValue: Check = (value) => keep(value);
  */
 export const GENERAL_CHECKS: { readonly [K in GeneralKey]: Check } = {
   allowManagedPermissionRulesOnly: lock,
+  attribution,
   'autoMode.classifyAllShell': anyValue,
   autoMode,
   availableModels: modelAllowlist,
   crossSessionInbound,
+  disableAutoMode: closedLock(DISABLE_LOCK, oneOf('disable')),
   disableClaudeAiConnectors: boolean,
   enableArtifact: boolean,
   env,
@@ -200,7 +217,10 @@ export const GENERAL_CHECKS: { readonly [K in GeneralKey]: Check } = {
   remoteControlAtStartup: boolean,
   sandbox,
   'sandbox.filesystem.allowManagedReadPathsOnly': anyValue,
+  'sandbox.filesystem.disabled': anyValue,
   'sandbox.network.allowManagedDomainsOnly': anyValue,
+  skipDangerousModePermissionPrompt: closedLock(FALSE_LOCK, boolean),
   spinnerTipsEnabled: boolean,
   useAutoModeDuringPlan: boolean,
+  worktree,
 };

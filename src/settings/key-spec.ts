@@ -23,6 +23,12 @@ export interface ValueSpec<V> {
   readonly exception?: ManagedException<V>;
   /** When managed settings define the key, that value applies as-is and no other scope adds to it (`availableModels`). */
   readonly managedOwns?: boolean;
+  /**
+   * When it holds for the managed settings, only the managed tier counts for the key and a value of
+   * any other scope is ignored: `sandbox.filesystem.disabled` (sandboxing.md, "Which settings can
+   * disable it") and `allowedMcpServers` under `allowManagedMcpServersOnly`.
+   */
+  readonly pinnedToManaged?: (managed: readonly Settings[]) => boolean;
   /** Where a key inside a block, or a key two spellings share, is read in a settings object; a top-level key needs none. */
   readonly read?: (settings: Settings) => V | undefined;
   /** The names down a block to a key inside it, so the merged settings carry the value this row decided. */
@@ -128,7 +134,14 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     merge: MERGES.unionArrays,
     repair: 'closedStringList',
   },
-  allowedMcpServers: { scopes: 'anyAndParent', merge: MERGES.unionArrays, repair: 'mcpAllowlist' },
+  allowedMcpServers: {
+    scopes: 'anyAndParent',
+    merge: MERGES.unionArrays,
+    // "When `true`, only `allowedMcpServers` from managed settings are respected."
+    pinnedToManaged: (managed) =>
+      managed.some((settings) => settings.allowManagedMcpServersOnly === true),
+    repair: 'mcpAllowlist',
+  },
   allowedProviders: {
     scopes: 'managedAndParent',
     merge: MERGES.highestWins,
@@ -166,7 +179,11 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     repair: 'marketplaceMap',
   },
   forceLoginOrgUUID: { scopes: 'anyAndParent', merge: MERGES.highestWins, repair: 'orgUuid' },
-  forceRemoteSettingsRefresh: { scopes: 'managed', merge: MERGES.highestWins, repair: 'boolean' },
+  forceRemoteSettingsRefresh: {
+    scopes: 'managed',
+    merge: MERGES.highestWins,
+    repair: 'lockBoolean',
+  },
   gatewayInternalNetworks: {
     scopes: 'managed',
     merge: MERGES.highestWins,

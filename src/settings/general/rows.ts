@@ -11,6 +11,7 @@ import {
   type ManagedException,
 } from './exceptions.ts';
 import type { GeneralKey, GeneralValues } from './keys.ts';
+import { isDenyEntry } from './sandbox-credentials.ts';
 
 /** The value `path` leads to inside a settings object, whatever the blocks on the way. */
 function valueAt(settings: Settings, path: readonly string[]): unknown {
@@ -72,6 +73,18 @@ const LOWEST_CAP: ManagedException<GeneralValues['maxEffortLevel']> = {
 };
 
 /**
+ * `sandbox.filesystem.disabled`: "When managed settings configure `sandbox.filesystem` at all, or list
+ * any `sandbox.credentials.files` entry with `"mode": "deny"`, only managed settings can set the key."
+ * A degraded entry is a `deny` entry once repaired, so it pins the key the same way.
+ */
+const pinsFilesystemDisabled = (managed: readonly Settings[]): boolean =>
+  managed.some((settings) => {
+    const files = valueAt(settings, ['sandbox', 'credentials', 'files']);
+    const denies = Array.isArray(files) && files.some(isDenyEntry);
+    return isRecord(valueAt(settings, ['sandbox', 'filesystem'])) || denies;
+  });
+
+/**
  * One row per general key, from its entry in settings-reference.md (the Scope line and the notes
  * under it) and settings.md, "Lists merge instead of overriding" and "Exceptions to managed
  * settings precedence". A key with no row is combined by the general rule: blocks merge, lists
@@ -79,6 +92,8 @@ const LOWEST_CAP: ManagedException<GeneralValues['maxEffortLevel']> = {
  */
 export const GENERAL_SPECS: { readonly [K in GeneralKey]: ValueSpec<GeneralValues[K]> } = {
   allowManagedPermissionRulesOnly: { scopes: 'managed', merge: MERGES.highestWins },
+  // "Any file"; blocks merge by the general rule (the object form of `false` takes the highest file).
+  attribution: { scopes: 'anyAndParent', merge: MERGES.deepMerge },
   // "User or managed" (settings-reference.md, `autoMode`); `classifyAllShell` is "read wherever `autoMode` is read".
   autoMode: { scopes: 'userManagedFlag', merge: MERGES.deepMerge },
   'autoMode.classifyAllShell': nested<'autoMode.classifyAllShell'>(
@@ -93,6 +108,8 @@ export const GENERAL_SPECS: { readonly [K in GeneralKey]: ValueSpec<GeneralValue
     merge: MERGES.highestWins,
     exception: CROSS_SESSION,
   },
+  // "Any file"; its one value is `"disable"`, so the highest file that sets it is the value.
+  disableAutoMode: { scopes: 'anyAndParent', merge: MERGES.highestWins },
   disableClaudeAiConnectors: {
     scopes: 'anyAndParent',
     merge: MERGES.highestWins,
@@ -150,15 +167,28 @@ export const GENERAL_SPECS: { readonly [K in GeneralKey]: ValueSpec<GeneralValue
       { scopes: 'managed', merge: MERGES.highestWins },
       isBoolean,
     ),
+  // "User or managed" plus `--settings` (sandboxing.md): a project file cannot switch the isolation off.
+  'sandbox.filesystem.disabled': nested<'sandbox.filesystem.disabled'>(
+    ['sandbox', 'filesystem', 'disabled'],
+    {
+      scopes: 'userManagedFlag',
+      merge: MERGES.highestWins,
+      pinnedToManaged: pinsFilesystemDisabled,
+    },
+    isBoolean,
+  ),
   'sandbox.network.allowManagedDomainsOnly': nested<'sandbox.network.allowManagedDomainsOnly'>(
     ['sandbox', 'network', 'allowManagedDomainsOnly'],
     { scopes: 'managed', merge: MERGES.highestWins },
     isBoolean,
   ),
+  // "User, local, or managed" (settings-reference.md): an untrusted repository cannot skip the dialog.
+  skipDangerousModePermissionPrompt: { scopes: 'userLocalManagedFlag', merge: MERGES.highestWins },
   spinnerTipsEnabled: { scopes: 'anyAndParent', merge: MERGES.highestWins },
   useAutoModeDuringPlan: {
     scopes: 'userLocalManagedFlag',
     merge: MERGES.highestWins,
     exception: FALSE_FROM_ANY_SCOPE,
   },
+  worktree: { scopes: 'anyAndParent', merge: MERGES.deepMerge },
 };

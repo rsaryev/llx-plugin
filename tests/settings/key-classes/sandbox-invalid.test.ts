@@ -94,6 +94,14 @@ spec('policy.managed.Invalid values inside sandbox', () => {
   });
 
   describe('while network.deniedDomains or an entry in it is invalid, network.allowedDomains is withheld', () => {
+    test('a deny list that lost every entry, and so does not apply, still withholds the allow list', () => {
+      const network = sandboxOf({
+        network: { deniedDomains: [7, 8], allowedDomains: ['github.com'] },
+      })?.network;
+      expect(network?.deniedDomains).toBeUndefined();
+      expect(network?.allowedDomains).toBeUndefined();
+    });
+
     test('an invalid entry in the deny list', () => {
       const block = { network: { deniedDomains: ['evil.com', 7], allowedDomains: ['github.com'] } };
       const network = sandboxOf(block)?.network;

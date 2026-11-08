@@ -2,7 +2,8 @@
  * managed-settings.md § Keys that fail closed (the table rows whose fallback is not a value:
  * `crossSessionInbound`, `gatewayInternalNetworks`, `sandbox`, `sandbox.credentials`),
  * settings-reference.md § `gatewayInternalNetworks` (the shape of a valid value) and
- * § "Invalid credential entries in managed settings", errors.md § crossSessionInbound.
+ * claude-apps-gateway.md § "Allow a gateway on public address space you own" (the refused ranges),
+ * errors.md § crossSessionInbound. The `sandbox.credentials` row is in sandbox-credentials.test.ts.
  */
 import { describe, expect, test } from 'bun:test';
 import { gatewaySignInRefused } from '../../../src/settings/managed/index.ts';
@@ -48,7 +49,7 @@ describe('gatewayInternalNetworks', () => {
   spec(`${ID}.gatewayInternalNetworks`, () => {
     test('an invalid value from the highest managed source on the machine refuses every new gateway sign-in', () => {
       expect(refused({ gatewayInternalNetworks: 'oops' })).toBe(true);
-      expect(refused({ gatewayInternalNetworks: ['203.0.113.0/24'] })).toBe(false);
+      expect(refused({ gatewayInternalNetworks: ['11.22.33.0/24'] })).toBe(false);
       expect(refused({ model: 'a' })).toBe(false);
     });
 
@@ -63,9 +64,10 @@ describe('gatewayInternalNetworks', () => {
 
     test('a value of the shape the docs give is valid: at most four IPv4 blocks of /8 to /32 that do not overlap each other or private space', () => {
       const valid = [
-        ['203.0.113.0/24'],
-        ['203.0.113.0/24', '198.51.100.0/24', '192.0.2.0/24', '8.0.0.0/8'],
-        ['203.0.113.7/32'],
+        ['11.22.33.0/24'],
+        ['11.22.33.0/24', '12.1.0.0/16', '13.0.0.0/24', '8.0.0.0/8'],
+        ['11.22.33.7/32'],
+        ['240.0.0.0/8', '255.0.0.0/8'],
         [],
       ];
       for (const networks of valid)
@@ -79,12 +81,27 @@ describe('gatewayInternalNetworks', () => {
           ['1.0.0.0/8', '2.0.0.0/8', '3.0.0.0/8', '4.0.0.0/8', '5.0.0.0/8'],
         ],
         ['a block wider than /8', ['128.0.0.0/7']],
-        ['a block that is no CIDR', ['203.0.113.0']],
-        ['an octet above 255', ['203.0.113.256/24']],
+        ['a block that is no CIDR', ['11.22.33.0']],
+        ['an octet above 255', ['11.22.33.256/24']],
         ['an IPv6 block', ['2001:db8::/32']],
-        ['two overlapping blocks', ['203.0.113.0/24', '203.0.0.0/16']],
+        ['two overlapping blocks', ['11.22.33.0/24', '11.22.0.0/16']],
         ['a block inside private space', ['10.1.0.0/16']],
         ['a block that covers private space', ['172.0.0.0/8']],
+        ['loopback', ['127.0.0.0/8']],
+        ['link-local', ['169.254.0.0/16']],
+        ['CGNAT', ['100.64.0.0/10']],
+        ['a VPN and NAT64 range', ['198.18.0.0/15']],
+        ['the other VPN and NAT64 range', ['192.0.0.0/24']],
+        ['the documentation range 192.0.2.0/24', ['192.0.2.0/24']],
+        ['the documentation range 198.51.100.0/24', ['198.51.100.0/24']],
+        ['the documentation range 203.0.113.0/24, the docs example', ['203.0.113.0/24']],
+        ['a block inside a documentation range', ['203.0.113.7/32']],
+        ['a block that covers a documentation range', ['203.0.0.0/8']],
+        ['the reserved range 0.0.0.0/8', ['0.0.0.0/8']],
+        ['the reserved range 192.88.99.0/24', ['192.88.99.0/24']],
+        ['the first multicast /8', ['224.0.0.0/8']],
+        ['the last multicast /8', ['239.0.0.0/8']],
+        ['a block inside multicast', ['239.1.0.0/16']],
         ['a non-text entry', [5]],
       ];
       for (const [name, networks] of invalid) {
@@ -99,6 +116,33 @@ describe('gatewayInternalNetworks', () => {
             .layer,
         ),
       ).toBe(false);
+    });
+
+    test('only the highest managed source on the machine counts: an invalid value below a valid one refuses nothing', () => {
+      const valid = { gatewayInternalNetworks: ['11.22.33.0/24'] };
+      const invalid = { gatewayInternalNetworks: 'oops' };
+      // plist > hklm > file in precedence; each pair puts the invalid value in the lower source
+      expect(gatewaySignInRefused(compose({ plist: valid, file: invalid }).layer)).toBe(false);
+      expect(gatewaySignInRefused(compose({ hklm: valid, file: invalid }).layer)).toBe(false);
+      expect(gatewaySignInRefused(compose({ plist: valid, hklm: invalid }).layer)).toBe(false);
+    });
+
+    test('the same invalid value in the highest source does refuse, whichever machine source that is', () => {
+      const invalid = { gatewayInternalNetworks: 'oops' };
+      for (const source of ['plist', 'hklm', 'file'] as const) {
+        expect(gatewaySignInRefused(compose({ [source]: invalid }).layer)).toBe(true);
+      }
+    });
+
+    test('an invalid value in HKCU is ignored: Claude Code ignores the key there', () => {
+      const invalid = { gatewayInternalNetworks: 'oops' };
+      expect(gatewaySignInRefused(compose({ hkcu: { ...invalid, model: 'a' } }).layer)).toBe(false);
+      expect(
+        gatewaySignInRefused(compose({ file: { model: 'b' }, hkcu: { ...invalid } }).layer),
+      ).toBe(false);
+      expect(compose({ file: { model: 'b' }, hkcu: invalid }).layer.settings).not.toHaveProperty(
+        'gatewayInternalNetworks',
+      );
     });
 
     test('in a user file the value is not read at all', () => {
@@ -129,43 +173,5 @@ spec(`${ID}.sandbox`, () => {
     expect(plain(viewOf(['user', { sandbox: { enabled: 'maybe' } }]).get('sandbox'))).toEqual({
       enabled: 'maybe',
     });
-  });
-});
-
-spec(`${ID}.sandbox.credentials`, () => {
-  const credentials = (raw: unknown) =>
-    viewOf(['managed', { sandbox: { credentials: raw } }]).get('sandbox')?.credentials;
-
-  test('a recoverable invalid entry is degraded to mode deny with a warning', () => {
-    const raw = { files: [{ path: '~/.aws/credentials', mode: 'mask', extract: 'no group here' }] };
-    expect(credentials(raw)?.files).toEqual([{ path: '~/.aws/credentials', mode: 'deny' }]);
-    expect(messagesOf('managed', { sandbox: { credentials: raw } })).toHaveLength(1);
-  });
-
-  test('an unrecoverable entry, an unknown mode or an invalid name, is stripped', () => {
-    const raw = {
-      envVars: [
-        { name: 'TOKEN', mode: 'hide' },
-        { name: '', mode: 'deny' },
-        { mode: 'deny' },
-        { name: 'GITHUB_TOKEN', mode: 'deny' },
-      ],
-    };
-    expect(credentials(raw)?.envVars).toEqual([{ name: 'GITHUB_TOKEN', mode: 'deny' }]);
-    expect(messagesOf('managed', { sandbox: { credentials: raw } })).toHaveLength(3);
-  });
-
-  test('valid entries stay enforced as written', () => {
-    const files = [
-      { path: '~/.aws/credentials', mode: 'deny' },
-      {
-        path: '~/.config/gh/hosts.yml',
-        mode: 'mask',
-        injectHosts: ['api.github.com'],
-        extract: 'token: (.+)',
-      },
-    ];
-    expect(plain(credentials({ files })?.files)).toEqual(files);
-    expect(messagesOf('managed', { sandbox: { credentials: { files } } })).toEqual([]);
   });
 });

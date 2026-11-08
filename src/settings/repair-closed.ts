@@ -98,12 +98,15 @@ export const modelDenylist: Repair = (value, at) => {
 };
 
 /**
- * `forceLoginOrgUUID`: a UUID or a list of them. Unreadable in managed settings "no organization is
- * permitted to log in", which the empty list says: any of no organizations (spec/judgments.md).
+ * `forceLoginOrgUUID`: a UUID or a list of them. In managed settings "a value that isn't a string or
+ * an array of strings" admits no organization, which the empty list says: any of no organizations
+ * (settings-reference.md, `forceLoginOrgUUID`; spec/judgments.md). A list with one non-text entry is
+ * not an array of strings, so it reads that way whole: stripping the entry would admit the others.
+ * Outside the policy tier an invalid entry is stripped like any list entry.
  */
 export const orgUuid: Repair = (value, at) => {
   if (isText(value)) return kept(value);
-  if (Array.isArray(value)) {
+  if (Array.isArray(value) && (!at.closed || value.every(isText))) {
     const { entries, issues } = stripInvalid(
       value,
       at,

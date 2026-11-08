@@ -7,6 +7,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
   addPluginsRefusal,
+  midSessionMcpUpdates,
   sideloadVerdict,
   type SideloadFacts,
 } from '../../../src/settings/managed/index.ts';
@@ -120,6 +121,48 @@ spec('policy.key.disableSideloadFlags', () => {
       expect(
         sideloadVerdict(off, { ...NONE, cloud: true, mcpServers: servers }).droppedServers,
       ).toEqual([]);
+    });
+  });
+
+  describe('server-delivered mid-session MCP updates in a cloud session', () => {
+    const update = [
+      { name: 'inproc', type: 'sdk' },
+      { name: 'slack', type: 'http', claudeTagSlack: true },
+      { name: 'delivered', type: 'http' },
+      { name: 'local', type: 'stdio' },
+    ];
+    const names = (servers: readonly { readonly name: string }[]) =>
+      servers.map((server) => server.name);
+
+    test("are ignored, except in-process sdk entries and a Claude Tag session's Slack tools", () => {
+      const verdict = midSessionMcpUpdates(on, { cloud: true }, update);
+      expect(names(verdict.applied)).toEqual(['inproc', 'slack']);
+      expect(names(verdict.ignored)).toEqual(['delivered', 'local']);
+    });
+
+    test('are applied as they come outside a cloud session', () => {
+      const verdict = midSessionMcpUpdates(on, { cloud: false }, update);
+      expect(names(verdict.applied)).toEqual(['inproc', 'slack', 'delivered', 'local']);
+      expect(verdict.ignored).toEqual([]);
+    });
+
+    test('are applied without the key, false or unset, in a cloud session too', () => {
+      for (const view of [off, viewOf(['managed', { model: 'a' }])]) {
+        const verdict = midSessionMcpUpdates(view, { cloud: true }, update);
+        expect(names(verdict.applied)).toHaveLength(4);
+        expect(verdict.ignored).toEqual([]);
+      }
+    });
+
+    test('an update of only exempt servers is applied whole, and an empty update stays empty', () => {
+      const exempt = update.slice(0, 2);
+      expect(midSessionMcpUpdates(on, { cloud: true }, exempt).ignored).toEqual([]);
+      expect(midSessionMcpUpdates(on, { cloud: true }, [])).toEqual({ applied: [], ignored: [] });
+    });
+
+    test('a user file cannot turn the drop on: the key is read from managed settings only', () => {
+      const user = viewOf(['user', { disableSideloadFlags: true }]);
+      expect(midSessionMcpUpdates(user, { cloud: true }, update).ignored).toEqual([]);
     });
   });
 

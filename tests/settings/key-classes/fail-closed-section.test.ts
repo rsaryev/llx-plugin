@@ -26,6 +26,67 @@ spec('policy.managed.Keys that fail closed', () => {
       }
     });
 
+    test('the keys the docs name read as their restrictive value: disableAutoMode as "disable", skipDangerousModePermissionPrompt as false', () => {
+      for (const value of ['yes', 3, true, ['disable'], { a: 1 }]) {
+        const raw = { disableAutoMode: value };
+        expect(managed(raw).get('disableAutoMode')).toBe('disable');
+        expect(said(raw)).toEqual([
+          '"disableAutoMode" was present but invalid; it is treated as "disable"',
+        ]);
+      }
+      for (const value of ['yes', 3, ['x'], { a: 1 }]) {
+        const raw = { skipDangerousModePermissionPrompt: value };
+        expect(managed(raw).get('skipDangerousModePermissionPrompt')).toBe(false);
+        expect(said(raw)).toEqual([
+          '"skipDangerousModePermissionPrompt" was present but invalid; it is treated as false',
+        ]);
+      }
+    });
+
+    test('a valid value of those two keys is kept without a report', () => {
+      expect(managed({ disableAutoMode: 'disable' }).get('disableAutoMode')).toBe('disable');
+      for (const value of [true, false]) {
+        const raw = { skipDangerousModePermissionPrompt: value };
+        expect(managed(raw).get('skipDangerousModePermissionPrompt')).toBe(value);
+        expect(said(raw)).toEqual([]);
+      }
+    });
+
+    test('the quoted Booleans of skipDangerousModePermissionPrompt read as that Boolean, with a notice', () => {
+      const raw = { skipDangerousModePermissionPrompt: 'true' };
+      expect(managed(raw).get('skipDangerousModePermissionPrompt')).toBe(true);
+      expect(said(raw)).toEqual([
+        '"skipDangerousModePermissionPrompt" is the text "true": drop the quotes',
+      ]);
+    });
+
+    test('forceRemoteSettingsRefresh, whose only restrictive value is true, reads as true', () => {
+      const raw = { forceRemoteSettingsRefresh: 'yes' };
+      expect(managed(raw).get('forceRemoteSettingsRefresh')).toBe(true);
+      expect(said(raw)).toEqual([
+        '"forceRemoteSettingsRefresh" was present but invalid; it is treated as true',
+      ]);
+      expect(
+        managed({ forceRemoteSettingsRefresh: 'false' }).get('forceRemoteSettingsRefresh'),
+      ).toBe(false);
+    });
+
+    test('the same unreadable value of those keys in a user file is dropped, never enforced', () => {
+      const raw = { disableAutoMode: 'yes', skipDangerousModePermissionPrompt: 'yes' };
+      const view = viewOf(['user', raw]);
+      expect(view.get('disableAutoMode')).toBeUndefined();
+      expect(view.get('skipDangerousModePermissionPrompt')).toBeUndefined();
+      expect(messagesOf('user', raw)).toHaveLength(2);
+    });
+
+    test('skipDangerousModePermissionPrompt is read from user, local, managed and --settings files only', () => {
+      const raw = { skipDangerousModePermissionPrompt: true };
+      for (const scope of ['user', 'local', 'managed', 'flag'] as const) {
+        expect(viewOf([scope, raw]).get('skipDangerousModePermissionPrompt')).toBe(true);
+      }
+      expect(viewOf(['project', raw]).get('skipDangerousModePermissionPrompt')).toBeUndefined();
+    });
+
     test('the same unreadable value in a user file is dropped, never enforced', () => {
       const raw = { disableSkillShellExecution: 'definitely' };
       expect(viewOf(['user', raw]).get('disableSkillShellExecution')).toBeUndefined();
@@ -72,6 +133,47 @@ spec('policy.managed.Keys that fail closed', () => {
       expect(said(raw)[0]).toContain(
         '"permissions.disableBypassPermissionsMode" was present but invalid',
       );
+    });
+
+    test('every lock of the block the SDK types as a restrictive value reads as it', () => {
+      for (const field of ['disableBypassPermissionsMode', 'disableAutoMode'] as const) {
+        const raw = { permissions: { [field]: 'yes', deny: ['Bash(rm *)'] } };
+        expect(managed(raw).get('permissions')).toEqual({
+          [field]: 'disable',
+          deny: ['Bash(rm *)'],
+        });
+        expect(said(raw)).toEqual([
+          `"permissions.${field}" was present but invalid; it is treated as "disable"`,
+        ]);
+      }
+      for (const field of [
+        'blockReadsOutsideWorkingDirectories',
+        'blockWritesOutsideWorkingDirectories',
+        'denyInsteadOfPrompting',
+      ] as const) {
+        for (const value of ['yes', 3, ['true']]) {
+          const raw = { permissions: { [field]: value } };
+          expect(managed(raw).get('permissions')).toEqual({ [field]: true });
+          expect(said(raw)).toEqual([
+            `"permissions.${field}" was present but invalid; it is treated as true`,
+          ]);
+        }
+        const quoted = { permissions: { [field]: 'false' } };
+        expect(managed(quoted).get('permissions')).toEqual({ [field]: false });
+        expect(said(quoted)).toEqual([
+          `"permissions.${field}" is the text "false": drop the quotes`,
+        ]);
+      }
+    });
+
+    test('the nested block locks read as true for the keys that combine them', () => {
+      const raw = { permissions: { blockReadsOutsideWorkingDirectories: 'maybe' } };
+      expect(managed(raw).get('permissions.blockReadsOutsideWorkingDirectories')).toBe(true);
+    });
+
+    test('in a user file the same locks stay as written, the file loses only invalid entries', () => {
+      const raw = { permissions: { disableAutoMode: 'yes', denyInsteadOfPrompting: 'yes' } };
+      expect(plain(viewOf(['user', raw]).get('permissions'))).toEqual(raw.permissions);
     });
 
     test('an invalid permissions.defaultMode reads as default', () => {

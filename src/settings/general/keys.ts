@@ -10,10 +10,12 @@ import type { PolicyKey } from '../../protocol/settings-keys.ts';
  */
 export const GENERAL_KEYS = [
   'allowManagedPermissionRulesOnly',
+  'attribution',
   'autoMode',
   'autoMode.classifyAllShell',
   'availableModels',
   'crossSessionInbound',
+  'disableAutoMode',
   'disableClaudeAiConnectors',
   'enableArtifact',
   'env',
@@ -29,9 +31,12 @@ export const GENERAL_KEYS = [
   'remoteControlAtStartup',
   'sandbox',
   'sandbox.filesystem.allowManagedReadPathsOnly',
+  'sandbox.filesystem.disabled',
   'sandbox.network.allowManagedDomainsOnly',
+  'skipDangerousModePermissionPrompt',
   'spinnerTipsEnabled',
   'useAutoModeDuringPlan',
+  'worktree',
 ] as const;
 export type GeneralKey = (typeof GENERAL_KEYS)[number];
 
@@ -41,10 +46,12 @@ export type SettingsKey = PolicyKey | GeneralKey;
 /** The value type of each general key, from the official `Settings`, never declared again (`undefined` as `Settings` has it: the key is optional). */
 export interface GeneralValues {
   readonly allowManagedPermissionRulesOnly: Settings['allowManagedPermissionRulesOnly'];
+  readonly attribution: Settings['attribution'];
   readonly autoMode: Settings['autoMode'];
   readonly 'autoMode.classifyAllShell': NonNullable<Settings['autoMode']>['classifyAllShell'];
   readonly availableModels: Settings['availableModels'];
   readonly crossSessionInbound: Settings['crossSessionInbound'];
+  readonly disableAutoMode: Settings['disableAutoMode'];
   readonly disableClaudeAiConnectors: Settings['disableClaudeAiConnectors'];
   readonly enableArtifact: Settings['enableArtifact'];
   readonly env: Settings['env'];
@@ -66,11 +73,16 @@ export interface GeneralValues {
   readonly 'sandbox.filesystem.allowManagedReadPathsOnly': NonNullable<
     NonNullable<Settings['sandbox']>['filesystem']
   >['allowManagedReadPathsOnly'];
+  readonly 'sandbox.filesystem.disabled': NonNullable<
+    NonNullable<Settings['sandbox']>['filesystem']
+  >['disabled'];
   readonly 'sandbox.network.allowManagedDomainsOnly': NonNullable<
     NonNullable<Settings['sandbox']>['network']
   >['allowManagedDomainsOnly'];
+  readonly skipDangerousModePermissionPrompt: Settings['skipDangerousModePermissionPrompt'];
   readonly spinnerTipsEnabled: Settings['spinnerTipsEnabled'];
   readonly useAutoModeDuringPlan: Settings['useAutoModeDuringPlan'];
+  readonly worktree: Settings['worktree'];
 }
 
 /** What `get` returns for a key: the policy key's own `Settings` type or the general key's. */
