@@ -78,6 +78,26 @@ spec('settings.key.blockedMarketplaces', () => {
         blocks(entry, git('https://github.com/untrusted/plugins.git', { ref: 'main', path: 'x' })),
       ).toBe(true);
     });
+
+    test('a pinned ref or path narrows an entry: it blocks only that value', () => {
+      const pinnedRef = github('untrusted/plugins', { ref: 'main' });
+      expect(blocks(pinnedRef, github('untrusted/plugins', { ref: 'main' }))).toBe(true);
+      expect(blocks(pinnedRef, github('untrusted/plugins', { ref: 'dev' }))).toBe(false);
+      expect(blocks(pinnedRef, github('untrusted/plugins'))).toBe(false);
+      const pinnedPath = github('untrusted/plugins', { path: 'a' });
+      expect(blocks(pinnedPath, github('untrusted/plugins', { path: 'a' }))).toBe(true);
+      expect(blocks(pinnedPath, github('untrusted/plugins', { path: 'b' }))).toBe(false);
+      expect(blocks(pinnedPath, github('untrusted/plugins'))).toBe(false);
+      const pinnedGit = git('https://gitlab.example.com/tools/plugins.git', {
+        ref: 'main',
+        path: 'a',
+      });
+      const at = (extra: { ref?: string; path?: string }) =>
+        git('https://gitlab.example.com/tools/plugins.git', extra);
+      expect(blocks(pinnedGit, at({ ref: 'main', path: 'a' }))).toBe(true);
+      expect(blocks(pinnedGit, at({ ref: 'dev', path: 'a' }))).toBe(false);
+      expect(blocks(pinnedGit, at({ ref: 'main', path: 'b' }))).toBe(false);
+    });
   });
 
   describe('owner wildcards', () => {

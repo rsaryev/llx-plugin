@@ -33,6 +33,26 @@ spec('settings.key.strictKnownMarketplaces', () => {
       }
     });
 
+    test('locking any customization type stops skills-directory plugins whether or not the entry is present', () => {
+      const withEntry = { strictKnownMarketplaces: [github('a/b'), skillsDir] };
+      const locked = { admitted: false, by: 'strictPluginOnlyCustomization' } as const;
+      expect(
+        managed({ ...withEntry, strictPluginOnlyCustomization: true }).skillsDirectoryPlugins(),
+      ).toEqual(locked);
+      expect(
+        managed({ ...withEntry, strictPluginOnlyCustomization: ['mcp'] }).skillsDirectoryPlugins(),
+      ).toEqual(locked);
+      expect(
+        managed({ strictPluginOnlyCustomization: ['hooks'] }).skillsDirectoryPlugins(),
+      ).toEqual(locked);
+      expect(
+        managed({ ...withEntry, strictPluginOnlyCustomization: [] }).skillsDirectoryPlugins(),
+      ).toEqual({ admitted: true });
+      expect(
+        managed({ ...withEntry, strictPluginOnlyCustomization: false }).skillsDirectoryPlugins(),
+      ).toEqual({ admitted: true });
+    });
+
     test('any allowlist, even an empty one, stops skills-directory plugins; the entry keeps them', () => {
       expect(managed({}).skillsDirectoryPlugins().admitted).toBe(true);
       expect(managed({ strictKnownMarketplaces: [] }).skillsDirectoryPlugins()).toEqual({
@@ -75,6 +95,15 @@ spec('settings.key.strictKnownMarketplaces', () => {
       }
     });
 
+    test('[] ends the message with "No external marketplaces are allowed." rather than a list', () => {
+      expect(managed({ strictKnownMarketplaces: [] }).check(github('a/b'))).toEqual({
+        allowed: false,
+        by: 'strictKnownMarketplaces',
+        message:
+          "Marketplace source 'github:a/b' is blocked by enterprise policy. No external marketplaces are allowed.",
+      });
+    });
+
     test('allow only the official marketplace: its repository is admitted, others are not', () => {
       const gate = managed({ strictKnownMarketplaces: [official] });
       expect(gate.check(official)).toEqual({ allowed: true });
@@ -90,10 +119,12 @@ spec('settings.key.strictKnownMarketplaces', () => {
       });
       const verdict = gate.check(git('https://example.com/other-marketplace.git'));
       expect(verdict.allowed).toBe(false);
-      if (verdict.allowed) return;
-      expect(verdict.message).toContain('is blocked by enterprise policy');
-      expect(verdict.message).toContain('anthropics/claude-plugins-official');
-      expect(verdict.message).toContain('your-org/*');
+      expect(verdict).toEqual({
+        allowed: false,
+        by: 'strictKnownMarketplaces',
+        message:
+          "Marketplace source 'git:https://example.com/other-marketplace.git' is blocked by enterprise policy. Allowed sources: github:anthropics/claude-plugins-official, github:your-org/*, skills-dir",
+      });
       expect(gate.check(github('your-org/your-marketplace'))).toEqual({ allowed: true });
     });
 
@@ -104,8 +135,43 @@ spec('settings.key.strictKnownMarketplaces', () => {
       });
       expect(gate.checkRegistered('acme-tools', github('acme-corp/other'))).toEqual({
         loads: false,
-        message: 'Marketplace "acme-tools" is not in the allowed marketplace list',
+        message:
+          'Marketplace "acme-tools" is not in the allowed marketplace list\nAllowed sources: github:acme-corp/approved',
       });
+    });
+
+    test('the load-time message points to the administrator when the allowlist is empty', () => {
+      const gate = managed({ strictKnownMarketplaces: [] });
+      const expected = {
+        loads: false,
+        message:
+          'Marketplace "acme-tools" is not in the allowed marketplace list\nContact your administrator to configure allowed marketplace sources',
+      };
+      expect(gate.checkRegistered('acme-tools', github('acme-corp/other'))).toEqual(expected);
+      expect(gate.checkMissing('acme-tools')).toEqual(expected);
+    });
+
+    test('a shorthand that points at github.com while the allowlist admits a host by hostname adds a Tip', () => {
+      const gate = managed({
+        strictKnownMarketplaces: [hostPattern('^git\\.internal\\.example$')],
+      });
+      expect(gate.check(github('acme-corp/tools'))).toEqual({
+        allowed: false,
+        by: 'strictKnownMarketplaces',
+        message:
+          "Marketplace source 'github:acme-corp/tools' is blocked by enterprise policy. Allowed sources: hostPattern:^git\\.internal\\.example$\nTip: the owner/repo shorthand assumes github.com. If the repository lives on your internal host, add it again with its full URL, such as git@your-git-host.com:owner/repo.git",
+      });
+    });
+
+    test('no Tip without a hostname entry or for a source that is not the shorthand', () => {
+      const none = managed({ strictKnownMarketplaces: [github('acme-corp/approved')] }).check(
+        github('acme-corp/tools'),
+      );
+      expect(!none.allowed && none.message.includes('Tip:')).toBe(false);
+      const full = managed({ strictKnownMarketplaces: [hostPattern('^git\\.internal$')] }).check(
+        git('git@elsewhere.example:acme-corp/tools.git'),
+      );
+      expect(!full.allowed && full.message.includes('Tip:')).toBe(false);
     });
 
     test('a marketplace Claude Code cannot find does not load while any allowlist is set, with the policy error', () => {
@@ -113,7 +179,8 @@ spec('settings.key.strictKnownMarketplaces', () => {
       expect(gate.restrictionActive()).toBe(true);
       expect(gate.checkMissing('stale-marketplace')).toEqual({
         loads: false,
-        message: 'Marketplace "stale-marketplace" is not in the allowed marketplace list',
+        message:
+          'Marketplace "stale-marketplace" is not in the allowed marketplace list\nAllowed sources: github:acme-corp/approved',
       });
       expect(managed({}).restrictionActive()).toBe(false);
       expect(managed({}).checkMissing('stale-marketplace')).toEqual({ loads: true });

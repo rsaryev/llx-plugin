@@ -26,10 +26,11 @@ spec('settings.key.blockedMarketplaces', () => {
       const gate = managed({ blockedMarketplaces: [github('untrusted/plugins')] });
       const verdict = gate.check(github('untrusted/plugins'));
       expect(verdict.allowed).toBe(false);
-      if (verdict.allowed) return;
-      expect(verdict.by).toBe('blockedMarketplaces');
-      expect(verdict.message).toContain('is blocked by enterprise policy');
-      expect(verdict.message).toContain('untrusted/plugins');
+      expect(verdict).toEqual({
+        allowed: false,
+        by: 'blockedMarketplaces',
+        message: "Marketplace source 'github:untrusted/plugins' is blocked by enterprise policy",
+      });
       expect(gate.check(github('trusted/plugins'))).toEqual({ allowed: true });
     });
 
@@ -37,7 +38,8 @@ spec('settings.key.blockedMarketplaces', () => {
       const gate = managed({ blockedMarketplaces: [github('untrusted/*')] });
       expect(gate.checkRegistered('shady', github('untrusted/plugins'))).toEqual({
         loads: false,
-        message: 'Marketplace "shady" is blocked by enterprise policy',
+        message:
+          'Marketplace "shady" is blocked by enterprise policy\nThis marketplace source is explicitly blocked by your administrator',
       });
       expect(gate.checkRegistered('fine', github('trusted/plugins'))).toEqual({ loads: true });
     });
@@ -61,7 +63,8 @@ spec('settings.key.blockedMarketplaces', () => {
       if (!verdict.allowed) expect(verdict.by).toBe('blockedMarketplaces');
       expect(gate.checkRegistered('s', github('acme-corp/secret'))).toEqual({
         loads: false,
-        message: 'Marketplace "s" is blocked by enterprise policy',
+        message:
+          'Marketplace "s" is blocked by enterprise policy\nThis marketplace source is explicitly blocked by your administrator',
       });
       expect(gate.check(github('acme-corp/ok'))).toEqual({ allowed: true });
       const outside = gate.check(github('elsewhere/ok'));
@@ -107,7 +110,20 @@ spec('settings.key.blockedMarketplaces', () => {
       expect(gate.restrictionActive()).toBe(true);
       expect(gate.checkMissing('stale')).toEqual({
         loads: false,
-        message: 'Marketplace "stale" is blocked by enterprise policy',
+        message:
+          'Marketplace "stale" is blocked by enterprise policy\nThis marketplace source is explicitly blocked by your administrator',
+      });
+    });
+
+    test('a marketplace Claude Code cannot find, with both lists set, gets the allowlist wording', () => {
+      const gate = managed({
+        strictKnownMarketplaces: [github('acme-corp/*')],
+        blockedMarketplaces: [github('acme-corp/secret')],
+      });
+      expect(gate.checkMissing('stale')).toEqual({
+        loads: false,
+        message:
+          'Marketplace "stale" is not in the allowed marketplace list\nAllowed sources: github:acme-corp/*',
       });
     });
 

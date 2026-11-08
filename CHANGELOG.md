@@ -84,6 +84,13 @@
 
 ### Fixed
 
+- Settings, marketplace gate: the blocked-source message quotes the source (`Marketplace source
+  '<source>' is blocked by enterprise policy`); an empty allowlist ends it with `No external
+  marketplaces are allowed.`; the load-time messages carry the docs' guidance line; a `github`
+  shorthand refused by an allowlist that admits a host by hostname adds the `Tip:`;
+  `skillsDirectoryPlugins()` reports `strictPluginOnlyCustomization` as the reason when any
+  customization type is locked; tests assert whole messages and cover a pinned `ref` or `path` and
+  both lists set.
 - Settings, plugin keys: a `--add-dir` directory now ranks below user settings and only its `true`
   `enabledPlugins` entry counts (plugins/loading.md), so it neither turns a plugin off nor overrides
   another file; the built-in guard's `pluginConfigs` options are read from managed settings only;
