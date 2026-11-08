@@ -168,7 +168,7 @@ applied) and the host starts them. Tests use the fakes in `tests/support/ports.t
 `scriptedRunner`, `recordingHttp`, `fakeModel`, `fakeMcp`, `fixedClock`, `locations`,
 `fakeEnvironment`, `memoryScratch`).
 
-## Hooks (select done; input, handlers, verdict and output planned)
+## Hooks (select, input, handlers, verdict and engine done; output planned)
 
 The hook engine picks the handlers an event runs, runs them through ports, and merges what they
 return. The first stage, selection, is pure over data: no port, no I/O.
@@ -203,7 +203,11 @@ const { selected, issues, monitor } = selectHandlers(registry, {
 | `planTimeouts(event, selected, environment)`, `handlerTimeoutMs(entry, plan)` | done | the limit in milliseconds the port enforces: defaults 600/600/600/30/60, lowered per event, none for `async`, the shared `SessionEnd` budget |
 | `okFalseEffect(event, run, options)`, `isPromptEvent(event)` | done | what `ok: false` of a prompt or agent hook does on each of the 13 events that run them: `none`, `allow-stop` (`impossible` on `Stop` and `SubagentStop`), or `block` with `endsTurn`, `delivery` and `deniesTool`; `continueOnBlock`, agent hooks and the two causes of `TaskCompleted` |
 | `runLimited(entries, run, limit?)`, `composePrompt(prompt, inputJson)` | done | at most 12 prompt or agent hooks at once, results in handler order; `$ARGUMENTS` and `\$` of a prompt. `runHandler` calls neither `runLimited` nor `okFalseEffect`: the interpreter and engine (planned) do, and until they exist a host calls them itself |
-| `interpretRun`, `parseHookOutput`, `mergeOutputs`, `createHookEngine` | planned | exit codes and `onFailure`, the JSON output, the merged outcome |
+| `interpretRun(entry, run, context)`        | done    | what one raw run came to, as a `HandlerVerdict`: the exit-code table (stdout against exit 0, 2, other), `EXIT2_RULES` per event, `onFailure`, HTTP response handling, `ok: false`, background deliveries |
+| `EXIT2_RULES`, `EXIT_TABLE`, `exitClassOf`  | done    | the "Exit code 2 behavior per event" table for all 33 events (can it block, what it does, where stderr goes, the events' own rules) and the "Exit code output" table as data |
+| `readStdout`, `readBody`, `readAsyncResponse` | done  | the stdout parsing rule of exit 0 (one JSON object; `{`...`}` text that is not one is a parse failure; arrays and quoted strings are plain text), an HTTP body, an async hook's one-line response |
+| `createHookEngine(ports, options)`         | done    | `dispatch(registry, { event, facts, session, signal })`: select, build the input, run every handler (at most 12 prompt or agent hooks at once), read each run, merge; returns a `HookOutcome` |
+| `parseHookOutput`, `mergeOutputs`          | planned | the JSON output schemas, caps and merge rules (the output stream); the engine takes them as `options.output` |
 
 Selection also applies the gates of hooks.md: `disableAllHooks` (managed hooks survive it unless the
 managed level sets it), workspace trust for settings-file hooks (and for a project skill's), the
@@ -223,7 +227,7 @@ one string for the named shell. The result's `run` is `exited`, `timed-out` (the
 `not-started`, `cancelled`, `skipped` (a shell-form plugin hook that references `${user_config.*}`
 runs nothing and carries the documented error) or `background`, whose `done` settles when the process
 ends, with `wake` set for an `asyncRewake` hook that exited with code 2. What an exit code means and
-what `onFailure` does with it are the interpret stage's (planned).
+what `onFailure` does with it are `interpretRun`'s, below.
 
 The remote types return the raw answer in `run`: `http` (`status` and `body`, any status), `http-failed`
 (no answer), `mcp` (`isError` and `text`, also for a server that is not connected), `model` (`ok`,
@@ -237,6 +241,34 @@ optional `ports.clock` the call gets what the wait left, and an abort during the
 `RunContext.httpPolicy` carries the merged `allowedHttpHookUrls` (a hook whose URL matches no pattern
 is `skipped` with a warning) and `httpHookAllowedEnvVars` (a header variable needs both lists); the
 settings stream reads and merges the two keys, the host passes the result.
+
+`createHookEngine(ports, options)` takes the run ports (`commands`, `locations`, `environment`, and the
+optional `http`, `mcp`, `models`, `clock`, `observer`, `modelCatalog`) and `options.output`, an
+`OutputStage` (`parse` of one JSON value, `merge` of every hook's output) the output stream provides;
+`windows`, `defaultShell`, the two fallback directories, `userConfigOf`, `httpPolicy` and `ifEvaluator`
+are the host's facts. A `HookOutcome` says `proceed` (false: the guarded action must not happen) with
+`block` (`via`: `exit2`, `decision`, `failure`, `continue-false` or `timeout`; the hook error line the
+docs show; `condition` for a `WorktreeRemove` that fails only if the directory remains), `continue` and
+`stopReason`, `systemMessages`, `additionalContext`, `effects`, `terminalSequences`, the `<Event>:<tool>
+hook error` `notices`, `feedback` (stderr that goes to Claude or the user without blocking), `stdout`
+(a `WorktreeCreate` command hook's, whose last line is the path), `runs`, `consumedOnce` (the ids a
+session removes) and `background` (the `additionalContext`, `systemMessage` or `wake` text of each
+`async` or `asyncRewake` hook once its process ends).
+
+How a run is read (hooks.md, "Exit code output"): exit 0 applies valid JSON, and plain stdout reaches
+Claude on `UserPromptSubmit`, `UserPromptExpansion`, `SessionStart` and `PostModelSwitch` (the
+compaction instructions on `PreCompact`); JSON that fails the output stage's validation is a
+non-blocking error, as is any exit code other than 0 and 2 (the notice carries the first stderr line:
+`Failed with non-blocking status code: ...`) and a hook that cannot start; exit 2 blocks on the 16
+events that can, with the stderr as the reason (a JSON decision's reason replaces it) and the JSON
+fields unable to override it; a timeout renders no decision except on `PreModelSwitch`. `onFailure:
+"block"` on a `command` or `http` hook turns a failure (cannot start, other exit code, HTTP error,
+timeout, invalid output) into what exit 2 does on that event, a denial on `PermissionRequest`, and
+nothing on `Stop`, `SubagentStop`, `TaskCompleted`, `TeammateIdle` and background hooks. An HTTP 2xx
+with an empty body is a success, a 2xx JSON object is read like stdout, any other body, a non-2xx
+status and a connection failure are non-blocking errors. Without Git Bash a shell-form `PreToolUse`
+or `PermissionRequest` command hook is a gate as the docs describe (`defaultShell: 'powershell'` on
+Windows stands for it).
 
 `buildHookInput` puts `session_id`, `prompt_id` (absent until the first prompt), `transcript_path`,
 `cwd`, `scratchpad_dir` (absent without a scratchpad), `permission_mode` and `effort` (on the events

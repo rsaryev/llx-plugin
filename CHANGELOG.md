@@ -90,6 +90,11 @@
   the 30 s and 60 s timeouts, and read the `ok` / `reason` / `impossible` answer. `okFalseEffect`
   says what `ok: false` does on each of the 13 events (`continueOnBlock`, `impossible`, agent hooks),
   and `runLimited` runs at most 12 prompt or agent hooks at once, in handler order.
+- The hook verdict and engine: `interpretRun` reads a run as the docs do (the stdout against exit
+  code table, exit 2 on each of the 33 events, `onFailure` on `command` and `http` hooks, HTTP
+  response handling, `ok: false` of prompt and agent hooks, background deliveries), and
+  `createHookEngine` dispatches an event through select, input, run, read and merge into a
+  `HookOutcome`.
 
 ### Fixed
 
