@@ -162,6 +162,8 @@ A test proves requirements by running under `spec(ids, body)` from `tests/suppor
 `describe` named `⟦id⟧`. `spec` refuses an id that is not in `spec/requirements.json`, and so does
 `check:spec` (SP2) statically. A test states the behaviour the cited section documents, with the
 section named in the file's header comment.
+The static gate checks single-quoted, double-quoted and static template-literal IDs, including arrays;
+the other quote character inside an ID is part of the ID, not a delimiter.
 
 `bun run compat` runs every test with a JUnit report and writes `docs/COMPATIBILITY.md`:
 

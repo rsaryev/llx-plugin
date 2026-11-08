@@ -22,6 +22,7 @@ import { docsPages, pageProblems, readOutOfScopePages } from './page-scope.ts';
 import { REASONS } from './scope.ts';
 import { SCOPES } from './scopes.ts';
 import { toolTableDrift } from './tool-table.ts';
+import { testIds } from './test-ids.ts';
 
 const problems: string[] = [];
 const file = await readRequirements().catch((error: unknown) => {
@@ -35,16 +36,10 @@ if (ids.some((id, index) => index > 0 && (ids[index - 1] ?? '').localeCompare(id
   problems.push('SP1 spec/requirements.json is not sorted: run `bun run spec:extract`');
 }
 
-const LITERAL = /['"]([^'"]+)['"]/g;
-const CALL = /\bspec\(\s*(\[[^\]]*\]|'[^']*'|"[^"]*")/g;
 for await (const path of new Bun.Glob('tests/**/*.ts').scan({ cwd: ROOT })) {
   const text = await Bun.file(join(ROOT, path)).text();
-  for (const call of text.matchAll(CALL)) {
-    for (const literal of (call[1] ?? '').matchAll(LITERAL)) {
-      const id = literal[1] ?? '';
-      if (!known.has(id))
-        problems.push(`SP2 ${relative(ROOT, path)}: "${id}" is not a requirement`);
-    }
+  for (const id of testIds(text)) {
+    if (!known.has(id)) problems.push(`SP2 ${relative(ROOT, path)}: "${id}" is not a requirement`);
   }
 }
 
