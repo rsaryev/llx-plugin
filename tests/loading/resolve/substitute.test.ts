@@ -12,7 +12,9 @@
  */
 import { describe, expect, test } from 'bun:test';
 import {
+  prepareContentSubstitution,
   SENSITIVE_PLACEHOLDER,
+  substituteContent,
   substituteDeep,
   substituteTemplate,
   type FieldPolicy,
@@ -189,5 +191,18 @@ describe('substituteDeep', () => {
       () => OPEN,
     );
     expect(result.issues.map((issue) => issue.path)).toEqual(['env.A', 'args.1']);
+  });
+});
+
+// Judgment (spec/judgments.md): a prepared substitution asks for the path variables once, when the
+// host prepares, and then substitutes synchronously with the same rules.
+describe('prepareContentSubstitution', () => {
+  test('substitutes a body synchronously, as substituteContent does', async () => {
+    const scope = scopeOf();
+    const body =
+      'root ${CLAUDE_PLUGIN_ROOT} at ${user_config.api_endpoint} key ${user_config.api_token} ${HOME}';
+    const run = await prepareContentSubstitution(scope);
+    expect(run(body).text).toBe((await substituteContent(body, scope)).text);
+    expect(run(body).text).toContain(SENSITIVE_PLACEHOLDER('api_token'));
   });
 });

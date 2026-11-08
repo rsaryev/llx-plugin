@@ -35,27 +35,39 @@ export const pluginVariableValue = (
   scope: SubstitutionScope,
 ): Promise<string> => SOURCES[variable](scope);
 
+/**
+ * Whether a rendering writes the variable's path into the text. A reference the shell or PowerShell
+ * expands (`${CLAUDE_PLUGIN_DATA}`, `${env:CLAUDE_PLUGIN_DATA}`) does not, so it never asks the host
+ * for the data folder.
+ */
+const NEEDS_VALUE: { readonly [R in PathRendering]: boolean } = {
+  normalized: true,
+  native: true,
+  'environment-reference': false,
+  'shell-reference': false,
+};
+
+export const renderingNeedsValue = (rendering: PathRendering): boolean => NEEDS_VALUE[rendering];
+
 /** Writes a variable into text (plugins/manifest-reference.md, "Quoting and path separators"). */
 const RENDERINGS: {
   readonly [R in PathRendering]: (
     variable: PluginVariable,
-    load: () => Promise<string>,
+    value: string,
     windows: boolean,
-  ) => Promise<string>;
+  ) => string;
 } = {
-  normalized: async (_variable, load, windows) => {
-    const path = await load();
-    return windows ? path.replaceAll('\\', '/') : path;
-  },
-  native: (_variable, load) => load(),
-  'environment-reference': (variable) => Promise.resolve(`\${env:${variable}}`),
+  normalized: (_variable, value, windows) => (windows ? value.replaceAll('\\', '/') : value),
+  native: (_variable, value) => value,
+  'environment-reference': (variable) => `\${env:${variable}}`,
   // Braced, so text right after the reference (`"${CLAUDE_PLUGIN_ROOT}"_old`) is not read as part of the name.
-  'shell-reference': (variable) => Promise.resolve(`\${${variable}}`),
+  'shell-reference': (variable) => `\${${variable}}`,
 };
 
+/** `value` is the variable's path; a rendering that does not need it (`renderingNeedsValue`) ignores it. */
 export const renderPluginVariable = (
   rendering: PathRendering,
   variable: PluginVariable,
-  load: () => Promise<string>,
+  value: string,
   windows: boolean,
-): Promise<string> => RENDERINGS[rendering](variable, load, windows);
+): string => RENDERINGS[rendering](variable, value, windows);

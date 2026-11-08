@@ -18,7 +18,12 @@ import {
   userConfigValue,
   type UserConfigValue,
 } from './user-config.ts';
-import { isPluginVariable, pluginVariableValue, renderPluginVariable } from './variables.ts';
+import {
+  isPluginVariable,
+  pluginVariableValue,
+  renderingNeedsValue,
+  renderPluginVariable,
+} from './variables.ts';
 import type { PluginVariable } from './variables.ts';
 
 /**
@@ -67,14 +72,16 @@ interface Resolution {
 
 interface Token {
   readonly reference: TokenReference;
-  resolve(): Promise<Resolution>;
+  resolve(): Resolution;
+  /** The path variable a path-variable reference names: what the host is asked for. */
+  readonly variable?: PluginVariable;
 }
 
 interface Context {
   readonly scope: SubstitutionScope;
   readonly policy: FieldPolicy;
-  /** The variable as the host reports it, asked once per substituter. */
-  variable(name: PluginVariable): Promise<string>;
+  /** The variable as the host reported it; only the ones a rendering needs are asked for. */
+  variable(name: PluginVariable): string;
 }
 
 type TokenParser = (inner: string, context: Context) => Token | undefined;
@@ -117,19 +124,18 @@ const userConfigToken: TokenParser = (inner, { scope, policy }) => {
     reference: { kind: 'user-config', key },
     resolve: () => {
       // A sensitive option is never shown, so whether it has a value does not matter (oracle).
-      if (disposition === 'placeholder')
-        return Promise.resolve({ text: SENSITIVE_PLACEHOLDER(key) });
+      if (disposition === 'placeholder') return { text: SENSITIVE_PLACEHOLDER(key) };
       const value = userConfigValue(scope.userConfig, key);
       if (value === undefined && disposition !== 'keep') {
         const why = declared === undefined ? 'is not declared in userConfig' : 'has no value';
-        return Promise.resolve({
+        return {
           text: raw,
           problem: `\${user_config.${key}} ${why}`,
           unresolved: { option: key },
-        });
+        };
       }
       const text = value === undefined ? raw : RENDERINGS[disposition](raw, key, value);
-      return Promise.resolve({ text });
+      return { text };
     },
   };
 };
@@ -141,11 +147,12 @@ const pathVariableToken: TokenParser = (inner, context) => {
   const { policy, scope } = context;
   return {
     reference: { kind: 'path-variable', name },
-    resolve: async () => ({
-      text: await renderPluginVariable(
+    variable: name,
+    resolve: () => ({
+      text: renderPluginVariable(
         policy.paths,
         name,
-        () => context.variable(name),
+        renderingNeedsValue(policy.paths) ? context.variable(name) : '',
         scope.windows,
       ),
     }),
@@ -158,7 +165,7 @@ const extraToken: TokenParser = (inner, { scope }) => {
   const value = extra !== undefined && Object.hasOwn(extra, name) ? extra[name] : undefined;
   return value === undefined
     ? undefined
-    : { reference: { kind: 'extra', name }, resolve: () => Promise.resolve({ text: value }) };
+    : { reference: { kind: 'extra', name }, resolve: () => ({ text: value }) };
 };
 
 const EXPANDS: { readonly [E in EnvironmentExpansion]: boolean } = {
@@ -178,15 +185,13 @@ const environmentToken: TokenParser = (inner, { scope, policy }) => {
         (name) => scope.environment.get(name),
         policy.readsAsEmpty,
       );
-      return Promise.resolve(
-        done.missing
-          ? {
-              text: done.text,
-              problem: missingVariableMessage(reference.name),
-              unresolved: { variable: reference.name },
-            }
-          : { text: done.text },
-      );
+      return done.missing
+        ? {
+            text: done.text,
+            problem: missingVariableMessage(reference.name),
+            unresolved: { variable: reference.name },
+          }
+        : { text: done.text };
     },
   };
 };
@@ -212,49 +217,76 @@ export interface Substituter {
   run(template: string, policy: FieldPolicy, path?: string): Promise<Substituted>;
 }
 
+export type Answers = ReadonlyMap<PluginVariable, string>;
+
+/** Every distinct reference of the template, parsed once. */
+function tokensOf(template: string, context: Context): Map<string, Token> {
+  const tokens = new Map<string, Token>();
+  for (const [raw, inner] of template.matchAll(BRACED_REFERENCE)) {
+    const token = tokens.has(raw) ? undefined : parseToken(inner ?? '', context);
+    if (token) tokens.set(raw, token);
+  }
+  return tokens;
+}
+
+const uniqueOf = (values: readonly (string | undefined)[]): string[] => [
+  ...new Set(values.flatMap((value) => value ?? [])),
+];
+
+/** The substitution once the variables the template needs are known: no port is asked here. */
+export function runWith(
+  template: string,
+  policy: FieldPolicy,
+  path: string,
+  base: { scope: SubstitutionScope; answers: Answers },
+): Substituted {
+  const context: Context = {
+    scope: base.scope,
+    policy,
+    variable: (name) => base.answers.get(name) ?? '',
+  };
+  const tokens = tokensOf(template, context);
+  const resolved = new Map([...tokens].map(([raw, token]) => [raw, token.resolve()] as const));
+  const references = new Map<string, TokenReference>();
+  for (const { reference } of tokens.values()) {
+    references.set(JSON.stringify(reference), reference);
+  }
+  const all = [...resolved.values()];
+  return {
+    text: template.replace(BRACED_REFERENCE, (raw) => resolved.get(raw)?.text ?? raw),
+    issues: all.flatMap(({ problem }) => (problem === undefined ? [] : [warning(path, problem)])),
+    referenced: [...references.values()],
+    unresolved: {
+      variables: uniqueOf(all.map((one) => one.unresolved?.variable)),
+      options: uniqueOf(all.map((one) => one.unresolved?.option)),
+    },
+  };
+}
+
+/** The path variables whose value the template writes, under the policy's rendering. */
+function neededVariables(template: string, scope: SubstitutionScope, policy: FieldPolicy) {
+  if (!renderingNeedsValue(policy.paths)) return [];
+  const probe: Context = { scope, policy, variable: () => '' };
+  return [...tokensOf(template, probe).values()].flatMap(({ variable }) => variable ?? []);
+}
+
 /**
  * A substituter keeps what the host answered for the variables, so several strings of one
- * component (a server's `command`, `args` and `env`) ask for the data folder once.
+ * component (a server's `command`, `args` and `env`) ask for the data folder once, and only a
+ * string that writes a variable's path asks for it.
  */
 export function substituter(scope: SubstitutionScope): Substituter {
-  const answers = new Map<PluginVariable, Promise<string>>();
-  const variable = (name: PluginVariable): Promise<string> => {
-    const known = answers.get(name) ?? pluginVariableValue(name, scope);
-    answers.set(name, known);
-    return known;
+  const answers = new Map<PluginVariable, string>();
+  const asked = new Map<PluginVariable, Promise<string>>();
+  const ask = async (name: PluginVariable): Promise<void> => {
+    const known = asked.get(name) ?? pluginVariableValue(name, scope);
+    asked.set(name, known);
+    answers.set(name, await known);
   };
   return {
     async run(template, policy, path = '') {
-      const context: Context = { scope, policy, variable };
-      const tokens = new Map<string, Token>();
-      for (const [raw, inner] of template.matchAll(BRACED_REFERENCE)) {
-        const token = tokens.has(raw) ? undefined : parseToken(inner ?? '', context);
-        if (token) tokens.set(raw, token);
-      }
-      const resolved = new Map<string, Resolution>(
-        await Promise.all(
-          [...tokens].map(async ([raw, token]) => [raw, await token.resolve()] as const),
-        ),
-      );
-      const references = new Map<string, TokenReference>();
-      for (const { reference } of tokens.values()) {
-        references.set(JSON.stringify(reference), reference);
-      }
-      return {
-        text: template.replace(BRACED_REFERENCE, (raw) => resolved.get(raw)?.text ?? raw),
-        issues: [...resolved.values()].flatMap(({ problem }) =>
-          problem === undefined ? [] : [warning(path, problem)],
-        ),
-        referenced: [...references.values()],
-        unresolved: {
-          variables: [
-            ...new Set([...resolved.values()].flatMap((one) => one.unresolved?.variable ?? [])),
-          ],
-          options: [
-            ...new Set([...resolved.values()].flatMap((one) => one.unresolved?.option ?? [])),
-          ],
-        },
-      };
+      await Promise.all(neededVariables(template, scope, policy).map(ask));
+      return runWith(template, policy, path, { scope, answers });
     },
   };
 }

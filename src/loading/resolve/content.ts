@@ -1,6 +1,7 @@
 import type { SubstitutionScope } from './scope.ts';
+import { prepareSubstituter } from './prepared.ts';
 import type { Substituted } from './substitute.ts';
-import { substituteSurface } from './surfaces.ts';
+import { SURFACE_POLICY, substituteSurface } from './surfaces.ts';
 
 /**
  * Substitutes `${...}` in the Markdown body of a skill, command or agent (plugins/manifest-reference.md,
@@ -20,3 +21,15 @@ export const substituteContent = (
   scope: SubstitutionScope,
   path = 'content',
 ): Promise<Substituted> => substituteSurface('markdown-content', body, scope, path);
+
+/**
+ * `substituteContent` for a host that reads a body synchronously (a lazily loaded skill): the
+ * variables are asked for once, by `prepareSubstituter`, and each call after is synchronous, with
+ * the same rules.
+ */
+export async function prepareContentSubstitution(
+  scope: SubstitutionScope,
+): Promise<(body: string, path?: string) => Substituted> {
+  const prepared = await prepareSubstituter(scope);
+  return (body, path = 'content') => prepared.run(body, SURFACE_POLICY['markdown-content'], path);
+}

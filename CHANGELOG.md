@@ -4,6 +4,8 @@
 
 ### Added
 
+- `prepareSubstituter` and `prepareContentSubstitution`: synchronous substitution for a host
+  that reads a body lazily, with the path variables asked for once when it prepares.
 - Export `substituteArgumentPieces` from the package root, for a host that renders a skill's
   injected commands itself and still needs the arguments counted over the authored text.
 - Reach 100% of the in-scope requirements (2713 of 2713): host switches (`CLAUDE_CODE_*` variables,

@@ -25,7 +25,8 @@ export {
   type RestartDecision,
 } from './lsp-runtime.ts';
 export { resolveChannel, type ChannelResolution, type ResolvedChannel } from './channel.ts';
-export { substituteContent } from './content.ts';
+export { prepareContentSubstitution, substituteContent } from './content.ts';
+export { prepareSubstituter, type PreparedSubstituter } from './prepared.ts';
 export { exportedEnvironment } from './exported-environment.ts';
 export {
   resolveHookCommand,

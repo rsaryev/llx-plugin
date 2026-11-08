@@ -728,6 +728,7 @@ const { text } = await substituteContent(skillBody, scope); // Markdown body of 
 | `resolveHookCommand(handler, scope, { path?, defaultShell? })` | with `args`: exec form, `command` and each element substituted as plain strings (`${user_config.*}` allowed, `shell` ignored); without: shell form through `shell` (default `defaultShell`, then `bash`), where `${user_config.*}` anywhere in `command` is the errors.md message and `resolved` is `undefined`, with no value needed; the environment holds the three path variables and an option variable per option with a value, sensitive included |
 | `HOOK_GUARD` | the shell-form hook message for `rejectUserConfigInShell` |
 | `substituteContent(body, scope, path?)` | the three path variables, `scope.extra` (a skill's `CLAUDE_SKILL_DIR`, `CLAUDE_SESSION_ID`), non-sensitive `${user_config.KEY}`; a sensitive one becomes `SENSITIVE_PLACEHOLDER`; `${VAR}` stays; nothing is exported |
+| `prepareContentSubstitution(scope)`     | `substituteContent` made synchronous: the three path variables are asked for once (the data folder is created then), and the returned function substitutes a body with the same rules |
 
 A PowerShell shell-form command gets `${env:NAME}` for the placeholders, and a bare `$CLAUDE_PROJECT_DIR`
 (or the other two) stays and is a warning; an exec-form `command` that is a bare name with whitespace
