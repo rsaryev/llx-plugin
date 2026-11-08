@@ -1,4 +1,4 @@
-/** Permission rules: the syntax of `Tool(specifier)`, matching, and the deny, ask, allow order. */
+/** Permission rules (the syntax of `Tool(specifier)`, matching, the deny, ask, allow order) and the hook matcher grammar. */
 export { requiresPromptDespitePrefixRule } from './bash/exec-wrappers.ts';
 export { evaluateIf, type IfResult } from './bash/if-eval.ts';
 export { splitCommand, type SplitCommand } from './bash/split.ts';
@@ -17,6 +17,7 @@ export {
 } from './target/mcp.ts';
 export { stripWrappers } from './bash/wrappers.ts';
 export { evaluateRules, matchRule } from './evaluate.ts';
+export { matchesMatcher } from './hook-matcher.ts';
 export { ruleIssues } from './issues.ts';
 export type { SpecifierMatcher, SpecifierMatchers } from './matchers.ts';
 export { formatRule, parseRule, type RuleOrigin, type RuleParse } from './parse.ts';

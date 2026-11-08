@@ -55,6 +55,10 @@
   deny-or-ask versus allow difference for a server whose name holds `__`, `normalizeMcpServerName`,
   `pluginMcpServerName`, `mcpToolName`, `mcpToolRuleMatches`, and the Cowork tools a bare `Bash` or
   `WebFetch` deny rule also blocks.
+- `readHooksFile` and `readHooksSettings`: hook configuration read and validated as hooks.md
+  describes (events, matcher groups, the five handler types and their fields), into the official
+  `HooksSettings`; and `matchesMatcher`, the matcher grammar of hooks.md (match-all, exact list,
+  unanchored regular expression, the narrower set of `FileChanged` and `StopFailure`).
 
 ### Fixed
 
@@ -74,6 +78,10 @@
   (`url` is only `WebFetch`'s); the default matchers fail closed for deny and ask rules; the
   matches-no-tool warning repeats the rule as written (`PermissionRule.text`); the command tools'
   parameter names are checked against the SDK input types.
+- `readHooksFile` accepts a mod-only file (`modules` with no `hooks`), `readHooksSettings` keeps a
+  JSON-parsed `__proto__` event as an own key, a matcher that does not compile is no longer
+  warned about on an event without matcher support, and a non-finite `timeout` reports "expected a
+  positive, finite number of seconds".
 - `readFlag` no longer reads `constructor` or `__proto__` as a flag, and `readList` no longer splits
   a glob such as `src/**/*.{ts,tsx}` or a path with a space.
 - Variable substitution: a remote MCP server now reads the documented credential variables

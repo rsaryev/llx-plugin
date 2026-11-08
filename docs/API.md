@@ -40,7 +40,9 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `readSkill(path, text)`             | planned | `SKILL.md` frontmatter and body                                       |
 | `readCommand(path, text)`           | planned | a command file (the older skill format)                               |
 | `readAgent(path, text)`             | planned | an agent file → official `AgentDefinition`                            |
-| `readHooksFile(raw)`                | planned | `hooks/hooks.json` → official `HooksSettings`                         |
+| `readHooksFile(raw)`                | done    | `hooks/hooks.json` → official `HooksSettings`: events, matcher groups, every handler field; an error leaves no hooks, as Claude Code does |
+| `readHooksSettings(raw)`            | done    | the bare event map (inline `hooks`, skill frontmatter, `settings.json`) |
+| `matchesMatcher(matcher, value, mode?)` | done | a hook `matcher` against the field its event filters on: match-all, exact list, unanchored regex; `'narrow'` for FileChanged and StopFailure |
 | `readMcpConfig(raw)`                | planned | `.mcp.json` → official `McpServerConfig` map                          |
 | `readLspConfig(raw)`, `readMonitors(raw)`, `readOutputStyle(...)` | planned | the remaining component files |
 
