@@ -84,19 +84,20 @@ spec('agents.frontmatter.skills', () => {
     expect(plan.skipped).toEqual([{ name: 'verify', reason: 'not-model-invocable' }]);
   });
 
-  test('`Skill` in `tools` is not how to preload: it is kept, raises no issue and preloads nothing', () => {
+  test('`Skill` in `tools` is only a tool entry: `skills` is what preloads', () => {
     const result = readAgentResult('tools: Read, Skill');
     expect(result.issues).toEqual([]);
     const agent = loaded(result);
     expect(agent.definition.tools).toEqual(['Read', 'Skill']);
-    expect(planPreloadedSkills(agent.definition.skills, catalog(['Skill']))).toEqual({
-      load: [],
+    expect(agent.definition.skills).toBeUndefined();
+    const listed = loaded(readAgentResult('tools: Read\nskills:\n  - api-conventions'));
+    expect(planPreloadedSkills(listed.definition.skills, catalog(['api-conventions']))).toEqual({
+      load: ['api-conventions'],
       skipped: [],
     });
-  });
-
-  test('a comma-separated string reads like a list', () => {
-    expect(agentWith('skills: a, b').definition.skills).toEqual(['a', 'b']);
+    expect(planPreloadedSkills(['Skill'], catalog(['other'])).skipped).toEqual([
+      { name: 'Skill', reason: 'missing' },
+    ]);
   });
 });
 
@@ -108,6 +109,10 @@ function readAgentResult(extra: string) {
 }
 
 describe('preloading, outside spec: choices the docs leave open', () => {
+  test('a comma-separated string reads like a list', () => {
+    expect(agentWith('skills: a, b').definition.skills).toEqual(['a', 'b']);
+  });
+
   test('the order of the skipped list follows the order of the field', () => {
     const plan = planPreloadedSkills(
       ['b-missing', 'a-hidden', 'ok'],

@@ -109,6 +109,10 @@
 
 ### Fixed
 
+- Memory index: `truncateMemoryIndex` strips a block-level HTML comment only when it opens a line
+  and ends on the line of its own first `-->`, and not inside fenced code, so text between two
+  comments is no longer dropped and `truncated` stays honest; the `skills` tests prove `Skill` in
+  `tools` is no preload, and the comma-separated `skills` string is a recorded judgment.
 - Agent launch: `worktreeDisposition` takes `{ isolation, hasChanges }` and returns `none` for an
   agent without `isolation: worktree`; `ClaudeMdScopes` gains `nested` (a subdirectory's CLAUDE.md
   and path-scoped rules still load with `omitClaudeMd`); the model, effort, background and

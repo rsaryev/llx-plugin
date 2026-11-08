@@ -169,11 +169,44 @@ const MEMORY_MAX_LINES = 200;
 const MEMORY_MAX_BYTES = 25 * 1024;
 
 const FRONTMATTER = /^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/;
-const BLOCK_COMMENT = /^[ \t]*<!--[\s\S]*?-->[ \t]*$\r?\n?/gm;
+const COMMENT_OPEN = /^ {0,3}<!--/;
+const FENCE = /^ {0,3}(`{3,}|~{3,})/;
+
+/** The line after the first `-->` of the comment opened on `start`, or -1. */
+function commentEnd(lines: readonly string[], start: number): number {
+  const rest = [(lines[start] ?? '').replace(/^.*?<!--/, ''), ...lines.slice(start + 1)];
+  const found = rest.findIndex((line) => line.includes('-->'));
+  return found === -1 ? -1 : start + found + 1;
+}
+
+/** The open fence after a line: a run of ``` or ~~~ opens it, a run as long of the same mark closes it. */
+const nextFence = (fence: string | undefined, run: string | undefined): string | undefined => {
+  if (fence === undefined || run === undefined) return fence ?? run;
+  return run[0] === fence[0] && run.length >= fence.length ? undefined : fence;
+};
+
+/** Drops block-level HTML comments, outside fenced code (judgment, spec/judgments.md). */
+function withoutBlockComments(text: string): string {
+  const lines = text.split('\n');
+  const kept: string[] = [];
+  let fence: string | undefined;
+  for (let i = 0; i < lines.length;) {
+    const line = lines[i] ?? '';
+    const opened = FENCE.exec(line)?.[1];
+    const end = fence === undefined && COMMENT_OPEN.test(line) ? commentEnd(lines, i) : -1;
+    if (end !== -1) {
+      i = end;
+      continue;
+    }
+    fence = nextFence(fence, opened);
+    kept.push(line);
+    i += 1;
+  }
+  return kept.join('\n');
+}
 
 /** errors.md, "Memory index is over its read limit": frontmatter and block comments do not load. */
-const loadedContent = (text: string): string =>
-  text.replace(FRONTMATTER, '').replace(BLOCK_COMMENT, '');
+const loadedContent = (text: string): string => withoutBlockComments(text.replace(FRONTMATTER, ''));
 
 const startsCharacter = (byte: number | undefined): boolean => (byte ?? 0) >> 6 !== 0b10;
 

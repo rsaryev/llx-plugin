@@ -130,6 +130,31 @@ describe('memory, outside spec: choices the docs leave open', () => {
     expect(truncateMemoryIndex(text)).toEqual({ text: `${linesOf(200)}\n`, truncated: false });
   });
 
+  test('a comment ends at its own first `-->`: what lies between two comments survives', () => {
+    const text = '<!-- a --> kept on its line\nreal note\n<!-- b -->\ntail\n';
+    expect(truncateMemoryIndex(text).text).toBe('real note\ntail\n');
+  });
+
+  test('a comment inside a paragraph is not block-level and stays', () => {
+    const text = 'before <!-- inline --> after\nnext\n';
+    expect(truncateMemoryIndex(text)).toEqual({ text, truncated: false });
+  });
+
+  test('a multi-line comment is dropped whole, up to the line of its `-->`', () => {
+    const text = 'first\n<!--\nhidden\nmore\n-->\nlast\n';
+    expect(truncateMemoryIndex(text).text).toBe('first\nlast\n');
+  });
+
+  test('a comment inside a fenced code block stays', () => {
+    const text = '```\n<!-- in code -->\n```\nafter\n';
+    expect(truncateMemoryIndex(text)).toEqual({ text, truncated: false });
+  });
+
+  test('a comment with no `-->` is no comment and the index stays whole', () => {
+    const text = '<!-- never closed\nnote\n';
+    expect(truncateMemoryIndex(text)).toEqual({ text, truncated: false });
+  });
+
   test('a plugin agent type has no `:` in its directory name', async () => {
     expect((await plan('user', reader(), 'my-plugin:review:security'))?.directory).toBe(
       '/home/user/.claude/agent-memory/my-plugin-review-security',
