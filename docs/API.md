@@ -189,7 +189,7 @@ The host maps its own tools to Claude Code's names and inputs before dispatching
 `Write`, `Edit`…, typed by the official `ToolInputSchemas`), so a plugin's `"matcher": "Write|Edit"`
 and `"if": "Bash(git *)"` mean what they mean in Claude Code.
 
-## Permission rules (done: syntax, bare, parameter and glob rules, precedence, Bash and PowerShell commands, hook `if`, path rules, domain, MCP, Agent and Skill rules)
+## Permission rules (done: syntax, bare, parameter and glob rules, precedence, Bash and PowerShell commands, hook `if`, path rules, domain, MCP, Agent and Skill rules, the six permission modes)
 
 Claude Code's rule syntax (permissions.md), used by the `if` field of hooks, `allowed-tools` of
 skills and commands, and a host's own permission system. Pure functions over data, no ports.
@@ -220,7 +220,9 @@ const verdict = evaluateRules(rules, { toolName: 'Agent', input: { model: 'opus'
 | `sandboxDomainEntry(rule)`, `sandboxDomainLists(rules)` | done | the sandbox list a `WebFetch(domain:...)` rule adds to, as data; a bare `WebFetch` adds nothing |
 | `Agent(Name)`, `Skill(name)` and `Skill(name *)` matchers | done | `subagent_type` exact (omitted is `general-purpose` for deny and ask; `Agent(fork)` names a fork); `skill` exact or prefix (a whole name or a namespace); a deny rule also sees `PreparedCall.skillNames` |
 | `mcpToolRuleMatches`, `normalizeMcpServerName`, `pluginMcpServerName`, `mcpToolName` | done | `mcp__server`, `mcp__server__*`, `mcp__server__tool`; deny and ask rules also cover a server whose name holds `__`, allow rules do not; the Cowork tools of a bare `Bash` or `WebFetch` deny rule |
-| `decide`, tool catalog            | planned | modes and the tool table                                                     |
+| `decide(call, context)`           | done    | allow, ask, deny or classify for one call in one of the six permission modes: rules, hook and mod outcomes, protected paths, critical-path removals, network reads (see below) |
+| `settleClassification(decision, { call, mode, classifier })`, `PermissionClassifier` | done | the host's auto-mode reviewer as a port; a `classify` decision is settled by its answer, and with no reviewer by a denial |
+| tool catalog                      | planned | the tools table                                                              |
 
 `parseRule` returns the official `{ toolName, ruleContent? }` in `rule.value` and the read form in
 `rule.specifier` (`param`, `domain` or `text`), so matching never parses text again. Deny and ask
@@ -251,6 +253,27 @@ requested path and `PreparedCall.resolvedPaths`, which `prepareCall` fills). A `
 out of the rules before it in the same source and list; `evaluateRules` applies it. `Write(...)`,
 `Glob(...)`, `Grep(...)` and `NotebookEdit(...)` rules with a path never match; write `Edit(...)` or
 `Read(...)`. A host asks `readsNetworkPath` before it trusts any allow rule, hook or classifier.
+
+`decide` (`src/rules/decide`) is pure over the call and the session facts in `DecideContext`; the host
+supplies the PreToolUse hook outcome (`hook`), a mod's answer (`mod`), `autoAvailable`,
+`bypassAvailable`, `interactive` and the other facts the docs name. The gates run in the order of the
+docs: the `permissions.block*OutsideWorkingDirectories` keys, a hook block (exit 2), deny rules, ask
+rules and hook asks (a deny or ask rule is checked whatever a hook returned), the actions no mode
+auto-approves (critical-path `rm` and `rmdir`, `AskUserQuestion` and MCP tools marked
+`requiresUserInteraction`, network-path reads), protected-path writes (before allow rules), allow
+rules (a compound Bash command needs each subcommand allowed by some allow rule or read-only), a hook
+allow, read-only calls, then the mode's baseline: `default` asks, `acceptEdits` approves file edits and
+`mkdir`, `touch`, `rm`, `rmdir`, `mv`, `cp`, `sed` in scope, `plan` asks (or classifies shell
+commands, or runs everything in an interactive session with bypass permissions available), `auto`
+approves reads and in-scope edits and returns `classify` for the rest, `dontAsk` turns every prompt
+into a denial, `bypassPermissions` approves what is left. A mod can block, and can approve what its
+reach allows (`ModOutcome.policyEnforced` is managed settings or a Team or Enterprise login).
+
+What the kit does not decide is the classifier's judgement of an action in auto mode: `decide`
+returns `classify` and the host's `PermissionClassifier` answers. Also not modelled: the PowerShell
+read-only set and `acceptEdits` cmdlets, `Remove-Item` and `cmd` removal denies, the mounted-drive
+`rm` prompt, redirect targets and `tee` files (a redirect makes a command not read-only), the first
+read outside the working directories in auto mode, and the time limits of the critical-path prompt.
 
 ## Testing kit (planned)
 

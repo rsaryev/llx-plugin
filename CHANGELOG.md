@@ -106,3 +106,13 @@
   and the Agent, Skill and WebFetch matchers read behaviour and specifier form through a registry
   and a named guard, and their input fields are tied to the SDK's `AgentInput`, `WebFetchInput`
   and `ArtifactInput`.
+- Permission modes (`rules/decide`): `decide(call, context)` answers allow, ask, deny or classify
+  for one call in `default`, `acceptEdits`, `plan`, `auto`, `dontAsk` and `bypassPermissions`: deny,
+  then ask, then allow with a compound Bash command allowed subcommand by subcommand, a PreToolUse
+  hook's block, deny, ask and allow, a mod's block and approval (with managed settings or a Team or
+  Enterprise login a mod cannot undo a deny rule, an ask rule or a hook's block), the read-only
+  command set, `acceptEdits` filesystem commands in scope, protected paths and their exceptions per
+  mode, critical-path `rm` and `rmdir` removals per mode, network-path reads, tools that require user
+  interaction, `permissions.block{Reads,Writes}OutsideWorkingDirectories`, plan mode's bypass and
+  auto-during-plan cases, and the broad allow rules auto mode drops. The `PermissionClassifier` port
+  and `settleClassification` carry a `classify` decision to the host's reviewer.

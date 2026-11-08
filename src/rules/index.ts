@@ -34,3 +34,15 @@ export type {
   Specifier,
   ToolCall,
 } from './types.ts';
+export {
+  settleClassification,
+  type ClassificationRequest,
+  type PermissionClassifier,
+} from './decide/classifier.ts';
+export type {
+  DecideContext,
+  HookOutcome,
+  ModOutcome,
+  ProtectedPathOptions,
+} from './decide/context.ts';
+export { decide } from './decide/decide.ts';
