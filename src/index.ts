@@ -5,7 +5,7 @@
  * runtime that reads and runs plugins through ports the host implements.
  */
 export * from './format/index.ts';
-export { EFFORT_LEVELS } from './protocol/effort.ts';
+export { EFFORT_LEVELS, SAVED_EFFORT_LEVELS, type SavedEffortLevel } from './protocol/effort.ts';
 export { HOOK_EVENTS } from './protocol/hook-events.ts';
 export type {
   EventWithSpecificOutput,
@@ -172,8 +172,11 @@ export * from './format/marketplace/index.ts';
 export * from './marketplace/index.ts';
 export * from './updates/index.ts';
 export {
+  API_PROVIDERS,
+  CROSS_SESSION_MODES,
   MARKETPLACE_KEY_ALIASES,
   MARKETPLACE_SOURCE_KINDS,
+  MODEL_MATCH_MODES,
   PLUGIN_ONLY_SURFACES,
   POLICY_KEYS,
   SKILL_OVERRIDE_STATES,
@@ -190,6 +193,8 @@ export * from './settings/workflows/index.ts';
 export * from './settings/channels/index.ts';
 export * from './settings/customization/index.ts';
 export * from './settings/mcp/index.ts';
+export * from './settings/general/index.ts';
+export * from './settings/managed/index.ts';
 export {
   readOutputStyle,
   type OutputStyle,
@@ -248,3 +253,7 @@ export {
 
 export * from './cli/index.ts';
 export * from './format/mcp-contract.ts';
+// Keep the existing file reader unambiguous; settings exposes its reader in general/.
+export { readAgent } from './format/agent.ts';
+
+export * from './settings/env/index.ts';

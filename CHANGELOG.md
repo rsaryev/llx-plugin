@@ -369,6 +369,60 @@
 - MCP: `displayHeaders(server, scope)` gives the header names `claude mcp get` shows for a server
   the organization provides (managed-mcp.md, "What users can see and change"), and the tests of
   `displayReference`, the credential debug line and the endpoint key now assert what they claim.
+- Managed-only and fail-closed key classes (managed-settings.md, "Keys only a managed source can
+  set", "Keys that fail closed", "Invalid values inside `sandbox`"). Sixteen more keys have rows
+  (`allowedMcpServers`, `allowedProviders`, `availableModelsMatch`, `deniedModels`,
+  `forceLoginOrgUUID`, `gatewayInternalNetworks`, `disableSideloadFlags` and the control keys among
+  them); a managed-only key in a user, project, local or `--settings` file is dropped with a warning.
+  In the policy tier an unreadable value reads as the table's fallback: an empty allowlist for the
+  MCP, provider, model, channel, marketplace and hook lists, `exact` for `availableModelsMatch`,
+  `refuse` for `crossSessionInbound`, no organization for `forceLoginOrgUUID`, `true` for a lock; a
+  `sandbox` block is repaired field by field and `sandbox.credentials` entry by entry; `permissions`
+  and `autoMode` withhold their grants while a deny list cannot be read (`gatewaySignInRefused`,
+  `PolicyLayer.invalid`). An unrecognized `crossSessionInbound` in a user, project, local or
+  `--settings` file holds inbound messages even under a source that says `accept`, with the warning
+  of errors.md. New `sideloadVerdict` and `addPluginsRefusal` for `disableSideloadFlags`. A `null`
+  removes a general key as it removes a policy key.
+
+### Fixed
+
+- Managed key classes, review of the fail-closed findings. A managed `forceLoginOrgUUID` list with
+  one non-text entry is unreadable whole and admits no organization. `gatewayInternalNetworks`
+  refuses the ranges claude-apps-gateway.md names (loopback, link-local, CGNAT, the VPN and NAT64
+  ranges, the three documentation ranges, `0.0.0.0/8`, `192.88.99.0/24`, multicast). `disableAutoMode`
+  and `skipDangerousModePermissionPrompt` fail closed (`"disable"` and `false`), `forceRemoteSettingsRefresh`
+  reads as `true` when unreadable, every restrictive lock of `permissions` is repaired in a managed
+  source, and `worktree` and `attribution` are repaired per field. `sandbox.credentials` enforces the
+  `name` rule and the per-list mask field rules, the warning of a degraded `files` entry notes the
+  unenforced read block, and `sandbox.filesystem.disabled` is pinned to managed settings by a
+  `deny` entry or a `sandbox.filesystem` block; `allowManagedMcpServersOnly` makes only the managed
+  `allowedMcpServers` count. An empty list in a managed `sandbox` block stays. `merged()` carries the
+  hold of an unrecognized `crossSessionInbound`. `sideloadRefusal` and `pluginDirsOf` delegate to
+  `sideloadVerdict`, so `--agents`, `--mcp-config` and `CLAUDE_CODE_PLUGIN_DIRS` exit at startup as the
+  docs say; new `midSessionMcpUpdates` for cloud sessions.
+
+- Managed sources, review of the composition findings. An unreadable source now carries the
+  underlying error (`{ unreadable: 'denied' | 'failed', reason }`), and the exit message names the
+  failed path or registry value in its `Detail:` line as errors.md shows it. An unlistable
+  `managed-settings.d/` reports `Managed settings drop-in directory could not be read: <reason>`, a
+  warning when the operating system denied the read and an error otherwise; a failure that exits
+  outranks a denial elsewhere in the file source. The helper's `forceRemoteSettingsRefresh` is no
+  longer left in the helper layer, and `PolicyHelper` and `ManagedBehavior` take their types from the
+  SDK. Tests prove every cross-source key, every key of the merge table rows and the login-key gateway
+  rules; the delivery and applicability stubs that echoed constants are now recorded as judgments.
+  `docs/API.md` states the order in which a host wires the policy helper.
+- Settings merge core, review of the permission, effort, source and file-location findings. The
+  local file's allow rules and directories wait for trust only when it is tracked in git or `.claude`
+  is a symlink (`permissionRuleLists(view, trusted, local)`); a host's parent `Read(!...)` and
+  `Edit(!...)` deny and ask rules are dropped with and without the lock. A managed document that does
+  not parse is fatal (`loadSettingsLayers` returns `fatal` and no layer, and `SettingsSources.label`
+  names the source in the message). `effortLevel` and `modelSettings` take low, medium, high and xhigh
+  only (from the SDK type, no `max`); new `effectiveCap` and `capEffort` apply `maxEffortLevel` with
+  its per-model entry. General keys are value-checked (a wrong type, a malformed permission rule,
+  the telemetry export variables of a repository's `env`); `--permission-mode`, `--effort` for
+  `modelSettings` and the `availableModels` gate on `--model` join the session overrides;
+  `managedChangeAdvice` answers "A managed change hasn't reached you". New `permissionRulesOf`
+  (host) parses the lists with the source of each file.
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
   short label and the amounts of each row of the Limits table, not the page's sentences, so the
   repository holds facts and identifiers only.
@@ -457,6 +511,48 @@
   (the `${VAR}` by name; a managed server's host only) and `mcpEndpointKey` the endpoint two
   servers are duplicates by (URL spellings that differ only in scheme or host case, default port or
   a trailing slash are one; a command is its arguments too).
+- Settings: the managed sources (`src/settings/managed`). `composeManaged(documents, { parentRestrictive })`
+  chooses among remote settings, the MDM policy (plist or HKLM), the managed files and the HKCU
+  registry as managed-settings.md ranks them: by default the highest source that delivers a policy
+  key, with `managedSourcesBehavior: "merge"` every admin source combined by kind of key (lists union,
+  locks take the strictest value, restriction allowlists and values taken whole from the highest
+  source, provided MCP servers by name, `env` per variable, login keys from the machine policy), and
+  the keys read from every admin source under both. `readAdminDocument` decides when a document is
+  present, empty, broken (fatal) or unreadable; `readFileDocument` merges `managed-settings.json` with
+  `managed-settings.d/` in alphabetical order; `wslChain` orders the Windows and `/etc/claude-code`
+  documents under `wslInheritsWindowsSettings`; `parentSettingsOf` applies `parentSettingsBehavior` and
+  the managed values that block a host's parent settings. `readPolicyHelper`, `readHelperOutput` and
+  `runPolicyHelper` (through the `CommandRunner` port and the new `HelperFileProbe` of this module)
+  judge a `policyHelper` and its failures; `withHelperSettings` makes its output the only managed
+  settings. The delivery catalog (`managedFilePaths`, `MECHANISM_TRAITS`, registry and plist names,
+  symlink verdict, `cacheAfterFetch`), `sourcesLoadedBy`, `reachOfPlace`, `serverChangeTiming`,
+  `startupFetchOf` and `fetchesRemoteSettings` answer where and when a policy applies.
+  `SettingsSources.managed` lets a host hand over every source so `loadSettingsLayers` composes the
+  tier, `resolvePolicy({ managed })` takes `hasManagedSettings` and `parentMerge` from it, and
+  `autoCompactWindow` joins the per-session overrides (`--autocompact`, `CLAUDE_CODE_AUTO_COMPACT_WINDOW`).
+- Settings: the merge core. `createGeneralView(layers)` extends the policy view with `merged()`, the
+  whole of settings.md's precedence as one object: a block merges key by key, a list combines with the
+  duplicates removed (the highest file's entries first), any other value comes from the highest file,
+  and `fallbackModel`, `modelPicker` (user, managed and `--settings` only) and `availableModels` (a
+  managed list as-is) keep their own rules. The 12 keys whose managed value is not an override are rows
+  with a `ManagedException` (`disableClaudeAiConnectors`, `enableArtifact` and `disableArtifact`,
+  `isolatePeerMachines`, the two `block...Outside...` keys, `autoMode.classifyAllShell`,
+  `remoteControlAtStartup`, `crossSessionInbound`, `useAutoModeDuringPlan`, the two claude.ai sync keys
+  and `maxEffortLevel`); `get` applies one rule for all of them. `permissions.defaultMode` ignores
+  `auto` and `bypassPermissions` from project and local settings. `permissionRuleLists(view, trusted)`
+  adds up allow, ask and deny across scopes (a deny at any scope blocks, `allowManagedPermissionRulesOnly`
+  leaves managed rules only, a repository's allow rules and `additionalDirectories` wait for trust),
+  `effortLevelFor` resolves `modelSettings` one model at a time, `resolveSessionValue` orders a key's
+  flag, paired variable and settings value, `editEffect` and `loadsFileCreatedMidSession` say when an
+  edit reaches a running session, `reachOf`, `FILE_ORIGINS`, `WRITE_TARGET`, `userSettingsFile`,
+  `localSettingsFiles` and `globalGitExcludesFile` hold the scope and file-location facts of
+  settings.md, and `readClaudeJson` decides what a broken `~/.claude.json` costs. A global config key
+  is dropped from every settings file with a warning, and a source that does not parse is a Settings
+  Error (`problemKind`) naming the file.
+- Settings (changed): `unionArrays` drops duplicate entries, as managed-settings.md says of combined
+  lists; a user, project, local or `--settings` source that is not a JSON object is an error issue
+  ("Settings Error: ...") rather than a warning, and still skipped.
+
 - Spec: the requirement set now counts the docs' prose, not only their tables. Every heading of
   the plugin, mods, skills, subagents, hooks, MCP, managed MCP, settings, managed settings,
   permissions, environment, CLI, workflows, themes, output styles and channels pages is either
@@ -1419,3 +1515,7 @@
   PowerShell, the path and option variables the process receives) and `substituteContent` (path
   variables and non-sensitive options in a skill, command or agent body, a placeholder for a
   sensitive one), with the `HOOK_GUARD` message.
+
+### Fixed (policy completion)
+
+- resolveEnv resolves settings environment values with scope, trust and launch-environment rules; envChange and envAfterCd model later application without unsetting removed variables. General readers cover agent view, theme, teammate mode, worktree settings, processWrapper argv parsing, command-line hook gates and plugin defaults. The host supplies the startup-safe variable classification and performs process execution.

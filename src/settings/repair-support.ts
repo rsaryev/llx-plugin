@@ -21,6 +21,8 @@ export const isParent = (at: RepairAt): boolean => at.scope === 'parent';
 export interface Repaired {
   readonly value: unknown;
   readonly issues: readonly PluginIssue[];
+  /** The key was present and unreadable, and no value can stand for what that means: the layer records it (`PolicyLayer.invalid`). */
+  readonly invalid?: boolean;
 }
 
 export type Repair = (value: unknown, at: RepairAt) => Repaired;
@@ -46,6 +48,16 @@ export const dropped = (at: RepairAt, reason: string): Repaired => ({
 export const failedClosed = (at: RepairAt, value: unknown, effect: string): Repaired => ({
   value,
   issues: [warning(where(at), `"${at.key}" was present but invalid; it is treated as ${effect}`)],
+});
+
+/**
+ * An unreadable value whose restrictive effect no value expresses: no value is kept, the layer
+ * records the key as invalid and the report names what Claude Code does until it is fixed.
+ */
+export const failedClosedNoValue = (at: RepairAt, effect: string): Repaired => ({
+  value: undefined,
+  invalid: true,
+  issues: [warning(where(at), `"${at.key}" was present but invalid; ${effect}`)],
 });
 
 export const entryDropped = (at: RepairAt, index: number | string, reason: string): PluginIssue =>

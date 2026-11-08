@@ -5,6 +5,7 @@ import { createCustomizationPolicy, type CustomizationPolicy } from './customiza
 import { createHookPolicy, type HookPolicy } from './hooks/policy.ts';
 import { applyParentRules } from './hooks/parent-settings.ts';
 import type { PolicyLayer } from './layers.ts';
+import type { ManagedComposition } from './managed/compose.ts';
 import {
   createCommandSourcePolicy,
   type CommandSourcePolicy,
@@ -49,6 +50,12 @@ export interface ResolveInput {
    * `managed-settings.json`): `allowClaudeInChromeWithManagedMcp` is read from these only.
    */
   readonly deviceManaged?: readonly PolicyLayer[];
+  /**
+   * The managed tier the kit composed from the machine's managed sources (`composeManaged`): whether an
+   * administrator deploys managed settings and whether parent settings merge come from it, not from
+   * `context`.
+   */
+  readonly managed?: ManagedComposition;
 }
 
 function marketplacesOf(view: PolicyView, context: PolicyContext): MarketplaceSettingsPolicy {
@@ -72,7 +79,15 @@ function marketplacesOf(view: PolicyView, context: PolicyContext): MarketplaceSe
  * The `hooks` lock comes from the customization policy, so the two cannot disagree.
  */
 export function resolvePolicy(input: ResolveInput): ResolvedPolicy {
-  const { context } = input;
+  const { managed } = input;
+  const context =
+    managed === undefined
+      ? input.context
+      : {
+          ...input.context,
+          hasManagedSettings: managed.hasManagedSettings,
+          parentMerge: managed.parentMerge,
+        };
   const view = applyParentRules(createPolicyView(input.layers), context);
   const customization = createCustomizationPolicy(view, context);
   const marketplaces = marketplacesOf(view, context);

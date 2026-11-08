@@ -46,12 +46,13 @@ describe('loadSettingsLayers', () => {
     expect(issues).toEqual([]);
   });
 
-  test('a managed document that does not parse is an error with the documented message, and is skipped', async () => {
-    const { layers, issues } = await loadSettingsLayers(
+  test('a managed document that does not parse is a fatal error with the documented message, and no layer survives', async () => {
+    const { layers, issues, fatal } = await loadSettingsLayers(
       host({ managed: '{ nope', user: { enableWorkflows: true } }),
       signal,
     );
-    expect(layers.map((layer) => layer.scope)).toEqual(['user']);
+    expect(fatal).toBe(true);
+    expect(layers).toEqual([]);
     expect(issues).toHaveLength(1);
     expect(issues[0]?.severity).toBe('error');
     expect(issues[0]?.message).toStartWith(
@@ -59,13 +60,14 @@ describe('loadSettingsLayers', () => {
     );
   });
 
-  test('a user file that does not parse is skipped with a warning, the rest continues', async () => {
-    const { layers, issues } = await loadSettingsLayers(
+  test('a user file that does not parse is skipped with a Settings Error, the rest continues', async () => {
+    const { layers, issues, fatal } = await loadSettingsLayers(
       host({ user: '{ nope', project: { enableWorkflows: true } }),
       signal,
     );
     expect(layers.map((layer) => layer.scope)).toEqual(['project']);
-    expect(issues.map((one) => one.severity)).toEqual(['warning']);
+    expect(issues.map((one) => one.severity)).toEqual(['error']);
+    expect(fatal).toBe(false);
   });
 
   test('only the scopes asked for are read', async () => {

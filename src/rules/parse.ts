@@ -1,4 +1,10 @@
 import type { PluginIssue } from '../format/issues.ts';
+import {
+  invalidRuleMessage,
+  MALFORMED_RULE,
+  splitRule,
+  type RuleParts,
+} from '../format/permission-rule-shape.ts';
 import type { PermissionBehavior } from '../protocol/official.ts';
 import type { PermissionRuleValue } from '../protocol/official-tools.ts';
 import { isPrimaryField, readParam } from './param.ts';
@@ -19,10 +25,6 @@ export interface RuleParse {
   readonly issues: readonly PluginIssue[];
 }
 
-/** errors.md ("Malformed Tool(content) rule"), quoted. */
-const MALFORMED =
-  'Malformed Tool(content) rule. Rules take the form Tool or Tool(content) and must end at the closing ")"; parentheses inside the content are literal';
-
 /** What is wrong with a rule, before it becomes an issue at `permissions.<behavior>`. */
 interface Problem {
   readonly severity: 'error' | 'warning';
@@ -31,34 +33,15 @@ interface Problem {
 
 const invalid = (raw: string, reason: string): Problem => ({
   severity: 'error',
-  message: `Invalid permission rule "${raw}" was skipped: ${reason}`,
+  message: invalidRuleMessage(raw, reason),
 });
-
-interface Parts {
-  readonly toolName: string;
-  readonly content: string | undefined;
-}
-
-/**
- * `Tool` or `Tool(content)`. Parentheses inside the content are literal, so the rule ends at its
- * last character, which must be the closing parenthesis (permissions.md, "Permission rule syntax").
- */
-function splitRule(raw: string): Parts | undefined {
-  const open = raw.indexOf('(');
-  if (open === -1) {
-    return raw === '' || raw.includes(')') ? undefined : { toolName: raw, content: undefined };
-  }
-  const toolName = raw.slice(0, open).trim();
-  if (toolName === '' || toolName.includes(')') || !raw.endsWith(')')) return undefined;
-  return { toolName, content: raw.slice(open + 1, -1) };
-}
 
 /**
  * Rules a tool name rules out whatever follows it: an MCP rule with parentheses (in a settings
  * file only: the command line and the session read it as a parameter rule, permissions.md "Match
  * by input parameter"), a glob with a specifier.
  */
-function checkToolName(parts: Parts, at: RuleOrigin, raw: string): Problem | undefined {
+function checkToolName(parts: RuleParts, at: RuleOrigin, raw: string): Problem | undefined {
   const { toolName, content } = parts;
   const hasSpecifier = content !== undefined;
   if (hasSpecifier && toolName.startsWith('mcp__') && IS_SETTINGS_SOURCE[at.source.kind]) {
@@ -92,7 +75,7 @@ const READS_PARAMETERS: { readonly [B in PermissionBehavior]: boolean } = {
 type Read = { readonly specifier: Specifier | undefined } | { readonly problem: Problem };
 
 /** What the text between the parentheses means for `toolName`. */
-function readSpecifier(parts: Parts, at: RuleOrigin, raw: string): Read {
+function readSpecifier(parts: RuleParts, at: RuleOrigin, raw: string): Read {
   const { toolName, content } = parts;
   if (content === undefined || content.trim() === '') return { specifier: undefined };
   const syntax = SPECIFIER_SYNTAX[ruleFormatOf(toolName)];
@@ -126,7 +109,7 @@ const skip = (at: RuleOrigin, problem: Problem): RuleParse => ({
 export function parseRule(text: string, at: RuleOrigin): RuleParse {
   const raw = text.trim();
   const parts = splitRule(raw);
-  if (parts === undefined) return skip(at, invalid(raw, MALFORMED));
+  if (parts === undefined) return skip(at, invalid(raw, MALFORMED_RULE));
   const refused = checkToolName(parts, at, raw);
   if (refused !== undefined) return skip(at, refused);
   const read = readSpecifier(parts, at, raw);

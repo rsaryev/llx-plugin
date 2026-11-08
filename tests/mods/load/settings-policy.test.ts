@@ -178,7 +178,77 @@ spec('mods.setting.disableSideloadFlags', () => {
   });
 });
 
-test('judgment: directories from CLAUDE_CODE_PLUGIN_DIRS are sideloaded too, so none loads', () => {
+spec('mods.setting.disableSideloadFlags', () => {
   const settings = managed({ disableSideloadFlags: true });
-  expect(pluginDirsOf({ ...settings, env: { CLAUDE_CODE_PLUGIN_DIRS: '/a' } })).toEqual([]);
+
+  test('CLAUDE_CODE_PLUGIN_DIRS naming a plugin folder makes startup exit with an error that names the variable and says to unset it', async () => {
+    const withVariable = { ...settings, env: { CLAUDE_CODE_PLUGIN_DIRS: '/a:/b' } };
+    expect(sideloadRefusal(withVariable)).toBe(
+      "CLAUDE_CODE_PLUGIN_DIRS is disabled by your organization's managed settings (disableSideloadFlags): unset the variable",
+    );
+    expect(pluginDirsOf(withVariable)).toEqual([]);
+    const { host } = session({ 'any-mod': register }, { policy: withVariable });
+    const report = await host.load([modPlugin(inline('any-mod'), register)]);
+    expect(report.startupRefusal).toMatch(/^CLAUDE_CODE_PLUGIN_DIRS is disabled by your/);
+    expect(report.loaded).toEqual([]);
+  });
+
+  test('the variable set in env of the user settings counts the same', () => {
+    const fromSettings = {
+      ...settings,
+      user: { env: { CLAUDE_CODE_PLUGIN_DIRS: '/a' } },
+    };
+    expect(sideloadRefusal(fromSettings)).toContain('CLAUDE_CODE_PLUGIN_DIRS');
+  });
+
+  test('an empty variable names no plugin folder, so nothing is refused', () => {
+    expect(sideloadRefusal({ ...settings, env: { CLAUDE_CODE_PLUGIN_DIRS: ':' } })).toBeUndefined();
+  });
+
+  test('without the setting the variable loads its directories', () => {
+    const open = policy({ env: { CLAUDE_CODE_PLUGIN_DIRS: '/a' } });
+    expect(sideloadRefusal(open)).toBeUndefined();
+    expect(pluginDirsOf(open)).toEqual(['/a']);
+  });
+
+  test('--agents and a --mcp-config with a server that is not in process are rejected at startup too', () => {
+    const agents = { ...settings, flags: { pluginDirs: [], agents: true } };
+    expect(sideloadRefusal(agents)).toContain('--agents is disabled by your organization');
+    const mcp = {
+      ...settings,
+      flags: { pluginDirs: [], mcpServers: [{ name: 'a', type: 'stdio' }] },
+    };
+    expect(sideloadRefusal(mcp)).toContain('--mcp-config is disabled by your organization');
+    const inProcess = {
+      ...settings,
+      flags: { pluginDirs: [], mcpServers: [{ name: 'a', type: 'sdk' }] },
+    };
+    expect(sideloadRefusal(inProcess)).toBeUndefined();
+  });
+
+  test('every rejected flag and the variable are named in the one error', () => {
+    const all = {
+      ...settings,
+      env: { CLAUDE_CODE_PLUGIN_DIRS: '/a' },
+      flags: { pluginDirs: ['./x'], pluginUrls: ['https://e/p.zip'], agents: true },
+    };
+    const lines = sideloadRefusal(all)?.split('\n') ?? [];
+    expect(lines).toHaveLength(4);
+    expect(lines.map((line) => line.split(' ')[0])).toEqual([
+      '--plugin-dir',
+      '--plugin-url',
+      '--agents',
+      'CLAUDE_CODE_PLUGIN_DIRS',
+    ]);
+  });
+
+  test('in a cloud session a server-delivered --mcp-config no longer exits, its servers are dropped by sideloadVerdict', () => {
+    const cloud = {
+      ...settings,
+      cloud: true,
+      flags: { pluginDirs: [], mcpServers: [{ name: 'a', type: 'http' }] },
+    };
+    expect(sideloadRefusal(cloud)).toBeUndefined();
+    expect(sideloadRefusal({ ...cloud, flags: { pluginDirs: ['./x'] } })).toContain('--plugin-dir');
+  });
 });

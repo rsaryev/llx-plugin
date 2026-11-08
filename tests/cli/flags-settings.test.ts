@@ -144,7 +144,7 @@ describe('--settings', () => {
     test('JSON that is not an object loads no key and says the settings are skipped', () => {
       const notObject = given('./a.json', { files: { './a.json': file('[1]') } });
       expect(notObject.flagSettings?.settings).toEqual({});
-      expect(notObject.warnings[0]?.message).toContain('not a JSON object');
+      expect(notObject.warnings[0]?.message).toContain('not a valid JSON object');
     });
   });
 

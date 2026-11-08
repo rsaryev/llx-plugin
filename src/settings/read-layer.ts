@@ -1,6 +1,10 @@
-import { error, warning, type PluginIssue } from '../format/issues.ts';
+import { warning, type PluginIssue } from '../format/issues.ts';
 import type { Settings } from '../protocol/official.ts';
 import { MARKETPLACE_KEY_ALIASES, POLICY_KEYS, type PolicyKey } from '../protocol/settings-keys.ts';
+import { brokenSource, SCOPE_LABEL } from './broken-file.ts';
+import { GENERAL_CHECKS } from './general/checks.ts';
+import { GENERAL_KEYS, type GeneralKey } from './general/keys.ts';
+import { GLOBAL_CONFIG_KEYS } from './general/global-config.ts';
 import { KEY_SPECS, admits, scopeCarries } from './key-spec.ts';
 import type { PolicyScope, PolicyLayer } from './layers.ts';
 import { REPAIRS } from './repair.ts';
@@ -25,17 +29,6 @@ const FAILS_CLOSED: { readonly [S in PolicyScope]: boolean } = {
   user: false,
 };
 
-/** How a report names a source (settings.md, "Settings files and who they affect"). */
-const SCOPE_LABEL: { readonly [S in PolicyScope]: string } = {
-  managed: 'managed settings',
-  parent: 'parent settings',
-  flag: '--settings',
-  local: 'project local settings',
-  project: 'shared project settings',
-  addDir: 'an --add-dir directory',
-  user: 'user settings',
-};
-
 const POLICY_KEY_NAMES: ReadonlySet<string> = new Set(POLICY_KEYS);
 const isPolicyKey = (name: string): name is PolicyKey => POLICY_KEY_NAMES.has(name);
 
@@ -57,6 +50,8 @@ function canonicalEntries(raw: Readonly<Record<string, unknown>>): [string, unkn
 interface Read {
   readonly entry?: readonly [string, unknown] | undefined;
   readonly issues: readonly PluginIssue[];
+  /** The key was present and unreadable and no value stands for it (`PolicyLayer.invalid`). */
+  readonly invalid?: string | undefined;
 }
 
 function readPolicyKey(scope: PolicyScope, key: PolicyKey, value: unknown): Read {
@@ -72,12 +67,43 @@ function readPolicyKey(scope: PolicyScope, key: PolicyKey, value: unknown): Read
   return {
     entry: repaired.value === undefined ? undefined : [key, repaired.value],
     issues: repaired.issues,
+    invalid: repaired.invalid === true ? key : undefined,
+  };
+}
+
+const GENERAL_KEY_NAMES: ReadonlySet<string> = new Set(GENERAL_KEYS);
+const isGeneralKey = (name: string): name is GeneralKey => GENERAL_KEY_NAMES.has(name);
+
+const dropNote = (scope: PolicyScope, name: string, why: string): Read => ({
+  issues: [warning(`${scope}:${name}`, `"${name}" ${why}; the key is ignored`)],
+});
+
+/**
+ * A key with a row of its own but no repair: read when its scope line admits it, with its value
+ * checked as `checks.ts` says (a wrong type is dropped with a warning, a malformed entry skipped).
+ */
+function readGeneralKey(scope: PolicyScope, name: GeneralKey, value: unknown): Read {
+  if (!scopeCarries(scope, name)) return { issues: [] };
+  if (!admits(name, scope, value)) {
+    return dropNote(scope, name, `is not read from ${SCOPE_LABEL[scope]}`);
+  }
+  const checked = GENERAL_CHECKS[name](value, { name, scope, closed: FAILS_CLOSED[scope] });
+  return {
+    entry: checked.value === undefined ? undefined : [name, checked.value],
+    issues: checked.found.map((found) => warning(`${scope}:${name}${found.at}`, found.message)),
+    invalid: checked.invalid === true ? name : undefined,
   };
 }
 
 function readEntry(scope: PolicyScope, name: string, value: unknown): Read {
   // A `null` removes the key (managed-settings.md, "Keys that fail closed").
-  if (isPolicyKey(name)) return value === null ? { issues: [] } : readPolicyKey(scope, name, value);
+  if ((isPolicyKey(name) || isGeneralKey(name)) && value === null) return { issues: [] };
+  if (isPolicyKey(name)) return readPolicyKey(scope, name, value);
+  // settings.md, "Change a setting for one session": a global config key is not set from a file.
+  if (GLOBAL_CONFIG_KEYS.includes(name)) {
+    return dropNote(scope, name, 'is a global config key and applies only from ~/.claude.json');
+  }
+  if (isGeneralKey(name)) return readGeneralKey(scope, name, value);
   return { entry: scopeCarries(scope, name) ? [name, value] : undefined, issues: [] };
 }
 
@@ -85,24 +111,20 @@ function readEntry(scope: PolicyScope, name: string, value: unknown): Read {
 export function readSettingsLayer(
   scope: PolicyScope,
   raw: unknown,
+  source?: string,
 ): { layer: PolicyLayer; issues: readonly PluginIssue[] } {
   const empty: Settings = {};
   if (raw === undefined) return { layer: { scope, settings: empty }, issues: [] };
   if (!isRecord(raw)) {
-    const found = FAILS_CLOSED[scope]
-      ? error(
-          `${scope}:`,
-          'Managed settings document could not be parsed as a JSON object; none of its settings are in effect. Fix or remove it.',
-        )
-      : warning(
-          `${scope}:`,
-          `The settings in ${SCOPE_LABEL[scope]} are not a JSON object and are skipped`,
-        );
-    return { layer: { scope, settings: empty }, issues: [found] };
+    return { layer: { scope, settings: empty }, issues: [brokenSource(scope, undefined, source)] };
   }
   const reads = canonicalEntries(raw).map(([name, value]) => readEntry(scope, name, value));
   const entries = reads.flatMap((read) => (read.entry === undefined ? [] : [read.entry]));
   // `Object.fromEntries` defines own properties, so a JSON-parsed `__proto__` key stays a key.
   const settings: Settings = Object.fromEntries(entries);
-  return { layer: { scope, settings }, issues: reads.flatMap((read) => read.issues) };
+  const invalid = reads.flatMap((read) => (read.invalid === undefined ? [] : [read.invalid]));
+  return {
+    layer: invalid.length === 0 ? { scope, settings } : { scope, settings, invalid },
+    issues: reads.flatMap((read) => read.issues),
+  };
 }
