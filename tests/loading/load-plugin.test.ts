@@ -17,6 +17,9 @@ import { hooksFile, json, messagesOf, namesOf } from '../support/plugin-folder.t
 import { node } from '../support/mcp-bundle.ts';
 import { spec } from '../support/spec.ts';
 
+const RELEASE_AUDIT =
+  "export const meta = { name: 'release-audit', description: 'Audit a release' }\nreturn []";
+
 /** The layout of the docs' `deploy-tools` example, every default location filled. */
 const DEPLOY_TOOLS = {
   '.claude-plugin/plugin.json': json({ name: 'deploy-tools', version: '1.0.0' }),
@@ -33,7 +36,7 @@ const DEPLOY_TOOLS = {
   ]),
   'output-styles/terse.md': 'Be terse.',
   'themes/dracula.json': json({ name: 'Dracula', base: 'dark' }),
-  'workflows/release-audit.js': 'export default {}',
+  'workflows/release-audit.js': RELEASE_AUDIT,
   'bin/deploy-tool': '#!/bin/bash',
   'scripts/format.sh': '#!/bin/bash',
   'settings.json': json({ agent: 'reviewer' }),

@@ -286,6 +286,59 @@ says whether Claude Code's software engineering section stays in the prompt: onl
 it. `listOutputStyles` is the `/output-style` list. The host writes the setting and injects the
 `instructions` of `active.style`; the kit never sends a prompt.
 
+### Themes (done: `format/theme`, `theme-tokens`, `theme-write`)
+
+```ts
+import { readTheme, themeSlug, customThemeId, copyOfPluginTheme } from '@rsaryev/claude-plugin-kit';
+
+const { theme, issues } = readTheme(themeSlug('themes/dracula.json'), text);
+theme?.name; // `name`, else the slug
+theme?.base; // one of THEME_BASES, `dark` by default
+theme?.overrides; // token -> { form: 'rgb' | 'ansi256' | 'ansi', ... }, only valid colours
+customThemeId('dracula'); // 'custom:dracula', what `/theme` stores
+```
+
+A theme file is `~/.claude/themes/<slug>.json`, or `themes/<slug>.json` in a plugin (`Plugin.themes`,
+shown in `/theme` marked as from the plugin), with three optional fields: `name`, `base` (one of the six
+presets `THEME_BASES`, asserted against the SDK's `theme` setting) and `overrides` (token to colour,
+`THEME_TOKEN_NAMES`). Colours are `#rrggbb`, `#rgb`, `rgb(r,g,b)`, `ansi256(n)` or `ansi:<name>`; "Unknown
+tokens and invalid color values are ignored", so each one is dropped with a warning and the theme still
+loads, and `unknownTokens` lists the names. `copyOfPluginTheme` is the copy a user's edit of a plugin
+theme is saved as. The host applies the theme and watches the folder; the kit never renders.
+
+### Workflows (done: `format/workflow-meta`, `workflow-script`, `agents/workflow`)
+
+```ts
+import { readWorkflowMeta, rewriteWorkflowMeta, inspectWorkflowScript } from '@rsaryev/claude-plugin-kit';
+
+const { meta } = readWorkflowMeta(source); // name, description, phases, extra; the script never runs
+rewriteWorkflowMeta(source, { phases: ['Scan', 'Fix'] }).source; // every other byte kept
+inspectWorkflowScript(source).issues; // Date.now(), Math.random(), new Date(), import(), unused phases
+```
+
+A saved workflow is a JavaScript script that begins with `export const meta = { name, description }` as
+a literal; the kit reads and rewrites that literal without executing anything, and reports what workflows.md
+says breaks a script: a `phases` entry no `phase()` call uses (and a `phase()` title with no entry, which
+only gets its own group), `Date.now()`, `Math.random()` and a no-argument `new Date()` (they throw in the
+script: pass a timestamp or a seed through `args`) and `import()` (the run fails before it starts). A script
+without a readable `meta` is not listed: `Plugin.workflows` has `qualifiedName: undefined` for it.
+A plugin's script runs as `/<plugin>:<meta.name>`.
+
+The runtime is the host's. The decisions its runs need are pure functions over facts the host holds:
+
+| Function | Does |
+| --- | --- |
+| `admitAgent(started)`, `checkFanOut(call, items)`, `workflowConcurrency(env, cpus)`, `interruptRun(cause)` | 1,000 agents total per run, 4,096 items in one `parallel()` or `pipeline()`, 16 concurrent agents by default (`CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS`, 1 to 256), and that a run pauses only for a permission prompt or a usage-limit wait, never for user input |
+| `afterAttempt(endings)`, `attemptLabels`, `stallWindowMs`, `hasStalled`, `afterAgentFailure(site, failure)` | an agent whose output stops restarts at most five times, six attempts: `agent stalled on all 6 attempts`, `agent lost its reply on all 6 attempts`, or `agent abandoned after 6 attempts` listing the endings; `(retry n)` and `attempt n (stalled)` labels; `stallMs` over `CLAUDE_ASYNC_AGENT_STALL_TIMEOUT_MS`; inside `parallel()` or `pipeline()` the result is `null` and the run goes on, awaited directly the run ends with the error |
+| `planReplay(saved, prompts)`, `replayAgent(saved, state, prompt)` | which agents return their saved result on a relaunch: completed ones until the first prompt that differs, failed ones and everything after them run again, a stopped-while-running one starts over (`RECORDED_WHEN_STOPPED`: stopping the whole run counts nobody as failed, stopping one agent counts as failing) |
+| `relaunch(facts)`, `LEAVING` | leaving the session never continues the run; a relaunch replays the saved results, starts over when there is no earlier run, and fails with `nothing to resume` when the results cannot be found or a background session relaunches a script outside `~/.claude/projects/` |
+| `usageLimitDecision(facts)` | the run pauses (no new agents start) only in an interactive subscription session with `autoContinueAtUsageLimit` on, a reset within 24 hours, fewer than two waits so far and a release with the wait (v2.1.271); otherwise the agent fails, with every cause listed |
+| `workflowArgs(passed)` | the `args` global: structured data as given, `undefined` when omitted |
+| `planWorkflowSave(request)`, `refuseLinks(plan, linked)`, `resolveSavedWorkflows`, `scanSavedWorkflows(folders, request)` | where a script is saved (`.claude/workflows/` of the closest existing folder up to the repository root, or `~/.claude/workflows/`, or `workflows/` under `CLAUDE_CONFIG_DIR`), the paths that must not be symlinks, and which `/<name>` runs (the closest project folder, then the personal one); the scan reads through `FolderScan` |
+
+The size guideline and the off switches are in "Settings" (`createWorkflowSettingsPolicy`). The host
+runs the scripts, measures time, writes the files and checks the links; the kit holds no run state.
+
 ## Marketplace
 
 `marketplace.json` and where plugins come from (plugins/marketplace-reference.md,
@@ -376,8 +429,8 @@ interface Plugin {
   readonly lspServers: Readonly<Record<string, LspServer>>;
   readonly monitors: readonly Monitor[];
   readonly outputStyles: readonly PluginTextFile[];
-  readonly workflows: readonly PluginPath[];
-  readonly themes: readonly PluginPath[];
+  readonly workflows: readonly PluginWorkflow[]; // path, file name, `<plugin>:<meta.name>`, the read `meta`
+  readonly themes: readonly PluginTheme[]; // path, slug, `<plugin>:<slug>`, the plugin, the read `Theme`
   readonly settings: PluginSettings; // official `Pick<Settings, 'agent' | 'subagentStatusLine'>`
   readonly userConfig: Readonly<Record<string, UserConfigOption>>;
   readonly bin: readonly string[]; // the files directly in bin/

@@ -8,7 +8,7 @@ import type { PluginSettings } from '../format/plugin-settings.ts';
 import type { HooksSettings } from '../protocol/hook-config.ts';
 import type { PluginFiles } from '../ports/index.ts';
 import type { Discovered } from './discovered.ts';
-import type { PluginPath, PluginTextFile } from './plugin-model.ts';
+import type { PluginTextFile, PluginTheme, PluginWorkflow } from './plugin-model.ts';
 
 /** What a component reader is given: the folder, the manifest and what discovery found. */
 export interface ReaderContext {
@@ -35,8 +35,8 @@ export interface ComponentValues {
   readonly mcpServers: Readonly<Record<string, PluginMcpServer>>;
   readonly lspServers: Readonly<Record<string, LspServer>>;
   readonly outputStyles: readonly PluginTextFile[];
-  readonly workflows: readonly PluginPath[];
-  readonly themes: readonly PluginPath[];
+  readonly workflows: readonly PluginWorkflow[];
+  readonly themes: readonly PluginTheme[];
   readonly monitors: readonly Monitor[];
   readonly bin: Discovered['bin'];
   readonly settings: PluginSettings;

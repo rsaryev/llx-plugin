@@ -4,6 +4,19 @@
 
 ### Added
 
+- Themes: `readTheme` reads a custom theme file (`~/.claude/themes/<slug>.json`, `themes/<slug>.json`
+  in a plugin): `name` defaulting to the slug, `base` among the six presets (asserted against the SDK's
+  `theme` setting), `overrides` over the documented tokens with `#rrggbb`, `#rgb`, `rgb()`, `ansi256()` and
+  `ansi:<name>` colours; unknown tokens and invalid colours are dropped with an issue. `copyOfPluginTheme`
+  is the copy an edit of a plugin theme is saved as. `Plugin.themes` now holds the read `Theme` of each
+  file and the plugin it comes from (`PluginPath` is gone: `PluginTheme` and `PluginWorkflow` replace it).
+- Workflows: `readWorkflowMeta` and `rewriteWorkflowMeta` read and rewrite the literal `meta` block of a
+  saved script without running it, `inspectWorkflowScript` reports the `phases` the body does not use,
+  `Date.now()`, `Math.random()`, a no-argument `new Date()` and `import()`; `Plugin.workflows` holds the
+  read `meta` and runs as `/<plugin>:<meta.name>`. Pure run decisions in `agents/workflow`: the six-attempt
+  stall policy and its three errors, the 1,000-agent and 4,096-item caps, concurrency, which agents run
+  again on a relaunch, leaving the session and `nothing to resume`, the usage-limit wait, the `args`
+  global, and where a script is saved and which `/<name>` runs (`scanSavedWorkflows` over `FolderScan`).
 - Skills: the skills and command files outside plugins. `scanFolders`, `scanNested` and
   `resolveFolderSkills` read `.claude/skills/<name>/SKILL.md` and `.claude/commands/**.md` of the managed
   directory, `~`, the project and its parents up to the repository root (a linked worktree stops at its

@@ -4,6 +4,8 @@ import type { LspServer } from '../format/lsp-config.ts';
 import type { PluginManifest, CommandEntry, UserConfigOption } from '../format/manifest-schema.ts';
 import type { PluginMcpServer } from '../format/mcp-config.ts';
 import type { Monitor } from '../format/monitors.ts';
+import type { Theme } from '../format/theme.ts';
+import type { WorkflowMeta } from '../format/workflow-meta.ts';
 import type { HooksSettings } from '../protocol/hook-config.ts';
 
 /**
@@ -26,11 +28,32 @@ export interface PluginTextFile {
   readonly entry?: CommandEntry;
 }
 
-/** A workflow or theme file: its path is all loading needs of it. */
-export interface PluginPath {
+/**
+ * A theme file of the plugin, read (plugins/components.md, "Themes and output styles"): it appears in
+ * `/theme` under the file's `name`, marked as from the plugin. `theme` is `undefined` for a file that is
+ * not a JSON object.
+ */
+export interface PluginTheme {
   readonly path: string;
+  /** The slug: the file name without `.json`. */
   readonly name: string;
   readonly qualifiedName: string;
+  /** The plugin it comes from: `/theme` marks the theme as from it. */
+  readonly plugin: string;
+  readonly theme: Theme | undefined;
+}
+
+/**
+ * A workflow script of the plugin, its `meta` block read without running it (workflows.md,
+ * "Distribute a workflow in a plugin"). It runs as `/<plugin>:<meta.name>`: `qualifiedName` is
+ * `undefined` when `meta` cannot be read, since Claude Code then drops it from `/` autocomplete.
+ */
+export interface PluginWorkflow {
+  readonly path: string;
+  /** The file name without `.js`. */
+  readonly name: string;
+  readonly qualifiedName: string | undefined;
+  readonly meta: WorkflowMeta | undefined;
 }
 
 /** A plugin as loading found it (docs/API.md, "Loading"). */
@@ -46,8 +69,8 @@ export interface Plugin {
   readonly lspServers: Readonly<Record<string, LspServer>>;
   readonly monitors: readonly Monitor[];
   readonly outputStyles: readonly PluginTextFile[];
-  readonly workflows: readonly PluginPath[];
-  readonly themes: readonly PluginPath[];
+  readonly workflows: readonly PluginWorkflow[];
+  readonly themes: readonly PluginTheme[];
   readonly settings: PluginSettings;
   readonly userConfig: Readonly<Record<string, UserConfigOption>>;
   /** The files directly in `bin/`, relative to the plugin root. */
