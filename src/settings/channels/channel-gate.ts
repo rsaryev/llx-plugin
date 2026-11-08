@@ -29,6 +29,12 @@ export interface ChannelGate {
    * channels for your organization"). The wording belongs to the host; this names the warning.
    */
   readonly startupWarning: 'adminMustEnable' | undefined;
+  /**
+   * Always `true`: a closed gate stops channel messages only. "The MCP server still connects and its
+   * tools work, but channel messages won't arrive" (channels.md, "Enable channels for your
+   * organization"). The kit starts no server; this tells the host not to disconnect one.
+   */
+  readonly serverConnects: true;
 }
 
 /** What a gate rule needs: whether `channelsEnabled` is `true` and whether managed settings exist. */
@@ -69,5 +75,6 @@ export function channelGate(view: PolicyView, context: ChannelsContext): Channel
     open: by !== undefined,
     by,
     startupWarning: by === undefined ? 'adminMustEnable' : undefined,
+    serverConnects: true,
   };
 }

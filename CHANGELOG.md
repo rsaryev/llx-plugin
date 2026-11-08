@@ -119,13 +119,22 @@
   `channelsEnabled` as `gate()` (blocked on Team and Enterprise, and on Console with managed
   settings, until managed `true`; open on Console without managed settings and on Pro, Max and
   Ultra; `false` is unset; users cannot lift it) and `allowedChannelPlugins` as `allowlist()` and
-  `allowed(plugin, options)` (the managed list replaces the host's default and is taken whole, an
+  `allowed(entry)` (the managed list replaces the host's default and is taken whole, an
   empty list blocks every plugin, an invalid value is an empty list, the string form equals the
-  object, the development flag skips the list but never a closed gate, and only in an interactive
+  object; an entry carries the flag it came from, and the development flag skips the list for its own
+  entries only, a bare `server:<name>` included, never for a closed gate, and only in an interactive
   session).
 
 ### Fixed
 
+- Settings, channel keys: `allowed(entry)` takes the flag each entry came from (`channels` or
+  `development`), so a session with both kinds bypasses the list for the development entries only;
+  a bare `server:<name>` development entry needs no plugin or marketplace; the closed gate carries
+  `serverConnects: true` (the MCP server stays connected, only channel messages stop); `ChannelPluginRef`
+  is the SDK's `allowedChannelPlugins` element type, declared once in `protocol/official.ts` and shared
+  with the settings repair; the host's duty to refuse a channel server that negotiates protocol
+  revision 2026-07-28 is recorded as a judgment; `null` and unreadable `channelsEnabled` and
+  `allowedChannelPlugins` values are tested.
 - Settings, workflow keys: the decision no longer carries `inProgressRunsContinue`, a constant that
   described no run state (the duty to let a run finish is recorded as a host duty); the size
   decision returns `largeWorkflowThreshold` and the new `largeWorkflowTokens` (1.5 million) as

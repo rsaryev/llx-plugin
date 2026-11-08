@@ -1,4 +1,5 @@
-import type { ChannelAllowlist, ChannelPluginRef } from './allowlist.ts';
+import type { ChannelPluginRef } from '../../protocol/official.ts';
+import type { ChannelAllowlist } from './allowlist.ts';
 import { isListed } from './allowlist.ts';
 import type { ChannelGate } from './channel-gate.ts';
 
@@ -30,17 +31,47 @@ export interface ChannelVerdict {
   readonly reason: ChannelReason;
 }
 
-/**
- * How the plugin reached the session. A plugin passed to `--channels` faces the allowlist; one passed
- * to `--dangerously-load-development-channels` skips it, per entry, in an interactive session only
- * (channels-reference.md, "Test during the research preview"). Either way the user opted in: "no
- * channel runs until a user opts it in for the session" (channels.md, "Enterprise controls").
- */
-export interface ChannelRequestOptions {
-  readonly development?: { readonly interactive: boolean };
+/** The two flags that carry a channel into a session. */
+export const CHANNEL_ORIGINS = ['channels', 'development'] as const;
+export type ChannelOrigin = (typeof CHANNEL_ORIGINS)[number];
+
+/** What each flag's entry tells the verdict, beyond the flag it came from. */
+interface EntryByOrigin {
+  /** `--channels plugin:<name>@<marketplace>`: faces the allowlist. */
+  readonly channels: { readonly plugin: ChannelPluginRef };
+  /**
+   * `--dangerously-load-development-channels`, `plugin:<name>@<marketplace>` or a bare
+   * `server:<name>`: skips the allowlist, so the verdict reads no plugin; it is set for the first form.
+   */
+  readonly development: { readonly interactive: boolean; readonly plugin?: ChannelPluginRef };
 }
 
-const verdict = (reason: ChannelReason): ChannelVerdict => ({ allowed: ADMITTED[reason], reason });
+/**
+ * One entry a user passed for the session, with the flag it came from. "The bypass is per-entry":
+ * the development flag skips the list for its own entries only, and "doesn't extend the bypass to the
+ * `--channels` entries" (channels-reference.md, "Test during the research preview"). Either way the
+ * user opted in: "no channel runs until a user opts it in for the session" (channels.md, "Enterprise
+ * controls").
+ */
+export type ChannelEntry = {
+  readonly [O in ChannelOrigin]: { readonly origin: O } & EntryByOrigin[O];
+}[ChannelOrigin];
+
+type OriginRule<O extends ChannelOrigin> = (
+  entry: EntryByOrigin[O],
+  allowlist: ChannelAllowlist,
+) => ChannelReason;
+
+const ORIGIN_RULES: { readonly [O in ChannelOrigin]: OriginRule<O> } = {
+  channels: (entry, allowlist) => {
+    const [listed, missing] = LISTED_REASON[allowlist.source];
+    return isListed(allowlist.entries, entry.plugin) ? listed : missing;
+  },
+  // Run in an interactive session, where Claude Code can show the confirmation prompt; elsewhere it
+  // "ignores the flag and the channel doesn't register".
+  development: (entry) =>
+    entry.interactive ? 'developmentFlag' : 'developmentFlagNeedsInteractive',
+};
 
 const LISTED_REASON: {
   readonly [S in ChannelAllowlist['source']]: readonly [ChannelReason, ChannelReason];
@@ -49,19 +80,18 @@ const LISTED_REASON: {
   default: ['defaultAllowlist', 'notOnDefaultList'],
 };
 
-/** The gate first (it blocks the development flag too), then the flag, then the allowlist. */
+const verdict = (reason: ChannelReason): ChannelVerdict => ({ allowed: ADMITTED[reason], reason });
+
+const reasonFor = <O extends ChannelOrigin>(
+  entry: { readonly origin: O } & EntryByOrigin[O],
+  allowlist: ChannelAllowlist,
+): ChannelReason => ORIGIN_RULES[entry.origin](entry, allowlist);
+
+/** The gate first (it blocks the development flag too), then the entry's own flag rule. */
 export function channelVerdict(
   gate: ChannelGate,
   allowlist: ChannelAllowlist,
-  ref: ChannelPluginRef,
-  options: ChannelRequestOptions = {},
+  entry: ChannelEntry,
 ): ChannelVerdict {
-  if (!gate.open) return verdict('channelsNotEnabled');
-  if (options.development !== undefined) {
-    return verdict(
-      options.development.interactive ? 'developmentFlag' : 'developmentFlagNeedsInteractive',
-    );
-  }
-  const [listed, missing] = LISTED_REASON[allowlist.source];
-  return verdict(isListed(allowlist.entries, ref) ? listed : missing);
+  return verdict(gate.open ? reasonFor(entry, allowlist) : 'channelsNotEnabled');
 }

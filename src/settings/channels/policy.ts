@@ -3,10 +3,9 @@ import {
   effectiveChannelAllowlist,
   type ChannelAllowlist,
   type ChannelAllowlistContext,
-  type ChannelPluginRef,
 } from './allowlist.ts';
 import { channelGate, type ChannelGate } from './channel-gate.ts';
-import { channelVerdict, type ChannelRequestOptions, type ChannelVerdict } from './verdict.ts';
+import { channelVerdict, type ChannelEntry, type ChannelVerdict } from './verdict.ts';
 
 /** What the host tells the channel keys besides the layers. */
 export type ChannelPolicyContext = ChannelAllowlistContext;
@@ -17,8 +16,8 @@ export interface ChannelSettingsPolicy {
   gate(): ChannelGate;
   /** `allowedChannelPlugins` over the host's default list. */
   allowlist(): ChannelAllowlist;
-  /** Whether a plugin the user opted in for the session may register as a channel. */
-  allowed(plugin: ChannelPluginRef, options?: ChannelRequestOptions): ChannelVerdict;
+  /** Whether an entry the user passed for the session may register as a channel. */
+  allowed(entry: ChannelEntry): ChannelVerdict;
 }
 
 export function createChannelSettingsPolicy(
@@ -30,6 +29,6 @@ export function createChannelSettingsPolicy(
   return {
     gate: () => gate,
     allowlist: () => allowlist,
-    allowed: (plugin, options) => channelVerdict(gate, allowlist, plugin, options),
+    allowed: (entry) => channelVerdict(gate, allowlist, entry),
   };
 }

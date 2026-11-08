@@ -1,6 +1,6 @@
 import { warning } from '../format/issues.ts';
 import { MARKETPLACE_SOURCE_KINDS } from '../protocol/settings-keys.ts';
-import type { MarketplaceSource } from '../protocol/official.ts';
+import type { ChannelPluginRef, MarketplaceSource } from '../protocol/official.ts';
 import { dropped, failedClosed, kept, stripInvalid, where, type Repair } from './repair-support.ts';
 import { isRecord } from './record.ts';
 
@@ -27,12 +27,7 @@ export const closedStringList: Repair = (value, at) => {
 /** `plugin@marketplace`, the string form of an `allowedChannelPlugins` entry (settings-reference.md). */
 const CHANNEL_STRING = /^([^@\s]+)@([^@\s]+)$/;
 
-interface ChannelEntry {
-  readonly marketplace: string;
-  readonly plugin: string;
-}
-
-function readChannelEntry(entry: unknown): ChannelEntry | undefined {
+function readChannelEntry(entry: unknown): ChannelPluginRef | undefined {
   if (typeof entry === 'string') {
     const [, plugin, marketplace] = CHANNEL_STRING.exec(entry) ?? [];
     return plugin === undefined || marketplace === undefined ? undefined : { marketplace, plugin };

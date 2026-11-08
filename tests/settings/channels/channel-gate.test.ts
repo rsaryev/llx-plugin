@@ -25,6 +25,7 @@ const personal: ChannelsContext = { account: 'claudeaiPersonal', hasManagedSetti
 const consolePlain: ChannelsContext = { account: 'console', hasManagedSettings: false };
 const consoleManaged: ChannelsContext = { account: 'console', hasManagedSettings: true };
 const enabled = ['managed', { channelsEnabled: true }] as const;
+const enabledView = viewOf(enabled);
 const telegram = { plugin: 'telegram', marketplace: 'claude-plugins-official' };
 
 spec('settings.key.channelsEnabled', () => {
@@ -83,19 +84,37 @@ spec('settings.key.channelsEnabled', () => {
       defaultChannelAllowlist: [],
     });
     const ref = { plugin: 'mine', marketplace: 'local' };
-    const verdict = policy.allowed(ref, { development: { interactive: true } });
+    const verdict = policy.allowed({ origin: 'development', interactive: true, plugin: ref });
     expect(verdict).toEqual({ allowed: false, reason: 'channelsNotEnabled' });
-    expect(policy.allowed(ref)).toEqual({ allowed: false, reason: 'channelsNotEnabled' });
+    expect(policy.allowed({ origin: 'channels', plugin: ref })).toEqual({
+      allowed: false,
+      reason: 'channelsNotEnabled',
+    });
   });
 
-  test('an unset key keeps the MCP server connected: the verdict is about channel messages only', () => {
-    // The kit does not start servers; the verdict says whether messages may register as a channel.
+  test('an unset key keeps the MCP server connected: the closed gate says so and blocks messages only', () => {
     const policy = createChannelSettingsPolicy(viewOf(), {
       ...team,
       defaultChannelAllowlist: [telegram],
     });
-    expect(policy.allowed(telegram).allowed).toBe(false);
+    expect(policy.gate()).toMatchObject({ open: false, serverConnects: true });
     expect(policy.gate().startupWarning).toBe('adminMustEnable');
+    expect(policy.allowed({ origin: 'channels', plugin: telegram }).allowed).toBe(false);
+    expect(channelGate(enabledView, team).serverConnects).toBe(true);
+  });
+
+  test('a null removes the key: the gate reads as unset', () => {
+    const removed = viewOf(['managed', { channelsEnabled: null }]);
+    expect(channelGate(removed, team)).toEqual(channelGate(viewOf(), team));
+    expect(channelGate(removed, team).open).toBe(false);
+  });
+
+  test('an unreadable value is dropped: the gate reads as unset and stays closed on Team and Enterprise', () => {
+    for (const bad of ['garbage', 3, [], {}]) {
+      const view = viewOf(['managed', { channelsEnabled: bad }]);
+      expect(channelGate(view, team)).toEqual(channelGate(viewOf(), team));
+      expect(channelGate(view, team).open).toBe(false);
+    }
   });
 });
 
@@ -105,6 +124,7 @@ describe('the gate of a view that carries no channel keys', () => {
       open: false,
       by: undefined,
       startupWarning: 'adminMustEnable',
+      serverConnects: true,
     });
   });
 });

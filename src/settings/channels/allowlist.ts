@@ -1,11 +1,6 @@
+import type { ChannelPluginRef } from '../../protocol/official.ts';
 import type { PolicyView } from '../view.ts';
 import type { ChannelAccount, ChannelsContext } from './channel-gate.ts';
-
-/** A channel plugin: the plugin and the marketplace it comes from (settings-reference.md). */
-export interface ChannelPluginRef {
-  readonly plugin: string;
-  readonly marketplace: string;
-}
 
 /** What the host tells the allowlist besides the layers. */
 export interface ChannelAllowlistContext extends ChannelsContext {

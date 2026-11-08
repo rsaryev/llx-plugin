@@ -18,8 +18,10 @@ import { expect, test } from 'bun:test';
 import {
   createChannelSettingsPolicy,
   effectiveChannelAllowlist,
+  type ChannelEntry,
   type ChannelPolicyContext,
 } from '../../../src/settings/channels/index.ts';
+import type { ChannelPluginRef } from '../../../src/protocol/official.ts';
 import { viewOf, type Source } from '../../support/plugin-settings.ts';
 import { spec } from '../../support/spec.ts';
 
@@ -36,22 +38,36 @@ const on = { channelsEnabled: true };
 const managed = (settings: Record<string, unknown>): Source => ['managed', { ...on, ...settings }];
 const policyOf = (...sources: readonly Source[]) =>
   createChannelSettingsPolicy(viewOf(...sources), context);
-const dev = { development: { interactive: true } };
+const flagged = (plugin: ChannelPluginRef): ChannelEntry => ({ origin: 'channels', plugin });
+const dev: ChannelEntry = { origin: 'development', interactive: true };
+const devPlugin = (plugin: ChannelPluginRef): ChannelEntry => ({ ...dev, plugin });
 
 spec('settings.key.allowedChannelPlugins', () => {
   test('unset: the default allowlist applies', () => {
     const policy = policyOf(['managed', on]);
     expect(policy.allowlist().source).toBe('default');
-    expect(policy.allowed(telegram)).toEqual({ allowed: true, reason: 'defaultAllowlist' });
-    expect(policy.allowed(internal)).toEqual({ allowed: false, reason: 'notOnDefaultList' });
+    expect(policy.allowed(flagged(telegram))).toEqual({
+      allowed: true,
+      reason: 'defaultAllowlist',
+    });
+    expect(policy.allowed(flagged(internal))).toEqual({
+      allowed: false,
+      reason: 'notOnDefaultList',
+    });
   });
 
   test('set: the list replaces the default instead of adding to it', () => {
     const policy = policyOf(managed({ allowedChannelPlugins: [telegram, internal] }));
     expect(policy.allowlist().source).toBe('organization');
-    expect(policy.allowed(internal)).toEqual({ allowed: true, reason: 'organizationAllowlist' });
-    expect(policy.allowed(telegram).allowed).toBe(true);
-    expect(policy.allowed(discord)).toEqual({ allowed: false, reason: 'notOnOrganizationList' });
+    expect(policy.allowed(flagged(internal))).toEqual({
+      allowed: true,
+      reason: 'organizationAllowlist',
+    });
+    expect(policy.allowed(flagged(telegram)).allowed).toBe(true);
+    expect(policy.allowed(flagged(discord))).toEqual({
+      allowed: false,
+      reason: 'notOnOrganizationList',
+    });
   });
 
   test('the string "plugin@marketplace" is the equivalent object', () => {
@@ -60,41 +76,73 @@ spec('settings.key.allowedChannelPlugins', () => {
     );
     const asObject = policyOf(managed({ allowedChannelPlugins: [telegram] }));
     expect(asString.allowlist()).toEqual(asObject.allowlist());
-    expect(asString.allowed(telegram).allowed).toBe(true);
-    expect(asString.allowed(discord).allowed).toBe(false);
+    expect(asString.allowed(flagged(telegram)).allowed).toBe(true);
+    expect(asString.allowed(flagged(discord)).allowed).toBe(false);
   });
 
   test('both names must match: the same plugin from another marketplace is not on the list', () => {
     const policy = policyOf(managed({ allowedChannelPlugins: [telegram] }));
-    expect(policy.allowed({ plugin: 'telegram', marketplace: 'acme-corp-plugins' }).allowed).toBe(
-      false,
-    );
-    expect(policy.allowed({ plugin: 'other', marketplace: official }).allowed).toBe(false);
+    expect(
+      policy.allowed(flagged({ plugin: 'telegram', marketplace: 'acme-corp-plugins' })).allowed,
+    ).toBe(false);
+    expect(policy.allowed(flagged({ plugin: 'other', marketplace: official })).allowed).toBe(false);
   });
 
   test('an empty array blocks every channel plugin but not the development flag', () => {
     const policy = policyOf(managed({ allowedChannelPlugins: [] }));
-    expect(policy.allowed(telegram)).toEqual({ allowed: false, reason: 'notOnOrganizationList' });
-    expect(policy.allowed(internal, dev)).toEqual({ allowed: true, reason: 'developmentFlag' });
+    expect(policy.allowed(flagged(telegram))).toEqual({
+      allowed: false,
+      reason: 'notOnOrganizationList',
+    });
+    expect(policy.allowed(devPlugin(internal))).toEqual({
+      allowed: true,
+      reason: 'developmentFlag',
+    });
   });
 
   test('it requires channelsEnabled: true, and without it nothing registers, development flag included', () => {
     const policy = policyOf(['managed', { allowedChannelPlugins: [telegram] }]);
-    expect(policy.allowed(telegram)).toEqual({ allowed: false, reason: 'channelsNotEnabled' });
-    expect(policy.allowed(telegram, dev)).toEqual({ allowed: false, reason: 'channelsNotEnabled' });
+    expect(policy.allowed(flagged(telegram))).toEqual({
+      allowed: false,
+      reason: 'channelsNotEnabled',
+    });
+    expect(policy.allowed(devPlugin(telegram))).toEqual({
+      allowed: false,
+      reason: 'channelsNotEnabled',
+    });
     const empty = policyOf(['managed', { allowedChannelPlugins: [] }]);
-    expect(empty.allowed(internal, dev).allowed).toBe(false);
+    expect(empty.allowed(devPlugin(internal)).allowed).toBe(false);
   });
 
-  test('the bypass is per entry: a plugin passed to --channels still faces the list', () => {
+  test('the bypass is per entry: in a session with both flags only the development entry skips the list', () => {
     const policy = policyOf(managed({ allowedChannelPlugins: [telegram] }));
-    expect(policy.allowed(internal, dev).allowed).toBe(true);
-    expect(policy.allowed(internal).allowed).toBe(false);
+    const session: readonly ChannelEntry[] = [
+      flagged(internal),
+      devPlugin(internal),
+      flagged(telegram),
+    ];
+    expect(session.map((entry) => policy.allowed(entry))).toEqual([
+      { allowed: false, reason: 'notOnOrganizationList' },
+      { allowed: true, reason: 'developmentFlag' },
+      { allowed: true, reason: 'organizationAllowlist' },
+    ]);
+  });
+
+  test('the development flag also takes a bare server:<name> entry, which has no plugin or marketplace', () => {
+    const policy = policyOf(managed({ allowedChannelPlugins: [] }));
+    expect(policy.allowed(dev)).toEqual({ allowed: true, reason: 'developmentFlag' });
+    const closed = policyOf(['managed', { allowedChannelPlugins: [] }]);
+    expect(closed.allowed(dev)).toEqual({ allowed: false, reason: 'channelsNotEnabled' });
+    const open = createChannelSettingsPolicy(viewOf(managed({})), context);
+    expect(open.allowed({ origin: 'development', interactive: false })).toEqual({
+      allowed: false,
+      reason: 'developmentFlagNeedsInteractive',
+    });
   });
 
   test('the development flag is ignored outside an interactive session', () => {
     const policy = policyOf(managed({ allowedChannelPlugins: [] }));
-    const verdict = policy.allowed(internal, { development: { interactive: false } });
+    const verdict = policy.allowed({ origin: 'development', interactive: false, plugin: internal });
     expect(verdict).toEqual({ allowed: false, reason: 'developmentFlagNeedsInteractive' });
   });
 
@@ -102,7 +150,7 @@ spec('settings.key.allowedChannelPlugins', () => {
     for (const scope of ['user', 'project', 'local', 'flag'] as const) {
       const policy = policyOf(managed({}), [scope, { allowedChannelPlugins: [internal] }]);
       expect(policy.allowlist().source).toBe('default');
-      expect(policy.allowed(internal).allowed).toBe(false);
+      expect(policy.allowed(flagged(internal)).allowed).toBe(false);
     }
   });
 
@@ -111,17 +159,24 @@ spec('settings.key.allowedChannelPlugins', () => {
       managed({ allowedChannelPlugins: [telegram] }),
       managed({ allowedChannelPlugins: [internal] }),
     );
-    expect(policy.allowed(telegram).allowed).toBe(true);
-    expect(policy.allowed(internal).allowed).toBe(false);
+    expect(policy.allowed(flagged(telegram)).allowed).toBe(true);
+    expect(policy.allowed(flagged(internal)).allowed).toBe(false);
   });
 
   test('an unusable value is an empty allowlist until fixed: nothing is admitted', () => {
     for (const bad of ['telegram@claude-plugins-official', { plugin: 'telegram' }, 3, true]) {
       const policy = policyOf(managed({ allowedChannelPlugins: bad }));
       expect(policy.allowlist()).toMatchObject({ source: 'organization', entries: [] });
-      expect(policy.allowed(telegram).allowed).toBe(false);
-      expect(policy.allowed(telegram, dev).allowed).toBe(true);
+      expect(policy.allowed(flagged(telegram)).allowed).toBe(false);
+      expect(policy.allowed(devPlugin(telegram)).allowed).toBe(true);
     }
+  });
+
+  test('a null removes the key: the default allowlist stays in force', () => {
+    const policy = policyOf(managed({ allowedChannelPlugins: null }));
+    expect(policy.allowlist()).toEqual({ source: 'default', entries: [telegram, discord] });
+    expect(policy.allowed(flagged(telegram)).allowed).toBe(true);
+    expect(policy.allowed(flagged(internal)).allowed).toBe(false);
   });
 
   test('an invalid entry is stripped and the rest is enforced', () => {
@@ -131,8 +186,8 @@ spec('settings.key.allowedChannelPlugins', () => {
       }),
     );
     expect(policy.allowlist().entries).toEqual([telegram, internal]);
-    expect(policy.allowed(internal).allowed).toBe(true);
-    expect(policy.allowed(discord).allowed).toBe(false);
+    expect(policy.allowed(flagged(internal)).allowed).toBe(true);
+    expect(policy.allowed(flagged(discord)).allowed).toBe(false);
   });
 });
 
@@ -152,11 +207,13 @@ test('judgment: Pro, Max and Ultra skip the two managed keys, so the default all
     personal,
   );
   expect(policy.allowlist().source).toBe('default');
-  expect(policy.allowed(telegram)).toEqual({ allowed: true, reason: 'defaultAllowlist' });
-  expect(policy.allowed(internal).allowed).toBe(false);
+  expect(policy.allowed(flagged(telegram))).toEqual({ allowed: true, reason: 'defaultAllowlist' });
+  expect(policy.allowed(flagged(internal)).allowed).toBe(false);
 });
 
 test('judgment: plugin and marketplace names compare exactly, including case', () => {
   const policy = policyOf(managed({ allowedChannelPlugins: [telegram] }));
-  expect(policy.allowed({ plugin: 'Telegram', marketplace: official }).allowed).toBe(false);
+  expect(policy.allowed(flagged({ plugin: 'Telegram', marketplace: official })).allowed).toBe(
+    false,
+  );
 });

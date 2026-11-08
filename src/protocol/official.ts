@@ -51,5 +51,11 @@ export type UserConfigValue = NonNullable<
  */
 export type MarketplaceSource = NonNullable<Settings['strictKnownMarketplaces']>[number];
 
+/**
+ * One `allowedChannelPlugins` entry, as the SDK types it: the plugin and the marketplace it comes from
+ * (`{ marketplace, plugin }`).
+ */
+export type ChannelPluginRef = NonNullable<Settings['allowedChannelPlugins']>[number];
+
 /** The provenance an Agent SDK application stamps on a user message (`{ kind: 'human' }` for keyboard input). */
 export type { SDKMessageOrigin } from '@anthropic-ai/claude-agent-sdk';

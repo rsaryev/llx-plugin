@@ -4,7 +4,6 @@ export {
   isListed,
   type ChannelAllowlist,
   type ChannelAllowlistContext,
-  type ChannelPluginRef,
 } from './allowlist.ts';
 export {
   CHANNEL_ACCOUNTS,
@@ -22,7 +21,9 @@ export {
 export {
   CHANNEL_REASONS,
   channelVerdict,
+  CHANNEL_ORIGINS,
+  type ChannelEntry,
+  type ChannelOrigin,
   type ChannelReason,
-  type ChannelRequestOptions,
   type ChannelVerdict,
 } from './verdict.ts';
