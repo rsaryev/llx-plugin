@@ -91,12 +91,6 @@ spec('settings.key.skillOverrides', () => {
     expect(skillVisibility(view, 'deploy', { plugin: true }).listedToModel).toBe('full');
     expect(skillVisibility(view, 'formatter:deploy', { plugin: true }).inSlashMenu).toBe(true);
   });
-
-  test('an unknown state is dropped with a warning and the skill stays on', () => {
-    const raw = only('deploy', 'hidden');
-    expect(issuesOf('user', raw).length).toBeGreaterThan(0);
-    expect(seen(['user', raw]).listedToModel).toBe('full');
-  });
 });
 
 describe('aliases of a bundled skill', () => {
@@ -146,6 +140,26 @@ describe('aliases of a bundled skill', () => {
       expect(looser.listedToModel).toBe('hidden');
     });
 
+    test('an own-name entry in a --settings file does not beat an alias entry there', () => {
+      const hidden = ofDoctor(['flag', overrides({ doctor: 'on', checkup: 'off' })]);
+      expect(hidden.inSlashMenu).toBe(false);
+      expect(hidden.listedToModel).toBe('hidden');
+    });
+
+    test('the same alias set in managed and in a --settings file: the highest file wins whole', () => {
+      const managedOn = ofDoctor(
+        ['managed', only('checkup', 'on')],
+        ['flag', only('checkup', 'off')],
+      );
+      expect(managedOn.inSlashMenu).toBe(true);
+      expect(managedOn.listedToModel).toBe('full');
+      const managedOff = ofDoctor(
+        ['managed', only('checkup', 'off')],
+        ['flag', only('checkup', 'on')],
+      );
+      expect(managedOff.inSlashMenu).toBe(false);
+    });
+
     test("an entry under the skill's own name in managed settings takes precedence over an alias entry", () => {
       const visible = ofDoctor(['managed', overrides({ doctor: 'on', checkup: 'off' })]);
       expect(visible.listedToModel).toBe('full');
@@ -192,6 +206,14 @@ describe('what the docs leave open (spec/judgments.md)', () => {
   test('several aliases: the strictest entry applies', () => {
     const view = viewOf(['managed', overrides({ a: 'name-only', b: 'off' })]);
     expect(skillVisibility(view, 'real', { aliases: ['a', 'b'] }).inSlashMenu).toBe(false);
+  });
+
+  test('an unknown state is dropped with a warning and the skill stays on, even in managed settings', () => {
+    const raw = only('deploy', 'hidden');
+    for (const scope of ['user', 'managed'] as const) {
+      expect(issuesOf(scope, raw).length).toBeGreaterThan(0);
+      expect(seen([scope, raw]).listedToModel).toBe('full');
+    }
   });
 
   test('a prototype-looking skill name is a name like any other', () => {

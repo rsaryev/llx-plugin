@@ -10,6 +10,11 @@ export interface BundledSkillsDecision {
   readonly decidedBy: readonly BundledOffBy[];
   /** Built-in commands such as `/init` stay typable but are hidden from the model when disabled. */
   readonly builtInCommandsListedToModel: boolean;
+  /**
+   * Built-in commands, `/doctor` included, stay typable whatever this decides: the setting hides
+   * them from the model only. Hiding `/doctor` takes `DISABLE_DOCTOR_COMMAND`, which is not this key.
+   */
+  readonly builtInCommandsTypable: true;
 }
 
 /** The variable's documented value (env-vars.md: "Set to `1`"). */
@@ -31,5 +36,10 @@ export function bundledSkills(
   if (view.get('disableBundledSkills') === true) decidedBy.push('setting');
   if (env[BUNDLED_SKILLS_ENV] === ENV_ON) decidedBy.push('env');
   const disabled = decidedBy.length > 0;
-  return { disabled, decidedBy, builtInCommandsListedToModel: !disabled };
+  return {
+    disabled,
+    decidedBy,
+    builtInCommandsListedToModel: !disabled,
+    builtInCommandsTypable: true,
+  };
 }

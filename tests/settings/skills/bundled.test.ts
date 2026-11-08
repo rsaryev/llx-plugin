@@ -4,7 +4,9 @@
  * load", default unset so they load; "`CLAUDE_CODE_DISABLE_BUNDLED_SKILLS` set to `1` turns bundled
  * skills off for one session; whichever of the two turns them off, the other can't turn them back
  * on"; "Skills from plugins, `.claude/skills/`, and `.claude/commands/` are unaffected"), env-vars.md
- * § `CLAUDE_CODE_DISABLE_BUNDLED_SKILLS` ("Equivalent to the `disableBundledSkills` setting").
+ * § `CLAUDE_CODE_DISABLE_BUNDLED_SKILLS` ("Equivalent to the `disableBundledSkills` setting"; built-in
+ * commands "stay typable" and "`/doctor` stays typable like the built-in commands"), skills.md §
+ * Bundled skills ("The `/doctor` setup checkup stays typable when `disableBundledSkills` is on").
  */
 import { describe, expect, test } from 'bun:test';
 import { BUNDLED_SKILLS_ENV, bundledSkills } from '../../../src/settings/skills/index.ts';
@@ -22,6 +24,7 @@ spec('settings.key.disableBundledSkills', () => {
       disabled: false,
       decidedBy: [],
       builtInCommandsListedToModel: true,
+      builtInCommandsTypable: true,
     });
   });
 
@@ -30,7 +33,21 @@ spec('settings.key.disableBundledSkills', () => {
       disabled: true,
       decidedBy: ['setting'],
       builtInCommandsListedToModel: false,
+      builtInCommandsTypable: true,
     });
+  });
+
+  test('disabled: built-in commands and /doctor stay typable, hidden only from the model', () => {
+    for (const [view, env] of [
+      [viewOf(['user', setting(true)]), none],
+      [viewOf(), envOn],
+    ] as const) {
+      const decision = bundledSkills(view, env);
+      expect(decision.disabled).toBe(true);
+      expect(decision.builtInCommandsListedToModel).toBe(false);
+      expect(decision.builtInCommandsTypable).toBe(true);
+    }
+    expect(bundledSkills(viewOf(), none).builtInCommandsTypable).toBe(true);
   });
 
   test('false: bundled skills load', () => {
@@ -48,6 +65,7 @@ spec('settings.key.disableBundledSkills', () => {
       disabled: true,
       decidedBy: ['env'],
       builtInCommandsListedToModel: false,
+      builtInCommandsTypable: true,
     });
   });
 

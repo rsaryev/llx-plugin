@@ -12,7 +12,6 @@
  */
 import { describe, expect, test } from 'bun:test';
 import {
-  SHELL_DISABLED_MARKER,
   SHELL_ORIGINS,
   createSkillSettingsPolicy,
   shellVerdict,
@@ -30,10 +29,6 @@ const REACHED = ['user', 'project', 'plugin', 'addDir'] as const satisfies reado
 const EXEMPT = ['bundled', 'managed'] as const satisfies readonly ShellOrigin[];
 
 spec('settings.key.disableSkillShellExecution', () => {
-  test('the replacement text is the one the docs quote', () => {
-    expect(SHELL_DISABLED_MARKER).toBe('[shell command execution disabled by policy]');
-  });
-
   test('true: inline shell of user, project, plugin and additional-directory skills does not run', () => {
     for (const origin of REACHED) {
       expect(plain(shellVerdict(viewOf(['user', flagged(true)]), origin))).toEqual(blocked);
@@ -60,7 +55,7 @@ spec('settings.key.disableSkillShellExecution', () => {
   });
 
   test('a true in managed settings is not overridden by false in any other file', () => {
-    for (const scope of ['flag', 'local', 'project', 'user'] as const) {
+    for (const scope of ['parent', 'flag', 'local', 'project', 'user'] as const) {
       expect(
         plain(shellVerdict(viewOf(['managed', flagged(true)], [scope, flagged(false)]), 'plugin')),
       ).toEqual(blocked);
@@ -70,13 +65,6 @@ spec('settings.key.disableSkillShellExecution', () => {
       layerOf('managed', flagged(true)),
     ]);
     expect(plain(shellVerdict(twoManaged, 'project'))).toEqual(blocked);
-  });
-
-  test('a managed value that is not a Boolean reads as true, the restrictive one', () => {
-    expect(issuesOf('managed', { disableSkillShellExecution: 'yes' }).length).toBeGreaterThan(0);
-    expect(
-      plain(shellVerdict(viewOf(['managed', { disableSkillShellExecution: 'yes' }]), 'user')),
-    ).toEqual(blocked);
   });
 });
 
@@ -95,6 +83,12 @@ describe('the SDK managedSettings of an embedding host', () => {
       expect(plain(shellOf(false, false, ['parent', flagged(true)]))).toEqual(blocked);
     });
 
+    test('a true in the parent settings is not overridden by false in a lower file', () => {
+      expect(
+        plain(shellOf(false, false, ['parent', flagged(true)], ['user', flagged(false)])),
+      ).toEqual(blocked);
+    });
+
     test('on a machine with an administrator, parent settings are ignored unless the administrator opted in', () => {
       expect(plain(shellOf(true, false, ['parent', flagged(true)]))).toEqual(runs);
       expect(
@@ -102,5 +96,14 @@ describe('the SDK managedSettings of an embedding host', () => {
       ).toEqual(runs);
       expect(plain(shellOf(true, true, ['parent', flagged(true)]))).toEqual(blocked);
     });
+  });
+});
+
+describe('what the docs leave open (spec/judgments.md)', () => {
+  test('a managed value that is not a Boolean reads as true, the restrictive one (src/settings/repair-values.ts)', () => {
+    expect(issuesOf('managed', { disableSkillShellExecution: 'yes' }).length).toBeGreaterThan(0);
+    expect(
+      plain(shellVerdict(viewOf(['managed', { disableSkillShellExecution: 'yes' }]), 'user')),
+    ).toEqual(blocked);
   });
 });

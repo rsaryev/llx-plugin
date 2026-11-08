@@ -190,3 +190,11 @@
   and the Agent, Skill and WebFetch matchers read behaviour and specifier form through a registry
   and a named guard, and their input fields are tied to the SDK's `AgentInput`, `WebFetchInput`
   and `ArtifactInput`.
+
+- Settings, skills: the `disableBundledSkills` decision now says built-in commands and `/doctor` stay
+  typable (`builtInCommandsTypable`); tests cover a `--settings` own-name entry that does not beat an
+  alias, the same alias set in managed and `--settings` files, a parent `true` against a lower
+  `false`, and a parent `false` under a managed `true`; the repair of an unknown `skillOverrides`
+  state is recorded in `spec/judgments.md`, and the non-Boolean managed
+  `disableSkillShellExecution` test sits with the judgments.
+
