@@ -51,3 +51,4 @@ export {
 } from './protocol/settings-keys.ts';
 export * from './settings/index.ts';
 export * from './settings/plugins/index.ts';
+export * from './settings/marketplaces/index.ts';

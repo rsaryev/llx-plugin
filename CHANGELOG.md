@@ -74,6 +74,13 @@
   (`pluginConfigs`, user and managed only, the `@builtin` id aliases), `modOrder` (`prependPlugins`
   and `appendPlugins`, the built-in guard), `syncDecision` (`syncClaudeAiPlugins`), `trustWarning`
   (`pluginTrustMessage`) and `createPluginSettingsPolicy`.
+- Marketplace gate (`settings/marketplaces`): `createMarketplaceGate(view)` answers
+  `strictKnownMarketplaces` and `blockedMarketplaces` as verdicts (add, install, update, refresh,
+  auto-update, session start, a marketplace that cannot be found, `skills-dir`), and
+  `matchMarketplaceSource` is the shared matcher: exact entries, owner wildcards (case-sensitive on
+  the allowlist, case-insensitive on the blocklist), `hostPattern` host extraction, `pathPattern`,
+  canonical git URLs and `url` entries on the blocklist, `[]` as a lockdown, and the blocklist
+  checked first.
 
 ### Fixed
 
