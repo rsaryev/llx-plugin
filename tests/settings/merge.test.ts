@@ -38,6 +38,8 @@ describe('the table of keys', () => {
     expect(merging.toSorted()).toEqual([
       'allowedHttpHookUrls',
       'blockedMarketplaces',
+      'disabledMcpjsonServers',
+      'enabledMcpjsonServers',
       'httpHookAllowedEnvVars',
     ]);
   });

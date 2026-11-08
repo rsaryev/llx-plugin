@@ -1072,6 +1072,36 @@ mergeSettingsHooks(view.layers); // every file's hooks, managed ones never remov
 | `PolicyContext` | done | the facts a host copies in: account, plan, managed-settings presence, `parentSettingsBehavior`, folder trust, environment values, the default channel allowlist, the official marketplace names, the organization's workflow toggle, safe mode, the `/config` workflow size and the ultracode state; each field names its docs page |
 | `resolvePolicy({ layers, context, issues? })` | done | every area behind one `ResolvedPolicy`: `plugins`, `marketplaces` (`gate`, `registry`, `commandSources`), `hooks`, `skills`, `workflows`, `channels`, `customization`, the `view`, and `issues` (the reader's, then the registry's); parent settings are dropped where an administrator deploys managed settings without opting in, and the `hooks` lock comes from the customization policy |
 
+### MCP settings (done: `settings/mcp`)
+
+Pure functions over data the host already read: `~/.claude.json` and `.mcp.json` parsed, the settings
+layers, and facts about the folder. The kit runs no git, reads no file and connects to nothing.
+Expand `${VAR}` references first (`expandMcpServer`), so the endpoint identity compares the servers
+as they will run.
+
+```ts
+import { claudeJsonServers, projectFileServers, projectServerApproval, rankMcpServers,
+  readProjectToggles, applyToggles } from '@rsaryev/claude-plugin-kit';
+
+const user = claudeJsonServers(claudeJson, '/work/app');          // user + local scope
+const file = projectFileServers(mcpJson);                          // project scope
+const approval = projectServerApproval(file.candidates.map((c) => c.name), layers, { folderTrusted });
+const approved = new Set(approval.filter((a) => a.status === 'approved').map((a) => a.name));
+const toggles = readProjectToggles(claudeJson, '/work/app');
+const { loaded, hidden } = rankMcpServers(applyToggles(
+  [...user.candidates, ...file.candidates.filter((c) => approved.has(c.name))], toggles));
+```
+
+| API | What it does |
+| --- | --- |
+| `MCP_SCOPES`, `rankMcpServers(candidates, { desktopCodeTab? })` | managed, local, project, user, plugin, connector. One server per identity: local, project, user and managed match by name, plugins and connectors by endpoint (`mcpEndpointKey`) against an enabled server above; the winner's entry is used whole, never merged. Returns `{ loaded, hidden }`; `hidden` pairs each displaced candidate with the one it duplicates. A candidate with `enabled: false` stays in `loaded` (hosts skip it) and holds no endpoint |
+| `claudeJsonServers(state, projectPath)`, `claudeJsonProject`, `projectFileServers(mcpJson)` | candidates of user scope (top-level `mcpServers`), local scope (`projects[path].mcpServers`) and project scope (`.mcp.json`); an entry Claude Code drops is an issue and the rest load |
+| `managedServerEntries(layers)` | `managedMcpServers` of the managed layers only (several sources: names union, the higher source's entry whole); the key in user, project, local, `--settings` or parent settings is dropped with a warning. What an entry may contain is not read here |
+| `readProjectToggles(state, projectPath)`, `serverEnabled(toggles, subject, name)`, `applyToggles(candidates, toggles)`, `connectorDisplayName(name)` | `disabledMcpServers` (opt-out: configured, plugin, managed, connector under its `claude.ai <name>` display name, default-on built-ins) and `enabledMcpServers` (opt-in: default-off built-ins such as `computer-use`); exactly one list is consulted per kind, an entry in the other is ignored |
+| `projectServerApproval(servers, layers, trust, session?)`, `McpTrust`, `PROJECT_SERVER_STATUSES` | per `.mcp.json` server `approved`, `pending approval` or `rejected` (with `via`): approved by `enableAllProjectMcpServers` or `enabledMcpjsonServers`; in an untrusted folder the shared project file and a tracked or untrusted `settings.local.json` are ignored while user, managed and `--settings` count (an untracked local file also counts in the configuration home); a `disabledMcpjsonServers` entry in any file rejects and wins. A session that cannot prompt (`{ prompts: false }`) loads pending servers without asking, rejected ones still blocked |
+| `canPromptForProjectServers({ interactive, bypassPermissions }, layers)` | interactive sessions prompt, except `bypassPermissions` with `skipDangerousModePermissionPrompt` in user or managed settings |
+| `createMcpSettingsPolicy(view, context)` | `projectServerApproval(servers, trust?, session?)` over the view's layers, folder trust from `context.isFolderTrusted('project')`; `resolvePolicy(...).mcp` |
+
 Scopes, highest first: `managed`, `parent` (the SDK `managedSettings`), `flag` (`--settings`),
 `local`, `project`, `addDir`, `user`. A key a scope may not carry is dropped with a warning (its
 **Scope** line); a `--add-dir` directory's settings carry `enabledPlugins` and

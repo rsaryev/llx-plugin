@@ -9,6 +9,7 @@ import {
   createCommandSourcePolicy,
   type CommandSourcePolicy,
 } from './marketplaces/command-sources.ts';
+import { createMcpSettingsPolicy, type McpSettingsPolicy } from './mcp/policy.ts';
 import { createMarketplaceGate, type MarketplaceGate } from './marketplaces/gate.ts';
 import { createMarketplaceRegistry, type MarketplaceRegistry } from './marketplaces/registry.ts';
 import { createPluginSettingsPolicy, type PluginSettingsPolicy } from './plugins/policy.ts';
@@ -33,6 +34,7 @@ export interface ResolvedPolicy {
   readonly workflows: WorkflowSettingsPolicy;
   readonly channels: ChannelSettingsPolicy;
   readonly customization: CustomizationPolicy;
+  readonly mcp: McpSettingsPolicy;
   /** What reading the files said, then what the marketplace registry refused. */
   readonly issues: readonly PluginIssue[];
 }
@@ -88,6 +90,7 @@ export function resolvePolicy(input: ResolveInput): ResolvedPolicy {
     }),
     channels: createChannelSettingsPolicy(view, context),
     customization,
+    mcp: createMcpSettingsPolicy(view, context),
     issues: [
       ...(input.issues ?? []),
       ...marketplaces.registry.registrations().flatMap((each) => each.issues),

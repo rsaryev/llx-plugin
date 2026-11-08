@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Added
+
+- MCP settings: scope ranking, per-project toggles, project approvals and workspace trust, pure over
+  data the host read. `rankMcpServers` loads each server once from the highest of managed, local,
+  project, user, plugin and claude.ai connector (names across the three scopes, endpoints for plugins
+  and connectors, the whole winning entry, hidden duplicates reported); `claudeJsonServers` and
+  `projectFileServers` turn `~/.claude.json` and `.mcp.json` into candidates; `managedServerEntries`
+  reads `managedMcpServers` from managed layers only; `readProjectToggles`, `serverEnabled` and
+  `applyToggles` apply `disabledMcpServers` and `enabledMcpServers` (one list per kind of server);
+  `projectServerApproval` and `canPromptForProjectServers` decide `Pending approval` and `Rejected` for
+  `.mcp.json` servers with the untrusted-folder filter. The keys `enableAllProjectMcpServers`,
+  `enabledMcpjsonServers` and `disabledMcpjsonServers` join the policy keys, and `resolvePolicy`
+  returns an `mcp` area.
+
 ### Fixed
 
 - MCP: `displayHeaders(server, scope)` gives the header names `claude mcp get` shows for a server

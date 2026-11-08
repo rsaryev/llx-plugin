@@ -108,7 +108,12 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     repair: 'lockBoolean',
   },
   disableWorkflows: { scopes: 'any', merge: MERGES.highestWins, repair: 'lockBoolean' },
+  // A rejection "in any settings file applies" (settings-reference.md); a bad entry is dropped, which
+  // fails open for that one name, as every non-restrictive list does (managed-settings.md).
+  disabledMcpjsonServers: { scopes: 'any', merge: MERGES.unionArrays, repair: 'stringList' },
+  enableAllProjectMcpServers: { scopes: 'any', merge: MERGES.highestWins, repair: 'boolean' },
   enableWorkflows: { scopes: 'any', merge: MERGES.highestWins, repair: 'boolean' },
+  enabledMcpjsonServers: { scopes: 'any', merge: MERGES.unionArrays, repair: 'stringList' },
   enabledPlugins: { scopes: 'any', merge: MERGES.perKeyHighestWins, repair: 'enabledPlugins' },
   extraKnownMarketplaces: {
     scopes: 'any',
