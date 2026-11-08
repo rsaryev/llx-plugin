@@ -56,9 +56,12 @@ export function githubRepoIssues(repo: string, path: string): PluginIssue[] {
     : [error(path, `"${repo}" is not a GitHub repository in owner/repo form`)];
 }
 
+/** Absolute as `/x`, `\\x` (a UNC path too) or `C:\x` and `C:/x` (a drive, with or without a separator). */
+const ABSOLUTE_PATH = /^(?:[\\/]|[A-Za-z]:)/;
+
 /** A `git-subdir` path stays inside the repository (the docs say only "the subdirectory that holds the plugin"). */
 export function subdirIssues(subdir: string, path: string): PluginIssue[] {
-  const escapes = subdir.startsWith('/') || subdir.split(/[\\/]/).includes('..');
+  const escapes = ABSOLUTE_PATH.test(subdir) || subdir.split(/[\\/]/).includes('..');
   return escapes
     ? [error(path, `The subdirectory "${subdir}" must be a path inside the repository`)]
     : [];

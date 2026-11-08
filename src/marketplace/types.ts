@@ -63,9 +63,22 @@ export type CommandFetchPlan = {
   readonly mode: 'copy' | 'link';
 };
 
+/**
+ * Which of the marketplace repository's git submodules a local plugin needs (marketplace-
+ * reference.md, "Git submodules in the marketplace repository"): `none` for a sparse checkout or a
+ * marketplace that was not cloned, `plugin-subtree` for a plugin in a subdirectory (the submodules
+ * it is in, holds or links into), `whole-repository` for a plugin at the root (all of them or none).
+ * `selectSubmodules` applies the rule to the repository's files.
+ */
+export type SubmoduleRule = 'none' | 'plugin-subtree' | 'whole-repository';
+
 /** How a plugin source is fetched, as data: the kit plans it, the host (or an engine over ports) runs it. */
 export type FetchPlan =
-  | { readonly kind: 'local'; readonly fromMarketplaceRoot: string }
+  | {
+      readonly kind: 'local';
+      readonly fromMarketplaceRoot: string;
+      readonly submodules: SubmoduleRule;
+    }
   | GitFetchPlan
   | NpmFetchPlan
   | ArchiveFetchPlan

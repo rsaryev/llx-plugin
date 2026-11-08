@@ -15,6 +15,7 @@ import {
   readGitAddress,
   subdirIssues,
 } from './source-safety.ts';
+import { submoduleRuleFor } from './submodules.ts';
 
 /**
  * Planning how a plugin source is fetched (plugins/marketplace-reference.md, "Plugin sources" and
@@ -74,7 +75,11 @@ function planRelative(source: PluginSourceOf<'relative'>, context: FetchPlanCont
       ? undefined
       : ORIGIN_REFUSAL[context.marketplaceOrigin.kind]?.(source.path);
   if (refusal !== undefined) return refused([error('source', refusal)]);
-  return planned({ kind: 'local', fromMarketplaceRoot: source.path });
+  return planned({
+    kind: 'local',
+    fromMarketplaceRoot: source.path,
+    submodules: submoduleRuleFor(source.path, context.marketplaceOrigin),
+  });
 }
 
 const checkoutOf = (ref: string | undefined, sha: string | undefined) => {

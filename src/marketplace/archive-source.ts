@@ -139,8 +139,15 @@ async function digestIssue(
       );
 }
 
-/** "The install fails when the zip exceeds any of these extraction limits." */
-function extractionIssue(stats: ArchiveStats, limits: ArchiveLimits): PluginIssue | undefined {
+/**
+ * "The install fails when the zip exceeds any of these extraction limits." The ratio is against
+ * the size of the zip the kit downloaded (`zipBytes`), never a size the host reports.
+ */
+function extractionIssue(
+  stats: ArchiveStats,
+  zipBytes: number,
+  limits: ArchiveLimits,
+): PluginIssue | undefined {
   const MIB = 1024 * 1024;
   const breaks: readonly (readonly [boolean, string])[] = [
     [
@@ -156,7 +163,7 @@ function extractionIssue(stats: ArchiveStats, limits: ArchiveLimits): PluginIssu
       `The archive is larger than ${limits.maxUncompressedBytes / MIB} MiB uncompressed`,
     ],
     [
-      stats.uncompressedBytes > limits.maxCompressionRatio * stats.compressedBytes,
+      stats.uncompressedBytes > limits.maxCompressionRatio * zipBytes,
       `The archive's content is more than ${limits.maxCompressionRatio} times the size of the zip`,
     ],
   ];
@@ -189,7 +196,7 @@ export async function fetchArchive(
   if (mismatch !== undefined) return mismatch;
   const stats = await ports.archive.stats(bytes, signal);
   if ('failure' in stats) return issue('source', `The archive cannot be read: ${stats.message}`);
-  const oversized = extractionIssue(stats, plan.limits);
+  const oversized = extractionIssue(stats, bytes.length, plan.limits);
   if (oversized !== undefined) return oversized;
   const root = rootOf(stats.topLevel);
   return typeof root === 'string' ? { bytes, stats, root } : root;

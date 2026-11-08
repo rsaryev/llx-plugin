@@ -23,13 +23,21 @@ const relative = (path: string): PluginSource => ({ kind: 'relative', path, bare
 spec('marketplace.source.Relative path', () => {
   test('resolves from the marketplace root: ./plugins/formatter is <root>/plugins/formatter', () => {
     expect(plan(relative('plugins/formatter'))).toEqual({
-      plan: { kind: 'local', fromMarketplaceRoot: 'plugins/formatter' },
+      plan: {
+        kind: 'local',
+        fromMarketplaceRoot: 'plugins/formatter',
+        submodules: 'plugin-subtree',
+      },
       issues: [],
     });
   });
 
   test('"." is the marketplace root itself', () => {
-    expect(plan(relative('.')).plan).toEqual({ kind: 'local', fromMarketplaceRoot: '.' });
+    expect(plan(relative('.')).plan).toEqual({
+      kind: 'local',
+      fromMarketplaceRoot: '.',
+      submodules: 'whole-repository',
+    });
   });
 
   test('github, git, file and directory marketplaces have the files, so a relative path resolves', () => {
@@ -228,7 +236,16 @@ describe('judgments: git plans', () => {
   });
 
   test('a git-subdir path that leaves the repository is refused', () => {
-    for (const path of ['../x', 'a/../../x', '/etc', 'a\\..\\b']) {
+    for (const path of [
+      '../x',
+      'a/../../x',
+      '/etc',
+      '\\\\host\\share',
+      'C:\\x',
+      'C:/x',
+      'c:x',
+      'a\\..\\b',
+    ]) {
       const result = plan({ kind: 'git-subdir', url: 'o/r', path });
       expect(result.plan).toBeUndefined();
       expect(result.issues[0]).toMatchObject({ severity: 'error', path: 'source.path' });

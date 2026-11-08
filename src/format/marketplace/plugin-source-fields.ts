@@ -22,49 +22,49 @@ const COMMIT_SHA = /^[0-9a-f]{40}$/;
 /** The archive's digest: 64 hex characters, uppercase or lowercase ("archive plugin source"). */
 const ARCHIVE_DIGEST = /^[0-9A-Fa-f]{64}$/;
 
-/** What one text field of a source accepts. */
-export interface FieldRule<Required extends boolean = boolean> {
-  readonly required: Required;
-  readonly accepts: (value: unknown) => boolean;
-}
+export type RawSource = Readonly<Record<string, unknown>>;
 
 export const isText = (value: unknown): value is string =>
   typeof value === 'string' && value !== '';
-const matching =
-  (pattern: RegExp) =>
-  (value: unknown): boolean =>
-    typeof value === 'string' && pattern.test(value);
 
-export const REQUIRED_TEXT: FieldRule<true> = { required: true, accepts: isText };
-export const OPTIONAL_TEXT: FieldRule<false> = { required: false, accepts: isText };
-export const OPTIONAL_SHA: FieldRule<false> = { required: false, accepts: matching(COMMIT_SHA) };
-export const OPTIONAL_DIGEST: FieldRule<false> = {
-  required: false,
-  accepts: matching(ARCHIVE_DIGEST),
-};
+const isCommitSha = (value: unknown): value is string =>
+  typeof value === 'string' && COMMIT_SHA.test(value);
 
-/** The values `readFields` returns: a required field is a string, an optional one may be absent. */
-export type FieldValues<Rules extends Readonly<Record<string, FieldRule>>> = {
-  readonly [K in keyof Rules]: Rules[K] extends FieldRule<true> ? string : string | undefined;
-};
+const isArchiveDigest = (value: unknown): value is string =>
+  typeof value === 'string' && ARCHIVE_DIGEST.test(value);
 
-/** Each rule applied to `raw`; the values, or `undefined` when a required one is missing or any is invalid. */
-export function readFields<Rules extends Readonly<Record<string, FieldRule>>>(
-  raw: Readonly<Record<string, unknown>>,
-  rules: Rules,
-): FieldValues<Rules> | undefined {
-  const values: Record<string, string> = {};
-  for (const [field, rule] of Object.entries(rules)) {
-    const value = raw[field];
-    if (value === undefined) {
-      if (rule.required) return undefined;
-      continue;
-    }
-    if (!rule.accepts(value) || typeof value !== 'string') return undefined;
-    values[field] = value;
-  }
-  // Every required key was checked above and an absent optional one reads as `undefined`, so the
-  // collected record has exactly the shape `FieldValues` promises; TypeScript cannot follow the loop.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see the comment above: the shape is proven by the loop
-  return values as FieldValues<Rules>;
+/** An optional field: `value` is `undefined` when the key is absent. A present but invalid one is no value at all. */
+export interface Optional {
+  readonly value: string | undefined;
+}
+
+/** A required text field: the text, or `undefined` when the key is missing, empty or not a string. */
+export function required(raw: RawSource, key: string): string | undefined {
+  const value = raw[key];
+  return isText(value) ? value : undefined;
+}
+
+function optional(
+  raw: RawSource,
+  key: string,
+  accepts: (value: unknown) => value is string,
+): Optional | undefined {
+  const value = raw[key];
+  if (value === undefined) return { value: undefined };
+  return accepts(value) ? { value } : undefined;
+}
+
+export const optionalText = (raw: RawSource, key: string): Optional | undefined =>
+  optional(raw, key, isText);
+
+export const optionalDigest = (raw: RawSource): Optional | undefined =>
+  optional(raw, 'sha256', isArchiveDigest);
+
+/** The `ref` and `sha` the git sources share, or `undefined` when either is present and invalid. */
+export function readGitPin(
+  raw: RawSource,
+): { readonly ref: string | undefined; readonly sha: string | undefined } | undefined {
+  const ref = optionalText(raw, 'ref');
+  const sha = optional(raw, 'sha', isCommitSha);
+  return ref === undefined || sha === undefined ? undefined : { ref: ref.value, sha: sha.value };
 }

@@ -16,9 +16,9 @@ export const MIB = 1024 * 1024;
 
 export const stats = (rest: Partial<ArchiveStats> = {}): ArchiveStats => ({
   entries: 10,
-  largestFileBytes: 1000,
-  uncompressedBytes: 4000,
-  compressedBytes: 2000,
+  largestFileBytes: 50,
+  uncompressedBytes: 100,
+  compressedBytes: 1,
   topLevel: ['.claude-plugin', 'skills'],
   ...rest,
 });
@@ -59,14 +59,26 @@ export async function refusal(run: ReturnType<typeof fetchWith>): Promise<Plugin
   return value;
 }
 
-/** Stats of an archive whose single file is `bytes` big and stored as it is. */
+/** A reply whose zip is exactly `length` bytes: the size the compression ratio is judged against. */
+export const zipOf = (length: number): HttpReply => ({
+  status: 200,
+  bytes: new Uint8Array(length),
+});
+
+/** Stats of an archive whose single file is `bytes` big. */
 export const oneFile = (bytes: number): ArchiveStats =>
-  stats({ largestFileBytes: bytes, uncompressedBytes: bytes, compressedBytes: bytes });
+  stats({ largestFileBytes: bytes, uncompressedBytes: bytes });
 
-/** Stats of an archive that holds `bytes` uncompressed in small files, stored as they are. */
+/** Stats of an archive that holds `bytes` uncompressed in small files. */
 export const totalOf = (bytes: number): ArchiveStats =>
-  stats({ uncompressedBytes: bytes, compressedBytes: bytes, largestFileBytes: 1 });
+  stats({ uncompressedBytes: bytes, largestFileBytes: 1 });
 
-/** Stats of a 1000-byte zip that holds `bytes` uncompressed. */
+/** Stats of an archive that holds `bytes` uncompressed. */
 export const ratioOf = (bytes: number): ArchiveStats =>
-  stats({ compressedBytes: 1000, uncompressedBytes: bytes, largestFileBytes: 1 });
+  stats({ uncompressedBytes: bytes, largestFileBytes: 1 });
+
+/** The smallest zip the compression ratio lets `archive` hold, so a size-limit test reaches its own limit. */
+export const zipFor = (archive: ArchiveStats): HttpReply =>
+  zipOf(
+    Math.max(ZIP.length, Math.ceil(archive.uncompressedBytes / ARCHIVE_LIMITS.maxCompressionRatio)),
+  );

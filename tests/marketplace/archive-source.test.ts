@@ -17,6 +17,8 @@ import {
   refusal,
   stats,
   URL_0,
+  zipFor,
+  zipOf,
   ZIP,
 } from '../support/marketplace-archive.ts';
 import { spec } from '../support/spec.ts';
@@ -163,24 +165,48 @@ spec('marketplace.source.archive', () => {
   });
 
   test('the install fails past 512 MiB for any one file, uncompressed', async () => {
-    expect(await fetchWith([ok], { stats: oneFile(512 * MIB) }).result).toMatchObject({ root: '' });
-    expect((await refusal(fetchWith([ok], { stats: oneFile(512 * MIB + 1) }))).message).toContain(
-      '512 MiB',
-    );
+    expect(
+      await fetchWith([zipFor(oneFile(512 * MIB))], { stats: oneFile(512 * MIB) }).result,
+    ).toMatchObject({ root: '' });
+    expect(
+      (
+        await refusal(
+          fetchWith([zipFor(oneFile(512 * MIB + 1))], { stats: oneFile(512 * MIB + 1) }),
+        )
+      ).message,
+    ).toContain('512 MiB');
   });
 
   test('the install fails past 1 GiB uncompressed in total', async () => {
-    expect(await fetchWith([ok], { stats: totalOf(1024 * MIB) }).result).toMatchObject({
+    expect(
+      await fetchWith([zipFor(totalOf(1024 * MIB))], { stats: totalOf(1024 * MIB) }).result,
+    ).toMatchObject({
       root: '',
     });
-    expect((await refusal(fetchWith([ok], { stats: totalOf(1024 * MIB + 1) }))).message).toContain(
-      '1024 MiB',
-    );
+    expect(
+      (
+        await refusal(
+          fetchWith([zipFor(totalOf(1024 * MIB + 1))], { stats: totalOf(1024 * MIB + 1) }),
+        )
+      ).message,
+    ).toContain('1024 MiB');
   });
 
   test('the install fails when the content is more than 50 times the size of the zip', async () => {
-    expect(await fetchWith([ok], { stats: ratioOf(50_000) }).result).toMatchObject({ root: '' });
-    expect((await refusal(fetchWith([ok], { stats: ratioOf(50_001) }))).message).toContain(
+    const reply = zipOf(1000);
+    expect(await fetchWith([reply], { stats: ratioOf(50_000) }).result).toMatchObject({ root: '' });
+    expect((await refusal(fetchWith([reply], { stats: ratioOf(50_001) }))).message).toContain(
+      '50 times',
+    );
+  });
+
+  test('the ratio is against the zip the kit downloaded, not the size the host reports', async () => {
+    const liar = stats({
+      uncompressedBytes: 50_001,
+      largestFileBytes: 1,
+      compressedBytes: 10 ** 9,
+    });
+    expect((await refusal(fetchWith([zipOf(1000)], { stats: liar }))).message).toContain(
       '50 times',
     );
   });

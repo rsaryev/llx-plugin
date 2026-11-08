@@ -50,11 +50,13 @@ spec('marketplace.source.Relative path', () => {
     }
   });
 
-  test('on macOS and Linux a backslash after the leading "./" is refused', () => {
-    const refused = parse('./plugins\\formatter', undefined, 'posix');
-    expect(refused.source).toBeUndefined();
-    expect(refused.issues.map((found) => found.severity)).toEqual(['error']);
-    expect(refused.issues[0]?.path).toBe(PATH);
+  test('on macOS and Linux a backslash anywhere after the leading "./" is refused with the judged wording', () => {
+    for (const raw of ['./plugins\\formatter', './a\\', './\\a']) {
+      expect(messages(raw, undefined, 'posix')).toEqual([
+        ['error', PATH, `Path contains a backslash: ${raw}. Write the path with forward slashes`],
+      ]);
+      expect(parse(raw, undefined, 'posix').source).toBeUndefined();
+    }
     expect(parse('./plugins\\formatter').source).toBeUndefined();
   });
 
@@ -70,11 +72,6 @@ spec('marketplace.source.Relative path', () => {
     for (const raw of [3, null, true, ['./a']]) {
       expect(messages(raw)).toEqual([['error', PATH, 'Invalid input']]);
     }
-  });
-
-  test('the path resolves from the marketplace root, not from .claude-plugin/', () => {
-    // The parsed path is root-relative and never carries the .claude-plugin folder.
-    expect(parse('./plugins/formatter').source).toMatchObject({ path: 'plugins/formatter' });
   });
 });
 

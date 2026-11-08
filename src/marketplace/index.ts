@@ -12,6 +12,7 @@ export type {
   NormalizedDependency,
   NpmFetchPlan,
   RenameStatus,
+  SubmoduleRule,
 } from './types.ts';
 export type { HostFetchPlan, PluginDirectories, SourceFetcher } from './ports.ts';
 export type {
@@ -32,3 +33,9 @@ export {
   type FetchedCommandPlugin,
 } from './command-source.ts';
 export { fetchArchive, type ArchivePorts, type FetchedArchive } from './archive-source.ts';
+export {
+  selectSubmodules,
+  submodulePaths,
+  submoduleRuleFor,
+  type SubmoduleEvidence,
+} from './submodules.ts';

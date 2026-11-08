@@ -84,6 +84,15 @@
 
 ### Fixed
 
+- Plugin sources and fetch plans: the archive compression ratio is judged against the length of
+  the zip the kit downloaded and not against a size the host reports; a local plan carries a
+  `submodules` rule (`none`, `plugin-subtree`, `whole-repository`) with `selectSubmodules` and
+  `submodulePaths` for the git submodules a marketplace clone fetches; a `git-subdir` path with a
+  drive letter or a UNC prefix is refused as absolute; the object source parsers read each field
+  with a typed reader instead of a cast; the relative path tests assert the backslash message
+  (also for a trailing backslash), a symlink counts as one entry at exactly 20,000 and 20,001, and
+  a tarball link outside the default registry's path prefix is refused; the `sha256` lower casing
+  and the placeholder `headers` of an archive plan are recorded as judgments.
 - Marketplace entries: the `source` spec block proves only the entry-level behaviour (the parser's
   messages belong to the plugin source parser); `headers` and `headersHelper` count under their own
   ids, with a non-string helper dropping the entry; `effectiveTopic` gives the `relevance.topic`

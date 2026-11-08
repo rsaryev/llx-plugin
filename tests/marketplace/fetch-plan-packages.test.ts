@@ -138,6 +138,19 @@ spec('marketplace.source.npm', () => {
     ).toBe('npm');
   });
 
+  test('a link on the default registry host but outside its path prefix is refused', () => {
+    const context: FetchPlanContext = {
+      platform: 'posix',
+      defaultNpmRegistry: 'http://npm.internal/a',
+    };
+    expect(plan(npm('http://npm.internal/a/f/-/f-1.0.0.tgz'), context).plan?.kind).toBe('npm');
+    for (const link of ['http://npm.internal/b/f.tgz', 'http://npm.internal/ab/f.tgz']) {
+      const issues = refusals(npm(link), context);
+      expect(issues).toHaveLength(1);
+      expect(issues[0]?.message).toContain('default npm registry');
+    }
+  });
+
   test("the registry must use https unless it is the installing user's own default registry", () => {
     const insecure = npm('f', { registry: 'http://npm.internal' });
     const issues = refusals(insecure);

@@ -8,6 +8,14 @@ import { issueOf, plugin, PRINTED, prints, run } from '../support/marketplace-co
 import { memoryFiles } from '../support/ports.ts';
 import { spec } from '../support/spec.ts';
 
+/** A copy-mode directory of `count` symlinks (each to the directory itself) under skills/. */
+const linksUnderSkills = (count: number) =>
+  memoryFiles(
+    Object.fromEntries(
+      Array.from({ length: count }, (_, index) => [`skills/l${index}`, { symlink: '.' }]),
+    ),
+  );
+
 spec('marketplace.source.command', () => {
   const link = { mode: 'link' } as const;
 
@@ -87,10 +95,15 @@ describe('judgments: command source', () => {
   });
 
   test('a symlink inside the directory counts as one entry and is not followed', async () => {
-    const files = memoryFiles({ '.claude-plugin/p': 'x', loop: { symlink: '.' } });
-    expect(await run(prints(PRINTED), { folders: { [PRINTED]: files } }).result).toMatchObject({
-      directory: PRINTED,
-    });
+    // skills/ is one entry; each link to the directory itself is one more and is never followed
+    // (following would loop), so 19,999 links make exactly 20,000 entries and 20,000 make 20,001.
+    expect(
+      await run(prints(PRINTED), { folders: { [PRINTED]: linksUnderSkills(19_999) } }).result,
+    ).toMatchObject({ directory: PRINTED });
+    const issue = await issueOf(
+      run(prints(PRINTED), { folders: { [PRINTED]: linksUnderSkills(20_000) } }).result,
+    );
+    expect(issue.message).toContain('20000');
   });
 
   test('Windows paths are compared without case and with either separator', async () => {

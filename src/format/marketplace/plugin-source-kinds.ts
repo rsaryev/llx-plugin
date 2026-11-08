@@ -3,11 +3,11 @@ import { defined } from './defined.ts';
 import {
   invalidInput,
   isText,
-  OPTIONAL_DIGEST,
-  OPTIONAL_SHA,
-  OPTIONAL_TEXT,
-  readFields,
-  REQUIRED_TEXT,
+  optionalDigest,
+  optionalText,
+  readGitPin,
+  required,
+  type RawSource,
   type SourceSite,
 } from './plugin-source-fields.ts';
 import type { PluginSource, PluginSourceKind } from './types.ts';
@@ -20,52 +20,51 @@ import type { PluginSource, PluginSourceKind } from './types.ts';
 
 export type ObjectKind = Exclude<PluginSourceKind, 'relative'>;
 export type Parsed = PluginSource | readonly PluginIssue[];
-export type ObjectParser = (raw: Readonly<Record<string, unknown>>, site: SourceSite) => Parsed;
+export type ObjectParser = (raw: RawSource, site: SourceSite) => Parsed;
 
-const GIT_REF = { ref: OPTIONAL_TEXT, sha: OPTIONAL_SHA } as const;
-
-function github(raw: Readonly<Record<string, unknown>>, site: SourceSite): Parsed {
-  const fields = readFields(raw, { repo: REQUIRED_TEXT, ...GIT_REF });
-  if (fields === undefined) return invalidInput(site);
-  return { kind: 'github', repo: fields.repo, ...defined({ ref: fields.ref, sha: fields.sha }) };
+function github(raw: RawSource, site: SourceSite): Parsed {
+  const repo = required(raw, 'repo');
+  const pin = readGitPin(raw);
+  if (repo === undefined || pin === undefined) return invalidInput(site);
+  return { kind: 'github', repo, ...defined(pin) };
 }
 
-function url(raw: Readonly<Record<string, unknown>>, site: SourceSite): Parsed {
-  const fields = readFields(raw, { url: REQUIRED_TEXT, ...GIT_REF });
-  if (fields === undefined) return invalidInput(site);
-  return { kind: 'url', url: fields.url, ...defined({ ref: fields.ref, sha: fields.sha }) };
+function url(raw: RawSource, site: SourceSite): Parsed {
+  const address = required(raw, 'url');
+  const pin = readGitPin(raw);
+  if (address === undefined || pin === undefined) return invalidInput(site);
+  return { kind: 'url', url: address, ...defined(pin) };
 }
 
-function gitSubdir(raw: Readonly<Record<string, unknown>>, site: SourceSite): Parsed {
-  const fields = readFields(raw, { url: REQUIRED_TEXT, path: REQUIRED_TEXT, ...GIT_REF });
-  if (fields === undefined) return invalidInput(site);
-  return {
-    kind: 'git-subdir',
-    url: fields.url,
-    path: fields.path,
-    ...defined({ ref: fields.ref, sha: fields.sha }),
-  };
+function gitSubdir(raw: RawSource, site: SourceSite): Parsed {
+  const address = required(raw, 'url');
+  const path = required(raw, 'path');
+  const pin = readGitPin(raw);
+  if (address === undefined || path === undefined || pin === undefined) return invalidInput(site);
+  return { kind: 'git-subdir', url: address, path, ...defined(pin) };
 }
 
 /** "An `npm` `package` containing `..`" is `Invalid input` ("Invalid input on a source"). */
-function npm(raw: Readonly<Record<string, unknown>>, site: SourceSite): Parsed {
-  const fields = readFields(raw, {
-    package: REQUIRED_TEXT,
-    version: OPTIONAL_TEXT,
-    registry: OPTIONAL_TEXT,
-  });
-  if (fields === undefined || fields.package.includes('..')) return invalidInput(site);
+function npm(raw: RawSource, site: SourceSite): Parsed {
+  const pkg = required(raw, 'package');
+  const version = optionalText(raw, 'version');
+  const registry = optionalText(raw, 'registry');
+  if (pkg === undefined || version === undefined || registry === undefined) {
+    return invalidInput(site);
+  }
+  if (pkg.includes('..')) return invalidInput(site);
   return {
     kind: 'npm',
-    package: fields.package,
-    ...defined({ version: fields.version, registry: fields.registry }),
+    package: pkg,
+    ...defined({ version: version.value, registry: registry.value }),
   };
 }
 
-function archive(raw: Readonly<Record<string, unknown>>, site: SourceSite): Parsed {
-  const fields = readFields(raw, { url: REQUIRED_TEXT, sha256: OPTIONAL_DIGEST });
-  if (fields === undefined) return invalidInput(site);
-  return { kind: 'archive', url: fields.url, ...defined({ sha256: fields.sha256 }) };
+function archive(raw: RawSource, site: SourceSite): Parsed {
+  const address = required(raw, 'url');
+  const sha256 = optionalDigest(raw);
+  if (address === undefined || sha256 === undefined) return invalidInput(site);
+  return { kind: 'archive', url: address, ...defined({ sha256: sha256.value }) };
 }
 
 const MAX_COMMAND_LENGTH = 500;
@@ -108,7 +107,7 @@ const readMode = (value: unknown): 'copy' | 'link' | undefined => {
   return value === 'copy' || value === 'link' ? value : undefined;
 };
 
-function readCommand(raw: Readonly<Record<string, unknown>>, site: SourceSite): Parsed {
+function readCommand(raw: RawSource, site: SourceSite): Parsed {
   const text = raw.command;
   const timeoutSeconds = readTimeout(raw.timeout);
   const mode = readMode(raw.mode);
