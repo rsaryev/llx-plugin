@@ -156,6 +156,20 @@ describe('judgment: the grammar where the docs are silent', () => {
     expect(variables('A="C:\\Users\\me"')).toEqual({ A: 'C:\\Users\\me' });
   });
 
+  test('export takes any run of spaces or tabs before the name', () => {
+    expect(variables('export\tA=1\nexport   B=2\nexport \t C=3')).toEqual({
+      A: '1',
+      B: '2',
+      C: '3',
+    });
+  });
+
+  test('declare -x takes exactly one space between the words, then any run of spaces or tabs', () => {
+    expect(variables('declare -x A=1\ndeclare -x \tB=2')).toEqual({ A: '1', B: '2' });
+    expect(variables('declare\t-x A=1')).toEqual({});
+    expect(variables('declare  -x A=1')).toEqual({});
+  });
+
   test('a carriage return ends no line: a CRLF file is not plain', () => {
     expect(variables('A=1\r\n')).toEqual({});
   });

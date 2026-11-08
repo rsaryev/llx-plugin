@@ -5,7 +5,7 @@
  * The kit reads no file and starts no process (L3): the host hands the layers it read and gets the
  * variables to put in its environment.
  */
-import { expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { applySettingsEnv, resolveSettingsEnv } from '../../src/settings/index.ts';
 import type { PolicyScope } from '../../src/settings/index.ts';
 import { spec } from '../support/spec.ts';
@@ -27,7 +27,12 @@ spec(
   () => {
     test('the user file sets variables for every project', () => {
       expect(
-        names([layer('user', { API_TIMEOUT_MS: '1200000', BASH_DEFAULT_TIMEOUT_MS: '300000' })]),
+        names([
+          layer('user', {
+            API_TIMEOUT_MS: '1200000',
+            BASH_DEFAULT_TIMEOUT_MS: '300000',
+          }),
+        ]),
       ).toEqual({
         API_TIMEOUT_MS: '1200000',
         BASH_DEFAULT_TIMEOUT_MS: '300000',
@@ -97,6 +102,13 @@ spec('environment.host.Set variables in settings files.Managed settings', () => 
     expect(values).toEqual({ PROXY: 'managed' });
   });
 
+  test('two managed sources combine per variable', () => {
+    expect(names([layer('managed', { A: '1' }), layer('managed', { B: '2' })])).toEqual({
+      A: '1',
+      B: '2',
+    });
+  });
+
   test('managed settings need no workspace trust', () => {
     expect(names([layer('managed', { A: '1' })], { isFolderTrusted: () => false })).toEqual({
       A: '1',
@@ -145,7 +157,10 @@ spec('environment.host.Precedence', () => {
         KEEP: '1',
       }),
     ]);
-    expect(result.values).toEqual({ CLAUDE_CONFIG_DIR: '/home/you/.claude-work', KEEP: '1' });
+    expect(result.values).toEqual({
+      CLAUDE_CONFIG_DIR: '/home/you/.claude-work',
+      KEEP: '1',
+    });
     expect(result.ignored.map(({ name }) => name).toSorted()).toEqual([
       'CLAUDE_CONFIG_DIR',
       'OTEL_EXPORTER_OTLP_ENDPOINT',
@@ -156,6 +171,14 @@ spec('environment.host.Precedence', () => {
     expect(applySettingsEnv({ Path: 'C:\\old', Other: '1' }, { PATH: 'C:\\new' }, true)).toEqual({
       PATH: 'C:\\new',
       Other: '1',
+    });
+  });
+});
+
+describe('judgment: two layers of one scope', () => {
+  test('where two managed sources set the same variable the one given first wins', () => {
+    expect(names([layer('managed', { A: 'first' }), layer('managed', { A: 'second' })])).toEqual({
+      A: 'first',
     });
   });
 });

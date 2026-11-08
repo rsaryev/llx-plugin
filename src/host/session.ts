@@ -14,6 +14,7 @@ export function openSession(state: HostState, options: SessionOptions): PluginSe
   const hooks = createHookPart(state, options);
   const hookPart: HookPart = {
     hookEnvironment: hooks.hookEnvironment,
+    subprocessEnvironment: (kind) => hooks.subprocessEnvironment(kind),
     dispatch: (event, facts, run) => hooks.dispatch(event, facts, run),
   };
   return {

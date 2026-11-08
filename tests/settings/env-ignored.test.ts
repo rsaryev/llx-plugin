@@ -3,6 +3,8 @@
  * with your shell" and "When Claude Code applies `env` values" (the `env` key of the settings index).
  * What the sections say of Claude Code's own interface (colors, the debug log, the startup-only
  * features, the notices) is a host's; the kit proves the rules over the files and the environment.
+ * The `NO_COLOR` and `FORCE_COLOR` bullet ("reach only subprocesses; to change Claude Code's own
+ * interface colors, set them in your shell") is about the host's interface, so no test here claims it.
  */
 import { describe, expect, test } from 'bun:test';
 import { applySettingsEnv, resolveSettingsEnv } from '../../src/settings/index.ts';
@@ -209,13 +211,6 @@ spec('settings.reference.How env values interact with your shell', () => {
     });
   });
 
-  test('NO_COLOR and FORCE_COLOR reach only subprocesses: applying never changes the environment it was given', () => {
-    const own = Object.freeze({ PATH: '/bin' });
-    const result = applySettingsEnv(own, names([layer('user', { NO_COLOR: '1' })]), false);
-    expect(result).toEqual({ PATH: '/bin', NO_COLOR: '1' });
-    expect(own).toEqual({ PATH: '/bin' });
-  });
-
   test('otherwise the shell value is replaced by the file', () => {
     expect(names([layer('user', { A: 'file' })], { environment: { A: 'shell' } })).toEqual({
       A: 'file',
@@ -232,7 +227,11 @@ spec('settings.reference.When Claude Code applies env values', () => {
       layer('project', { P: '1' }),
       layer('local', { L: '1' }),
     ];
-    expect(names(files, { isFolderTrusted: () => false })).toEqual({ U: '1', F: '1', M: '1' });
+    expect(names(files, { isFolderTrusted: () => false })).toEqual({
+      U: '1',
+      F: '1',
+      M: '1',
+    });
     expect(names(files, { isFolderTrusted: () => true })).toEqual({
       U: '1',
       F: '1',
@@ -249,17 +248,38 @@ spec('settings.reference.When Claude Code applies env values', () => {
     expect(running).toEqual({ A: '9', B: '2' });
   });
 
-  test("after /cd the new directory's project and local values go on top of the previous directory's", () => {
-    const first = names([layer('project', { A: 'first', ONLY_FIRST: '1' })]);
-    const second = names([layer('project', { A: 'second' }), layer('local', { L: '1' })]);
-    expect(applySettingsEnv(applySettingsEnv({}, first, false), second, false)).toEqual({
+  test("after /cd the new directory's project and local values go on top of the previous directory's, once its trust is answered", () => {
+    const trust = new Map([
+      ['/first', true],
+      ['/second', false],
+    ]);
+    const asked: string[] = [];
+    const resolveIn = (folder: string, files: ReturnType<typeof layer>[]) =>
+      resolve(files, {
+        isFolderTrusted: (scope) => {
+          asked.push(`${folder}:${scope}`);
+          return trust.get(folder) === true;
+        },
+      });
+    const first = resolveIn('/first', [layer('project', { A: 'first', ONLY_FIRST: '1' })]).values;
+    const running = applySettingsEnv({}, first, false);
+    const files = [layer('project', { A: 'second' }), layer('local', { L: '1' })];
+
+    expect(resolveIn('/second', files).values).toEqual({});
+    expect(asked).toContain('/second:project');
+    expect(asked).toContain('/second:local');
+
+    trust.set('/second', true);
+    expect(applySettingsEnv(running, resolveIn('/second', files).values, false)).toEqual({
       A: 'second',
       ONLY_FIRST: '1',
       L: '1',
     });
   });
+});
 
-  test('a variable that is a model selection or a timeout still waits for trust: the kit knows no safe list', () => {
+describe('judgment: untrusted files wait for trust', () => {
+  test('a model selection or a timeout of an untrusted project file is not applied: the docs name no safe list', () => {
     const files = [layer('project', { ANTHROPIC_MODEL: 'sonnet', API_TIMEOUT_MS: '5' })];
     expect(names(files, { isFolderTrusted: () => false })).toEqual({});
   });

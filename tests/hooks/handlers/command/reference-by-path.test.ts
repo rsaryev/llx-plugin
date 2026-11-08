@@ -5,8 +5,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { validatePlugin } from '../../../../src/index.ts';
-import { entry, skillSource } from '../../../support/hooks-select.ts';
-import { pluginCommand, settingsCommand } from '../../../support/hooks-run.ts';
+import { pluginCommand, settingsCommand, skillCommand } from '../../../support/hooks-run.ts';
 import { noGitBash, run } from '../../../support/powershell-run.ts';
 import { fakeEnvironment, locations, memoryFiles } from '../../../support/ports.ts';
 import { spec } from '../../../support/spec.ts';
@@ -16,7 +15,10 @@ spec('hooks.behavior.Reference scripts by path.${CLAUDE_PROJECT_DIR}', () => {
   test('the docs\' example: ${CLAUDE_PROJECT_DIR}/.claude/hooks/check-style.sh in exec form with "args": []', async () => {
     const { calls } = await run(
       settingsCommand(
-        { command: '${CLAUDE_PROJECT_DIR}/.claude/hooks/check-style.sh', args: [] },
+        {
+          command: '${CLAUDE_PROJECT_DIR}/.claude/hooks/check-style.sh',
+          args: [],
+        },
         'PostToolUse',
       ),
     );
@@ -29,7 +31,9 @@ spec('hooks.behavior.Reference scripts by path.${CLAUDE_PROJECT_DIR}', () => {
 
   test('in shell form each placeholder goes in double quotes, and the path is the project root', async () => {
     const { calls } = await run(
-      settingsCommand({ command: '"${CLAUDE_PROJECT_DIR}"/.claude/hooks/check-style.sh' }),
+      settingsCommand({
+        command: '"${CLAUDE_PROJECT_DIR}"/.claude/hooks/check-style.sh',
+      }),
       { locations: locations({ project: '/work/my app' }) },
     );
     expect(calls[0]?.spec.command).toBe('"/work/my app"/.claude/hooks/check-style.sh');
@@ -67,7 +71,11 @@ spec('hooks.behavior.Reference scripts by path.${CLAUDE_PROJECT_DIR}', () => {
 spec('hooks.behavior.Reference scripts by path.${CLAUDE_PLUGIN_ROOT}', () => {
   test("the docs' example: a script bundled with the plugin, with its timeout", async () => {
     const { calls } = await run(
-      pluginCommand({ command: '${CLAUDE_PLUGIN_ROOT}/scripts/format.sh', args: [], timeout: 30 }),
+      pluginCommand({
+        command: '${CLAUDE_PLUGIN_ROOT}/scripts/format.sh',
+        args: [],
+        timeout: 30,
+      }),
     );
     expect(calls[0]?.spec).toEqual({
       form: 'exec',
@@ -117,14 +125,10 @@ spec('hooks.behavior.Reference scripts by path in PowerShell hooks', () => {
       '& "${CLAUDE_PROJECT_DIR}\\a.ps1" "${CLAUDE_PLUGIN_ROOT}\\b.ps1" "${CLAUDE_PLUGIN_DATA}"';
     const rewritten =
       '& "${env:CLAUDE_PROJECT_DIR}\\a.ps1" "${env:CLAUDE_PLUGIN_ROOT}\\b.ps1" "${env:CLAUDE_PLUGIN_DATA}"';
-    const fromSkill = {
-      ...entry('PostToolUse', { source: skillSource }),
-      handler: { type: 'command', command, ...powershell },
-    } as ReturnType<typeof settingsCommand>;
     for (const hook of [
       settingsCommand({ command, ...powershell }),
       pluginCommand({ command, ...powershell }),
-      fromSkill,
+      skillCommand({ command, ...powershell }),
     ]) {
       const { calls } = await run(hook, noGitBash);
       expect(calls[0]?.spec.command).toBe(rewritten);
@@ -133,7 +137,10 @@ spec('hooks.behavior.Reference scripts by path in PowerShell hooks', () => {
 
   test('PowerShell resolves them from the exported environment, which holds the native paths', async () => {
     const { calls } = await run(
-      pluginCommand({ command: '& "${CLAUDE_PLUGIN_ROOT}\\check.ps1"', ...powershell }),
+      pluginCommand({
+        command: '& "${CLAUDE_PLUGIN_ROOT}\\check.ps1"',
+        ...powershell,
+      }),
       noGitBash,
     );
     expect(calls[0]?.env).toMatchObject({
@@ -173,14 +180,37 @@ spec('hooks.behavior.Reference scripts by path in PowerShell hooks', () => {
   });
 });
 
+const plugin = (command: string, hook: object = {}) => pluginCommand({ command, ...hook });
+
+const hooksFile = (handler: object) =>
+  JSON.stringify({
+    hooks: { PostToolUse: [{ hooks: [{ type: 'command', ...handler }] }] },
+  });
+
+const issues = async (handler: object) =>
+  (
+    await validatePlugin({
+      files: memoryFiles({
+        '.claude-plugin/plugin.json': JSON.stringify({
+          name: 'demo',
+          version: '1.0.0',
+          description: 'Demo',
+          author: { name: 'A' },
+        }),
+        'hooks/hooks.json': hooksFile(handler),
+      }),
+    })
+  ).issues.map((issue) => issue.message);
+
 spec('environment.rule.Quoting and path separators', () => {
-  const plugin = (command: string, hook: object = {}) => pluginCommand({ command, ...hook });
   const windowsHost = { windows: true, locations: windowsLocations() } as const;
   const ROOT = 'C:\\Users\\you\\.claude\\plugins\\cache\\formatter@acme-tools';
 
   test('hook commands: exec form with args passes each path as one argument with no quoting', async () => {
     const { calls } = await run(
-      plugin('node', { args: ['${CLAUDE_PLUGIN_ROOT}/scripts/a b.js', '${CLAUDE_PROJECT_DIR}'] }),
+      plugin('node', {
+        args: ['${CLAUDE_PLUGIN_ROOT}/scripts/a b.js', '${CLAUDE_PROJECT_DIR}'],
+      }),
       { locations: locations({ plugins: '/p q' }) },
     );
     expect(calls[0]?.spec).toEqual({
@@ -211,7 +241,9 @@ spec('environment.rule.Quoting and path separators', () => {
 
   test('they keep their native backslashes in an exec-form hook', async () => {
     const { calls } = await run(
-      plugin('${CLAUDE_PLUGIN_ROOT}\\run.exe', { args: ['${CLAUDE_PROJECT_DIR}'] }),
+      plugin('${CLAUDE_PLUGIN_ROOT}\\run.exe', {
+        args: ['${CLAUDE_PROJECT_DIR}'],
+      }),
       windowsHost,
     );
     expect(calls[0]?.spec).toEqual({
@@ -231,27 +263,18 @@ spec('environment.rule.Quoting and path separators', () => {
   });
 
   test('plugin validate warns of a variable left outside quotes in a shell-form command of a hooks file, unless the hook sets "shell": "powershell"', async () => {
-    const hooksFile = (handler: object) =>
-      JSON.stringify({ hooks: { PostToolUse: [{ hooks: [{ type: 'command', ...handler }] }] } });
-    const issues = async (handler: object) =>
-      (
-        await validatePlugin({
-          files: memoryFiles({
-            '.claude-plugin/plugin.json': JSON.stringify({
-              name: 'demo',
-              version: '1.0.0',
-              description: 'Demo',
-              author: { name: 'A' },
-            }),
-            'hooks/hooks.json': hooksFile(handler),
-          }),
-        })
-      ).issues.map((issue) => issue.message);
-    const loose = await issues({ command: '${CLAUDE_PLUGIN_ROOT}/scripts/process.sh' });
+    const loose = await issues({
+      command: '${CLAUDE_PLUGIN_ROOT}/scripts/process.sh',
+    });
     expect(loose).toHaveLength(1);
     expect(loose[0]).toContain('without quotes');
     expect(await issues({ command: '"${CLAUDE_PLUGIN_ROOT}"/scripts/process.sh' })).toEqual([]);
-    expect(await issues({ command: 'p ${CLAUDE_PLUGIN_ROOT}/x', shell: 'powershell' })).toEqual([]);
+    expect(
+      await issues({
+        command: 'p ${CLAUDE_PLUGIN_ROOT}/x',
+        shell: 'powershell',
+      }),
+    ).toEqual([]);
     expect(await issues({ command: '${CLAUDE_PLUGIN_ROOT}/x.sh', args: [] })).toEqual([]);
   });
 });

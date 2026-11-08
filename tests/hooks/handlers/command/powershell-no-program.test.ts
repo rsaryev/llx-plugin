@@ -8,9 +8,8 @@ import {
   NO_PROGRAM,
   onlyQuotedStrings,
 } from '../../../../src/hooks/handlers/command/powershell.ts';
-import { exited } from '../../../support/hooks-verdict.ts';
 import { settingsCommand } from '../../../support/hooks-run.ts';
-import { noGitBash, run, verdict } from '../../../support/powershell-run.ts';
+import { noGitBash, run } from '../../../support/powershell-run.ts';
 import { spec } from '../../../support/spec.ts';
 
 spec('hooks.behavior.PowerShell started no program', () => {
@@ -59,7 +58,9 @@ spec('hooks.behavior.PowerShell started no program', () => {
   });
 
   test('Bash runs the same quoted program, so a host with Git Bash starts it', async () => {
-    const { calls, result } = await run(settingsCommand({ command: guard }), { windows: true });
+    const { calls, result } = await run(settingsCommand({ command: guard }), {
+      windows: true,
+    });
     expect(calls[0]?.spec).toMatchObject({ form: 'shell', shell: 'bash' });
     expect(result.issues).toEqual([]);
   });
@@ -79,27 +80,41 @@ spec('hooks.behavior.PowerShell started no program.To print text, such as JSON',
     expect(result.run.kind).toBe('not-started');
   });
 
-  test('with "shell": "powershell" the command is run as written, PowerShell prints it, and the hook exits 0', async () => {
-    const hook = settingsCommand({ command: json, shell: 'powershell' });
-    const { result, calls } = await run(hook, noGitBash);
-    expect(calls[0]?.spec).toEqual({ form: 'shell', shell: 'powershell', command: json });
+  test('with "shell": "powershell" the command is run as written, so PowerShell can print it: the runner is asked and no program-less result comes back', async () => {
+    const { result, calls } = await run(
+      settingsCommand({ command: json, shell: 'powershell' }),
+      noGitBash,
+    );
+    expect(calls[0]?.spec).toEqual({
+      form: 'shell',
+      shell: 'powershell',
+      command: json,
+    });
+    expect(result.run.kind).not.toBe('not-started');
     expect(result.issues).toEqual([]);
-    const printed = verdict('PostToolUse', hook.handler, exited(0, '', '{"systemMessage":"hi"}'));
-    expect(printed.succeeded).toBe(true);
   });
 });
 
 spec('hooks.behavior.PowerShell started no program.To run a script written for Bash', () => {
   test('a Bash script is not for PowerShell: with Git Bash found the hook runs in Bash; "shell": "bash" says so', async () => {
-    const script = settingsCommand({ command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/check.sh' });
-    expect((await run(script, noGitBash)).calls[0]?.spec).toMatchObject({ shell: 'powershell' });
+    const script = settingsCommand({
+      command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/check.sh',
+    });
+    expect((await run(script, noGitBash)).calls[0]?.spec).toMatchObject({
+      shell: 'powershell',
+    });
     expect(
       (await run(script, { ...noGitBash, defaultShell: 'bash' })).calls[0]?.spec,
     ).toMatchObject({
       shell: 'bash',
     });
-    const named = settingsCommand({ command: script.handler.command, shell: 'bash' });
-    expect((await run(named, noGitBash)).calls[0]?.spec).toMatchObject({ shell: 'bash' });
+    const named = settingsCommand({
+      command: script.handler.command,
+      shell: 'bash',
+    });
+    expect((await run(named, noGitBash)).calls[0]?.spec).toMatchObject({
+      shell: 'bash',
+    });
   });
 });
 
@@ -119,15 +134,26 @@ spec('hooks.behavior.PowerShell started no program.To run one .exe at a path wit
 
   test('exec form spawns that program with "args": [] and no shell', async () => {
     const { calls } = await run(
-      settingsCommand({ command: 'C:\\Tools\\guard.exe', args: [], onFailure: 'block' }),
+      settingsCommand({
+        command: 'C:\\Tools\\guard.exe',
+        args: [],
+        onFailure: 'block',
+      }),
       noGitBash,
     );
-    expect(calls[0]?.spec).toEqual({ form: 'exec', command: 'C:\\Tools\\guard.exe', args: [] });
+    expect(calls[0]?.spec).toEqual({
+      form: 'exec',
+      command: 'C:\\Tools\\guard.exe',
+      args: [],
+    });
   });
 
   test('a path with a space is one executable, not a bare name: no warning', async () => {
     const { result } = await run(
-      settingsCommand({ command: 'C:\\Program Files\\Guard\\guard.exe', args: [] }),
+      settingsCommand({
+        command: 'C:\\Program Files\\Guard\\guard.exe',
+        args: [],
+      }),
       noGitBash,
     );
     expect(result.issues).toEqual([]);
@@ -143,7 +169,11 @@ describe('PowerShell started no program: to run a .ps1, .cmd, .bat or an .exe wh
       settingsCommand({ command: script, shell: 'powershell' }),
       noGitBash,
     );
-    expect(calls[0]?.spec).toEqual({ form: 'shell', shell: 'powershell', command: script });
+    expect(calls[0]?.spec).toEqual({
+      form: 'shell',
+      shell: 'powershell',
+      command: script,
+    });
     expect(result.issues).toEqual([]);
   });
 

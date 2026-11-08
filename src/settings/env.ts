@@ -75,8 +75,23 @@ const SCOPE_RULES: { readonly [S in PolicyScope]: EnvScopeRule } = {
   addDir: { carries: false, repository: false },
 };
 
-const isOffValue = (name: string, value: string): boolean =>
-  OFF_VALUES.get(name)?.includes(value) ?? false;
+/** Judgment (spec/judgments.md): a Windows host compares the variable name without case, here as everywhere. */
+const isOffValue = (name: string, value: string, windows: boolean): boolean =>
+  OFF_VALUES.get(windows ? name.toUpperCase() : name)?.includes(value) ?? false;
+
+/** Whether the launch environment sets the variable: on Windows whatever the case of its name. */
+function launchSets(
+  environment: Readonly<Record<string, string | undefined>> | undefined,
+  name: string,
+  windows: boolean,
+): boolean {
+  if (environment === undefined) return false;
+  if (!windows) return environment[name] !== undefined;
+  const wanted = name.toUpperCase();
+  return Object.entries(environment).some(
+    ([set, value]) => value !== undefined && set.toUpperCase() === wanted,
+  );
+}
 
 interface Candidate {
   readonly name: string;
@@ -92,13 +107,13 @@ function refusal(
 ): IgnoredReason | undefined {
   const rule = SCOPE_RULES[candidate.scope];
   const { name, value } = candidate;
-  const launchSets = (context.environment?.[name] ?? undefined) !== undefined;
+  const set = launchSets(context.environment, name, windows);
   if (onList(HOST_OWNED, name, windows)) return 'host-owned';
   if (rule.repository && onList(REPOSITORY_FORBIDDEN, name, windows)) {
     // "Only these values still apply ...: an off value such as `0`", never over the launch environment.
-    return isOffValue(name, value) && !launchSets ? undefined : 'repository';
+    return isOffValue(name, value, windows) && !set ? undefined : 'repository';
   }
-  return context.launchOwnsEnvironment === true && launchSets ? 'launch' : undefined;
+  return context.launchOwnsEnvironment === true && set ? 'launch' : undefined;
 }
 
 function candidatesOf(layer: PolicyLayer): { found: Candidate[]; issues: PluginIssue[] } {

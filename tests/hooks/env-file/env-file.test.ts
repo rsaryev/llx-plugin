@@ -71,7 +71,10 @@ spec('environment.host.CLAUDE_ENV_FILE', () => {
 
     test('a hook that runs in PowerShell does not get it: by "shell": "powershell", or by default without Git Bash', async () => {
       expect(
-        await envFileOf('SessionStart', { command: 'Write-Host x', shell: 'powershell' }),
+        await envFileOf('SessionStart', {
+          command: 'Write-Host x',
+          shell: 'powershell',
+        }),
       ).toBeUndefined();
       expect(
         await envFileOf('SessionStart', { command: 'Write-Host x' }, 'powershell'),
@@ -79,12 +82,6 @@ spec('environment.host.CLAUDE_ENV_FILE', () => {
       expect(
         await envFileOf('SessionStart', { command: './h.sh', shell: 'bash' }, 'powershell'),
       ).toBe('/session/session-env.sh');
-    });
-
-    test('a hook in exec form runs no shell, so it gets it', async () => {
-      expect(await envFileOf('SessionStart', { command: 'tool', args: [] }, 'powershell')).toBe(
-        '/session/session-env.sh',
-      );
     });
 
     test('a plugin hook gets it the same as a settings hook', async () => {
@@ -100,7 +97,10 @@ spec('environment.host.CLAUDE_ENV_FILE', () => {
       const runner = scriptedRunner({});
       await runHandler(
         settingsCommand({ command: './h.sh' }, 'SessionStart'),
-        runContext({ runner, environment: fakeEnvironment({ CLAUDE_ENV_FILE: '/launch/env.sh' }) }),
+        runContext({
+          runner,
+          environment: fakeEnvironment({ CLAUDE_ENV_FILE: '/launch/env.sh' }),
+        }),
       );
       expect(runner.calls[0]?.env).not.toHaveProperty('CLAUDE_ENV_FILE');
     });
@@ -129,7 +129,9 @@ spec('environment.host.CLAUDE_ENV_FILE', () => {
     });
 
     test('the engine clears at a CwdChanged event even when no hook handles it, then the hooks write', async () => {
-      const store = memoryEnvFiles({ '/session/cwd-env.sh': 'export STALE=1\n' });
+      const store = memoryEnvFiles({
+        '/session/cwd-env.sh': 'export STALE=1\n',
+      });
       const runner = scriptedRunner(({ env }) => {
         // What the hook does: appends to the file named in its environment.
         const path = env['CLAUDE_ENV_FILE'] ?? '';
@@ -137,10 +139,14 @@ spec('environment.host.CLAUDE_ENV_FILE', () => {
         return {};
       });
       const engine = createHookEngine(
-        { commands: runner, locations: locations(), environment: fakeEnvironment() },
+        {
+          commands: runner,
+          locations: locations(),
+          environment: fakeEnvironment(),
+        },
         { output: fakeOutput, envFiles: createEnvFiles(store) },
       );
-      const dispatch = (registryEntries = [] as ReturnType<typeof entry>[]) =>
+      const dispatch = (registryEntries: ReturnType<typeof entry>[] = []) =>
         engine.dispatch(createHookRegistry(registryEntries), {
           event: 'CwdChanged',
           facts: FACTS.CwdChanged,
@@ -155,7 +161,9 @@ spec('environment.host.CLAUDE_ENV_FILE', () => {
     });
 
     test('a Bash command runs the session file, then the file of the directory; a script named at launch comes first', async () => {
-      const files = createEnvFiles(memoryEnvFiles(), { launchScript: '/home/me/venv.sh' });
+      const files = createEnvFiles(memoryEnvFiles(), {
+        launchScript: '/home/me/venv.sh',
+      });
       expect(await files.scripts(signal)).toEqual([
         '/home/me/venv.sh',
         '/session/session-env.sh',
@@ -166,5 +174,13 @@ spec('environment.host.CLAUDE_ENV_FILE', () => {
         '/session/cwd-env.sh',
       ]);
     });
+  });
+});
+
+describe('judgment: a hook in exec form', () => {
+  test('runs no shell, so it gets CLAUDE_ENV_FILE even when the host default shell is PowerShell', async () => {
+    expect(await envFileOf('SessionStart', { command: 'tool', args: [] }, 'powershell')).toBe(
+      '/session/session-env.sh',
+    );
   });
 });

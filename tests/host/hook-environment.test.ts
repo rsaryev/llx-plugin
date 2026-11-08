@@ -139,3 +139,45 @@ describe('a host session and the environment of its hooks', () => {
     expect(session.hookEnvironment.files).toBeUndefined();
   });
 });
+
+describe('a host session builds the environment of the processes it starts itself', () => {
+  const layers = [layerOf('user', { env: { A: 'settings', API_KEY: 'k' } })];
+
+  test('each kind gets the settings env, the scrub, no OTEL_* variable and its own Claude Code variables', () => {
+    const { host } = hostWith({
+      layers,
+      env: {
+        A: 'shell',
+        PATH: '/bin',
+        OTEL_LOGS_EXPORTER: 'otlp',
+        CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1',
+      },
+      processId: 99,
+    });
+    const session = host.openSession(SESSION);
+    const bash = session.subprocessEnvironment('bash');
+    expect(bash).toEqual({
+      A: 'settings',
+      PATH: '/bin',
+      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1',
+      CLAUDECODE: '1',
+      CLAUDE_CODE_CHILD_SESSION: '1',
+      CLAUDE_CODE_SESSION_ID: 'sess-1',
+      CLAUDE_PID: '99',
+    });
+    expect(session.subprocessEnvironment('mcp')).toMatchObject({
+      CLAUDE_CODE_SESSION_ID: 'sess-1',
+    });
+    expect(session.subprocessEnvironment('mcp')).not.toHaveProperty('CLAUDE_PID');
+    expect(session.subprocessEnvironment('monitor')).not.toHaveProperty('CLAUDE_CODE_SESSION_ID');
+  });
+
+  test('without a process id the host gave, CLAUDE_PID is not set; project env waits for trust', () => {
+    const project = [layerOf('project', { env: { P: '1' } })];
+    const { host } = hostWith({ layers: project });
+    expect(host.openSession(SESSION).subprocessEnvironment('hook')).toMatchObject({ P: '1' });
+    const untrusted = host.openSession({ ...SESSION, trusted: false });
+    expect(untrusted.subprocessEnvironment('hook')).not.toHaveProperty('P');
+    expect(untrusted.subprocessEnvironment('hook')).not.toHaveProperty('CLAUDE_PID');
+  });
+});

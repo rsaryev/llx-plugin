@@ -12,6 +12,13 @@ export type {
   SkippedRun,
 } from './context.ts';
 export { HANDLERS, runHandler } from './registry.ts';
+export { scrubEnvironment, scrubRequested } from './command/scrub.ts';
+export {
+  SUBPROCESS_KINDS,
+  subprocessEnvironment,
+  type SubprocessEnvironmentInput,
+  type SubprocessKind,
+} from './command/subprocess-env.ts';
 export type { HookStarted, StartObserver } from './status.ts';
 export { handlerTimeoutMs, planTimeouts } from './timeouts.ts';
 export type { SessionEndLimits, TimeoutPlan } from './timeouts.ts';

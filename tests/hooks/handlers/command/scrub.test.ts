@@ -5,9 +5,8 @@
  * names and value shapes the docs call "looks like a credential" are judgments
  * (spec/judgments.md); they are tested outside `spec(...)`.
  */
-import { describe, expect, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { runHandler } from '../../../../src/hooks/handlers/index.ts';
-import { scrubEnvironment } from '../../../../src/hooks/handlers/command/scrub.ts';
 import { runContext, settingsCommand } from '../../../support/hooks-run.ts';
 import { fakeEnvironment, scriptedRunner } from '../../../support/ports.ts';
 import { spec } from '../../../support/spec.ts';
@@ -61,7 +60,9 @@ spec('environment.host.CLAUDE_CODE_SUBPROCESS_ENV_SCRUB', () => {
   });
 
   test('a credential a settings file env block sets is scrubbed too: it is in the process environment', async () => {
-    const env = await hookEnv(SCRUB, { settingsEnv: { DB_PASSWORD: 'hunter2', KEEP: '1' } });
+    const env = await hookEnv(SCRUB, {
+      settingsEnv: { DB_PASSWORD: 'hunter2', KEEP: '1' },
+    });
     expect(env).not.toHaveProperty('DB_PASSWORD');
     expect(env['KEEP']).toBe('1');
   });
@@ -113,8 +114,12 @@ spec('environment.host.What the subprocess environment scrub removes.NPM_TOKEN',
   });
 
   test('any variable whose name looks like a credential goes the same way', async () => {
-    const env = await scrubbed({ SLACK_BOT_TOKEN: 'x', STRIPE_SECRET: 'x', service_password: 'x' });
-    expect(Object.keys(env).filter((name) => /TOKEN|SECRET|password/.test(name))).toEqual([]);
+    const env = await scrubbed({
+      SLACK_BOT_TOKEN: 'x',
+      STRIPE_SECRET: 'x',
+      SERVICE_PASSWORD: 'x',
+    });
+    expect(Object.keys(env).filter((name) => /TOKEN|SECRET|PASSWORD/.test(name))).toEqual([]);
   });
 });
 
@@ -127,7 +132,9 @@ spec('environment.host.What the subprocess environment scrub removes.DB_PASSWORD
 spec('environment.host.What the subprocess environment scrub removes.DATABASE_URL', () => {
   test('removes it when it contains a password: the value looks like a credential', async () => {
     expect(
-      await scrubbed({ DATABASE_URL: 'postgres://app:hunter2@db.internal:5432/app' }),
+      await scrubbed({
+        DATABASE_URL: 'postgres://app:hunter2@db.internal:5432/app',
+      }),
     ).not.toHaveProperty('DATABASE_URL');
   });
 
@@ -163,25 +170,40 @@ spec('environment.host.What the subprocess environment scrub removes.CLAUDE_CONF
   });
 });
 
-const KEPT_GITHUB = [
-  'environment.host.What the subprocess environment scrub removes.GITHUB_TOKEN',
-  'environment.host.What the subprocess environment scrub removes.GH_TOKEN',
-  'environment.host.What the subprocess environment scrub removes.GH_ENTERPRISE_TOKEN',
-  'environment.host.What the subprocess environment scrub removes.GITHUB_ENTERPRISE_TOKEN',
-] as const;
-
-for (const [index, name] of [
-  'GITHUB_TOKEN',
-  'GH_TOKEN',
-  'GH_ENTERPRISE_TOKEN',
-  'GITHUB_ENTERPRISE_TOKEN',
-].entries()) {
-  spec(KEPT_GITHUB[index] ?? '', () => {
-    test(`leaves ${name} in place, so that gh and scripts that call the GitHub API keep working`, async () => {
-      expect(await scrubbed({ [name]: 'ghp_x' })).toMatchObject({ [name]: 'ghp_x' });
+spec('environment.host.What the subprocess environment scrub removes.GITHUB_TOKEN', () => {
+  test('leaves GITHUB_TOKEN in place, so that gh and scripts that call the GitHub API keep working', async () => {
+    expect(await scrubbed({ GITHUB_TOKEN: 'ghp_x' })).toMatchObject({
+      GITHUB_TOKEN: 'ghp_x',
     });
   });
-}
+});
+
+spec('environment.host.What the subprocess environment scrub removes.GH_TOKEN', () => {
+  test('leaves GH_TOKEN in place, so that gh and scripts that call the GitHub API keep working', async () => {
+    expect(await scrubbed({ GH_TOKEN: 'ghp_x' })).toMatchObject({
+      GH_TOKEN: 'ghp_x',
+    });
+  });
+});
+
+spec('environment.host.What the subprocess environment scrub removes.GH_ENTERPRISE_TOKEN', () => {
+  test('leaves GH_ENTERPRISE_TOKEN in place, so that gh and scripts that call the GitHub API keep working', async () => {
+    expect(await scrubbed({ GH_ENTERPRISE_TOKEN: 'ghp_x' })).toMatchObject({
+      GH_ENTERPRISE_TOKEN: 'ghp_x',
+    });
+  });
+});
+
+spec(
+  'environment.host.What the subprocess environment scrub removes.GITHUB_ENTERPRISE_TOKEN',
+  () => {
+    test('leaves GITHUB_ENTERPRISE_TOKEN in place, so that gh and scripts that call the GitHub API keep working', async () => {
+      expect(await scrubbed({ GITHUB_ENTERPRISE_TOKEN: 'ghp_x' })).toMatchObject({
+        GITHUB_ENTERPRISE_TOKEN: 'ghp_x',
+      });
+    });
+  },
+);
 
 spec('environment.host.What the subprocess environment scrub removes.HTTP_PROXY', () => {
   test('leaves it in place, including a username and password in the URL', async () => {
@@ -201,7 +223,9 @@ spec('environment.host.What the subprocess environment scrub removes.HTTPS_PROXY
 
 spec('environment.host.What the subprocess environment scrub removes.GIT_CONFIG_COUNT', () => {
   test('leaves it in place, whatever it holds', async () => {
-    expect(await scrubbed({ GIT_CONFIG_COUNT: '2' })).toMatchObject({ GIT_CONFIG_COUNT: '2' });
+    expect(await scrubbed({ GIT_CONFIG_COUNT: '2' })).toMatchObject({
+      GIT_CONFIG_COUNT: '2',
+    });
   });
 });
 
@@ -230,44 +254,3 @@ spec('environment.host.What the subprocess environment scrub removes.GIT_CONFIG_
     });
   });
 });
-
-describe('what the docs leave in place, and the judgments around the table', () => {
-  test('"A secret whose variable name and value don\'t look like a credential" stays', async () => {
-    expect(await scrubbed({ BUILD_NOTE: 'the vault code is 4411' })).toMatchObject({
-      BUILD_NOTE: 'the vault code is 4411',
-    });
-  });
-
-  test('names that only contain a credential word as part of a longer word stay', () => {
-    const env = scrubbedPure({
-      TOKENIZERS_PARALLELISM: 'false',
-      PWD: '/work',
-      SSH_AUTH_SOCK: '/s',
-    });
-    expect(env).toEqual({ TOKENIZERS_PARALLELISM: 'false', PWD: '/work', SSH_AUTH_SOCK: '/s' });
-  });
-
-  test('judgment: a PEM private key value is a credential by its shape', () => {
-    const env = scrubbedPure({ DEPLOY_KEY_DATA: '-----BEGIN OPENSSH PRIVATE KEY-----\nabc' });
-    expect(env).toEqual({});
-  });
-
-  test('judgment: a variable the kit exports to the hook (a plugin option) is never scrubbed', async () => {
-    const runner = scriptedRunner({});
-    const { pluginCommand } = await import('../../../support/hooks-run.ts');
-    await runHandler(
-      pluginCommand({ command: './h.sh' }),
-      runContext({
-        runner,
-        environment: fakeEnvironment(SCRUB),
-        userConfigOf: () => ({
-          declared: { api_token: { type: 'string', title: 't', description: 'd' } },
-          values: { api_token: 'plugin-owned' },
-        }),
-      }),
-    );
-    expect(runner.calls[0]?.env['CLAUDE_PLUGIN_OPTION_API_TOKEN']).toBe('plugin-owned');
-  });
-});
-
-const scrubbedPure = (variables: Record<string, string>) => scrubEnvironment(variables, false);

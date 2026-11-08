@@ -15,10 +15,12 @@
  *
  * Judgments (spec/judgments.md): the docs say a name "looks like a credential" without listing the
  * words, so a name is one when a `_`-separated part of it is `TOKEN`, `SECRET`, `PASSWORD`,
- * `PASSWD`, `CREDENTIAL(S)`, `API_KEY`, `PRIVATE_KEY` or `ACCESS_KEY`; a value is one when it holds a
+ * `PASSWD`, `CREDENTIAL(S)`, `API_KEY`, `PRIVATE_KEY` or `ACCESS_KEY` (the underscore inside the last
+ * three optional, so `APIKEY` counts), compared without regard to case; a value is one when it holds a
  * URL with a password (`scheme://user:password@host`) or a PEM private key header. The index URLs are
- * the variables whose name ends in `INDEX_URL` or `REGISTRY`. The variables the kit itself exports
- * to a hook (`CLAUDE_PLUGIN_OPTION_<KEY>`) are the plugin's own and are never scrubbed.
+ * the variables whose name is, or ends in `_` and, `INDEX_URL` or `REGISTRY`, without regard to case.
+ * The proxy variables stay in either case (`https_proxy` and `HTTPS_PROXY`). The variables the kit
+ * itself exports to a hook (`CLAUDE_PLUGIN_OPTION_<KEY>`) are the plugin's own and are never scrubbed.
  */
 
 const SCRUB_FLAG = 'CLAUDE_CODE_SUBPROCESS_ENV_SCRUB';
@@ -44,11 +46,11 @@ const KEPT_NAMES: ReadonlySet<string> = new Set([
   'GH_TOKEN',
   'GH_ENTERPRISE_TOKEN',
   'GITHUB_ENTERPRISE_TOKEN',
-  'HTTP_PROXY',
-  'HTTPS_PROXY',
   'GIT_CONFIG_COUNT',
 ]);
 const KEPT_PATTERN = /^GIT_CONFIG_(?:KEY|VALUE)_\d+$/;
+/** network-config.md: "Lowercase variants also work" and are read first, so `https_proxy` stays as `HTTPS_PROXY` does. */
+const PROXY_NAME = /^https?_proxy$/i;
 
 const CREDENTIAL_NAME =
   /(?:^|_)(?:TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIALS?|API_?KEY|PRIVATE_?KEY|ACCESS_?KEY)(?:_|$)/i;
@@ -56,8 +58,8 @@ const INDEX_URL_NAME = /(?:^|_)(?:INDEX_URL|REGISTRY)$/i;
 const URL_PASSWORD = /([a-z][a-z0-9+.-]*:\/\/)[^\s/@:]*:[^\s/@]+@/i;
 const PRIVATE_KEY_BLOCK = /-----BEGIN [A-Z ]*PRIVATE KEY-----/;
 
-const leaveWhatTheDocsNameAlone: Rule = ({ key }) =>
-  KEPT_NAMES.has(key) || KEPT_PATTERN.test(key) ? 'keep' : undefined;
+const leaveWhatTheDocsNameAlone: Rule = ({ name, key }) =>
+  KEPT_NAMES.has(key) || KEPT_PATTERN.test(key) || PROXY_NAME.test(name) ? 'keep' : undefined;
 
 const removeConfigDir: Rule = ({ key }) => (key === 'CLAUDE_CONFIG_DIR' ? 'remove' : undefined);
 

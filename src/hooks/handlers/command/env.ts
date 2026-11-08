@@ -1,9 +1,8 @@
 import { exportedEnvironment, pluginVariableValue } from '../../../loading/resolve/index.ts';
-import { applySettingsEnv } from '../../../settings/env.ts';
 import type { HandlerEntry, RunContext } from '../context.ts';
 import { substitutionScope } from './placeholders.ts';
-import { scrubEnvironment, scrubRequested } from './scrub.ts';
 import { shellOf } from './shell.ts';
+import { subprocessEnvironment } from './subprocess-env.ts';
 
 /**
  * The environment of a command hook (hooks.md, "Common input fields", "Exec form and shell form" and
@@ -27,8 +26,6 @@ import { shellOf } from './shell.ts';
  * host, whose environment names are case-insensitive, and exactly elsewhere.
  */
 
-const OTEL = /^OTEL_/;
-const OTEL_ANY_CASE = /^OTEL_/i;
 const ENV_FILE = 'CLAUDE_ENV_FILE';
 
 /** The variables a plugin's hooks receive; a handler of no plugin has only the project folder. */
@@ -42,8 +39,8 @@ async function exported(
     : exportedEnvironment('hook-command', scope);
 }
 
-/** What the host process is to every hook it starts. */
-async function hostVariables(
+/** The `CLAUDE_ENV_FILE` of this hook: the file of its event, or none. */
+async function envFileVariable(
   entry: HandlerEntry<'command'>,
   context: RunContext,
 ): Promise<Record<string, string>> {
@@ -52,27 +49,7 @@ async function hostVariables(
     shellOf(entry, context),
     context.signal,
   );
-  return {
-    CLAUDECODE: '1',
-    CLAUDE_CODE_CHILD_SESSION: '1',
-    ...(context.sessionId === undefined ? {} : { CLAUDE_CODE_SESSION_ID: context.sessionId }),
-    ...(context.processId === undefined ? {} : { CLAUDE_PID: String(context.processId) }),
-    ...(envFile === undefined ? {} : { [ENV_FILE]: envFile }),
-  };
-}
-
-/** The environment a hook inherits: the host's, the settings' written over it, then the scrub, then the `OTEL_*` removal. */
-function inheritedEnvironment(context: RunContext): [string, string][] {
-  const parent = applySettingsEnv(
-    context.ports.environment.snapshot(),
-    context.settingsEnv ?? {},
-    context.windows,
-  );
-  const scrubbed = scrubRequested(parent) ? scrubEnvironment(parent, context.windows) : parent;
-  const exporter = context.windows ? OTEL_ANY_CASE : OTEL;
-  const isEnvFile = (name: string): boolean =>
-    (context.windows ? name.toUpperCase() : name) === ENV_FILE;
-  return Object.entries(scrubbed).filter(([name]) => !exporter.test(name) && !isEnvFile(name));
+  return envFile === undefined ? {} : { [ENV_FILE]: envFile };
 }
 
 /** The whole environment the process gets (the port adds nothing and removes nothing). */
@@ -81,8 +58,15 @@ export async function processEnvironment(
   context: RunContext,
 ): Promise<Readonly<Record<string, string>>> {
   return {
-    ...Object.fromEntries(inheritedEnvironment(context)),
+    ...subprocessEnvironment({
+      kind: 'hook',
+      environment: context.ports.environment.snapshot(),
+      ...(context.settingsEnv === undefined ? {} : { settingsEnv: context.settingsEnv }),
+      windows: context.windows,
+      sessionId: context.sessionId,
+      processId: context.processId,
+    }),
     ...(await exported(entry, context)),
-    ...(await hostVariables(entry, context)),
+    ...(await envFileVariable(entry, context)),
   };
 }

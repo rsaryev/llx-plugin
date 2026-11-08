@@ -727,6 +727,17 @@ and gives the host the rest.
 a sandboxed command. A host session passes `processId` and `envFiles` in `PluginHostOptions` and reads
 `session.hookEnvironment` (`settings`: the `env` that applies and what was ignored; `files`).
 
+`subprocessEnvironment({ kind, environment, settingsEnv, windows, sessionId, processId })` is the same
+environment for any process Claude Code starts, `kind` being `hook`, `bash`, `powershell`, `mcp` or
+`monitor` (`SUBPROCESS_KINDS`): the environment with the settings `env` over it, the scrub, the `OTEL_*`
+removal, `CLAUDECODE` for every kind, `CLAUDE_CODE_CHILD_SESSION` for all but `mcp`,
+`CLAUDE_CODE_SESSION_ID` for all but `monitor` and `CLAUDE_PID` for `hook`, `bash` and `powershell`.
+`session.subprocessEnvironment(kind)` calls it with the session's settings `env`, session id, process id
+and environment, so a host builds its own Bash, PowerShell, stdio MCP and Monitor environments without
+copying the logic. It never holds `CLAUDE_ENV_FILE` or the plugin path variables, and the kit starts none
+of those processes itself (what is left out is in `spec/judgments.md`). `scrubEnvironment(env, windows)`
+and `scrubRequested(env)` are the scrub on its own.
+
 A shell-form hook that PowerShell runs by the host's default (no `shell` field) and whose command is only
 quoted strings starts nothing: the run is `not-started` with a message that begins `PowerShell started no
 program` and lists the fixes, and the Windows-without-Git-Bash error of a blocked call carries both texts.

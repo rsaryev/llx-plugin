@@ -22,6 +22,14 @@
 
 ### Fixed
 
+- Hooks and settings (review of the exec stream): the scrub keeps `http_proxy` and `https_proxy` in lower
+  case as it keeps `HTTP_PROXY` and `HTTPS_PROXY`; `subprocessEnvironment` and
+  `session.subprocessEnvironment(kind)` build the environment of a hook, Bash, PowerShell, stdio MCP or
+  Monitor process, and `scrubEnvironment` and `scrubRequested` are exported as `docs/API.md` says; on a
+  Windows host the settings `env` reads off values and the launch environment without regard to case;
+  the judgments of the scrub, the managed layer order, the `CLAUDE_ENV_FILE` of exec-form hooks and the
+  PowerShell reader are recorded and tested outside `spec(...)`.
+
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
   short label and the amounts of each row of the Limits table, not the page's sentences, so the
   repository holds facts and identifiers only.

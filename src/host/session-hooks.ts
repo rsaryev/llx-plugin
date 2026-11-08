@@ -10,6 +10,8 @@ import {
   type HookSession,
   type HookSource,
   type RegisteredHandler,
+  type SubprocessKind,
+  subprocessEnvironment,
 } from '../hooks/index.ts';
 import type { HookEvent } from '../protocol/official.ts';
 import { hookSessionGates, type HookSessionGates } from '../settings/hooks/index.ts';
@@ -87,6 +89,13 @@ export interface HookEnvironment {
 export interface HookPart {
   /** What the host's own Bash and PowerShell commands read, as the hooks do. */
   readonly hookEnvironment: HookEnvironment;
+  /**
+   * The environment of a process the host starts itself for this session, as Claude Code builds it:
+   * the host's environment with the settings `env`, the scrub, the `OTEL_*` removal and the variables
+   * of that kind (`CLAUDECODE`, `CLAUDE_CODE_CHILD_SESSION`, `CLAUDE_CODE_SESSION_ID`, `CLAUDE_PID`).
+   * It holds no path placeholder or `CLAUDE_ENV_FILE`.
+   */
+  subprocessEnvironment(kind: SubprocessKind): Record<string, string>;
   dispatch<E extends HookEvent>(
     event: E,
     facts: EventFactsOf<E>,
@@ -147,6 +156,15 @@ export function createHookPart(
   ]);
   return {
     hookEnvironment: { settings, ...(files === undefined ? {} : { files }) },
+    subprocessEnvironment: (kind) =>
+      subprocessEnvironment({
+        kind,
+        environment: ports.environment.snapshot(),
+        settingsEnv: settings.values,
+        windows,
+        sessionId: options.sessionId,
+        processId: state.options.processId,
+      }),
     registerSkillHooks(prefix, entries) {
       const previous = registry.entries.filter((entry) => entry.id.startsWith(`${prefix}:`));
       registry = registry.without(previous.map((entry) => entry.id)).with(entries);
