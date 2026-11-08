@@ -58,6 +58,26 @@ spec('outputStyles.frontmatter.description', () => {
       { id: 'my-plugin:terse', name: 'terse', current: false },
     ]);
   });
+
+  test('the built-in rows carry the descriptions of the docs: the Default section and the table', () => {
+    const rows = listOutputStyles([], resolveOutputStyle({ styles: [] }));
+    expect(rows.map(({ id, description }) => [id, description])).toEqual([
+      ['default', "Claude Code's standard instructions for completing software engineering tasks"],
+      [
+        'Proactive',
+        'Claude starts work right away and makes reasonable assumptions rather than asking about routine decisions',
+      ],
+      ['Concise', 'Responses lead with the result and leave out preamble, narration, and recaps'],
+      [
+        'Explanatory',
+        'Claude adds short `Insight` blocks that explain the choices behind the code it writes',
+      ],
+      [
+        'Learning',
+        'Claude explains its choices and leaves small pieces of code for you to write yourself',
+      ],
+    ]);
+  });
 });
 
 const full = (selection: StyleSelection) => includeCodingInstructions(selection, 'full');
@@ -174,5 +194,43 @@ describe('judgments (spec/judgments.md)', () => {
     expect(resolveOutputStyle({ setting: 'shared', styles: [near, far] }).style).toBe(near);
     const shadow = style('c.md', '---\nname: Concise\n---\nmine');
     expect(resolveOutputStyle({ setting: 'Concise', styles: [shadow] }).style).toBeUndefined();
+  });
+
+  test('the list has one current row: a style that shadows a built-in id is not listed', () => {
+    const shadow = style('c.md', '---\nname: Concise\n---\nmine');
+    const rows = listOutputStyles(
+      [shadow],
+      resolveOutputStyle({ setting: 'Concise', styles: [shadow] }),
+    );
+    expect(rows.map((row) => row.id)).toEqual([
+      'default',
+      'Proactive',
+      'Concise',
+      'Explanatory',
+      'Learning',
+    ]);
+    expect(rows.filter((row) => row.current).map((row) => row.id)).toEqual(['Concise']);
+    expect(rows.find((row) => row.id === 'Concise')?.name).toBe('Concise');
+  });
+
+  test('the list has one current row: of two styles with one id only the first is listed', () => {
+    const near = style('s.md', '---\nname: shared\ndescription: near\n---\nnear');
+    const far = style('s.md', '---\nname: shared\ndescription: far\n---\nfar');
+    const styles = [near, far];
+    const rows = listOutputStyles(styles, resolveOutputStyle({ setting: 'shared', styles }));
+    const shared = rows.filter((row) => row.id === 'shared');
+    expect(shared).toEqual([{ id: 'shared', name: 'shared', description: 'near', current: true }]);
+    expect(rows.filter((row) => row.current)).toHaveLength(1);
+  });
+
+  test('a plugin style is named by its declared name, not its file name (the docs only show them equal)', () => {
+    const diagrams = style('diagrams.md', '---\nname: Diagrams first\n---\nB', 'my-plugin');
+    expect(diagrams.id).toBe('my-plugin:Diagrams first');
+    expect(
+      resolveOutputStyle({ setting: 'my-plugin:Diagrams first', styles: [diagrams] }).style,
+    ).toBe(diagrams);
+    expect(resolveOutputStyle({ setting: 'my-plugin:diagrams', styles: [diagrams] }).id).toBe(
+      'default',
+    );
   });
 });

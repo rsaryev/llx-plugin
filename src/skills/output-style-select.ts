@@ -144,7 +144,9 @@ export interface OutputStyleChoice {
 
 /**
  * What `/output-style` lists with no argument and the `/config` picker shows: Default, the
- * built-in styles, then each custom style with its `name` and `description`.
+ * built-in styles, then each custom style with its `name` and `description`. It lists the same pool
+ * `resolveOutputStyle` selects from, so a custom style that reuses a built-in id or an earlier
+ * style's id is left out (the first wins) and exactly one row is current.
  */
 export function listOutputStyles(
   styles: readonly OutputStyle[],
@@ -156,11 +158,17 @@ export function listOutputStyles(
     description,
     current: id === current.id,
   }));
-  const custom = styles.map((style) => ({
-    id: style.id,
-    name: style.name,
-    ...(style.description === undefined ? {} : { description: style.description }),
-    current: style.id === current.id,
-  }));
+  const builtinIds = new Set(BUILTIN_OUTPUT_STYLES.map(({ id }) => id));
+  const custom = styles
+    .filter(
+      (style, index) =>
+        !builtinIds.has(style.id) && styles.findIndex(({ id }) => id === style.id) === index,
+    )
+    .map((style) => ({
+      id: style.id,
+      name: style.name,
+      ...(style.description === undefined ? {} : { description: style.description }),
+      current: style.id === current.id,
+    }));
   return [...builtin, ...custom];
 }

@@ -66,6 +66,8 @@
 
 ### Fixed
 
+- `listOutputStyles` marks one row current: a custom style that reuses a built-in id or an earlier
+  style's id is no longer listed, matching what `resolveOutputStyle` selects.
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
   parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
   (and `skill`) read `name:value` as a parameter.

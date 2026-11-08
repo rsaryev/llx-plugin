@@ -52,7 +52,7 @@ spec('outputStyles.frontmatter.name', () => {
     expect(readOutputStyle('review.md', 'No frontmatter at all').style.name).toBe('review');
   });
 
-  test('a plugin style is offered as <plugin>:<name>, with the declared name or the file name', () => {
+  test('a plugin style is offered as <plugin>:<name> (the docs example: file name and name agree)', () => {
     const declared = readOutputStyle('output-styles/terse.md', TERSE, { plugin: 'my-plugin' });
     expect(declared.style.name).toBe('terse');
     expect(declared.style.id).toBe('my-plugin:terse');
@@ -114,13 +114,6 @@ spec('outputStyles.frontmatter.keep-coding-instructions', () => {
         .keepCodingInstructions,
     ).toBe(false);
   });
-
-  test('accepts the flag spellings of the frontmatter reference', () => {
-    for (const spelling of ['yes', 'on', '1', 'True']) {
-      const text = `---\nkeep-coding-instructions: ${spelling}\n---\nB`;
-      expect(readOutputStyle('a.md', text).style.keepCodingInstructions).toBe(true);
-    }
-  });
 });
 
 spec('outputStyles.frontmatter.force-for-plugin', () => {
@@ -178,5 +171,28 @@ describe('judgments (spec/judgments.md)', () => {
   test('a number is a name; a blank name falls back to the file name', () => {
     expect(readOutputStyle('s.md', '---\nname: 42\n---\nB').style.name).toBe('42');
     expect(readOutputStyle('s.md', '---\nname: "  "\n---\nB').style.name).toBe('s');
+  });
+
+  test('a plugin style whose declared name differs from its file name is `<plugin>:<declared name>`', () => {
+    const { style } = readOutputStyle('output-styles/diagrams.md', DIAGRAMS, {
+      plugin: 'my-plugin',
+    });
+    expect(style.name).toBe('Diagrams first');
+    expect(style.id).toBe('my-plugin:Diagrams first');
+  });
+
+  // skills.md § Frontmatter reference documents these spellings for skills only; output-styles.md
+  // says just "Set to `true`". The kit reuses the skill coercion for output styles.
+  test('keep-coding-instructions reuses the skill flag spellings, true and false, in any case', () => {
+    for (const spelling of ['true', 'yes', 'on', '1', 'True', 'YES', 'On']) {
+      const text = `---\nkeep-coding-instructions: ${spelling}\n---\nB`;
+      expect(readOutputStyle('a.md', text).style.keepCodingInstructions).toBe(true);
+    }
+    for (const spelling of ['false', 'no', 'off', '0', 'False', 'NO', 'Off']) {
+      const text = `---\nkeep-coding-instructions: ${spelling}\n---\nB`;
+      const { style, issues } = readOutputStyle('a.md', text);
+      expect(style.keepCodingInstructions).toBe(false);
+      expect(issues).toEqual([]);
+    }
   });
 });
