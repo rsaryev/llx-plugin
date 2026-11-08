@@ -52,3 +52,19 @@ type Declared<T> = T extends unknown ? (string extends keyof T ? never : T) : ne
 export type UserConfigValue = NonNullable<
   Declared<NonNullable<Settings['pluginConfigs']>[string]>['options']
 >[string];
+
+/**
+ * One marketplace source object, as the SDK types the entries of `strictKnownMarketplaces`
+ * (`github`, `git`, `url`, `hostPattern`, `skills-dir`…); `blockedMarketplaces` and
+ * `extraKnownMarketplaces` use the same forms.
+ */
+export type SdkMarketplaceSource = NonNullable<Settings['strictKnownMarketplaces']>[number];
+
+/**
+ * One `allowedChannelPlugins` entry, as the SDK types it: the plugin and the marketplace it comes from
+ * (`{ marketplace, plugin }`).
+ */
+export type ChannelPluginRef = NonNullable<Settings['allowedChannelPlugins']>[number];
+
+/** The provenance an Agent SDK application stamps on a user message (`{ kind: 'human' }` for keyboard input). */
+export type { SDKMessageOrigin } from '@anthropic-ai/claude-agent-sdk';

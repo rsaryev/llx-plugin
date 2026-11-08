@@ -98,3 +98,21 @@ export {
 } from './protocol/mods-ui-names.ts';
 export * from './format/marketplace/index.ts';
 export * from './marketplace/index.ts';
+export {
+  MARKETPLACE_KEY_ALIASES,
+  MARKETPLACE_SOURCE_KINDS,
+  PLUGIN_ONLY_SURFACES,
+  POLICY_KEYS,
+  SKILL_OVERRIDE_STATES,
+  WORKFLOW_SIZES,
+  type PluginOnlySurface,
+  type PolicyKey,
+} from './protocol/settings-keys.ts';
+export * from './settings/index.ts';
+export * from './settings/plugins/index.ts';
+export * from './settings/marketplaces/index.ts';
+export * from './settings/hooks/index.ts';
+export * from './settings/skills/index.ts';
+export * from './settings/workflows/index.ts';
+export * from './settings/channels/index.ts';
+export * from './settings/customization/index.ts';

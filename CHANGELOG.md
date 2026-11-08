@@ -409,6 +409,143 @@
   marketplace sources and `marketplace add`; `--sparse`, `owner/*` and the `url` source's
   relative-path refusal count under their requirement ids, and the settings duplicate, `strict`,
   `npm` `version` and `registry`, and policy-warning tests assert their paths and messages.
+- Settings layers (`settings`): `readSettingsLayer` turns the JSON of one source (managed, parent,
+  `--settings`, local, project, `--add-dir`, user) into a layer: marketplace key aliases read as
+  their canonical key, a key its Scope line does not allow dropped with a warning, an unreadable
+  value repaired as managed-settings.md says (empty allowlists, `true` locks, `strictPluginOnlyCustomization`
+  as `true`, invalid entries stripped). `createPolicyView` answers `get`, `winner` and
+  `eachFromHighest` over the ordered layers with one merge rule per key (`KEY_SPECS`), and
+  `loadSettingsLayers` reads layers from a host's `SettingsSources`. `mergeHooks` combines the
+  `hooks` of every file without letting a file remove a managed hook, and runs a handler defined in
+  two files once. `POLICY_KEYS`, `PLUGIN_ONLY_SURFACES`, `SKILL_OVERRIDE_STATES`, `WORKFLOW_SIZES`,
+  `MARKETPLACE_SOURCE_KINDS` and `MarketplaceSource` are asserted equal to the SDK's types.
+- The plugin keys of the settings (`settings/plugins`): `enabledPlugin` and `forceEnabledByManaged`
+  (`enabledPlugins` precedence, managed block and hide, `defaultEnabled`, `@synced`), `pluginConfig`
+  (`pluginConfigs`, user and managed only, the `@builtin` id aliases), `modOrder` (`prependPlugins`
+  and `appendPlugins`, the built-in guard), `syncDecision` (`syncClaudeAiPlugins`), `trustWarning`
+  (`pluginTrustMessage`) and `createPluginSettingsPolicy`.
+- Marketplace gate (`settings/marketplaces`): `createMarketplaceGate(view)` answers
+  `strictKnownMarketplaces` and `blockedMarketplaces` as verdicts (add, install, update, refresh,
+  auto-update, session start, a marketplace that cannot be found, `skills-dir`), and
+  `matchMarketplaceSource` is the shared matcher: exact entries, owner wildcards (case-sensitive on
+  the allowlist, case-insensitive on the blocklist), `hostPattern` host extraction, `pathPattern`,
+  canonical git URLs and `url` entries on the blocklist, `[]` as a lockdown, and the blocklist
+  checked first.
+- Marketplace registry and command sources (`settings/marketplaces`):
+  `createMarketplaceRegistry(view, context).registrations()` plans `extraKnownMarketplaces` (whole-entry
+  replacement across files, workspace trust for project, local and `--add-dir` entries, the allowlist
+  and blocklist checked on the entry that wins, `settings` source rules, `headersHelper` ignored from
+  `--add-dir`, `autoUpdate` defaults, the official marketplace implied by `enabledPlugins`), and
+  `createCommandSourcePolicy(view)` answers `disableCommandPluginSources` (falling back to
+  `allowManagedHooksOnly`) for command-sourced plugins and marketplace `headersHelper` commands.
+- Hook policy (`settings/hooks`): `createHookPolicy(view, locks, context)` answers `disableAllHooks`
+  and `allowManagedHooksOnly` as `runs(origin)` for every origin of a hook (managed settings, SDK
+  callbacks, user, project, local and `--settings` files, plugins and their mods, frontmatter), with
+  the value left after precedence deciding the reach, force-enabled plugins matched by their full
+  `plugin@marketplace` id, command-sourced plugins and built-in mods; `commandsDisabled`,
+  `commandSettingsNarrowedToManaged`, `monitorsRun` and `goalCommandAvailable` give what follows the
+  hooks. `httpHook(url, allowedEnvVars)` applies `allowedHttpHookUrls` (`matchUrlPattern`: `*`,
+  host case and trailing dot) and `httpHookAllowedEnvVars` (the outer limit on a hook's list), both
+  merged across files. The Agent SDK's `managedSettings` rules (ignored beside an administrator
+  unless `parentSettingsBehavior` is `merge`; an empty allowlist ignored when the administrator ships
+  hooks or enables a plugin) are applied before any decision.
+- Skill keys (`settings/skills`): `createSkillSettingsPolicy(view, context)` answers
+  `skillOverrides` as `visibility(name, subject)` (the four states over what Claude sees, the `/`
+  menu and the Remote Control and SDK command lists, the `skillOverrides` error for an `off` skill,
+  plugin skills untouched, bundled-skill alias entries from managed settings and `--settings` files
+  that can only restrict further), `disableBundledSkills` with `CLAUDE_CODE_DISABLE_BUNDLED_SKILLS`
+  (neither undoes the other), `disableSkillShellExecution` as a per-origin verdict with the
+  `[shell command execution disabled by policy]` replacement (a managed `true` is never overridden),
+  and `syncClaudeAiSkills` as the same decision `syncClaudeAiPlugins` gives.
+- Workflow keys (`settings/workflows`): `createWorkflowSettingsPolicy(view, context)` answers
+  `disableWorkflows` and `enableWorkflows` as `enablement()` (off by `disableWorkflows` in any file,
+  `CLAUDE_CODE_DISABLE_WORKFLOWS=1` or the organization's toggle, none undone by `enableWorkflows:
+  true`; on by default except on Pro; what goes with workflows; the `/config` row),
+  `workflowKeywordTriggerEnabled` as `keyword(prompt)` (the `ultracode` keyword triggers only in a
+  prompt a person typed, never for `-p`, a scheduled task, an unstamped SDK prompt or a relayed
+  event) and `workflowSizeGuideline` as `size()` (agent count advice, precedence over the `/config`
+  choice, the `Large workflow` threshold).
+- Channel keys (`settings/channels`): `createChannelSettingsPolicy(view, context)` answers
+  `channelsEnabled` as `gate()` (blocked on Team and Enterprise, and on Console with managed
+  settings, until managed `true`; open on Console without managed settings and on Pro, Max and
+  Ultra; `false` is unset; users cannot lift it) and `allowedChannelPlugins` as `allowlist()` and
+  `allowed(entry)` (the managed list replaces the host's default and is taken whole, an
+  empty list blocks every plugin, an invalid value is an empty list, the string form equals the
+  object; an entry carries the flag it came from, and the development flag skips the list for its own
+  entries only, a bare `server:<name>` included, never for a closed gate, and only in an interactive
+  session).
+- Customization lock and the composed policy (`settings/customization`, `settings/resolve`):
+  `createCustomizationPolicy(view, context)` reads `strictPluginOnlyCustomization` (`true` locks all
+  four kinds, an array the kinds it names, an unreadable value `true`, an unknown name locks nothing
+  and is counted) and answers `loads(surface, origin)` for skills, agents, hooks and MCP servers from
+  the origins each sub-key entry lists, `skillsDirPlugins()` (stopped by a lock on any kind or the
+  marketplace lists), `skillAllowedToolsPreapproved(skill)` and the documented `claude mcp add`
+  refusal. `suggestionMarketplaces(view, registered)` answers `pluginSuggestionMarketplaces` (managed
+  only, registered, source declared in the same managed settings, the official name alone).
+  `resolvePolicy({ layers, context })` and `PolicyContext` compose every area over one view and feed
+  the customization lock into the hook policy.
+
+### Fixed
+
+- Settings, customization lock: `McpOrigin` has `localConfig` beside `userConfig`, since local-scope MCP
+  servers live in `~/.claude.json`, which the `mcp` lock stops loading from (the judgment that put the
+  local scope in no table was wrong); tests now build the frontmatter hooks of a skills-directory plugin,
+  the `--settings` and SDK-option hooks under a hooks lock, a parent's `strictKnownMarketplaces` as a
+  non-declaration of a suggestion source, and the parent-lock composition; two tests that restated the
+  origin table or cited a plain-skill fallback the kit does not implement are removed or renamed, and the
+  fallback is recorded as a host decision.
+- Settings, channel keys: `allowed(entry)` takes the flag each entry came from (`channels` or
+  `development`), so a session with both kinds bypasses the list for the development entries only;
+  a bare `server:<name>` development entry needs no plugin or marketplace; the closed gate carries
+  `serverConnects: true` (the MCP server stays connected, only channel messages stop); `ChannelPluginRef`
+  is the SDK's `allowedChannelPlugins` element type, declared once in `protocol/official.ts` and shared
+  with the settings repair; the host's duty to refuse a channel server that negotiates protocol
+  revision 2026-07-28 is recorded as a judgment; `null` and unreadable `channelsEnabled` and
+  `allowedChannelPlugins` values are tested.
+- Settings, workflow keys: the decision no longer carries `inProgressRunsContinue`, a constant that
+  described no run state (the duty to let a run finish is recorded as a host duty); the size
+  decision returns `largeWorkflowThreshold` and the new `largeWorkflowTokens` (1.5 million) as
+  `undefined` while the host says `ultracode` is on, as the docs say the `Large workflow` warning
+  does not show then; tests table every prompt surface and every non-human SDK origin with its
+  expected verdict and reason, and show that `workflowKeywordTriggerEnabled: false` leaves
+  `/effort ultracode` and the workflow surfaces as they are.
+
+- Settings, hook policy: `allowedHttpHookUrls` pattern `http://localhost:*` now also matches
+  `http://localhost/x` (a wildcard port also stands for no port), as the docs example says; a
+  `disableAllHooks: true` in the SDK's `managedSettings` is a lock that binds as
+  `allowManagedHooksOnly: true` (an administrator's `false` no longer lifts it, plugin monitors and
+  agent frontmatter follow it, command sources stay enabled), and a non-Boolean value there other than
+  `false` and `"false"` binds the same way with a warning instead of being dropped; `monitorsRun`
+  takes the plugin id and matches managed `enabledPlugins` on the whole `plugin@marketplace`; tests
+  cover `--settings` and SDK-option hooks and `--add-dir` and synced frontmatter under the `hooks`
+  lock, `disableCommandPluginSources: true` alone, and the managed origin under the HTTP allowlists.
+
+- Settings, marketplace registry: `autoUpdate` defaults off for `knowledge-work-plugins` and
+  `first-party-plugins` whatever the host lists as official; routing and identity headers (`Host`,
+  `Cookie`, `X-Forwarded-*`) are dropped from an inline plugin entry's `headers` in a project, local
+  or `--add-dir` file, `Authorization` kept; a `url` source that does not start with `https://`
+  loses its `headersHelper`; `autoUpdateFixed` is set only for a registered managed entry; the
+  inline plugin source kinds are typed over the SDK's union so a new kind fails to compile.
+
+- Settings, marketplace gate: the blocked-source message quotes the source (`Marketplace source
+  '<source>' is blocked by enterprise policy`); an empty allowlist ends it with `No external
+  marketplaces are allowed.`; the load-time messages carry the docs' guidance line; a `github`
+  shorthand refused by an allowlist that admits a host by hostname adds the `Tip:`;
+  `skillsDirectoryPlugins()` reports `strictPluginOnlyCustomization` as the reason when any
+  customization type is locked; tests assert whole messages and cover a pinned `ref` or `path` and
+  both lists set.
+- Settings, plugin keys: a `--add-dir` directory now ranks below user settings and only its `true`
+  `enabledPlugins` entry counts (plugins/loading.md), so it neither turns a plugin off nor overrides
+  another file; the built-in guard's `pluginConfigs` options are read from managed settings only;
+  `modOrder` reports the organization's mods that no list names (`unlisted`); a `pluginConfigs`
+  entry that is not an object is dropped with a warning instead of shadowing a lower file; the
+  option value types come from the SDK; tests no longer restate a constant or a neighbour.
+- Settings: the policy view returns each key's value through a merge strategy typed over the key,
+  with no cast; the `hooks` of a user, project, local or `--settings` file drop only the entries
+  that fail (a bad handler, group or event) and keep the rest, while a managed source still ignores
+  the whole field; the same handler under two matchers is recorded as an open requirement of the
+  hooks engine instead of being presented as proven; the unused `PolicyContext` type is removed
+  until the resolvers need it; one shared `isRecord` guard.
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
   parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
   (and `skill`) read `name:value` as a parameter.
@@ -552,3 +689,11 @@
   skills does not scan the default `skills/`; hooks as a path or an array are reported as not yet
   supported in a marketplace entry). `EntrySlot.mode`, `ReadMode` and duplicate-name detection join
   the marketplace assembly.
+
+- Settings, skills: the `disableBundledSkills` decision now says built-in commands and `/doctor` stay
+  typable (`builtInCommandsTypable`); tests cover a `--settings` own-name entry that does not beat an
+  alias, the same alias set in managed and `--settings` files, a parent `true` against a lower
+  `false`, and a parent `false` under a managed `true`; the repair of an unknown `skillOverrides`
+  state is recorded in `spec/judgments.md`, and the non-Boolean managed
+  `disableSkillShellExecution` test sits with the judgments.
+
