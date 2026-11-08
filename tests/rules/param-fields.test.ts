@@ -20,7 +20,7 @@ describe('the primary content field is per tool (permissions.md § Match by inpu
       ['Glob(file_path:x)', 'Glob', { pattern: 'a', file_path: 'x' }],
       ['Read(path:/etc)', 'Read', { file_path: '/a', path: '/etc' }],
       ['Read(url:x)', 'Read', { file_path: '/a', url: 'x' }],
-      ['Agent(path:x)', 'Agent', { prompt: 'p', path: 'x' }],
+      ['Edit(path:x)', 'Edit', { file_path: '/a', path: 'x' }],
       ['WebFetch(path:x)', 'WebFetch', { url: 'https://a.b', path: 'x' }],
       ['NotebookEdit(file_path:x)', 'NotebookEdit', { file_path: 'x' }],
     ] as const;

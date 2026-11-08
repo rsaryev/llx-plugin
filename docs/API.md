@@ -147,7 +147,7 @@ The host maps its own tools to Claude Code's names and inputs before dispatching
 `Write`, `Edit`…, typed by the official `ToolInputSchemas`), so a plugin's `"matcher": "Write|Edit"`
 and `"if": "Bash(git *)"` mean what they mean in Claude Code.
 
-## Permission rules (done: syntax, bare, parameter and glob rules, precedence, Bash and PowerShell commands, hook `if`, path rules; planned: domain)
+## Permission rules (done: syntax, bare, parameter and glob rules, precedence, Bash and PowerShell commands, hook `if`, path rules, domain, MCP, Agent and Skill rules)
 
 Claude Code's rule syntax (permissions.md), used by the `if` field of hooks, `allowed-tools` of
 skills and commands, and a host's own permission system. Pure functions over data, no ports.
@@ -174,7 +174,10 @@ const verdict = evaluateRules(rules, { toolName: 'Agent', input: { model: 'opus'
 | `prepareCall(call, paths, resolver)`, `resolveRuleDirectories(rules, paths, resolver)` | done | the symlink two-path rule through the `PathResolver` port: allow needs both paths, deny and ask either; a rule written through a symlinked directory also applies at its real location (`PathContext.realDirectories`); an unresolvable path is a `PortFailure` |
 | `readsNetworkPath`, `isNetworkPath`   | done    | UNC and `/net` paths, which always prompt                                    |
 | `matchCdRule(rule, target, context)`  | done    | `Cd(path)` patterns: whole-path, `*` one segment, `**` across                |
-| domain, skill and agent matchers | planned | fill `SPECIFIER_MATCHERS` per rule format                              |
+| `WebFetch(domain:...)` matcher, `matchDomainPattern(pattern, url)` | done | the hostname of the call's `url`: case-insensitive, trailing dot stripped, `*.` any depth but not the domain, bare `*`, a `*` elsewhere one label, `[::1]` and `[::1]:443` |
+| `sandboxDomainEntry(rule)`, `sandboxDomainLists(rules)` | done | the sandbox list a `WebFetch(domain:...)` rule adds to, as data; a bare `WebFetch` adds nothing |
+| `Agent(Name)`, `Skill(name)` and `Skill(name *)` matchers | done | `subagent_type` exact; `skill` exact or prefix (a whole name or a namespace); a deny rule also sees `PreparedCall.skillNames` |
+| `mcpToolRuleMatches`, `normalizeMcpServerName`, `pluginMcpServerName`, `mcpToolName` | done | `mcp__server`, `mcp__server__*`, `mcp__server__tool`; deny and ask rules also cover a server whose name holds `__`, allow rules do not; the Cowork tools of a bare `Bash` or `WebFetch` deny rule |
 | `decide`, tool catalog            | planned | modes and the tool table                                                     |
 
 `parseRule` returns the official `{ toolName, ruleContent? }` in `rule.value` and the read form in
@@ -185,8 +188,8 @@ rules read `name:value` as an input parameter; an allow rule keeps each tool's o
 the command line or the session. A `Skill(skill:<name>)` deny rule also matches the names in
 `PreparedCall.skillNames`.
 `SPECIFIER_MATCHERS` holds one matcher per `RuleFormatId` (the "Rule format" table of
-tools-reference.md); until its matcher is written a format fails closed: an allow rule matches
-nothing, a deny or ask rule matches every call of its tool.
+tools-reference.md). The `bare` format, a tool the table lists no specifier for, has no matcher and
+fails closed: an allow rule matches nothing, a deny or ask rule matches every call of its tool.
 
 A command rule (`src/rules/bash`) splits the command at `&&`, `||`, `;`, `|`, `|&`, `&` and
 newlines outside quotes, and again inside `$()`, backticks, subshells and control-flow bodies. An

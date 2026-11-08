@@ -41,9 +41,21 @@
   read, a Read deny covers Edit and Write, Write/Glob/Grep/NotebookEdit path rules never match), the
   symlink two-path rule through a new `PathResolver` port (`prepareCall`, `resolveRuleDirectories`,
   `PathContext.realDirectories`), `readsNetworkPath` and `matchCdRule`.
+- Target rules (`rules/target`): `WebFetch(domain:...)` against the hostname of the call's `url`
+  (case-insensitive, trailing dot stripped, `*.`, bare `*`, a `*` elsewhere limited to one label,
+  bracketed IPv6), `matchDomainPattern`, and the sandbox domain list a `domain:` rule adds to as data
+  (`sandboxDomainEntry`, `sandboxDomainLists`; a bare `WebFetch` adds nothing); `Agent(Name)`
+  against `subagent_type`; `Skill(name)` and `Skill(name *)` with the namespace rule and the names a
+  deny rule sees; MCP rule forms (`mcp__server`, `mcp__server__*`, `mcp__server__tool`) with the
+  deny-or-ask versus allow difference for a server whose name holds `__`, `normalizeMcpServerName`,
+  `pluginMcpServerName`, `mcpToolName`, `mcpToolRuleMatches`, and the Cowork tools a bare `Bash` or
+  `WebFetch` deny rule also blocks.
 
 ### Fixed
 
+- Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
+  parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
+  (and `skill`) read `name:value` as a parameter.
 - Bash rules: a here-string (`<<< 'x'`) no longer opens a quoted here-document that hid the lines
   after it from deny and allow rules; a hook `if` that names Bash now runs for a Monitor call (the
   hook gets the Monitor input), and a Monitor rule still does not run for a Bash call; `if` finds

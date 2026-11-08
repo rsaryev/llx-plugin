@@ -146,12 +146,11 @@ describe('matchRule dispatches a specifier to the matcher of its tool format', (
 });
 
 describe('the default matchers fail closed (spec/judgments.md)', () => {
-  // The matchers of the domain, skill and agent formats are written by their own
-  // sub-packages (the command formats' are in src/rules/bash, the path formats' in src/rules/path). Until they exist a deny or ask rule must not silently let a call through.
+  // The bare format (a tool the "Rule format" table does not list) has no specifier syntax in the
+  // docs, so a rule with one has no matcher: a deny or ask rule must not silently let a call through.
   const cases = [
-    ['WebFetch(domain:example.com)', 'WebFetch', { url: 'https://example.com' }],
-    ['Skill(deploy *)', 'Skill', { skill: 'deploy' }],
-    ['Agent(Explore)', 'Agent', { subagent_type: 'Explore' }],
+    ['WebSearch(rust)', 'WebSearch', { query: 'rust' }],
+    ['TodoWrite(anything)', 'TodoWrite', {}],
   ] as const;
 
   test('a deny or ask rule with a text or domain specifier covers every call of its tool', () => {

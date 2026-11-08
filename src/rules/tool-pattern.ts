@@ -1,7 +1,8 @@
+import { denyCoversCoworkTool, mcpToolRuleMatches } from './target/mcp.ts';
 import type { PermissionRule } from './types.ts';
 
 const ANY_TEXT = '[\\s\\S]*';
-const escapeLiteral = (text: string): string => text.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+export const escapeLiteral = (text: string): string => text.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
 
 /**
  * A `*` pattern as a regular expression that must match the whole text: `*` stands for any
@@ -22,9 +23,15 @@ export function isAnchoredAllowGlob(toolName: string): boolean {
   return star === -1 || /^mcp__.+__/.test(toolName.slice(0, star));
 }
 
-/** Whether the tool-name position of `rule` covers `toolName`: equal, or a glob matching it whole. */
+/**
+ * Whether the tool-name position of `rule` covers `toolName`: a glob matching it whole, else the
+ * name itself, an `mcp__` server name covering its tools (`mcpToolRuleMatches`), or a deny rule that
+ * names `Bash` or `WebFetch` whole covering the Cowork twin of that tool.
+ */
 export function toolNameMatches(rule: PermissionRule, toolName: string): boolean {
-  return rule.toolGlob
-    ? wildcardRegExp(rule.value.toolName).test(toolName)
-    : rule.value.toolName === toolName;
+  if (rule.toolGlob) return wildcardRegExp(rule.value.toolName).test(toolName);
+  return (
+    mcpToolRuleMatches(rule.value.toolName, toolName, rule.behavior) ||
+    denyCoversCoworkTool(rule, toolName)
+  );
 }

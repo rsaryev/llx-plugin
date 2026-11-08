@@ -1,4 +1,4 @@
-import type { BashInput, MonitorInput } from '../protocol/official-tools.ts';
+import type { AgentInput, BashInput, MonitorInput } from '../protocol/official-tools.ts';
 import type { Assert, Equal } from '../protocol/type-equality.ts';
 
 /**
@@ -72,6 +72,36 @@ export type MonitorFieldsMatchSdk = Assert<
   Equal<(typeof MONITOR_INPUT_FIELDS)[number], keyof MonitorInput>
 >;
 
+/**
+ * The input fields of `Agent`: a `name:value` specifier of an Agent rule is a parameter rule only
+ * for one of these, so a plugin-qualified subagent (`Agent(acme:reviewer)`) stays a name. The SDK's
+ * `AgentInput` is the list, and the guard fails the typecheck when it drifts.
+ */
+const AGENT_INPUT_FIELDS = [
+  'description',
+  'prompt',
+  'subagent_type',
+  'model',
+  'effort',
+  'run_in_background',
+  'name',
+  'team_name',
+  'mode',
+  'isolation',
+] as const satisfies readonly (keyof AgentInput)[];
+
+/** @public A compile-time drift guard: a field the SDK adds to or drops from `AgentInput` fails the typecheck. */
+export type AgentFieldsMatchSdk = Assert<
+  Equal<(typeof AGENT_INPUT_FIELDS)[number], keyof AgentInput>
+>;
+
+/**
+ * The one parameter of `Skill` the docs name (permissions.md, "Match by input parameter"): without
+ * it `Skill(deploy:deploy)`, the plugin form of a synced skill (skills.md), would read as a
+ * parameter rule on `deploy`. The SDK has no input type for the tool (spec/judgments.md).
+ */
+const SKILL_INPUT_FIELDS: ReadonlySet<string> = new Set(['skill']);
+
 const COMMAND_INPUT_FIELDS: ReadonlySet<string> = new Set([
   ...BASH_INPUT_FIELDS,
   ...MONITOR_INPUT_FIELDS,
@@ -102,14 +132,15 @@ const COMMAND: SpecifierSyntax = {
   parameterNames: COMMAND_INPUT_FIELDS,
 };
 const POWERSHELL: SpecifierSyntax = { ...COMMAND, parameterNames: POWERSHELL_INPUT_FIELDS };
+const AGENT_FIELDS: ReadonlySet<string> = new Set(AGENT_INPUT_FIELDS);
 
 export const SPECIFIER_SYNTAX: { readonly [F in RuleFormatId]: SpecifierSyntax } = {
   command: { ...COMMAND, starIsBare: true },
   'powershell-command': POWERSHELL,
   'read-path': PLAIN,
   'edit-path': PLAIN,
-  'skill-name': PLAIN,
-  'subagent-type': PLAIN,
+  'skill-name': { ...PLAIN, parameterNames: SKILL_INPUT_FIELDS },
+  'subagent-type': { ...PLAIN, parameterNames: AGENT_FIELDS },
   domain: { ...PLAIN, domainPrefix: true },
   bare: PLAIN,
 };

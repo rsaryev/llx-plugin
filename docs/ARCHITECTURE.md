@@ -16,7 +16,7 @@ agent, not a model client and not a sandbox. It runs anywhere JavaScript runs.
 | 0     | `protocol`    | Official types re-exported; runtime lists asserted equal to them              |
 | 1     | `ports`       | The interfaces a host implements, type-only: files, runner, http, model, mcp… |
 | 2     | `format`      | Pure readers and validators of plugin files: manifest, frontmatter            |
-| 3     | `rules`       | Permission rules: syntax, parameter and tool-name matching, deny/ask/allow order; `rules/bash` holds the Bash and PowerShell command matchers and the hook `if` evaluation; `rules/path` the Read and Edit path matchers (anchors, gitignore matching, depth, negation, symlinks, Windows, routing, network paths, `Cd`); domain matchers and the tool catalog are planned |
+| 3     | `rules`       | Permission rules: syntax, parameter and tool-name matching, deny/ask/allow order; `rules/bash` holds the Bash and PowerShell command matchers and the hook `if` evaluation; `rules/path` the Read and Edit path matchers (anchors, gitignore matching, depth, negation, symlinks, Windows, routing, network paths, `Cd`); `rules/target` the WebFetch domain, MCP, Agent and Skill matchers; the tool catalog is planned |
 | 3     | `settings`    | Settings layers and the policy keys, pure over data (planned)                 |
 | 3     | `marketplace` | Marketplace and plugin-entry reading, sources, dependencies (planned)         |
 | 3     | `loading`     | A plugin folder to a typed `Plugin`; `loading/resolve` holds variable substitution (planned) |

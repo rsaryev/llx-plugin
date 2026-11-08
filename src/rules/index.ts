@@ -7,6 +7,14 @@ export { matchCdRule, type CdTarget } from './path/cd.ts';
 export { isNetworkPath, readsNetworkPath } from './path/network.ts';
 export { prepareCall, resolveRuleDirectories } from './path/symlink.ts';
 export type { PathResolver } from '../ports/path-resolver.ts';
+export { matchDomainPattern, sandboxDomainEntry, sandboxDomainLists } from './target/domain.ts';
+export type { SandboxDomainEntry, SandboxList } from './target/domain.ts';
+export {
+  mcpToolName,
+  mcpToolRuleMatches,
+  normalizeMcpServerName,
+  pluginMcpServerName,
+} from './target/mcp.ts';
 export { stripWrappers } from './bash/wrappers.ts';
 export { evaluateRules, matchRule } from './evaluate.ts';
 export { ruleIssues } from './issues.ts';
