@@ -11,7 +11,14 @@ import {
   measureTree,
   renderEvent,
 } from '../../../src/mods/ui/index.ts';
-import { uiChain, node, text } from '../../support/mods-ui.ts';
+import { apiHarness } from '../../support/mods-api.ts';
+import { rejection } from '../../support/rejection.ts';
+import { fakeInterface, uiChain, uiOver, node, text } from '../../support/mods-ui.ts';
+import { withUiRules } from '../../../src/mods/ui/index.ts';
+
+const judgmentApi = async () => ({
+  h: await apiHarness({ rules: withUiRules, ui: uiOver(fakeInterface().iface) }),
+});
 
 const problemOf = (tree: unknown) => treeProblem('Pane', 'terminal', tree);
 
@@ -96,4 +103,21 @@ test('a gesture on a control of another kind, or with no callback, is an issue o
   } as const;
   expect(await routeControl(options, 'press', 'b')).toEqual({ issues: [], ran: false });
   expect((await routeControl(options, 'select', 'b', 'x')).issues).toHaveLength(1);
+});
+
+test('the refusals the docs do not state: an Input rows that is not a whole number of 1 or more, a Link with no href, an Svg source over 131,072 characters', () => {
+  expect(problemOf(node('Input', { key: 'i', rows: 1 }))).toBeUndefined();
+  for (const rows of [0, 1.5, '2']) {
+    expect(problemOf(node('Input', { key: 'i', rows }))).toContain('Input prop "rows"');
+  }
+  expect(problemOf(node('Link', {}))).toBe('a tree Pane refuses: Link needs an href');
+  expect(treeProblem('Pane', 'desktop', node('Svg', { source: 'x'.repeat(131_073) }))).toContain(
+    'Svg prop "source" is longer than 131072 characters',
+  );
+});
+
+test('$.ui.resolve with something that is not the event of a ui.render hook throws, and $.ui.invalidate takes only ui.render', async () => {
+  const { h } = await judgmentApi();
+  expect(() => h.api.ui.resolve({})).toThrow('$.ui.resolve: takes the event of a ui.render hook');
+  expect(await rejection(h.api.ui.invalidate('x'))).toBe("$.ui.invalidate: takes 'ui.render'");
 });

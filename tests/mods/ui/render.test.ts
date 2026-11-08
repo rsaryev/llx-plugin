@@ -9,10 +9,19 @@
  * empty. The kit folds what the hooks settled on into what is drawn; it paints nothing.
  */
 import { expect, test } from 'bun:test';
-import { foldRender, isElementNode, isEngineRef } from '../../../src/mods/ui/index.ts';
+import { foldRender, isElementNode, isEngineRef, withUiRules } from '../../../src/mods/ui/index.ts';
 import { fn } from '../../support/mods-chain.ts';
 
-import { node, recordOf, renderOf, text, uiChain } from '../../support/mods-ui.ts';
+import { apiHarness } from '../../support/mods-api.ts';
+import {
+  fakeInterface,
+  node,
+  recordOf,
+  renderOf,
+  text,
+  uiChain,
+  uiOver,
+} from '../../support/mods-ui.ts';
 import { spec } from '../../support/spec.ts';
 
 const engine = (e: unknown) => Promise.resolve({ type: 'engine', ref: e });
@@ -183,6 +192,16 @@ spec('mods.site.AskUserQuestion', () => {
 });
 
 spec('mods.site.AbovePrompt', () => {
+  test('a mod that answers ui.render without calling next is named in the debug log: <mod> (<tier>) answered ui.render without next()', async () => {
+    const h = await apiHarness({ rules: withUiRules, ui: uiOver(fakeInterface().iface) });
+    await h.mod('dropper', 'user', [
+      fn('ui.render', async (_$, e, next) => (await next(e), text('x'))),
+    ]);
+    await h.mod('other-mod', 'user', [fn('ui.render', () => text('theirs'))]);
+    await h.ui?.draw({ site: 'AbovePrompt', surface: 'terminal', requestId: 'id-1' });
+    expect(h.debug).toEqual(['other-mod (user) answered ui.render without next()']);
+  });
+
   const band = (component = 'AbovePrompt' as const) => renderOf(component);
 
   test('a mod before replaces the band of the mods after it when its tree does not hold the result of next(e)', async () => {

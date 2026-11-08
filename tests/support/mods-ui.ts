@@ -42,8 +42,8 @@ export const renderOf = (
 export function fakeInterface(overrides: Partial<ModInterface> = {}) {
   const calls: { readonly name: string; readonly args: readonly unknown[] }[] = [];
   const record =
-    <A extends readonly unknown[], R>(name: string, result: R) =>
-    (...args: A): R => {
+    <R>(name: string, result: R) =>
+    (...args: readonly unknown[]): R => {
       calls.push({ name, args });
       return result;
     };

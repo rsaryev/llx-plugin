@@ -15,6 +15,16 @@ export const LINK: ElementDef = {
 };
 
 /**
+ * Whether `href` is what `url.href` returns, apart from a missing `/` after the host (whatever
+ * follows it): `https://example.com?q=1` for `https://example.com/?q=1`.
+ */
+function isSpelledAsUrl(href: string, url: URL): boolean {
+  const rest = href.startsWith(url.origin) ? href.slice(url.origin.length) : undefined;
+  const slashed = rest === undefined || rest.startsWith('/') ? href : `${url.origin}/${rest}`;
+  return slashed === url.href;
+}
+
+/**
  * Whether a `Link` draws as a link. In the terminal always; in the Desktop app and the VS Code
  * extension only when `href` is an `https:` URL or an `http://localhost` one, has no `@`, and is
  * what `new URL(href).href` returns "apart from a missing `/` after the host" (interface.md,
@@ -27,8 +37,5 @@ export function drawsAsLink(surface: Surface, href: string): boolean {
   if (!url) return false;
   const isSecure = url.protocol === 'https:';
   const isLocal = url.protocol === 'http:' && url.hostname === 'localhost';
-  if (!isSecure && !isLocal) return false;
-  const spelled = url.href;
-  // A missing `/` after the host is allowed: `https://example.com` for `https://example.com/`.
-  return href === spelled || `${href}/` === spelled;
+  return (isSecure || isLocal) && isSpelledAsUrl(href, url);
 }

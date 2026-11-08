@@ -142,12 +142,18 @@ spec('mods.element.Box', () => {
   });
 
   test('a spacing step is its cells across and down, and applies both ways to gap, padding and margin', () => {
-    const steps = { xs: [1, 0], sm: [1, 0], md: [2, 1], lg: [3, 1], xl: [4, 2] } as const;
+    const steps = [
+      ['xs', 1, 0],
+      ['sm', 1, 0],
+      ['md', 2, 1],
+      ['lg', 3, 1],
+      ['xl', 4, 2],
+    ] as const;
     for (const surface of ['terminal', 'vscode'] as const) {
-      for (const [step, [across, down]] of Object.entries(steps)) {
-        expect(spacingCells(surface, 'padding', step as 'md')).toEqual({ across, down });
-        expect(spacingCells(surface, 'gap', step as 'md')).toEqual({ across, down });
-        expect(spacingCells(surface, 'margin', step as 'md')).toEqual({ across, down });
+      for (const [step, across, down] of steps) {
+        expect(spacingCells(surface, 'padding', step)).toEqual({ across, down });
+        expect(spacingCells(surface, 'gap', step)).toEqual({ across, down });
+        expect(spacingCells(surface, 'margin', step)).toEqual({ across, down });
       }
     }
     // "`padding: 'md'` is two cells at each side and one row above and below"

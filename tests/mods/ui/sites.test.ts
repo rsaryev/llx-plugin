@@ -6,7 +6,10 @@
  * reference's, which apps raise each site, and that a hook receives the documented fields. Rows
  * that describe their props in words ("The reply's text", "The tool's name, input, and result")
  * name no field, so for those sites the test proves the component, the app and the request id only
- * (spec/judgments.md).
+ * (spec/judgments.md). What is proven is the table (a transcription check against the docs), which
+ * apps raise each site, which sites carry a request id, and that a hook can rewrite `e.props`
+ * through `next`. The props themselves are the host's: the kit does not model that `UserMessage`
+ * carries `task` or `from` by origin, nor the fields of the `Pane` `view` and `scroll` props.
  */
 import { expect, test } from 'bun:test';
 import {
@@ -19,7 +22,7 @@ import {
 import { decideSite, renderEvent } from '../../../src/mods/ui/index.ts';
 import { fn } from '../../support/mods-chain.ts';
 import { codeTokens, sectionsOf, tableRows } from '../../support/mods-docs.ts';
-import { uiChain } from '../../support/mods-ui.ts';
+import { recordOf, uiChain } from '../../support/mods-ui.ts';
 import { spec } from '../../support/spec.ts';
 
 const SURFACE_WORDS: Readonly<Record<string, Surface>> = {
@@ -88,25 +91,34 @@ for (const site of RENDER_SITE_NAMES) {
       }
     });
 
-    test('a hook receives the documented fields: component, app, request id and the props the table names', async () => {
+    test('a hook receives the component, the app and the request id, and what it passes to next as e.props reaches Claude Code`s drawing', async () => {
       const surface = RENDER_SITES[site].surfaces[0] ?? 'terminal';
-      const props = Object.fromEntries(RENDER_SITES[site].props.map((name) => [name, `v-${name}`]));
       const built = renderEvent({
         site,
         surface,
-        props,
+        props: { marker: 'host' },
         requestId: 'id-1',
         viewport: { columns: 80, rows: 24, isFullscreen: true },
       });
       if (!('event' in built)) throw new Error(built.problem);
       const seen: unknown[] = [];
       const h = uiChain();
-      h.mod('my-mod', 'user', [fn('ui.render', (_$, e, next) => (seen.push(e), next(e)))]);
-      await h.fire('ui.render', built.event);
-      const [event] = seen;
-      expect(event).toMatchObject({ component: site, surface, props });
+      h.mod('my-mod', 'user', [
+        fn(
+          'ui.render',
+          (_$, e, next) => (
+            seen.push(e),
+            next({ ...e, props: { ...recordOf(e.props), marker: 'hook' } })
+          ),
+        ),
+      ]);
+      const settled = await h.fire('ui.render', built.event, {
+        core: (e) => Promise.resolve({ type: 'engine', ref: e }),
+      });
+      expect(seen).toMatchObject([{ component: site, surface }]);
+      expect(settled).toMatchObject({ ref: { component: site, props: { marker: 'hook' } } });
       const wantsId = RENDER_SITES[site].request !== 'instance';
-      expect(event).toMatchObject(wantsId ? { requestId: 'id-1' } : {});
+      expect(seen).toMatchObject(wantsId ? [{ requestId: 'id-1' }] : [{}]);
       expect(wantsId || !('requestId' in built.event)).toBe(true);
     });
   });

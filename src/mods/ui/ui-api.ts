@@ -21,8 +21,10 @@ export interface UiParts {
 
 const textEvent = z.looseObject({ text: z.string() });
 const notifyEvent = z.looseObject({ text: z.string(), title: z.string().optional() });
-const askEvent = z.looseObject({ question: z.string(), options: z.array(z.string()) });
+const askArgs = z.object({ question: z.string(), options: z.array(z.string()) });
 const idEvent = z.looseObject({ id: z.string() });
+
+const ASK_TOOL = 'AskUserQuestion';
 
 /** `⚠ my-mod: checks: 3 passing` (api.md, "Show something without starting a turn"). */
 export const statusLine = (plugin: string, text: string): string => `⚠ ${plugin}: ${text}`;
@@ -31,6 +33,33 @@ export const logLine = (plugin: string, text: string): string => `● ${plugin}:
 
 const asRecord = (value: unknown): Readonly<Record<string, unknown>> =>
   isRecord(value) ? value : {};
+
+/** The first question of an `AskUserQuestion` call as the hooks left it: its text and option labels. */
+function askedOf(e: unknown, fallback: string): { question: string; options: string[] } {
+  const { questions } = asRecord(e);
+  const first = asRecord(Array.isArray(questions) ? questions[0] : undefined);
+  const labels = Array.isArray(first.options) ? first.options.map((o) => asRecord(o).label) : [];
+  return {
+    question: typeof first.question === 'string' ? first.question : fallback,
+    options: labels.filter((label): label is string => typeof label === 'string'),
+  };
+}
+
+/**
+ * The answer in what the `tool.call` chain settled on: `result.answers[question]` (test.md, "Look
+ * up what a stub returns"). A typed answer is the typed text (events.md, "Guard or change a tool
+ * call"). Judgment: an answer that is not text, or a refusal, rejects like a question nobody answered.
+ */
+function answerOf(question: string, settled: unknown): string {
+  const { deny, result } = asRecord(settled);
+  if (typeof deny === 'string') throw new Error(`$.ui.ask: ${deny}`);
+  const answers = asRecord(asRecord(result).answers);
+  // A hook that rewrote the question with `next` leaves the one answer under the new text.
+  const [only, ...rest] = Object.values(answers);
+  const answer = answers[question] ?? (rest.length === 0 ? only : undefined);
+  if (typeof answer === 'string') return answer;
+  throw new Error('$.ui.ask: the question was not answered');
+}
 
 /**
  * `$.ui.resolve(e)`: the elements the app of `e` draws for the site of `e`, as `ui.resolve` left
@@ -129,10 +158,28 @@ function hostMembers(deps: Deps, { iface }: UiParts) {
     async (...args: readonly unknown[]) =>
       call(deps, `ui.${name}`, asRecord(args[0]), (e) => iface[name](asRecord(e)));
   return {
-    ask: async (...args: readonly unknown[]) =>
-      call(deps, 'ui.ask', { question: args[0], options: args[1] ?? [] }, (e) =>
-        iface.ask(parse('$.ui.ask', askEvent, e)),
-      ),
+    // The question reaches mods as a `tool.call` of `AskUserQuestion` (test.md, "Look up what a stub returns").
+    ask: async (...args: readonly unknown[]) => {
+      const { question, options } = parse('$.ui.ask', askArgs, {
+        question: args[0],
+        options: args[1] ?? [],
+      });
+      const settled = await call(
+        deps,
+        'tool.call',
+        {
+          tool: ASK_TOOL,
+          questions: [
+            { question, header: '', options: options.map((label) => ({ label, description: '' })) },
+          ],
+        },
+        async (e) => {
+          const asked = askedOf(e, question);
+          return { result: { answers: { [asked.question]: await iface.ask(asked) } } };
+        },
+      );
+      return answerOf(question, settled);
+    },
     copy: async (...args: readonly unknown[]) =>
       call(deps, 'ui.copy', { text: args[0] }, (e) =>
         iface.copy(parse('$.ui.copy', textEvent, e).text),

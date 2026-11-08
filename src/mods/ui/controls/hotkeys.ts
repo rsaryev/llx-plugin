@@ -8,6 +8,10 @@ export interface HotkeyContext {
   readonly isBand: boolean;
   /** Whether the user collapsed the band: "neither an `action` binding nor a hotkey presses a button in it". */
   readonly isCollapsed: boolean;
+  /** Whether the pane or band has keyboard focus: "that happens only while your pane or band has keyboard focus. The rest of the time, keys go to the prompt". */
+  readonly hasFocus: boolean;
+  /** Whether an `Input` of the drawing has the focus: "every printable key goes to the field". */
+  readonly isInputFocused: boolean;
 }
 
 /** Buttons of a tree in document order. */
@@ -22,13 +26,10 @@ const pressableByKey = (context: HotkeyContext): boolean =>
   context.surface !== 'vscode' && !(context.isBand && context.isCollapsed);
 
 /**
- * The button each hotkey presses: "when two buttons in one drawing name the same `hotkey`, the
- * later one gets it" (reference.md, "Elements").
+ * The button each hotkey names, wherever the keyboard focus is: "when two buttons in one drawing
+ * name the same `hotkey`, the later one gets it" (reference.md, "Elements").
  */
-export function hotkeyTable(
-  tree: unknown,
-  context: HotkeyContext,
-): ReadonlyMap<string, ElementNode> {
+function namedHotkeys(tree: unknown, context: HotkeyContext): ReadonlyMap<string, ElementNode> {
   const table = new Map<string, ElementNode>();
   if (!pressableByKey(context)) return table;
   for (const button of buttons(tree)) {
@@ -39,8 +40,22 @@ export function hotkeyTable(
 }
 
 /**
+ * The button each hotkey presses now: a hotkey presses its button only while the pane or band has
+ * keyboard focus, and while an `Input` has it every printable key goes to the field (interface.md,
+ * "Keyboard focus and hotkeys", "What each key does").
+ */
+export function hotkeyTable(
+  tree: unknown,
+  context: HotkeyContext,
+): ReadonlyMap<string, ElementNode> {
+  if (!context.hasFocus || context.isInputFocused) return new Map();
+  return namedHotkeys(tree, context);
+}
+
+/**
  * The button a digit typed alone into an empty prompt (and then a pause) presses: "a digit `hotkey`
- * on a button in the band also fires" (reference.md, "Elements"). Only the band has it.
+ * on a button in the band also fires" (reference.md, "Elements"). Only the band has it, and it is
+ * one of the two presses that need no keyboard focus (the other is an `action` binding).
  */
 export function digitButton(
   tree: unknown,
@@ -49,7 +64,7 @@ export function digitButton(
   isPromptEmpty: boolean,
 ): ElementNode | undefined {
   if (!context.isBand || !isPromptEmpty || !/^[0-9]$/.test(typed)) return undefined;
-  return hotkeyTable(tree, context).get(typed);
+  return namedHotkeys(tree, context).get(typed);
 }
 
 /** Whether a keybinding presses a button's `action`: "when that binding is a chord or a modified key". */

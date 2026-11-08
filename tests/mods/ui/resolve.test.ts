@@ -7,10 +7,10 @@
  * wording (spec/judgments.md).
  */
 import { expect, test } from 'bun:test';
-import { withUiRules, type ElementNode } from '../../../src/mods/ui/index.ts';
+import { withUiRules } from '../../../src/mods/ui/index.ts';
 import { fn } from '../../support/mods-chain.ts';
 import { apiHarness } from '../../support/mods-api.ts';
-import { fakeInterface, uiOver, renderOf } from '../../support/mods-ui.ts';
+import { fakeInterface, recordOf, uiOver, renderOf } from '../../support/mods-ui.ts';
 import { spec } from '../../support/spec.ts';
 
 spec('mods.event.ui.resolve', () => {
@@ -40,8 +40,11 @@ spec('mods.event.ui.resolve', () => {
     expect(Object.keys(terminal)).toContain('Raster');
     expect(Object.keys(desktop)).not.toContain('Raster');
     expect(Object.keys(desktop)).toContain('Svg');
-    const { Text } = terminal as { Text: (props: object) => ElementNode };
-    expect(Text({ children: ['hi'] })).toEqual({ type: 'Text', props: {}, children: ['hi'] });
+    expect(terminal.Text?.({ children: ['hi'] })).toEqual({
+      type: 'Text',
+      props: {},
+      children: ['hi'],
+    });
   });
 
   test('the result of a ui.resolve hook is the table $.ui.resolve(e) reads for that mod', async () => {
@@ -50,7 +53,7 @@ spec('mods.event.ui.resolve', () => {
       fn('ui.resolve', async (_$, e, next) => {
         if (e.plugin !== 'my-mod') return next(e);
         const table = await next(e);
-        const { Raster: _dropped, ...rest } = table as Record<string, unknown>;
+        const { Raster: _dropped, ...rest } = recordOf(table);
         return rest;
       }),
     ]);

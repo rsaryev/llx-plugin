@@ -6,13 +6,14 @@
  * § Redraw a site (`ui.fault`: "Claude Code runs the hook once more after your `ui.fault` hooks
  * return"). When Claude Code raises these is the host's: the kit proves the event each carries, the
  * order around the redraw, and what a hook can keep from happening. The data of `ui.message` and
- * the fields of a focus or scroll change are the kit's wording (spec/judgments.md).
+ * the fields of a focus or scroll change, and that a hook which does not call `next` keeps the change
+ * from happening, are the kit's (spec/judgments.md).
  */
 import { expect, test } from 'bun:test';
 import { withUiRules } from '../../../src/mods/ui/index.ts';
 import { apiHarness } from '../../support/mods-api.ts';
 import { fn } from '../../support/mods-chain.ts';
-import { fakeInterface, uiOver } from '../../support/mods-ui.ts';
+import { fakeInterface, recordOf, uiOver } from '../../support/mods-ui.ts';
 import { spec } from '../../support/spec.ts';
 
 const uiHarness = async () => {
@@ -25,6 +26,7 @@ const uiHarness = async () => {
 };
 
 spec(['mods.event.ui.focus', 'mods.event.ui.scroll'], () => {
+  // The docs say only "about to change": the payload fields `requestId`, `key` and `offset` are the kit's wording.
   test('when the focus or the scroll position is about to change the hook sees the change, and what it leaves is applied', async () => {
     const { h, ui } = await uiHarness();
     const seen: unknown[] = [];
@@ -44,14 +46,15 @@ spec(['mods.event.ui.focus', 'mods.event.ui.scroll'], () => {
       { requestId: 'p', offset: 0 },
     ]);
   });
+});
 
-  test('a hook that answers without calling next keeps the change from happening', async () => {
-    const { h, ui } = await uiHarness();
-    await h.mod('pin', 'user', [fn('ui.focus', () => ({}))]);
-    const applied: unknown[] = [];
-    await ui?.change('ui.focus', { key: 'more' }, (e) => applied.push(e));
-    expect(applied).toEqual([]);
-  });
+// Judgment (spec/judgments.md): the docs give no rule for a hook that answers without `next` on a focus or scroll change.
+test('judgment: a hook that answers without calling next keeps the focus change from happening', async () => {
+  const { h, ui } = await uiHarness();
+  await h.mod('pin', 'user', [fn('ui.focus', () => ({}))]);
+  const applied: unknown[] = [];
+  await ui?.change('ui.focus', { key: 'more' }, (e) => applied.push(e));
+  expect(applied).toEqual([]);
 });
 
 spec('mods.event.ui.message', () => {
@@ -61,8 +64,21 @@ spec('mods.event.ui.message', () => {
     await h.mod('my-mod', 'user', [
       fn('ui.message', (_$, e, next) => (seen.push(e.data), next(e))),
     ]);
-    await ui?.message({ clicked: 3 });
+    await ui?.message('my-mod', { clicked: 3 });
     expect(seen).toEqual([{ clicked: 3 }]);
+  });
+
+  test('a message reaches only the hooks of the mod that drew the Client, not another mod`s', async () => {
+    const { h, ui } = await uiHarness();
+    const seen: string[] = [];
+    await h.mod('drew', 'user', [
+      fn('ui.message', (_$, e, next) => (seen.push(`drew ${String(e.data)}`), next(e))),
+    ]);
+    await h.mod('other', 'user', [
+      fn('ui.message', (_$, e, next) => (seen.push(`other ${String(e.data)}`), next(e))),
+    ]);
+    await ui?.message('drew', 'hi');
+    expect(seen).toEqual(['drew hi']);
   });
 });
 
@@ -82,8 +98,23 @@ spec('mods.event.ui.fault', () => {
         return next(e);
       }),
     ]);
-    await h.ui?.fault({ phase: 'load', reason: 'boom' });
+    await h.ui?.fault('my-mod', { phase: 'load', reason: 'boom' });
     expect(order).toEqual(['hook load: boom', 'hook done, redraws so far 0']);
+    expect(calls.filter((c) => c.name === 'redraw')).toHaveLength(1);
+  });
+
+  test('a fault reaches only the hooks of the mod whose Client failed, and the site is still drawn once more', async () => {
+    const { iface, calls } = fakeInterface();
+    const h = await apiHarness({ rules: withUiRules, ui: uiOver(iface) });
+    const seen: string[] = [];
+    await h.mod('drew', 'user', [
+      fn('ui.fault', (_$, e, next) => (seen.push(`drew ${String(e.reason)}`), next(e))),
+    ]);
+    await h.mod('other', 'user', [
+      fn('ui.fault', (_$, e, next) => (seen.push(`other ${String(e.reason)}`), next(e))),
+    ]);
+    await h.ui?.fault('drew', { phase: 'run', reason: 'boom' });
+    expect(seen).toEqual(['drew boom']);
     expect(calls.filter((c) => c.name === 'redraw')).toHaveLength(1);
   });
 
@@ -92,7 +123,7 @@ spec('mods.event.ui.fault', () => {
     const seen: unknown[] = [];
     await h.mod('my-mod', 'user', [fn('ui.fault', (_$, e, next) => (seen.push(e.phase), next(e)))]);
     for (const phase of ['load', 'render', 'run'] as const) {
-      await h.ui?.fault({ phase, reason: 'x' });
+      await h.ui?.fault('my-mod', { phase, reason: 'x' });
     }
     expect(seen).toEqual(['load', 'render', 'run']);
   });
@@ -118,7 +149,7 @@ spec('mods.event.ui.close', () => {
     const { h, ui } = await open();
     const kinds: unknown[] = [];
     await h.mod('watch', 'prepend', [
-      fn('ui.close', (_$, e, next) => (kinds.push((e.origin as { kind: string }).kind), next(e))),
+      fn('ui.close', (_$, e, next) => (kinds.push(recordOf(e.origin).kind), next(e))),
     ]);
     await h.api.ui.open({ id: 'second' });
     await h.api.ui.close({ id: 'second' });

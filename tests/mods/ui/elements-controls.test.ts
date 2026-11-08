@@ -108,7 +108,13 @@ spec('mods.element.Button', () => {
     });
     expect(drawnProps('vscode', button)).toEqual({ key: 'b', label: 'Go' });
     const tree = node('Box', { children: [button] });
-    const here = { surface: 'vscode', isBand: false, isCollapsed: false } as const;
+    const here = {
+      surface: 'vscode',
+      isBand: false,
+      isCollapsed: false,
+      hasFocus: true,
+      isInputFocused: false,
+    } as const;
     expect(hotkeyTable(tree, here).size).toBe(0);
   });
 
@@ -117,7 +123,13 @@ spec('mods.element.Button', () => {
     const later = node('Button', { key: 'later', hotkey: 'a' });
     const other = node('Button', { key: 'other', hotkey: 'b' });
     const tree = node('Box', { children: [first, later, other] });
-    const table = hotkeyTable(tree, { surface: 'terminal', isBand: false, isCollapsed: false });
+    const table = hotkeyTable(tree, {
+      surface: 'terminal',
+      isBand: false,
+      isCollapsed: false,
+      hasFocus: true,
+      isInputFocused: false,
+    });
     expect(table.get('a')).toBe(later);
     expect(table.get('b')).toBe(other);
   });
@@ -126,7 +138,13 @@ spec('mods.element.Button', () => {
     const button = node('Button', { key: 'one', hotkey: '1' });
     const letter = node('Button', { key: 'a', hotkey: 'a' });
     const tree = node('Box', { children: [button, letter] });
-    const band = { surface: 'terminal', isBand: true, isCollapsed: false } as const;
+    const band = {
+      surface: 'terminal',
+      isBand: true,
+      isCollapsed: false,
+      hasFocus: true,
+      isInputFocused: false,
+    } as const;
     expect(digitButton(tree, band, '1', true)).toBe(button);
     expect(digitButton(tree, band, '1', false)).toBeUndefined();
     expect(digitButton(tree, band, 'a', true)).toBeUndefined();
@@ -136,7 +154,13 @@ spec('mods.element.Button', () => {
   test('while the band is collapsed neither an action binding nor a hotkey presses a button in it', () => {
     const button = node('Button', { key: 'one', hotkey: '1', action: 'chat:cancel' });
     const tree = node('Box', { children: [button] });
-    const open = { surface: 'terminal', isBand: true, isCollapsed: false } as const;
+    const open = {
+      surface: 'terminal',
+      isBand: true,
+      isCollapsed: false,
+      hasFocus: true,
+      isInputFocused: false,
+    } as const;
     const collapsed = { ...open, isCollapsed: true };
     expect(hotkeyTable(tree, open).get('1')).toBe(button);
     expect(hotkeyTable(tree, collapsed).size).toBe(0);
@@ -145,10 +169,35 @@ spec('mods.element.Button', () => {
     expect(actionButtons(tree, collapsed, 'chat:cancel', 'ctrl+x ctrl+k')).toEqual([]);
   });
 
+  test('a hotkey presses its button only while the pane or band has keyboard focus, and not while an Input has it; a digit hotkey on the band and an action binding need no focus', () => {
+    const button = node('Button', { key: 'one', hotkey: '1', action: 'chat:cancel' });
+    const tree = node('Box', { children: [button] });
+    const band = {
+      surface: 'terminal',
+      isBand: true,
+      isCollapsed: false,
+      hasFocus: true,
+      isInputFocused: false,
+    } as const;
+    expect(hotkeyTable(tree, band).get('1')).toBe(button);
+    const keysGoToPrompt = { ...band, hasFocus: false };
+    expect(hotkeyTable(tree, keysGoToPrompt).size).toBe(0);
+    expect(digitButton(tree, keysGoToPrompt, '1', true)).toBe(button);
+    expect(actionButtons(tree, keysGoToPrompt, 'chat:cancel', 'ctrl+k')).toEqual([button]);
+    const typing = { ...band, isInputFocused: true };
+    expect(hotkeyTable(tree, typing).size).toBe(0);
+  });
+
   test('an action presses the button when the user binding is a chord or a modified key, not a plain key', () => {
     const button = node('Button', { key: 'b', action: 'chat:cancel' });
     const tree = node('Box', { children: [button] });
-    const here = { surface: 'terminal', isBand: false, isCollapsed: false } as const;
+    const here = {
+      surface: 'terminal',
+      isBand: false,
+      isCollapsed: false,
+      hasFocus: true,
+      isInputFocused: false,
+    } as const;
     expect(actionButtons(tree, here, 'chat:cancel', 'ctrl+k')).toEqual([button]);
     expect(actionButtons(tree, here, 'chat:cancel', 'ctrl+x ctrl+k')).toEqual([button]);
     expect(actionButtons(tree, here, 'chat:cancel', 'k')).toEqual([]);

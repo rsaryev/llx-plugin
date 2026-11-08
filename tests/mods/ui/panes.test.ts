@@ -17,6 +17,9 @@ import { spec } from '../../support/spec.ts';
 
 const width = (columns: number): Viewport => ({ columns, rows: 40, isFullscreen: true });
 
+const terminalAt = (columns: number) =>
+  ({ surface: 'terminal', viewport: width(columns) }) as const;
+
 async function harness(origin: 'user' | 'mod', columns: number | undefined) {
   const view = { columns };
   const { iface } = fakeInterface({
@@ -83,11 +86,14 @@ spec('mods.limit.A pane opened without the user asking', () => {
 
   test('once the user opened that pane themselves, the same pane opened by the mod needs only 110, and another pane still needs 144', async () => {
     const { ui } = await harness('mod', 100);
-    const at = (columns: number) => ({ surface: 'terminal', viewport: width(columns) }) as const;
-    expect(ui?.panes.open('my-mod', { id: 'tabs' }, 'user', at(60))).toEqual({ isPlaced: true });
-    expect(ui?.panes.open('my-mod', { id: 'tabs' }, 'mod', at(110))).toEqual({ isPlaced: true });
-    expect(ui?.panes.open('my-mod', { id: 'tabs' }, 'mod', at(109)).isPlaced).toBe(false);
-    expect(ui?.panes.open('my-mod', { id: 'other' }, 'mod', at(110)).isPlaced).toBe(false);
+    expect(ui?.panes.open('my-mod', { id: 'tabs' }, 'user', terminalAt(60))).toEqual({
+      isPlaced: true,
+    });
+    expect(ui?.panes.open('my-mod', { id: 'tabs' }, 'mod', terminalAt(110))).toEqual({
+      isPlaced: true,
+    });
+    expect(ui?.panes.open('my-mod', { id: 'tabs' }, 'mod', terminalAt(109)).isPlaced).toBe(false);
+    expect(ui?.panes.open('my-mod', { id: 'other' }, 'mod', terminalAt(110)).isPlaced).toBe(false);
   });
 
   test('a waiting pane appears when the user opens it or widens the terminal', async () => {
@@ -146,14 +152,6 @@ spec('mods.api.$.ui', () => {
     });
   });
 
-  test('the pane id is a name: letters, digits, _ and -, up to 64 characters', async () => {
-    const { h } = await harness('user', 200);
-    expect(await h.api.ui.open({ id: 'a'.repeat(64) })).toEqual({ isPlaced: true });
-    expect(await rejection(h.api.ui.open({ id: 'a'.repeat(65) }))).toContain('ui.open: pane name');
-    expect(await rejection(h.api.ui.open({ id: 'has space' }))).toContain('ui.open: pane name');
-    expect(await rejection(h.api.ui.open({}))).toContain('ui.open:');
-  });
-
   test('a pane that holds toasts holds them while it shows, and only while it is open', async () => {
     const { h, ui } = await harness('user', 200);
     await h.api.ui.open({ id: 'dialog', holdToasts: true });
@@ -171,5 +169,18 @@ spec('mods.api.$.ui', () => {
     expect(ui?.panes.list()).toEqual([]);
     await h.api.ui.open({ id: 'fine' });
     expect(ui?.panes.list().map((p) => p.id)).toEqual(['fine']);
+  });
+});
+
+spec('mods.limit.Command, tool, subagent type, and pane names', () => {
+  test('a pane name is letters, digits, _ and -, up to 64 characters, and ui.open refuses any other', async () => {
+    const { h } = await harness('user', 200);
+    expect(await h.api.ui.open({ id: 'a'.repeat(64) })).toEqual({ isPlaced: true });
+    expect(await h.api.ui.open({ id: 'Pane_2-b' })).toEqual({ isPlaced: true });
+    expect(await rejection(h.api.ui.open({ id: 'a'.repeat(65) }))).toContain('ui.open: pane name');
+    expect(await rejection(h.api.ui.open({ id: 'has space' }))).toContain('ui.open: pane name');
+    expect(await rejection(h.api.ui.open({ id: 'dot.ted' }))).toContain('ui.open: pane name');
+    expect(await rejection(h.api.ui.open({ id: '' }))).toContain('ui.open: pane name');
+    expect(await rejection(h.api.ui.open({}))).toContain('ui.open:');
   });
 });

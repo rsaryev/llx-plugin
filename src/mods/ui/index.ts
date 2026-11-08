@@ -19,6 +19,7 @@ export { textStyle, type TextStyle } from './elements/text.ts';
 export { borderOf, isSpacingStep } from './elements/box.ts';
 export { spacingCells, type SpacingCells } from './elements/spacing.ts';
 export { drawsAsLink } from './elements/link.ts';
+export { clientFailure, clientFailureLine } from './elements/client.ts';
 export { buttonKey } from './elements/button.ts';
 export { decideSite, renderEvent, type RenderEvent, type RenderRequest } from './sites/registry.ts';
 export { foldRender, type Drawn, type FoldOptions } from './sites/fold.ts';

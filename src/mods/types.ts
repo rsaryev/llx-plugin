@@ -204,6 +204,13 @@ export interface DispatchOptions {
    * on one intercepts calls from the mods that run after it").
    */
   readonly caller?: HookOrigin;
+  /**
+   * Only this mod's hooks handle the event: what Claude Code fires for one mod alone (`ui.message`
+   * and `ui.fault` reach the mod that drew the `Client`, reference.md, "Interface").
+   */
+  readonly only?: string;
+  /** The debug log: the chain says there which mod answered without calling `next`. */
+  readonly debug?: (line: string) => void;
   /** The limit all the hooks of the event share, in milliseconds; `session.end` has one by default. */
   readonly groupMs?: number;
 }

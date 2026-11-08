@@ -30,9 +30,7 @@ function nested(levels: number): ElementNode {
 
 const textOf = (tree: ElementNode): string =>
   tree.children
-    .map((child) =>
-      typeof child === 'string' ? child : 'children' in child ? textOf(child as ElementNode) : '',
-    )
+    .map((child) => (typeof child === 'string' ? child : 'children' in child ? textOf(child) : ''))
     .join('');
 
 spec('mods.limit.Code', () => {

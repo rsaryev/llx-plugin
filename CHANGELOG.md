@@ -104,6 +104,15 @@
 
 ### Fixed
 
+- Mods interface: `$.ui.ask` goes through a `tool.call` of `AskUserQuestion` and reads
+  `result.answers`, so the documented stub works and a dismissed question rejects; `ui.message` and
+  `ui.fault` reach only the mod that drew the `Client` (`DispatchOptions.only`); a toast raised
+  during a hold of toasts waits for the hold to end instead of timing out, and only the terminal
+  holds; a failed `Client` has its dimmed line (`clientFailure`); a hook that answers `ui.render`
+  without `next` writes `<mod> (<tier>) answered ui.render without next()` to the debug log;
+  `drawsAsLink` accepts a missing `/` before a query or fragment; hotkeys press only while the pane
+  or band has keyboard focus and no `Input` does; a `ui.render` hook that writes a value it read no
+  longer redraws in a loop.
 - Mods API: `$.clock.after` and `$.clock.every` return their timer at once (`timer.cancel()` needs
   no `await`, and also stops a timer whose event is still in the chain); a hook on a mods API call
   intercepts only the calls of the mods that run after it (`DispatchOptions.caller`); a pass-through

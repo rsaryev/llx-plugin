@@ -11,7 +11,13 @@
  */
 import { expect, test } from 'bun:test';
 
-import { drawnProps, drawsAsLink, treeProblem } from '../../../src/mods/ui/index.ts';
+import {
+  clientFailure,
+  clientFailureLine,
+  drawnProps,
+  drawsAsLink,
+  treeProblem,
+} from '../../../src/mods/ui/index.ts';
 
 import { node } from '../../support/mods-ui.ts';
 import { spec } from '../../support/spec.ts';
@@ -38,6 +44,9 @@ spec('mods.element.Link', () => {
       // a missing `/` after the host is allowed
       expect(drawsAsLink(surface, 'https://example.com')).toBe(true);
       expect(drawsAsLink(surface, 'http://localhost:3000')).toBe(true);
+      expect(drawsAsLink(surface, 'https://example.com?q=1')).toBe(true);
+      expect(drawsAsLink(surface, 'https://example.com#a')).toBe(true);
+      expect(drawsAsLink(surface, 'http://localhost:3000?q=1#a')).toBe(true);
       expect(drawsAsLink(surface, 'https://example.com/a%40b')).toBe(true);
     }
   });
@@ -53,6 +62,9 @@ spec('mods.element.Link', () => {
         'https://Example.com/',
         'https://example.com/a b',
         'https://example.com:443/',
+        'https://example.com:443?q=1',
+        'https://Example.com?q=1',
+        'https://example.com?q=a b',
         'not a url',
       ]) {
         expect(drawsAsLink(surface, href)).toBe(false);
@@ -154,6 +166,21 @@ spec('mods.element.Client', () => {
     expect(problemOf(client, 'vscode')).toBe(
       'a tree Pane refuses: Client is not drawn by the vscode app',
     );
+  });
+
+  test('a Client that fails is replaced in the terminal by a dimmed line of the mod, the Client, its file and the reason', () => {
+    expect(clientFailureLine('my-mod', 'client/spinner.js', 'boom')).toBe(
+      'my-mod: Client client/spinner.js: boom',
+    );
+    const line = clientFailure('my-mod', 'client/spinner.js', 'boom');
+    expect(line).toEqual({
+      type: 'Text',
+      props: { dimColor: true },
+      children: ['my-mod: Client client/spinner.js: boom'],
+    });
+    // the rest of the drawing still shows: the line is one valid element among its siblings
+    const drawing = node('Box', { children: [node('Text', { children: ['kept'] }), line] });
+    expect(problemOf(drawing)).toBeUndefined();
   });
 });
 

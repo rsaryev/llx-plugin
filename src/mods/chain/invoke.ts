@@ -165,8 +165,21 @@ async function* recover(site: Site, failure: Failure): Stream {
   return latest ? yield* finish(latest) : yield* runFrom(site.ctx, site.index + 1, site.e);
 }
 
+/**
+ * The debug line for a hook that returned without ever calling `next` (troubleshoot.md, "Another
+ * mod's band shows and yours doesn't": `other-mod (user) answered ui.render without next()`). A hook
+ * that called `next` and dropped the result gets none.
+ */
+function noteAnswer(site: Site): void {
+  const { ctx, entry } = site;
+  if (site.downstream.latest() !== undefined) return;
+  ctx.options.debug?.(`${entry.plugin.name} (${entry.tier}) answered ${ctx.name} without next()`);
+}
+
 async function* invoke(site: Site): Stream {
   const skipped = reentryFailure(site.entry.plugin.name, site.ctx.options.reentry);
   const outcome: Outcome = skipped ? { failed: skipped } : yield* attempt(site, hookRun(site));
-  return 'value' in outcome ? outcome.value : yield* recover(site, outcome.failed);
+  if (!('value' in outcome)) return yield* recover(site, outcome.failed);
+  noteAnswer(site);
+  return outcome.value;
 }

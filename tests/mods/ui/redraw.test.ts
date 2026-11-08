@@ -1,23 +1,15 @@
 /**
- * Redraws and toasts.
+ * Redraws and `$.state` subscriptions; toasts are in toast.test.ts.
  * plugins/mods/interface.md § Redraw a site ("How often a site can redraw": "Calls that come
  * faster than the limit are coalesced into one redraw. That redraw runs your hook once, and the hook
  * reads your data as it is at that moment, so the latest value shows and the values in between
  * don't"); plugins/mods/reference.md § Limits (`$.ui.invalidate('ui.render')`: 10 a second, 30 in the
- * terminal for the visible pane, the expanded band and the hint line; `$.ui.toast`: 4 seconds unless
- * `{ timeoutMs }`; in the classic renderer a newer toast takes the place of the mod's older one);
- * plugins/mods/troubleshoot.md § A toast doesn't appear (`timeoutMs is a whole number of ms, 1 to
- * 60000`; `gave way, cut short`, `gave way, unseen`, `left the stack, never drawn`; a pane holding
- * toasts). The kit throttles and queues; what the app draws is the app's, so no test claims it.
- * The window the throttle uses (a minimum gap) is a judgment (spec/judgments.md).
+ * terminal for the visible pane, the expanded band and the hint line); plugins/mods/interface.md §
+ * Keep a value in `$.state` ("a `ui.render` hook can read state and can't write it"). The kit
+ * throttles; what the app draws is the app's, so no test claims it. The window the throttle uses (a minimum gap) is a judgment (spec/judgments.md).
  */
 import { expect, test } from 'bun:test';
-import {
-  createRedrawGate,
-  createToastBoard,
-  parseToast,
-  withUiRules,
-} from '../../../src/mods/ui/index.ts';
+import { createRedrawGate, withUiRules } from '../../../src/mods/ui/index.ts';
 import { fixedClock } from '../../support/clock.ts';
 import { apiHarness } from '../../support/mods-api.ts';
 import { fn } from '../../support/mods-chain.ts';
@@ -112,113 +104,6 @@ spec(`mods.limit.$.ui.invalidate('ui.render')`, () => {
   });
 });
 
-spec('mods.limit.$.ui.toast', () => {
-  test('a toast is shown for 4 seconds unless { timeoutMs } says otherwise', () => {
-    expect(parseToast('hi', undefined)).toEqual({ toast: { text: 'hi', timeoutMs: 4000 } });
-    expect(parseToast('hi', { timeoutMs: 1500 })).toEqual({
-      toast: { text: 'hi', timeoutMs: 1500 },
-    });
-    const clock = fixedClock();
-    const board = createToastBoard({
-      clock,
-      renderer: () => 'fullscreen',
-      isHeld: () => false,
-      debug: () => undefined,
-    });
-    board.show('my-mod', { text: 'done', timeoutMs: 4000 });
-    clock.advance(3999);
-    expect(board.visible()).toEqual([{ plugin: 'my-mod', text: 'done' }]);
-    clock.advance(1);
-    expect(board.visible()).toEqual([]);
-  });
-
-  test('timeoutMs is a whole number of milliseconds, 1 to 60000, and anything else is dropped with the documented reason', () => {
-    for (const timeoutMs of [1, 60_000, 4000]) {
-      expect(parseToast('x', { timeoutMs })).toEqual({ toast: { text: 'x', timeoutMs } });
-    }
-    for (const timeoutMs of [0, -1, 60_001, 1.5, '5', Number.NaN, Infinity, null]) {
-      expect(parseToast('x', { timeoutMs })).toEqual({
-        problem: 'timeoutMs is a whole number of ms, 1 to 60000',
-      });
-    }
-  });
-
-  test('$.ui.toast writes the documented debug lines: the toast raised, or why it was dropped', async () => {
-    const { iface } = fakeInterface();
-    const h = await apiHarness({
-      plugin: 'first-mod',
-      rules: withUiRules,
-      ui: uiOver(iface),
-    });
-    await h.api.ui.toast('build finished');
-    await h.api.ui.toast('too long', { timeoutMs: 60_001 });
-    expect(h.debug).toEqual([
-      '$.ui.toast (first-mod): build finished',
-      'first-mod: $.ui.toast dropped: timeoutMs is a whole number of ms, 1 to 60000',
-    ]);
-    expect(h.ui?.toasts.visible()).toEqual([{ plugin: 'first-mod', text: 'build finished' }]);
-    expect(await rejection(h.api.ui.toast(3))).toBeUndefined();
-  });
-
-  const board = (renderer: 'classic' | 'fullscreen', held = { value: false }) => {
-    const clock = fixedClock();
-    const debug: string[] = [];
-    const toasts = createToastBoard({
-      clock,
-      renderer: () => renderer,
-      isHeld: () => held.value,
-      debug: (line) => debug.push(line),
-    });
-    return { clock, debug, toasts, held };
-  };
-  const show = (b: ReturnType<typeof board>, plugin: string, text: string, timeoutMs = 4000) =>
-    b.toasts.show(plugin, { text, timeoutMs });
-
-  test('in the classic renderer a mod`s newer toast takes the place of its older one that is showing', () => {
-    const b = board('classic');
-    show(b, 'a', 'first');
-    show(b, 'a', 'second');
-    expect(b.toasts.visible()).toEqual([{ plugin: 'a', text: 'second' }]);
-    expect(b.debug).toEqual(['$.ui.toast (a): first gave way, cut short']);
-  });
-
-  test('or one that is waiting to show: gave way, unseen; another mod`s toast is not replaced', () => {
-    const b = board('classic');
-    show(b, 'a', 'a-first');
-    show(b, 'b', 'b-first');
-    show(b, 'b', 'b-second');
-    expect(b.debug).toEqual(['$.ui.toast (b): b-first gave way, unseen']);
-    expect(b.toasts.visible()).toEqual([{ plugin: 'a', text: 'a-first' }]);
-    b.clock.advance(4000);
-    expect(b.toasts.visible()).toEqual([]);
-  });
-
-  test('in fullscreen rendering a newer toast does not take the place of an older one, and at most three are drawn', () => {
-    const b = board('fullscreen');
-    for (const text of ['1', '2', '3', '4']) show(b, 'a', text);
-    expect(b.toasts.visible().map((t) => t.text)).toEqual(['1', '2', '3']);
-    expect(b.debug).toEqual([]);
-  });
-
-  test('in fullscreen rendering a toast can run out of time before it is drawn: the debug line says it never was', () => {
-    const b = board('fullscreen');
-    for (const text of ['1', '2', '3']) show(b, 'a', text, 60_000);
-    show(b, 'a', 'late', 1000);
-    b.clock.advance(1000);
-    expect(b.debug).toEqual(['$.ui.toast (a): late left the stack, never drawn']);
-    expect(b.toasts.visible().map((t) => t.text)).toEqual(['1', '2', '3']);
-  });
-
-  test('a pane that holds toasts holds them while it shows, and they appear when the hold ends', () => {
-    const b = board('fullscreen');
-    show(b, 'a', 'wait');
-    b.held.value = true;
-    expect(b.toasts.visible()).toEqual([]);
-    b.held.value = false;
-    expect(b.toasts.visible().map((t) => t.text)).toEqual(['wait']);
-  });
-});
-
 spec('mods.api.$.state', () => {
   test('a ui.render hook that reads a $.state value subscribes its site: writing the value redraws, and a value it did not read does not', async () => {
     const { iface, calls } = fakeInterface();
@@ -242,5 +127,23 @@ spec('mods.api.$.state', () => {
     h.clock.advance(1000);
     await h.api.state.set({ plugin: 'counter', key: 'count' }, 3);
     expect(redraws()).toBe(2);
+  });
+
+  // Judgment (spec/judgments.md): a ui.render hook "can read state and can't write it"; the kit does not refuse the write, it only asks for no redraw for a value the drawing in progress read.
+  test('judgment: a ui.render hook that writes a value it read does not redraw its own site in a loop', async () => {
+    const { iface, calls } = fakeInterface();
+    const h = await apiHarness({ rules: withUiRules, ui: uiOver(iface) });
+    const key = { plugin: 'counter', key: 'count' };
+    await h.mod('counter', 'user', [
+      fn('ui.render', async ($) => {
+        const count = await $.state.get(key);
+        await $.state.set(key, Number(count ?? 0) + 1);
+        return node('Text', { children: [`Count: ${String(count)}`] });
+      }),
+    ]);
+    await h.ui?.draw({ site: 'Pane', surface: 'terminal', requestId: 'counter' });
+    h.clock.advance(1000);
+    expect(calls.filter((c) => c.name === 'redraw')).toHaveLength(0);
+    expect(await h.api.state.get(key)).toBe(1);
   });
 });

@@ -11,6 +11,8 @@ export interface PaneInfo {
   readonly plugin: string;
   readonly request: OpenRequest;
   readonly isPlaced: boolean;
+  /** Whether the pane holds toasts: it asked to and the app is the terminal, the only app that holds them. */
+  readonly holdsToasts: boolean;
 }
 
 /** Why a pane closes: its mod called `$.ui.close`, the person closed it, or the mod was unloaded (`ui.close`'s `e.origin.kind`). */
@@ -26,6 +28,8 @@ export interface PaneRegistryOptions {
   readonly chain: ModChain;
   readonly signal: AbortSignal;
   readonly report: (report: HookReport) => void;
+  /** Called after a pane opened, closed or was placed: a hold of toasts may have begun or ended. */
+  readonly onHoldChange?: () => void;
 }
 
 export interface PaneRegistry {
@@ -40,7 +44,7 @@ export interface PaneRegistry {
   list(): readonly PaneInfo[];
   /** The window was measured or resized: the panes that wait and now fit, as the ids that appear. */
   resize(context: PaneContext): readonly string[];
-  /** Whether a pane that is placed asked to hold toasts. */
+  /** Whether a pane that is placed asked to hold toasts, in the terminal. */
   holdsToasts(): boolean;
 }
 
@@ -50,7 +54,12 @@ export function createPaneRegistry(options: PaneRegistryOptions): PaneRegistry {
   const userOpened = new Set<string>();
   const place = (id: string, origin: OpenOrigin, context: PaneContext): Placement =>
     placePane({ origin, ...context, hasUserOpened: userOpened.has(id) });
-  const remove = (id: string): boolean => panes.delete(id);
+  const changed = (): void => options.onHoldChange?.();
+  const remove = (id: string): boolean => {
+    const existed = panes.delete(id);
+    changed();
+    return existed;
+  };
   const close = async (id: string, kind: Exclude<CloseKind, 'plugin'>): Promise<boolean> => {
     if (!panes.has(id)) return false;
     await options.chain.dispatch(
@@ -69,7 +78,14 @@ export function createPaneRegistry(options: PaneRegistryOptions): PaneRegistry {
     open(plugin, request, origin, context) {
       const placement = place(request.id, origin, context);
       if (origin === 'user') userOpened.add(request.id);
-      panes.set(request.id, { id: request.id, plugin, request, isPlaced: placement.isPlaced });
+      panes.set(request.id, {
+        id: request.id,
+        plugin,
+        request,
+        isPlaced: placement.isPlaced,
+        holdsToasts: context.surface === 'terminal' && request.holdToasts === true,
+      });
+      changed();
       return placement;
     },
     remove,
@@ -85,8 +101,9 @@ export function createPaneRegistry(options: PaneRegistryOptions): PaneRegistry {
         panes.set(pane.id, { ...pane, isPlaced: true });
         appeared.push(pane.id);
       }
+      if (appeared.length > 0) changed();
       return appeared;
     },
-    holdsToasts: () => [...panes.values()].some((pane) => pane.isPlaced && pane.request.holdToasts),
+    holdsToasts: () => [...panes.values()].some((pane) => pane.isPlaced && pane.holdsToasts),
   };
 }

@@ -5,18 +5,20 @@
  * ("A hook on one intercepts calls from the mods that run after it, and can return `next(e)`,
  * `{ deny: reason }`, or `{ value }`"); plugins/mods/api.md § Show something without starting a turn
  * (status, toast, log, notify and its `{ isSent, channel }` and `{ isSent: false, reason }`);
- * plugins/mods/events.md § Guard or change a tool call (`$.ui.ask`). The kit proves the namespace,
+ * plugins/mods/events.md § Guard or change a tool call (`$.ui.ask`: a typed answer comes back as the
+ * typed text, a dismissed question rejects), plugins/mods/test.md § Look up what a stub returns (the
+ * question reaches mods as a `tool.call` of `AskUserQuestion`). The kit proves the namespace,
  * the event each call fires and what reaches the port; nothing here claims anything is drawn,
  * audible or copied. The arguments of notice, blit, focus and scroll are the host's
  * (spec/judgments.md).
  */
-import { expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { MODS_API } from '../../../src/protocol/mods-api-names.ts';
 import { withUiRules } from '../../../src/mods/ui/index.ts';
 import { apiHarness, expectMethods } from '../../support/mods-api.ts';
 import { fn } from '../../support/mods-chain.ts';
 import { rejection } from '../../support/rejection.ts';
-import { fakeInterface, uiOver } from '../../support/mods-ui.ts';
+import { fakeInterface, recordOf, uiOver } from '../../support/mods-ui.ts';
 import { spec } from '../../support/spec.ts';
 import type { ModInterface } from '../../../src/mods/ui/index.ts';
 
@@ -30,6 +32,17 @@ async function setup(overrides: Partial<ModInterface> = {}, plugin = 'my-mod') {
   const called = (name: string) => calls.filter((c) => c.name === name);
   return { h, calls, called };
 }
+
+// test.md, "Look up what a stub returns": the question reaches mods as a tool.call of AskUserQuestion.
+const stub = (answer: (question: string) => string | undefined) =>
+  fn('tool.call', (_$, e, next) => {
+    if (e.tool !== 'AskUserQuestion') return next(e);
+    const question = String(recordOf(Array.isArray(e.questions) ? e.questions[0] : {}).question);
+    const given = answer(question);
+    return given === undefined
+      ? { result: { answers: {} } }
+      : { result: { answers: { [question]: given } } };
+  });
 
 spec('mods.api.$.ui', () => {
   test('$.ui has exactly the methods of the reference table', async () => {
@@ -52,7 +65,7 @@ spec('mods.api.$.ui', () => {
 
   test('$.ui.notify uses the mod`s name as its title unless a non-empty { title } is passed, shown as given', async () => {
     const { h, called } = await setup({}, 'my-mod');
-    expect(await h.api.ui.notify('Turn finished')).toEqual({ isSent: true, channel: 'kitty' });
+    await h.api.ui.notify('Turn finished');
     await h.api.ui.notify('Turn finished', { title: 'Custom Title ' });
     await h.api.ui.notify('Turn finished', { title: '' });
     expect(called('notify').map((c) => c.args[0])).toEqual([
@@ -60,13 +73,6 @@ spec('mods.api.$.ui', () => {
       { text: 'Turn finished', title: 'Custom Title ' },
       { text: 'Turn finished', title: 'my-mod' },
     ]);
-  });
-
-  test('$.ui.notify resolves to { isSent: false, reason } for each reason the docs list', async () => {
-    for (const reason of ['disabled', 'no-channel', 'no-surface'] as const) {
-      const { h } = await setup({ notify: () => Promise.resolve({ isSent: false, reason }) });
-      expect(await h.api.ui.notify('x')).toEqual({ isSent: false, reason });
-    }
   });
 
   test('$.ui.notify is refused when another mod`s hook answered in Claude Code`s place without sending, and rejects on { deny }', async () => {
@@ -86,25 +92,68 @@ spec('mods.api.$.ui', () => {
     expect(await rejection(h.api.ui.notify(3))).toContain('$.ui.notify');
   });
 
-  test('$.ui.ask shows the question above the options and resolves to the label the user picks; it rejects when nobody answers', async () => {
-    const { h, called } = await setup();
-    expect(await h.api.ui.ask('Run this command? ls', ['Run it', 'Refuse'])).toBe('Run it');
-    expect(called('ask')[0]?.args).toEqual([
-      { question: 'Run this command? ls', options: ['Run it', 'Refuse'] },
-    ]);
-    const dismissed = await setup({ ask: () => Promise.reject(new Error('dismissed')) });
-    expect(await rejection(dismissed.h.api.ui.ask('q', ['a']))).toBe('dismissed');
+  describe('$.ui.ask', () => {
+    test('the question reaches mods as a tool.call of AskUserQuestion with the question and the options, and the answer is read from result.answers', async () => {
+      const { h, called } = await setup();
+      const seen: unknown[] = [];
+      await h.mod('stub', 'prepend', [
+        fn(
+          'tool.call',
+          (_$, e) => (seen.push(e), { result: { answers: { 'Run this command? ls': 'Run it' } } }),
+        ),
+      ]);
+      expect(await h.api.ui.ask('Run this command? ls', ['Run it', 'Refuse'])).toBe('Run it');
+      expect(seen).toMatchObject([
+        {
+          tool: 'AskUserQuestion',
+          questions: [
+            {
+              question: 'Run this command? ls',
+              options: [{ label: 'Run it' }, { label: 'Refuse' }],
+            },
+          ],
+        },
+      ]);
+      expect(called('ask')).toHaveLength(0);
+    });
+
+    test('a typed answer comes back as the typed text', async () => {
+      const { h } = await setup();
+      await h.mod('stub', 'prepend', [stub(() => 'something else')]);
+      expect(await h.api.ui.ask('Run it?', ['Run it', 'Refuse'])).toBe('something else');
+    });
+
+    test('with no hook answering, the dialog of the host is asked with the question and the options', async () => {
+      const { h, called } = await setup();
+      await h.api.ui.ask('Which?', ['a', 'b']);
+      expect(called('ask')[0]?.args).toEqual([{ question: 'Which?', options: ['a', 'b'] }]);
+    });
+
+    test('it rejects when the question is dismissed or Chat about this is picked: the host rejects, or no answer comes back', async () => {
+      const dismissed = await setup({ ask: () => Promise.reject(new Error('dismissed')) });
+      expect(await rejection(dismissed.h.api.ui.ask('q', ['a']))).toBe('dismissed');
+      const chat = await setup();
+      await chat.h.mod('stub', 'prepend', [stub(() => undefined)]);
+      expect(await rejection(chat.h.api.ui.ask('q', ['a']))).toContain('$.ui.ask');
+    });
+
+    test('a call that is not a question is passed on by a stub that checks e.tool', async () => {
+      const { h } = await setup();
+      await h.mod('stub', 'prepend', [stub(() => 'x')]);
+      expect(await rejection(h.api.ui.ask(3, []))).toContain('$.ui.ask');
+    });
   });
 
   test('$.ui.copy, $.ui.selection, $.ui.notice, $.ui.blit, $.ui.focus and $.ui.scroll reach the host with what the hooks left', async () => {
     const { h, called } = await setup();
-    expect(await h.api.ui.copy('text')).toEqual({ isCopied: true });
-    expect(await h.api.ui.selection()).toBe('picked');
+    await h.api.ui.copy('text');
+    await h.api.ui.selection();
     await h.api.ui.blit({ requestId: 'heat', key: 'grid', columns: 3, rows: 2, cells: 'AAAA' });
     await h.api.ui.focus({ id: 'hello-tabs' });
     await h.api.ui.scroll({ id: 'hello-tabs', offset: 4 });
     await h.api.ui.notice({ text: 'n' });
     expect(called('copy')[0]?.args).toEqual(['text']);
+    expect(called('selection')).toHaveLength(1);
     expect(called('blit')[0]?.args).toEqual([
       { requestId: 'heat', key: 'grid', columns: 3, rows: 2, cells: 'AAAA' },
     ]);

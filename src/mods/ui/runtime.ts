@@ -47,10 +47,10 @@ export interface ModsUi extends UiParts {
     request: RenderRequest,
     options?: FoldOptions,
   ): Promise<Drawn | { readonly problem: string }>;
-  /** A `Client` failed: fires `ui.fault`, then draws the sites once more. */
-  fault(report: FaultReport): Promise<void>;
-  /** A `Client` posted `data` to its mod: fires `ui.message`. */
-  message(data: unknown): Promise<unknown>;
+  /** A `Client` of `plugin` failed: fires `ui.fault` for that mod's hooks only, then draws the sites once more. */
+  fault(plugin: string, report: FaultReport): Promise<void>;
+  /** A `Client` of `plugin` posted `data` to its mod: fires `ui.message` for that mod's hooks only. */
+  message(plugin: string, data: unknown): Promise<unknown>;
   /**
    * The focused control or the scroll position is about to change: fires `ui.focus` or `ui.scroll`
    * with `change`, then `apply` runs with the change as the hooks left it. A hook that answers
@@ -77,7 +77,12 @@ export function createModsUi(options: ModsUiOptions): ModsUi {
     isHeld: () => panes.holdsToasts(),
     debug: options.debug,
   });
-  const panes = createPaneRegistry({ chain, signal, report });
+  const panes = createPaneRegistry({
+    chain,
+    signal,
+    report,
+    onHoldChange: () => toasts.syncHold(),
+  });
   const invalidator = createInvalidator({
     clock: options.clock,
     redraw: () => iface.redraw(),
@@ -85,9 +90,14 @@ export function createModsUi(options: ModsUiOptions): ModsUi {
   });
   const parts: UiParts = { iface, panes, invalidator, toasts, tables };
   const reads = trackStateReads(options.state, () => invalidator.invalidate());
-  const fire = (name: 'ui.fault' | 'ui.message', input: Readonly<Record<string, unknown>>) =>
+  const fire = (
+    name: 'ui.fault' | 'ui.message',
+    plugin: string,
+    input: Readonly<Record<string, unknown>>,
+  ) =>
     chain.dispatch(name, input, {
       origin: ENGINE_ORIGIN,
+      only: plugin,
       signal,
       report,
       core: (e) => Promise.resolve(e),
@@ -104,17 +114,18 @@ export function createModsUi(options: ModsUiOptions): ModsUi {
           origin: ENGINE_ORIGIN,
           signal,
           report,
+          debug: options.debug,
           // Claude Code's own drawing, with the props the last `next(e)` gave it.
           core: (e) => Promise.resolve({ type: ENGINE_TYPE, ref: e }),
         }),
       );
       return foldRender(request.site, request.surface, settled, fold);
     },
-    async fault(fault) {
-      await fire('ui.fault', { ...fault });
+    async fault(plugin, fault) {
+      await fire('ui.fault', plugin, { ...fault });
       iface.redraw();
     },
-    message: (data) => fire('ui.message', { data }),
+    message: (plugin, data) => fire('ui.message', plugin, { data }),
     change: (name, change, apply) =>
       chain.dispatch(name, change, {
         origin: ENGINE_ORIGIN,
