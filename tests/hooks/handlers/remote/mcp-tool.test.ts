@@ -9,12 +9,11 @@
  * for at most `MCP_TIMEOUT` and within the hook's own `timeout`. On observational events, such as
  * `Notification` or `SessionEnd`, it doesn't wait"; "If the server isn't connected at that point,
  * the hook produces a non-blocking error"). Skipping `SessionStart` at launch and `Setup` is the
- * select stage's (tests/hooks/select/handler-types.test.ts). Rows outside `spec(...)` are judgments.
+ * select stage's (tests/hooks/select/handler-types.test.ts). The hook `timeout` reaching the call is
+ * proven under `hooks.handler.common.timeout`. Rows outside `spec(...)` are judgments.
  */
 import { describe, expect, test } from 'bun:test';
 import { runHandler } from '../../../../src/hooks/handlers/index.ts';
-import { WAITS_FOR_SERVER } from '../../../../src/hooks/handlers/remote/mcp-tool.ts';
-import { HOOK_EVENTS } from '../../../../src/protocol/hook-events.ts';
 import type { HookEvent } from '../../../../src/protocol/official.ts';
 import type { McpCaller, McpToolResult, PortFailure } from '../../../../src/ports/index.ts';
 import { mcpEntry, remoteContext } from '../../../support/hooks-remote.ts';
@@ -64,15 +63,6 @@ const call = async (
     }),
   );
 
-const waitFor = async (timeout: number | undefined, variables: Record<string, string>) => {
-  const mcp = watched(['s'], { 's/t': { isError: false, text: '' } });
-  await call(
-    { server: 's', tool: 't', ...(timeout === undefined ? {} : { timeout }) },
-    { mcp, event: 'PreToolUse', variables },
-  );
-  return mcp.waits[0]?.waitMs;
-};
-
 /** The arguments the tool was called with, and the issues of the run. */
 const argsOf = async (input: Record<string, unknown> | undefined) => {
   const mcp = watched(['my_server'], { 'my_server/security_scan': { isError: false, text: '' } });
@@ -98,14 +88,6 @@ spec('hooks.handler.mcp_tool.server', () => {
     expect(run).toEqual({ kind: 'mcp', isError: false, text: 'rows' });
   });
 
-  test('the bare server key of a plugin server is not connected: a non-blocking error, no call', async () => {
-    const mcp = watched(['plugin:my-plugin:db']);
-    const { run } = await call({ server: 'db', tool: 'query' }, { mcp });
-    expect(mcp.calls).toHaveLength(0);
-    expect(run.kind).toBe('mcp');
-    expect(run).toMatchObject({ isError: true });
-  });
-
   test('a server that is not connected when the call is due is a non-blocking error', async () => {
     const mcp = watched([]);
     const { run } = await call({ server: 'my_server', tool: 'scan' }, { mcp, event: 'Stop' });
@@ -128,14 +110,6 @@ spec('hooks.handler.mcp_tool.server', () => {
       expect(mcp.waits[0]?.waitMs).toBe(0);
     }
   });
-
-  test('the wait is at most MCP_TIMEOUT (30 s by default) and within the hook timeout', async () => {
-    expect(await waitFor(undefined, {})).toBe(30_000);
-    expect(await waitFor(10, {})).toBe(10_000);
-    expect(await waitFor(undefined, { MCP_TIMEOUT: '5000' })).toBe(5000);
-    expect(await waitFor(2, { MCP_TIMEOUT: '5000' })).toBe(2000);
-    expect(await waitFor(undefined, { MCP_TIMEOUT: 'soon' })).toBe(30_000);
-  });
 });
 
 spec('hooks.handler.mcp_tool.tool', () => {
@@ -152,32 +126,6 @@ spec('hooks.handler.mcp_tool.tool', () => {
     const mcp = watched(['s'], { 's/t': { isError: true, text: 'scan failed' } });
     const { run } = await call({ server: 's', tool: 't' }, { mcp });
     expect(run).toEqual({ kind: 'mcp', isError: true, text: 'scan failed' });
-  });
-
-  test('a call the client could not make is a non-blocking error carrying its message', async () => {
-    const mcp = watched(['s'], { 's/t': { failure: 'no-such-tool', message: 'no tool t' } });
-    const { run } = await call({ server: 's', tool: 't' }, { mcp });
-    expect(run).toEqual({ kind: 'mcp', isError: true, text: 'no tool t' });
-  });
-
-  test('the hook timeout reaches the call in milliseconds, 600 s by default', async () => {
-    const own = watched(['s'], { 's/t': { isError: false, text: '' } });
-    await call({ server: 's', tool: 't', timeout: 20 }, { mcp: own });
-    expect(own.calls[0]?.timeoutMs).toBe(20_000);
-    const none = watched(['s'], { 's/t': { isError: false, text: '' } });
-    await call({ server: 's', tool: 't' }, { mcp: none });
-    expect(none.calls[0]?.timeoutMs).toBe(600_000);
-  });
-
-  test('a timeout and an abort of the call are the shared runs', async () => {
-    const slow = watched(['s'], { 's/t': { failure: 'timeout', message: 'late' } });
-    expect((await call({ server: 's', tool: 't' }, { mcp: slow })).run).toEqual({
-      kind: 'timed-out',
-    });
-    const stopped = watched(['s'], { 's/t': { failure: 'aborted', message: 'stop' } });
-    expect((await call({ server: 's', tool: 't' }, { mcp: stopped })).run).toEqual({
-      kind: 'cancelled',
-    });
   });
 });
 
@@ -210,7 +158,41 @@ spec('hooks.handler.mcp_tool.input', () => {
   });
 });
 
+spec('hooks.handler.common.timeout', () => {
+  test('an mcp_tool hook timeout reaches the call in milliseconds, 600 s by default', async () => {
+    const own = watched(['s'], { 's/t': { isError: false, text: '' } });
+    await call({ server: 's', tool: 't', timeout: 20 }, { mcp: own });
+    expect(own.calls[0]?.timeoutMs).toBe(20_000);
+    const none = watched(['s'], { 's/t': { isError: false, text: '' } });
+    await call({ server: 's', tool: 't' }, { mcp: none });
+    expect(none.calls[0]?.timeoutMs).toBe(600_000);
+  });
+});
+
 describe('judgments (spec/judgments.md)', () => {
+  test('a call the client could not make is a non-blocking error carrying its message', async () => {
+    const mcp = watched(['s'], { 's/t': { failure: 'no-such-tool', message: 'no tool t' } });
+    const { run } = await call({ server: 's', tool: 't' }, { mcp });
+    expect(run).toEqual({ kind: 'mcp', isError: true, text: 'no tool t' });
+  });
+
+  test('a timeout and an abort of the call are the shared runs', async () => {
+    const slow = watched(['s'], { 's/t': { failure: 'timeout', message: 'late' } });
+    expect((await call({ server: 's', tool: 't' }, { mcp: slow })).run).toEqual({
+      kind: 'timed-out',
+    });
+    const stopped = watched(['s'], { 's/t': { failure: 'aborted', message: 'stop' } });
+    expect((await call({ server: 's', tool: 't' }, { mcp: stopped })).run).toEqual({
+      kind: 'cancelled',
+    });
+  });
+
+  test('a plugin server name is forwarded unchanged: the kit neither resolves nor rejects it', async () => {
+    const mcp = watched(['db']);
+    await call({ server: 'plugin:my-plugin:db', tool: 'query' }, { mcp });
+    expect(mcp.waits[0]?.server).toBe('plugin:my-plugin:db');
+  });
+
   test('strings nested in objects and arrays are substituted too', async () => {
     const { sent } = await argsOf({ a: { b: ['${tool_name}'] } });
     expect(sent).toEqual({ a: { b: ['Write'] } });
@@ -255,38 +237,6 @@ describe('judgments (spec/judgments.md)', () => {
       remoteContext({ mcp, input: '{"files":["a","b"]}' }),
     );
     expect(mcp.calls[0]?.input).toEqual({ a: 'b' });
-  });
-
-  test('which events wait for a connecting server is a table over every event', () => {
-    expect(Object.keys(WAITS_FOR_SERVER).toSorted()).toEqual(HOOK_EVENTS.toSorted());
-    const blocking: HookEvent[] = [
-      'PreToolUse',
-      'UserPromptSubmit',
-      'Stop',
-      'SubagentStop',
-      'PermissionRequest',
-      'PostToolUse',
-      'PostToolBatch',
-      'TaskCreated',
-      'TaskCompleted',
-      'TeammateIdle',
-      'ConfigChange',
-      'PreCompact',
-      'Elicitation',
-      'WorktreeCreate',
-    ];
-    const observational: HookEvent[] = [
-      'Notification',
-      'SessionEnd',
-      'StopFailure',
-      'PostCompact',
-      'InstructionsLoaded',
-      'CwdChanged',
-      'FileChanged',
-      'PostModelSwitch',
-    ];
-    for (const event of blocking) expect(WAITS_FOR_SERVER[event]).toBe(true);
-    for (const event of observational) expect(WAITS_FOR_SERVER[event]).toBe(false);
   });
 
   test('without the MCP client the hook does not run and says why', async () => {

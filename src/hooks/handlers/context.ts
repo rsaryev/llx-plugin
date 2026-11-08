@@ -2,6 +2,7 @@ import type { PluginIssue } from '../../format/issues.ts';
 import type { ResolvedUserConfig } from '../../loading/resolve/index.ts';
 import type {
   CommandRunner,
+  Clock,
   Environment,
   HttpClient,
   Locations,
@@ -11,6 +12,7 @@ import type {
 } from '../../ports/index.ts';
 import type { HookHandlerOf, HookHandlerType } from '../../protocol/hook-config.ts';
 import type { RegisteredHandler } from '../contracts.ts';
+import type { HttpHookPolicy } from './remote/http-policy.ts';
 import type { RemoteRawRun } from './remote/types.ts';
 import type { StartObserver } from './status.ts';
 import type { TimeoutPlan } from './timeouts.ts';
@@ -33,6 +35,11 @@ export interface RunPorts {
   readonly mcp?: McpCaller;
   /** `prompt` and `agent` hooks (hooks.md, "Prompt-based hooks" and "Agent-based hooks"). */
   readonly models?: ModelRunner;
+  /**
+   * Time: an `mcp_tool` hook subtracts the time it waited for its server from the timeout of the
+   * call, so the wait and the call share one `timeout`. Without it the call keeps the whole one.
+   */
+  readonly clock?: Clock;
 }
 
 export interface RunContext {
@@ -55,6 +62,8 @@ export interface RunContext {
   /** The saved options of a plugin, for `${user_config.*}` and `CLAUDE_PLUGIN_OPTION_<KEY>`. */
   readonly userConfigOf?: (pluginId: string) => ResolvedUserConfig;
   readonly timeouts: TimeoutPlan;
+  /** The merged `allowedHttpHookUrls` and `httpHookAllowedEnvVars` of the settings; unset: no limit. */
+  readonly httpPolicy?: HttpHookPolicy;
   readonly signal: AbortSignal;
 }
 

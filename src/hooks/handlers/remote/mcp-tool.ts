@@ -1,6 +1,6 @@
-import type { Environment, McpCaller } from '../../../ports/index.ts';
+import type { Clock, Environment, McpCaller } from '../../../ports/index.ts';
 import type { HookEvent } from '../../../protocol/official.ts';
-import type { HandlerEntry, HandlerResult, RunContext } from '../context.ts';
+import type { HandlerEntry, HandlerResult, RawRun, RunContext } from '../context.ts';
 import { handlerTimeoutMs } from '../timeouts.ts';
 import { failureRun, remotePath, withoutPort } from './failure-run.ts';
 import { substituteInput } from './mcp-input.ts';
@@ -77,6 +77,49 @@ function waitMs(entry: HandlerEntry<'mcp_tool'>, context: RunContext, hookMs: nu
   return hookMs === undefined ? limit : Math.min(limit, hookMs);
 }
 
+/** The hook's `timeout` (none: unlimited) and the clock reading when the hook started. */
+interface Budget {
+  readonly hookMs: number | undefined;
+  readonly startedAt: number;
+}
+
+/**
+ * What ends the hook before the tool is called, or `undefined` when the call goes ahead: a session
+ * abort during the wait ("aborted" is the shared `cancelled` run; the port can only answer
+ * `unavailable`), a server that is not connected ("the hook produces a non-blocking error"), or a
+ * wait that used up the hook's `timeout`.
+ */
+async function endedBeforeCall(
+  entry: HandlerEntry<'mcp_tool'>,
+  context: RunContext,
+  client: McpCaller,
+  budget: Budget,
+): Promise<RawRun | undefined> {
+  const { server, tool } = entry.handler;
+  const { hookMs, startedAt } = budget;
+  const availability = await client.ensureConnected(
+    server,
+    waitMs(entry, context, hookMs),
+    context.signal,
+  );
+  if (context.signal.aborted) return { kind: 'cancelled' };
+  if (availability === 'unavailable') {
+    const text = `The MCP server "${server}" is not connected, so the hook did not call ${tool}.`;
+    return { kind: 'mcp', isError: true, text };
+  }
+  const left = leftMs(hookMs, startedAt, context.ports.clock);
+  return left !== undefined && left <= 0 ? { kind: 'timed-out' } : undefined;
+}
+
+/**
+ * What is left of the hook's `timeout` for the call, "within the hook's own `timeout`" being the
+ * wait and the call together. Judgment (spec/judgments.md): a host with no `clock` leaves the call
+ * the whole `timeout`, so the wait may add to it.
+ */
+function leftMs(hookMs: number | undefined, startedAt: number, clock: Clock | undefined) {
+  return hookMs === undefined || clock === undefined ? hookMs : hookMs - (clock.now() - startedAt);
+}
+
 export async function runMcpTool(
   entry: HandlerEntry<'mcp_tool'>,
   context: RunContext,
@@ -85,23 +128,16 @@ export async function runMcpTool(
   if (client === undefined) return withoutPort(entry, 'mcp_tool', 'McpCaller');
   const { server, tool } = entry.handler;
   const hookMs = handlerTimeoutMs(entry, context.timeouts);
-  const availability = await client.ensureConnected(
-    server,
-    waitMs(entry, context, hookMs),
-    context.signal,
-  );
-  if (availability === 'unavailable') {
-    // "If the server isn't connected at that point, the hook produces a non-blocking error."
-    const text = `The MCP server "${server}" is not connected, so the hook did not call ${tool}.`;
-    return { run: { kind: 'mcp', isError: true, text }, issues: [] };
-  }
+  const budget = { hookMs, startedAt: context.ports.clock?.now() ?? 0 };
+  const ended = await endedBeforeCall(entry, context, client, budget);
+  if (ended !== undefined) return { run: ended, issues: [] };
   const args = substituteInput(entry.handler.input, context.input, remotePath(entry, 'input'));
-  // Judgment: no clock, so the call keeps the hook's whole timeout; the wait above is capped by it.
+  const timeoutMs = leftMs(hookMs, budget.startedAt, context.ports.clock);
   const answer = await client.callTool({
     server,
     tool,
     input: args.input,
-    ...(hookMs === undefined ? {} : { timeoutMs: hookMs }),
+    ...(timeoutMs === undefined ? {} : { timeoutMs }),
     signal: context.signal,
   });
   const run =

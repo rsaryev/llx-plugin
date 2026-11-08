@@ -64,10 +64,8 @@ spec(['hooks.handler.prompt.prompt'], () => {
   });
 
   test('without $ARGUMENTS the input JSON is appended to the prompt', () => {
-    const text = composePrompt('Block any Bash command that reads `.env` files', INPUT);
-    expect(text.startsWith('Block any Bash command that reads `.env` files')).toBe(true);
-    expect(text.endsWith(INPUT)).toBe(true);
-    expect(text).toContain(INPUT);
+    const prompt = 'Block any Bash command that reads `.env` files';
+    expect(composePrompt(prompt, INPUT)).toBe(`${prompt}\n\n${INPUT}`);
   });
 
   test('the input is inserted as it is: a $ARGUMENTS or \\$ inside it is not read again', () => {
@@ -152,24 +150,26 @@ describe('the response schema', () => {
     expect((await run('agent', { prompt: 'p' })).call?.prompt).not.toContain('impossible');
   });
 
-  test('ok: false without the required reason is no verdict', async () => {
-    for (const text of ['{"ok":false}', '{"ok":false,"reason":"  "}']) {
-      expect((await run('prompt', { prompt: 'p' }, { text })).result.run.kind).toBe('model-failed');
-    }
-  });
+  for (const type of TYPES) {
+    test(`ok: false without the required reason is no verdict, for a ${type} hook`, async () => {
+      for (const text of ['{"ok":false}', '{"ok":false,"reason":"  "}']) {
+        expect((await run(type, { prompt: 'p' }, { text })).result.run.kind).toBe('model-failed');
+      }
+    });
 
-  test('a reply that is not the schema is no verdict: prose, a wrong type, an array, empty', async () => {
-    for (const text of [
-      'Sure, all good.',
-      '{"ok":"yes"}',
-      '{"allow":true}',
-      '[true]',
-      '',
-      '{"ok":true',
-    ]) {
-      expect((await run('prompt', { prompt: 'p' }, { text })).result.run.kind).toBe('model-failed');
-    }
-  });
+    test(`a reply that is not the schema is no verdict for a ${type} hook: prose, a wrong type, an array, empty`, async () => {
+      for (const text of [
+        'Sure, all good.',
+        '{"ok":"yes"}',
+        '{"allow":true}',
+        '[true]',
+        '',
+        '{"ok":true',
+      ]) {
+        expect((await run(type, { prompt: 'p' }, { text })).result.run.kind).toBe('model-failed');
+      }
+    });
+  }
 
   test('a reply in one code fence is read as the JSON inside', async () => {
     const { result } = await run('prompt', { prompt: 'p' }, { text: '```json\n{"ok":true}\n```' });

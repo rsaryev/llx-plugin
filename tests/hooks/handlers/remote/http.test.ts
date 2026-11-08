@@ -4,7 +4,8 @@
  * environment variable interpolation using `$VAR_NAME` or `${VAR_NAME}` syntax. Only variables
  * listed in `allowedEnvVars` are resolved"; "References to unlisted variables are replaced with
  * empty strings. Required for any env var interpolation to work") and § "HTTP response handling"
- * (raw only: what a status or a body means is the interpreter's, P5). `onFailure` is P5's.
+ * (raw only: what a status or a body means is the interpreter's, P5). `onFailure` is P5's. The
+ * hook `timeout` reaching the port is proven under `hooks.handler.common.timeout`.
  * Rows outside `spec(...)` are judgments (spec/judgments.md).
  */
 import { describe, expect, test } from 'bun:test';
@@ -43,39 +44,11 @@ spec('hooks.handler.http.url', () => {
     expect(request?.headers['content-type']).toBe('application/json');
   });
 
-  test('the url is sent as written: only headers interpolate variables', async () => {
-    const { request } = await post(
-      { url: 'http://localhost:8080/$MY_TOKEN/${MY_TOKEN}', allowedEnvVars: ['MY_TOKEN'] },
-      { MY_TOKEN: 'secret' },
-    );
-    expect(request?.url).toBe('http://localhost:8080/$MY_TOKEN/${MY_TOKEN}');
-  });
-
-  test('the hook timeout reaches the port in milliseconds, 600 s by default', async () => {
-    const own = await post({ url: 'http://h/x', timeout: 30 });
-    expect(own.request?.timeoutMs).toBe(30_000);
-    const none = await post({ url: 'http://h/x' });
-    expect(none.request?.timeoutMs).toBe(600_000);
-  });
-
   test('a response is reported raw: status and body, nothing interpreted', async () => {
     const ok = await post({ url: 'http://h/x' }, {}, { status: 200, body: '{"decision":"block"}' });
     expect(ok.result.run).toEqual({ kind: 'http', status: 200, body: '{"decision":"block"}' });
     const refused = await post({ url: 'http://h/x' }, {}, { status: 503, body: 'down' });
     expect(refused.result.run).toEqual({ kind: 'http', status: 503, body: 'down' });
-  });
-
-  test('a connection failure, a timeout and an abort are runs, never throws', async () => {
-    const down = await post(
-      { url: 'http://h/x' },
-      {},
-      { failure: 'connection', message: 'refused' },
-    );
-    expect(down.result.run).toEqual({ kind: 'http-failed', message: 'refused' });
-    const slow = await post({ url: 'http://h/x' }, {}, { failure: 'timeout', message: 'late' });
-    expect(slow.result.run).toEqual({ kind: 'timed-out' });
-    const stopped = await post({ url: 'http://h/x' }, {}, { failure: 'aborted', message: 'stop' });
-    expect(stopped.result.run).toEqual({ kind: 'cancelled' });
   });
 });
 
@@ -158,7 +131,36 @@ spec('hooks.handler.http.allowedEnvVars', () => {
   });
 });
 
+spec('hooks.handler.common.timeout', () => {
+  test('an http hook timeout reaches the port in milliseconds, 600 s by default', async () => {
+    const own = await post({ url: 'http://h/x', timeout: 30 });
+    expect(own.request?.timeoutMs).toBe(30_000);
+    const none = await post({ url: 'http://h/x' });
+    expect(none.request?.timeoutMs).toBe(600_000);
+  });
+});
+
 describe('judgments (spec/judgments.md)', () => {
+  test('the url is sent as written: only headers interpolate variables', async () => {
+    const { request } = await post(
+      { url: 'http://localhost:8080/$MY_TOKEN/${MY_TOKEN}', allowedEnvVars: ['MY_TOKEN'] },
+      { MY_TOKEN: 'secret' },
+    );
+    expect(request?.url).toBe('http://localhost:8080/$MY_TOKEN/${MY_TOKEN}');
+  });
+
+  test('a connection failure, a timeout and an abort are the shared runs, never throws', async () => {
+    const down = await post(
+      { url: 'http://h/x' },
+      {},
+      { failure: 'connection', message: 'refused' },
+    );
+    expect(down.result.run).toEqual({ kind: 'http-failed', message: 'refused' });
+    const slow = await post({ url: 'http://h/x' }, {}, { failure: 'timeout', message: 'late' });
+    expect(slow.result.run).toEqual({ kind: 'timed-out' });
+    const stopped = await post({ url: 'http://h/x' }, {}, { failure: 'aborted', message: 'stop' });
+    expect(stopped.result.run).toEqual({ kind: 'cancelled' });
+  });
   test('the kit sets Content-Type: a header of the same name in the config does not replace it', async () => {
     const { request } = await post({
       url: 'http://h/x',

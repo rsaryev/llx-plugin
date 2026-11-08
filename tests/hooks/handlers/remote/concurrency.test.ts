@@ -119,7 +119,7 @@ describe('at most 12 prompt or agent hooks at once', () => {
     expect(await done).toHaveLength(5);
   });
 
-  test("a waiting hook's timeout starts when it starts: its request carries the whole timeout", async () => {
+  test('a hook that waited for a slot still sends its whole timeout once it starts', async () => {
     const requests: ModelRequest[] = [];
     const releases: ((answer: ModelAnswer) => void)[] = [];
     const models: ModelRunner = {

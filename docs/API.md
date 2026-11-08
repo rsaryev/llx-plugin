@@ -202,7 +202,7 @@ const { selected, issues, monitor } = selectHandlers(registry, {
 | `runHandler(entry, context)`               | done    | runs one handler and returns `{ run, issues }`: a `command` hook in exec form or shell form, in the foreground or the background; an `http`, `mcp_tool`, `prompt` or `agent` hook through its port (`http`, `mcp`, `models` of the run ports) |
 | `planTimeouts(event, selected, environment)`, `handlerTimeoutMs(entry, plan)` | done | the limit in milliseconds the port enforces: defaults 600/600/600/30/60, lowered per event, none for `async`, the shared `SessionEnd` budget |
 | `okFalseEffect(event, run, options)`, `isPromptEvent(event)` | done | what `ok: false` of a prompt or agent hook does on each of the 13 events that run them: `none`, `allow-stop` (`impossible` on `Stop` and `SubagentStop`), or `block` with `endsTurn`, `delivery` and `deniesTool`; `continueOnBlock`, agent hooks and the two causes of `TaskCompleted` |
-| `runLimited(entries, run, limit?)`, `composePrompt(prompt, inputJson)` | done | at most 12 prompt or agent hooks at once, results in handler order; `$ARGUMENTS` and `\$` of a prompt |
+| `runLimited(entries, run, limit?)`, `composePrompt(prompt, inputJson)` | done | at most 12 prompt or agent hooks at once, results in handler order; `$ARGUMENTS` and `\$` of a prompt. `runHandler` calls neither `runLimited` nor `okFalseEffect`: the interpreter and engine (planned) do, and until they exist a host calls them itself |
 | `interpretRun`, `parseHookOutput`, `mergeOutputs`, `createHookEngine` | planned | exit codes and `onFailure`, the JSON output, the merged outcome |
 
 Selection also applies the gates of hooks.md: `disableAllHooks` (managed hooks survive it unless the
@@ -232,9 +232,11 @@ schema); a timeout and an abort are the shared `timed-out` and `cancelled`. A ho
 did not give is `skipped` with an error issue. The run ports are `http` (`HttpClient`), `mcp`
 (`McpCaller`) and `models` (`ModelRunner`). An `http` hook interpolates `$VAR` and `${VAR}` in header
 values only for the names in `allowedEnvVars`; an `mcp_tool` hook waits for a connecting server only on
-events that can block or change a result (`MCP_TIMEOUT`, 30 s, within the hook timeout). Enforcing
-`allowedHttpHookUrls` and `httpHookAllowedEnvVars` (settings) is the host's or the settings stream's: the
-run does not read them.
+events that can block or change a result (`MCP_TIMEOUT`, 30 s, within the hook timeout: with the
+optional `ports.clock` the call gets what the wait left, and an abort during the wait is `cancelled`).
+`RunContext.httpPolicy` carries the merged `allowedHttpHookUrls` (a hook whose URL matches no pattern
+is `skipped` with a warning) and `httpHookAllowedEnvVars` (a header variable needs both lists); the
+settings stream reads and merges the two keys, the host passes the result.
 
 `buildHookInput` puts `session_id`, `prompt_id` (absent until the first prompt), `transcript_path`,
 `cwd`, `scratchpad_dir` (absent without a scratchpad), `permission_mode` and `effort` (on the events

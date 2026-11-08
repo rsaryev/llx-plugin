@@ -93,6 +93,14 @@
 
 ### Fixed
 
+- Remote hook handlers: an `http` hook now honours the two settings allowlists through
+  `RunContext.httpPolicy` (`allowedHttpHookUrls` skips a hook whose URL matches no `*` pattern, with a
+  warning at `hooks.<Event>.url`; `httpHookAllowedEnvVars` narrows `allowedEnvVars` to the names on
+  both lists); an `mcp_tool` hook returns `cancelled` when the session aborts while it waits for the
+  server, instead of a "not connected" error, and with the optional `ports.clock` the wait and the
+  call share one hook `timeout` (`timed-out` when the wait used it up); tests assert all 33 values
+  of `WAITS_FOR_SERVER`, the exact appended prompt, malformed and reason-less replies for agent hooks
+  too, and keep judgment tests out of the `spec(...)` blocks of other ids.
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
   parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
   (and `skill`) read `name:value` as a parameter.

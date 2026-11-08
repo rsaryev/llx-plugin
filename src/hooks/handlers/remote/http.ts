@@ -1,8 +1,9 @@
 import type { HttpClient } from '../../../ports/index.ts';
 import type { HandlerEntry, HandlerResult, RunContext } from '../context.ts';
 import { handlerTimeoutMs } from '../timeouts.ts';
-import { failureRun, withoutPort } from './failure-run.ts';
+import { failureRun, remotePath, withoutPort } from './failure-run.ts';
 import { interpolateHeaders } from './http-env.ts';
+import { blockedUrlIssue, permittedEnvVars, urlAllowed } from './http-policy.ts';
 
 /**
  * An `http` hook (hooks.md, "HTTP hook fields"): "Claude Code sends the hook's JSON input as the
@@ -19,13 +20,22 @@ export async function runHttp(
   const client: HttpClient | undefined = context.ports.http;
   if (client === undefined) return withoutPort(entry, 'http', 'HttpClient');
   const { url, headers, allowedEnvVars } = entry.handler;
+  const { httpPolicy } = context;
+  if (!urlAllowed(url, httpPolicy?.allowedUrls)) {
+    const issue = blockedUrlIssue(remotePath(entry, 'url'), url);
+    return { run: { kind: 'skipped', reason: issue.message }, issues: [issue] };
+  }
   const timeoutMs = handlerTimeoutMs(entry, context.timeouts);
   const answer = await client.request({
     method: 'POST',
     url,
     // Judgment: the kit's Content-Type wins over one a config sets.
     headers: {
-      ...interpolateHeaders(headers, allowedEnvVars, context.ports.environment),
+      ...interpolateHeaders(
+        headers,
+        permittedEnvVars(allowedEnvVars, httpPolicy),
+        context.ports.environment,
+      ),
       ...JSON_TYPE,
     },
     body: context.input,

@@ -1,6 +1,12 @@
 /** Helpers for the tests of the remote handlers (hooks/handlers/remote). */
 import type { HandlerEntry, RunContext } from '../../src/hooks/handlers/index.ts';
-import type { Environment, HttpClient, McpCaller, ModelRunner } from '../../src/ports/index.ts';
+import type {
+  Clock,
+  Environment,
+  HttpClient,
+  McpCaller,
+  ModelRunner,
+} from '../../src/ports/index.ts';
 import type { HookHandlerOf } from '../../src/protocol/hook-config.ts';
 import type { HookEvent } from '../../src/protocol/official.ts';
 import { entry } from './hooks-select.ts';
@@ -36,6 +42,8 @@ export interface RemoteOptions {
   readonly input?: string;
   readonly timeouts?: RunContext['timeouts'];
   readonly signal?: AbortSignal;
+  readonly clock?: Clock;
+  readonly httpPolicy?: RunContext['httpPolicy'];
 }
 
 /** A run context whose ports are the remote ones; the command runner is never called. */
@@ -49,11 +57,13 @@ export function remoteContext(options: RemoteOptions): RunContext {
   return {
     ...base,
     ...(options.signal === undefined ? {} : { signal: options.signal }),
+    ...(options.httpPolicy === undefined ? {} : { httpPolicy: options.httpPolicy }),
     ports: {
       ...base.ports,
       ...(options.http === undefined ? {} : { http: options.http }),
       ...(options.mcp === undefined ? {} : { mcp: options.mcp }),
       ...(options.models === undefined ? {} : { models: options.models }),
+      ...(options.clock === undefined ? {} : { clock: options.clock }),
     },
   };
 }
