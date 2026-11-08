@@ -108,6 +108,9 @@ reference, workflows, terminal configuration, output styles and channels).
   `spec/out-of-scope.json` lists every excluded section with its page and its reason, so each
   exclusion is a decision about that section; `check:spec` (SP6) refuses a reason this table
   does not explain.
+- Mixed native settings, environment and CLI tables also record rejected rows in that file as
+  `section — row`. A row admitted by any table rule is never listed as excluded by another rule.
+  The explicit foreign-row classifications are in `scripts/spec/row-scope.ts`.
 - Ids carry the heading's text and, for items, a short label; never a sentence of the docs.
 
 | Reason | Why a section is out of scope | Example |
@@ -121,7 +124,7 @@ reference, workflows, terminal configuration, output styles and channels).
 | `telemetry` | Claude Code's own telemetry and analytics pipelines. | OpenTelemetry events |
 | `builtin` | What ships inside Claude Code, not how plugins load. | Bundled skills, Built-in output styles |
 | `model` | Model-side machinery: the auto mode classifier, tool search, prompt caching. | Server-side classifier review |
-| `tooling` | A Claude Code developer tool a host has no use for. | plugin eval, the mods test kit |
+| `tooling` | A Claude Code authoring or test tool a host has no use for. | plugin init, plugin eval, the mods test runner |
 | `machine` | The user's shell, terminal, git or network setup. | zsh: no such file or directory: /plugin |
 | `runtime` | Claude Code's own interface, sandbox, model and account settings and MCP client runtime (connections, reconnection, timeouts, tasks); a host brings its own. | sandbox.*, Automatic reconnection |
 | `duplicate` | Restates a rule a requirement already covers. | A settings key whose index row is a requirement |
@@ -140,11 +143,18 @@ no longer exists or is also audited, when a reason is unknown (docs/SPEC.md must
 when a `duplicate` names a page that is not audited. A page that appears in a new release therefore
 stops the gate until someone reads it and decides.
 
-A page is **audited** when it documents behaviour a plugin host reproduces: plugins and their
-components, hooks, skills, commands, subagents and teams, MCP servers, settings and managed policy
-that affect them, memory files hooks observe, worktrees, status lines, headless and CLI flags,
-model aliases agents and skills name, and the Agent SDK pages on plugins, hooks, skills, subagents,
-permissions, MCP and Claude Code features. A page is excluded when it is about something else:
+A page is **audited** when it documents a plugin-host contract: plugin component formats and
+discovery, installation and updates, hooks, skill expansion, agent catalogs and restrictions,
+MCP/LSP descriptors, monitors, channels, mods, permissions, and settings or policy affecting those
+components. Plugin validation and the plugin lifecycle's command/result formats remain included.
+The mods UI is an extension protocol and stays included; native application UI does not.
+
+The owner approved this boundary rather than reimplementing the Claude Code application. The
+page-by-page and partial-page decisions are in `spec/scope-audit.md`. The host supplies its model,
+agent scheduler, MCP/LSP clients, memory, native UI and effect ports. Official SDK shapes remain
+authoritative, but the SDK client's query/session APIs are not this library's API. Exclusions are
+chosen from the documented contract, never by inspecting which requirements already have tests.
+A page is excluded when it is about something else:
 
 | Reason | Why a page is out of scope | Example |
 | --- | --- | --- |

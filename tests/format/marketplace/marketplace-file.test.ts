@@ -94,65 +94,71 @@ spec('marketplace.field.owner', () => {
   });
 });
 
-spec('marketplace.field.plugins', () => {
-  test('is required: a file without it does not load', () => {
-    const result = read(withFields({ plugins: undefined }));
-    expect(result.marketplace).toBeUndefined();
-    expect(result.issues).toContainEqual({
-      severity: 'error',
-      path: 'plugins',
-      message: expect.stringContaining('Invalid input'),
+spec(
+  [
+    'marketplace.field.plugins',
+    'marketplace.troubleshooting.Marketplace validation errors.Marketplace has no plugins defined',
+  ],
+  () => {
+    test('is required: a file without it does not load', () => {
+      const result = read(withFields({ plugins: undefined }));
+      expect(result.marketplace).toBeUndefined();
+      expect(result.issues).toContainEqual({
+        severity: 'error',
+        path: 'plugins',
+        message: expect.stringContaining('Invalid input'),
+      });
     });
-  });
 
-  test('anything but an array does not load', () => {
-    for (const plugins of [{}, 'one', 3, null]) {
-      expect(read(withFields({ plugins })).marketplace).toBeUndefined();
-    }
-  });
+    test('anything but an array does not load', () => {
+      for (const plugins of [{}, 'one', 3, null]) {
+        expect(read(withFields({ plugins })).marketplace).toBeUndefined();
+      }
+    });
 
-  test('each entry is handed on alone, in order, with its index', () => {
-    const reader = recordingEntryReader();
-    const plugins = [{ name: 'a' }, { name: 'b' }, { name: 'c' }];
-    const result = readMarketplace(withFields({ plugins }), {}, reader.read);
-    expect(result.marketplace?.plugins.map((entry) => entry.name)).toEqual(['a', 'b', 'c']);
-    expect(reader.slots.map((slot) => slot.index)).toEqual([0, 1, 2]);
-  });
+    test('each entry is handed on alone, in order, with its index', () => {
+      const reader = recordingEntryReader();
+      const plugins = [{ name: 'a' }, { name: 'b' }, { name: 'c' }];
+      const result = readMarketplace(withFields({ plugins }), {}, reader.read);
+      expect(result.marketplace?.plugins.map((entry) => entry.name)).toEqual(['a', 'b', 'c']);
+      expect(reader.slots.map((slot) => slot.index)).toEqual([0, 1, 2]);
+    });
 
-  test('one invalid entry does not fail the marketplace: it is dropped, the rest load, the error is reported', () => {
-    const plugins = [{ name: 'a' }, { name: 'bad' }, { name: 'c' }];
-    const result = read(withFields({ plugins }));
-    expect(result.marketplace?.plugins.map((entry) => entry.name)).toEqual(['a', 'c']);
-    expect(result.issues).toEqual([
-      { severity: 'error', path: 'plugins[1]', message: 'invalid entry' },
-    ]);
-    expect(validate(withFields({ plugins }))).toEqual([...result.issues]);
-  });
+    test('one invalid entry does not fail the marketplace: it is dropped, the rest load, the error is reported', () => {
+      const plugins = [{ name: 'a' }, { name: 'bad' }, { name: 'c' }];
+      const result = read(withFields({ plugins }));
+      expect(result.marketplace?.plugins.map((entry) => entry.name)).toEqual(['a', 'c']);
+      expect(result.issues).toEqual([
+        { severity: 'error', path: 'plugins[1]', message: 'invalid entry' },
+      ]);
+      expect(validate(withFields({ plugins }))).toEqual([...result.issues]);
+    });
 
-  test('an empty array loads with the warning "Marketplace has no plugins defined"', () => {
-    const result = read(withFields({ plugins: [] }));
-    expect(result.marketplace?.plugins).toEqual([]);
-    expect(result.issues).toEqual([
-      { severity: 'warning', path: 'plugins', message: 'Marketplace has no plugins defined' },
-    ]);
-  });
+    test('an empty array loads with the warning "Marketplace has no plugins defined"', () => {
+      const result = read(withFields({ plugins: [] }));
+      expect(result.marketplace?.plugins).toEqual([]);
+      expect(result.issues).toEqual([
+        { severity: 'warning', path: 'plugins', message: 'Marketplace has no plugins defined' },
+      ]);
+    });
 
-  test('an entry that is not an object reaches the entry reader like any other', () => {
-    const reader = recordingEntryReader();
-    readMarketplace(withFields({ plugins: ['./plugins/a', null] }), {}, reader.read);
-    expect(reader.slots).toHaveLength(2);
-  });
+    test('an entry that is not an object reaches the entry reader like any other', () => {
+      const reader = recordingEntryReader();
+      readMarketplace(withFields({ plugins: ['./plugins/a', null] }), {}, reader.read);
+      expect(reader.slots).toHaveLength(2);
+    });
 
-  test('metadata.pluginRoot goes to the entry reader with every entry', () => {
-    const reader = recordingEntryReader();
-    readMarketplace(
-      withFields({ metadata: { pluginRoot: './plugins' }, plugins: [{ name: 'a' }] }),
-      {},
-      reader.read,
-    );
-    expect(reader.slots).toEqual([{ index: 0, pluginRoot: './plugins' }]);
-  });
-});
+    test('metadata.pluginRoot goes to the entry reader with every entry', () => {
+      const reader = recordingEntryReader();
+      readMarketplace(
+        withFields({ metadata: { pluginRoot: './plugins' }, plugins: [{ name: 'a' }] }),
+        {},
+        reader.read,
+      );
+      expect(reader.slots).toEqual([{ index: 0, pluginRoot: './plugins' }]);
+    });
+  },
+);
 
 spec('marketplace.field.$schema', () => {
   const without = withFields({ $schema: undefined });
@@ -192,23 +198,29 @@ describe('top-level keys Claude Code does not read', () => {
   });
 });
 
-spec('marketplace.field.forceRemoveDeletedPlugins', () => {
-  test('is a boolean that defaults to false and is carried when set', () => {
-    expect(read(docMarketplace()).marketplace?.forceRemoveDeletedPlugins).toBe(false);
-    for (const value of [true, false]) {
-      const set = read(withFields({ forceRemoveDeletedPlugins: value })).marketplace;
-      expect(set?.forceRemoveDeletedPlugins).toBe(value);
-    }
-  });
+spec(
+  [
+    'marketplace.field.forceRemoveDeletedPlugins',
+    "marketplace.hosting.Work around what a marketplace can't do.Mark a plugin deprecated",
+  ],
+  () => {
+    test('is a boolean that defaults to false and is carried when set', () => {
+      expect(read(docMarketplace()).marketplace?.forceRemoveDeletedPlugins).toBe(false);
+      for (const value of [true, false]) {
+        const set = read(withFields({ forceRemoveDeletedPlugins: value })).marketplace;
+        expect(set?.forceRemoveDeletedPlugins).toBe(value);
+      }
+    });
 
-  test('a value of another type is an issue about this field and does not turn removal on', () => {
-    const result = read(withFields({ forceRemoveDeletedPlugins: 'true' }));
-    expect(result.issues).toContainEqual(
-      expect.objectContaining({ path: 'forceRemoveDeletedPlugins' }),
-    );
-    expect(result.marketplace?.forceRemoveDeletedPlugins ?? false).toBe(false);
-  });
-});
+    test('a value of another type is an issue about this field and does not turn removal on', () => {
+      const result = read(withFields({ forceRemoveDeletedPlugins: 'true' }));
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({ path: 'forceRemoveDeletedPlugins' }),
+      );
+      expect(result.marketplace?.forceRemoveDeletedPlugins ?? false).toBe(false);
+    });
+  },
+);
 
 describe('the other top-level keys (read as typed values; their rules belong to renames and removal)', () => {
   test('forceRemoveDeletedPlugins, allowCrossMarketplaceDependenciesOn and renames default and are carried', () => {

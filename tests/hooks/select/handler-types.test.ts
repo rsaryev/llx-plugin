@@ -12,7 +12,7 @@ import { HOOK_HANDLER_TYPES } from '../../../src/protocol/hook-config.ts';
 import { spec } from '../../support/spec.ts';
 import { entry, FACTS, HANDLERS, select } from '../../support/hooks-select.ts';
 
-spec('hooks.handler.common.type', () => {
+spec(['hooks.handler.common.type', 'hooks.behavior.Hook handler fields'], () => {
   test('each type runs on PreToolUse, where all five are supported', () => {
     for (const type of HOOK_HANDLER_TYPES) {
       const registered = entry('PreToolUse', { handler: HANDLERS[type] });

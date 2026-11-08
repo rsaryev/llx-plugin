@@ -64,6 +64,8 @@ export const PLUGIN_SCOPES_MORE: readonly PageScope[] = [
       },
     ],
     skip: [
+      ['When each surface applies the plugin keys', 'ui'],
+      ['Marketplaces hosted on claude.ai', 'service'],
       [/^(Audit and review|OpenTelemetry events|Analytics API)$/, 'telemetry'],
       ['Confirm the rollout', 'ui'],
       NAVIGATION,

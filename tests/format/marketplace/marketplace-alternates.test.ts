@@ -24,27 +24,33 @@ const NO_DESCRIPTION =
 const read = (raw: unknown) => readMarketplace(raw, {}, recordingEntryReader().read);
 const validate = (raw: unknown) => validateMarketplace(raw, {}, recordingEntryReader().read);
 
-spec('marketplace.field.description', () => {
-  test('is carried and is the description shown to users', () => {
-    const marketplace = read(docMarketplace()).marketplace;
-    expect(marketplace?.description).toBe('Plugins for my team');
-    expect(marketplace && effectiveDescription(marketplace)).toBe('Plugins for my team');
-  });
+spec(
+  [
+    'marketplace.field.description',
+    'marketplace.troubleshooting.Marketplace validation errors.No marketplace description provided',
+  ],
+  () => {
+    test('is carried and is the description shown to users', () => {
+      const marketplace = read(docMarketplace()).marketplace;
+      expect(marketplace?.description).toBe('Plugins for my team');
+      expect(marketplace && effectiveDescription(marketplace)).toBe('Plugins for my team');
+    });
 
-  test('"claude plugin validate" warns when it is missing, and the marketplace still loads', () => {
-    const raw = withFields({ description: undefined });
-    expect(read(raw).marketplace).toBeDefined();
-    expect(validate(raw)).toEqual([
-      { severity: 'warning', path: 'description', message: NO_DESCRIPTION },
-    ]);
-  });
+    test('"claude plugin validate" warns when it is missing, and the marketplace still loads', () => {
+      const raw = withFields({ description: undefined });
+      expect(read(raw).marketplace).toBeDefined();
+      expect(validate(raw)).toEqual([
+        { severity: 'warning', path: 'description', message: NO_DESCRIPTION },
+      ]);
+    });
 
-  test('a description that is not a string is an error', () => {
-    const result = read(withFields({ description: ['Plugins'] }));
-    expect(result.marketplace).toBeUndefined();
-    expect(errorsOf(result.issues).map((found) => found.path)).toEqual(['description']);
-  });
-});
+    test('a description that is not a string is an error', () => {
+      const result = read(withFields({ description: ['Plugins'] }));
+      expect(result.marketplace).toBeUndefined();
+      expect(errorsOf(result.issues).map((found) => found.path)).toEqual(['description']);
+    });
+  },
+);
 
 spec('marketplace.field.version', () => {
   test('is the marketplace manifest version, carried and never required', () => {

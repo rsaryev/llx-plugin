@@ -30,59 +30,66 @@ const run = (args: UpdateArguments, registered: UpdateFacts = facts) =>
 const text = (args: UpdateArguments, registered: UpdateFacts = facts) =>
   renderCommand(run(args, registered).output, { json: false });
 
-spec('cli.plugin.plugin marketplace update', () => {
-  test('refreshes the one marketplace and prints Successfully updated marketplace: <name>', () => {
-    const plan = run({ name: 'alpha' });
-    expect(plan.refresh).toEqual([{ name: 'alpha' }]);
-    expect(text({ name: 'alpha' })).toEqual({
-      stdout: ['Successfully updated marketplace: alpha'],
-      stderr: [],
-      exitCode: 0,
+spec(
+  [
+    'cli.plugin.plugin marketplace update',
+    'policy.org.Seed containers and CI.Update and remove fail',
+    "policy.troubleshooting.Marketplace '<name>' is seed-managed",
+  ],
+  () => {
+    test('refreshes the one marketplace and prints Successfully updated marketplace: <name>', () => {
+      const plan = run({ name: 'alpha' });
+      expect(plan.refresh).toEqual([{ name: 'alpha' }]);
+      expect(text({ name: 'alpha' })).toEqual({
+        stdout: ['Successfully updated marketplace: alpha'],
+        stderr: [],
+        exitCode: 0,
+      });
     });
-  });
 
-  test('with no name it refreshes every marketplace and prints a count', () => {
-    const plan = run({}, { registered: [{ name: 'alpha' }, { name: 'beta' }] });
-    expect(plan.refresh.map((target) => target.name)).toEqual(['alpha', 'beta']);
-    expect(text({}, { registered: [{ name: 'alpha' }, { name: 'beta' }] }).stdout).toEqual([
-      'Successfully updated 2 marketplaces',
-    ]);
-  });
-
-  test('refreshes listings only: no installed plugin is updated', () => {
-    expect(run({}).update).toEqual([]);
-    expect(run({ name: 'alpha' }).update).toEqual([]);
-  });
-
-  test('a marketplace added with a ref updates to the latest commit of that ref, not the default branch', () => {
-    expect(run({ name: 'beta' }).refresh).toEqual([{ name: 'beta', ref: 'v2' }]);
-    expect(run({ name: 'alpha' }).refresh).toEqual([{ name: 'alpha' }]);
-  });
-
-  test('without a name it refuses --json and exits 1, printing no result line', () => {
-    const rendered = renderCommand(run({ json: true }).output, { json: true });
-    expect(rendered.stdout).toEqual([]);
-    expect(rendered.exitCode).toBe(1);
-    expect(rendered.stderr[0]).toContain('--json');
-    expect(run({ json: true }).refresh).toEqual([]);
-  });
-
-  test('a marketplace that was never added answers Marketplace <name> not found and refreshes nothing', () => {
-    const plan = run({ name: 'nowhere' });
-    expect(plan.output).toMatchObject({ result: { message: "Marketplace 'nowhere' not found" } });
-    expect(plan.refresh).toEqual([]);
-  });
-
-  test('a seed-managed marketplace named fails with its directory; a bulk update skips it and updates the others', () => {
-    const named = run({ name: 'gamma' });
-    expect(named.output).toMatchObject({
-      result: { message: expect.stringContaining("Marketplace 'gamma' is seed-managed (/seed)") },
+    test('with no name it refreshes every marketplace and prints a count', () => {
+      const plan = run({}, { registered: [{ name: 'alpha' }, { name: 'beta' }] });
+      expect(plan.refresh.map((target) => target.name)).toEqual(['alpha', 'beta']);
+      expect(text({}, { registered: [{ name: 'alpha' }, { name: 'beta' }] }).stdout).toEqual([
+        'Successfully updated 2 marketplaces',
+      ]);
     });
-    expect(named.refresh).toEqual([]);
-    expect(run({}).refresh.map((target) => target.name)).toEqual(['alpha', 'beta']);
-    expect(text({}).stdout).toEqual(['Successfully updated 2 marketplaces']);
-  });
-});
+
+    test('refreshes listings only: no installed plugin is updated', () => {
+      expect(run({}).update).toEqual([]);
+      expect(run({ name: 'alpha' }).update).toEqual([]);
+    });
+
+    test('a marketplace added with a ref updates to the latest commit of that ref, not the default branch', () => {
+      expect(run({ name: 'beta' }).refresh).toEqual([{ name: 'beta', ref: 'v2' }]);
+      expect(run({ name: 'alpha' }).refresh).toEqual([{ name: 'alpha' }]);
+    });
+
+    test('without a name it refuses --json and exits 1, printing no result line', () => {
+      const rendered = renderCommand(run({ json: true }).output, { json: true });
+      expect(rendered.stdout).toEqual([]);
+      expect(rendered.exitCode).toBe(1);
+      expect(rendered.stderr[0]).toContain('--json');
+      expect(run({ json: true }).refresh).toEqual([]);
+    });
+
+    test('a marketplace that was never added answers Marketplace <name> not found and refreshes nothing', () => {
+      const plan = run({ name: 'nowhere' });
+      expect(plan.output).toMatchObject({ result: { message: "Marketplace 'nowhere' not found" } });
+      expect(plan.refresh).toEqual([]);
+    });
+
+    test('a seed-managed marketplace named fails with its directory; a bulk update skips it and updates the others', () => {
+      const named = run({ name: 'gamma' });
+      expect(named.output).toMatchObject({
+        result: { message: expect.stringContaining("Marketplace 'gamma' is seed-managed (/seed)") },
+      });
+      expect(named.refresh).toEqual([]);
+      expect(run({}).refresh.map((target) => target.name)).toEqual(['alpha', 'beta']);
+      expect(text({}).stdout).toEqual(['Successfully updated 2 marketplaces']);
+    });
+  },
+);
 
 spec('cli.plugin.JSON result for marketplace commands', () => {
   test('update --json prints command marketplace-update with the marketplace and message', () => {

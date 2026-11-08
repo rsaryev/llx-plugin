@@ -5,6 +5,7 @@
  * subagents, managed policy, updates, permissions or settings files (docs/SPEC.md).
  */
 import type { TableRule } from './sources.ts';
+import { FOREIGN_ENVIRONMENT, FOREIGN_FLAGS, PLUGIN_GLOBAL_ENV } from './row-scope.ts';
 
 const id = (prefix: string) => (): string => prefix;
 
@@ -59,20 +60,23 @@ export const EXTRA_TABLE_RULES: readonly TableRule[] = [
     page: 'env-vars.md',
     section: /^Variables$/,
     prefix: id('environment.host'),
-    where: (row) => ENV_NAME.test(key(row)),
+    where: (row) =>
+      FOREIGN_ENVIRONMENT[key(row)] === undefined &&
+      (ENV_NAME.test(key(row)) || PLUGIN_GLOBAL_ENV.has(key(row))),
+    excludedRowReason: (row) => FOREIGN_ENVIRONMENT[key(row)] ?? 'runtime',
   },
   {
     category: 'cli',
     page: 'cli-reference.md',
     section: /^CLI commands$/,
     prefix: id('cli.command'),
-    where: (row) => /plugin|mcp|agents/.test(key(row)),
+    where: (row) => key(row) === 'claude plugin',
   },
   {
     category: 'cli',
     page: 'cli-reference.md',
     section: /^CLI flags$/,
     prefix: id('cli.flag'),
-    where: (row) => FLAG_NAME.test(key(row)),
+    where: (row) => FLAG_NAME.test(key(row)) && !FOREIGN_FLAGS.has(key(row)),
   },
 ];

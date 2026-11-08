@@ -82,7 +82,7 @@ spec('mods.event.ui.message', () => {
   });
 });
 
-spec('mods.event.ui.fault', () => {
+spec(['mods.event.ui.fault', 'mods.interface.When a Client fails'], () => {
   test('a Client that failed fires ui.fault with its phase and reason, then the site is drawn once more after the hooks return', async () => {
     const { iface, calls } = fakeInterface();
     const h = await apiHarness({

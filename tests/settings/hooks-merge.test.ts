@@ -42,154 +42,167 @@ const commands = (scopes: readonly [PolicyScope, unknown][]): unknown =>
       group.hooks.map((handler) => ('command' in handler ? handler.command : handler.type)),
   );
 
-spec('settings.key.hooks', () => {
-  test('the documented example is read and merged unchanged', () => {
-    for (const scope of FILE_SCOPES) {
-      expect(plain(mergeSettingsHooks([layerOf(scope, EXAMPLE)]))).toEqual(EXAMPLE.hooks);
-    }
-  });
-
-  test('unset, no hooks run: no layer sets the key, or none at all', () => {
-    expect(mergeSettingsHooks([])).toEqual({});
-    expect(
-      mergeSettingsHooks([layerOf('user', {}), layerOf('project', { model: 'opus' })]),
-    ).toEqual({});
-  });
-
-  test('hooks of every file merge instead of replacing each other', () => {
-    const result = commands([
-      ['user', preToolUse('Bash', 'user.sh')],
-      ['project', preToolUse('Bash', 'project.sh')],
-      ['local', preToolUse('Edit', 'local.sh')],
-    ]);
-    expect(plain(result)).toEqual(expect.arrayContaining(['user.sh', 'project.sh', 'local.sh']));
-    expect(plain(result)).toHaveLength(3);
-  });
-
-  test('events of different files all stay', () => {
-    const merged = mergeSettingsHooks([
-      layerOf('user', { hooks: { Stop: [{ hooks: [commandHook('stop.sh')] }] } }),
-      layerOf('project', { hooks: { SessionStart: [{ hooks: [commandHook('start.sh')] }] } }),
-    ]);
-    expect(Object.keys(merged).toSorted()).toEqual(['SessionStart', 'Stop']);
-  });
-
-  test('every file scope the entry allows contributes: managed, --settings, local, project, user', () => {
-    for (const scope of FILE_SCOPES) {
-      expect(plain(commands([[scope, preToolUse('Bash', `${scope}.sh`)]]))).toEqual([
-        `${scope}.sh`,
-      ]);
-    }
-  });
-
-  test('user, project and local settings add hooks without removing managed ones', () => {
-    const managed = preToolUse('Bash', 'managed.sh');
-    for (const other of ['user', 'project', 'local', 'flag'] as const) {
-      const result = commands([
-        ['managed', managed],
-        [other, preToolUse('Bash', 'other.sh')],
-      ]);
-      expect(plain(result)).toContain('managed.sh');
-      expect(plain(result)).toContain('other.sh');
-    }
-  });
-
-  test('no other file can remove a managed hook: not by an empty hooks key, not by null, not by an empty event', () => {
-    const managed = preToolUse('Bash', 'managed.sh');
-    for (const attempt of [
-      { hooks: {} },
-      { hooks: null },
-      { hooks: { PreToolUse: [] } },
-      { hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [] }] } },
-    ]) {
-      for (const other of ['user', 'project', 'local', 'flag'] as const) {
-        expect(
-          plain(
-            commands([
-              [other, attempt],
-              ['managed', managed],
-            ]),
-          ),
-        ).toEqual(['managed.sh']);
+spec(
+  [
+    'settings.key.hooks',
+    'hooks.behavior.Hook locations',
+    'hooks.behavior.Hook locations..claude/settings.json',
+    'hooks.behavior.Hook locations..claude/settings.local.json',
+    'hooks.behavior.Hook locations.~/.claude/settings.json',
+    'hooks.guide.Configure hook location',
+    'hooks.behavior.Configuration',
+  ],
+  () => {
+    test('the documented example is read and merged unchanged', () => {
+      for (const scope of FILE_SCOPES) {
+        expect(plain(mergeSettingsHooks([layerOf(scope, EXAMPLE)]))).toEqual(EXAMPLE.hooks);
       }
-    }
-  });
+    });
 
-  test('every handler type of the Type line is kept: command, prompt, agent, http, mcp_tool', () => {
-    const handlers = [
-      { type: 'command', command: 'check.sh' },
-      { type: 'prompt', prompt: 'Is this safe? $ARGUMENTS' },
-      { type: 'agent', prompt: 'Verify the tests pass' },
-      { type: 'http', url: 'https://example.com/hook' },
-      { type: 'mcp_tool', server: 'memory', tool: 'save' },
-    ];
-    const merged = mergeSettingsHooks([
-      layerOf('project', { hooks: { Stop: [{ hooks: handlers }] } }),
-    ]);
-    expect(plain(merged.Stop?.[0]?.hooks)).toEqual(handlers);
-  });
+    test('unset, no hooks run: no layer sets the key, or none at all', () => {
+      expect(mergeSettingsHooks([])).toEqual({});
+      expect(
+        mergeSettingsHooks([layerOf('user', {}), layerOf('project', { model: 'opus' })]),
+      ).toEqual({});
+    });
 
-  test('the same handler under the same matcher in more than one settings file is kept once', () => {
-    const merged = mergeSettingsHooks([
-      layerOf('project', preToolUse('Bash', 'shared.sh')),
-      layerOf('user', preToolUse('Bash', 'shared.sh')),
-    ]);
-    expect(plain(merged.PreToolUse)).toEqual(preToolUse('Bash', 'shared.sh').hooks.PreToolUse);
-  });
+    test('hooks of every file merge instead of replacing each other', () => {
+      const result = commands([
+        ['user', preToolUse('Bash', 'user.sh')],
+        ['project', preToolUse('Bash', 'project.sh')],
+        ['local', preToolUse('Edit', 'local.sh')],
+      ]);
+      expect(plain(result)).toEqual(expect.arrayContaining(['user.sh', 'project.sh', 'local.sh']));
+      expect(plain(result)).toHaveLength(3);
+    });
 
-  test('different handlers of one event are not the same handler', () => {
-    expect(
-      plain(
-        commands([
-          ['project', preToolUse('Bash', 'a.sh')],
-          ['user', preToolUse('Bash', 'b.sh')],
-        ]),
-      ),
-    ).toEqual(['a.sh', 'b.sh']);
-  });
+    test('events of different files all stay', () => {
+      const merged = mergeSettingsHooks([
+        layerOf('user', { hooks: { Stop: [{ hooks: [commandHook('stop.sh')] }] } }),
+        layerOf('project', { hooks: { SessionStart: [{ hooks: [commandHook('start.sh')] }] } }),
+      ]);
+      expect(Object.keys(merged).toSorted()).toEqual(['SessionStart', 'Stop']);
+    });
 
-  test('hooks in parent settings are ignored', () => {
-    const parent = layerOf('parent', preToolUse('Bash', 'parent.sh'));
-    expect(parent.settings.hooks).toBeUndefined();
-    expect(
-      mergeSettingsHooks([parent, layerOf('user', preToolUse('Bash', 'user.sh'))]).PreToolUse,
-    ).toHaveLength(1);
-    expect(issuesOf('parent', preToolUse('Bash', 'parent.sh')).map((found) => found.path)).toEqual([
-      'parent:hooks',
-    ]);
-  });
+    test('every file scope the entry allows contributes: managed, --settings, local, project, user', () => {
+      for (const scope of FILE_SCOPES) {
+        expect(plain(commands([[scope, preToolUse('Bash', `${scope}.sh`)]]))).toEqual([
+          `${scope}.sh`,
+        ]);
+      }
+    });
 
-  test('a layer that does not carry the key is skipped even when it was built by hand', () => {
-    const hand: PolicyLayer = {
-      scope: 'parent',
-      settings: {
-        hooks: {
-          PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'parent.sh' }] }],
+    test('user, project and local settings add hooks without removing managed ones', () => {
+      const managed = preToolUse('Bash', 'managed.sh');
+      for (const other of ['user', 'project', 'local', 'flag'] as const) {
+        const result = commands([
+          ['managed', managed],
+          [other, preToolUse('Bash', 'other.sh')],
+        ]);
+        expect(plain(result)).toContain('managed.sh');
+        expect(plain(result)).toContain('other.sh');
+      }
+    });
+
+    test('no other file can remove a managed hook: not by an empty hooks key, not by null, not by an empty event', () => {
+      const managed = preToolUse('Bash', 'managed.sh');
+      for (const attempt of [
+        { hooks: {} },
+        { hooks: null },
+        { hooks: { PreToolUse: [] } },
+        { hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [] }] } },
+      ]) {
+        for (const other of ['user', 'project', 'local', 'flag'] as const) {
+          expect(
+            plain(
+              commands([
+                [other, attempt],
+                ['managed', managed],
+              ]),
+            ),
+          ).toEqual(['managed.sh']);
+        }
+      }
+    });
+
+    test('every handler type of the Type line is kept: command, prompt, agent, http, mcp_tool', () => {
+      const handlers = [
+        { type: 'command', command: 'check.sh' },
+        { type: 'prompt', prompt: 'Is this safe? $ARGUMENTS' },
+        { type: 'agent', prompt: 'Verify the tests pass' },
+        { type: 'http', url: 'https://example.com/hook' },
+        { type: 'mcp_tool', server: 'memory', tool: 'save' },
+      ];
+      const merged = mergeSettingsHooks([
+        layerOf('project', { hooks: { Stop: [{ hooks: handlers }] } }),
+      ]);
+      expect(plain(merged.Stop?.[0]?.hooks)).toEqual(handlers);
+    });
+
+    test('the same handler under the same matcher in more than one settings file is kept once', () => {
+      const merged = mergeSettingsHooks([
+        layerOf('project', preToolUse('Bash', 'shared.sh')),
+        layerOf('user', preToolUse('Bash', 'shared.sh')),
+      ]);
+      expect(plain(merged.PreToolUse)).toEqual(preToolUse('Bash', 'shared.sh').hooks.PreToolUse);
+    });
+
+    test('different handlers of one event are not the same handler', () => {
+      expect(
+        plain(
+          commands([
+            ['project', preToolUse('Bash', 'a.sh')],
+            ['user', preToolUse('Bash', 'b.sh')],
+          ]),
+        ),
+      ).toEqual(['a.sh', 'b.sh']);
+    });
+
+    test('hooks in parent settings are ignored', () => {
+      const parent = layerOf('parent', preToolUse('Bash', 'parent.sh'));
+      expect(parent.settings.hooks).toBeUndefined();
+      expect(
+        mergeSettingsHooks([parent, layerOf('user', preToolUse('Bash', 'user.sh'))]).PreToolUse,
+      ).toHaveLength(1);
+      expect(
+        issuesOf('parent', preToolUse('Bash', 'parent.sh')).map((found) => found.path),
+      ).toEqual(['parent:hooks']);
+    });
+
+    test('a layer that does not carry the key is skipped even when it was built by hand', () => {
+      const hand: PolicyLayer = {
+        scope: 'parent',
+        settings: {
+          hooks: {
+            PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'parent.sh' }] }],
+          },
         },
-      },
-    };
-    expect(mergeSettingsHooks([hand])).toEqual({});
-  });
+      };
+      expect(mergeSettingsHooks([hand])).toEqual({});
+    });
 
-  test('settings in a --add-dir directory do not carry hooks', () => {
-    expect(layerOf('addDir', preToolUse('Bash', 'dir.sh')).settings).toEqual({});
-  });
+    test('settings in a --add-dir directory do not carry hooks', () => {
+      expect(layerOf('addDir', preToolUse('Bash', 'dir.sh')).settings).toEqual({});
+    });
 
-  test('a hook that cannot load is reported and does not stop the other files', () => {
-    const broken = { hooks: { PreToolUse: [{ hooks: [{ type: 'teleport', command: 'x.sh' }] }] } };
-    const reported = issuesOf('managed', broken);
-    expect(reported.some((found) => found.severity === 'error')).toBe(true);
-    expect(reported.every((found) => found.path.startsWith('managed:hooks'))).toBe(true);
-    expect(
-      plain(
-        commands([
-          ['managed', broken],
-          ['user', preToolUse('Bash', 'user.sh')],
-        ]),
-      ),
-    ).toEqual(['user.sh']);
-  });
-});
+    test('a hook that cannot load is reported and does not stop the other files', () => {
+      const broken = {
+        hooks: { PreToolUse: [{ hooks: [{ type: 'teleport', command: 'x.sh' }] }] },
+      };
+      const reported = issuesOf('managed', broken);
+      expect(reported.some((found) => found.severity === 'error')).toBe(true);
+      expect(reported.every((found) => found.path.startsWith('managed:hooks'))).toBe(true);
+      expect(
+        plain(
+          commands([
+            ['managed', broken],
+            ['user', preToolUse('Bash', 'user.sh')],
+          ]),
+        ),
+      ).toEqual(['user.sh']);
+    });
+  },
+);
 
 describe('hooks merge: judgments (spec/judgments.md)', () => {
   test('per event the groups of the higher file come first', () => {

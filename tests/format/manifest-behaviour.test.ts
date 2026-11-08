@@ -28,7 +28,7 @@ const manifestOf = (raw: Record<string, unknown>) => {
 const merge = (entry: Record<string, unknown>, raw: Record<string, unknown>) =>
   mergeEntryWithManifest(loaded(rawEntry(entry)), manifestOf(raw));
 
-spec('manifest.field.defaultEnabled', () => {
+spec(['manifest.field.defaultEnabled', 'manifest.rule.defaultEnabled'], () => {
   const id = 'my-plugin@acme';
 
   test('a plugin with no enabledPlugins entry starts as its manifest says, and enabled when it says nothing', () => {
@@ -57,7 +57,7 @@ spec('manifest.field.defaultEnabled', () => {
   });
 });
 
-spec('manifest.field.displayName', () => {
+spec(['manifest.field.displayName', 'manifest.rule.displayName'], () => {
   test('is the name shown in place of name: users see it, and the name when it is absent', () => {
     expect(effectiveDisplayName(merge({}, { displayName: 'Deploy Tools' }))).toBe('Deploy Tools');
     expect(effectiveDisplayName(merge({}, {}))).toBe('my-plugin');

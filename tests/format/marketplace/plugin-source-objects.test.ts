@@ -22,7 +22,7 @@ const invalid = (raw: unknown): void => {
 };
 const issuesOf = (raw: unknown): readonly PluginIssue[] => parse(raw).issues;
 
-spec('marketplace.source.github', () => {
+spec(['marketplace.source.github', 'marketplace.rule.Invalid input on a source'], () => {
   test('the doc example: repo, ref and sha', () => {
     const raw = { source: 'github', repo: 'your-org/formatter', ref: 'v2.0.0', sha: SHA };
     expect(parse(raw)).toEqual({
@@ -122,7 +122,7 @@ spec('marketplace.source.git-subdir', () => {
   });
 });
 
-spec('marketplace.source.npm', () => {
+spec(['marketplace.source.npm', 'marketplace.rule.Invalid input on a source'], () => {
   test('the doc example: package, a semver range and a registry', () => {
     const raw = {
       source: 'npm',

@@ -4,6 +4,7 @@
  * something, so a page Anthropic restructures stops the extraction instead of shrinking the spec
  * silently (docs/SPEC.md).
  */
+import type { Reason } from './scope.ts';
 
 /** The categories the compatibility report scores. */
 export const CATEGORIES = [
@@ -50,6 +51,8 @@ export interface TableRule extends Base {
   readonly header?: RegExp;
   readonly prefix: (section: RegExpExecArray) => string;
   readonly where?: (row: readonly string[]) => boolean;
+  /** Why rows not admitted by any rule over the same table are outside the host contract. */
+  readonly excludedRowReason?: (row: readonly string[]) => Reason;
 }
 
 /** Each sub-heading at `level` under a section: `<prefix>.<heading text>`. */

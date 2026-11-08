@@ -94,7 +94,10 @@ spec(`install.troubleshooting.Plugin '<name>@<marketplace>' is already installed
 });
 
 spec(
-  `install.troubleshooting.Marketplace "<name>" is already added from a different source`,
+  [
+    `install.troubleshooting.Marketplace "<name>" is already added from a different source`,
+    'cli.errors.Marketplace is already added from a different source',
+  ],
   () => {
     test('names the existing source and the remove command', () => {
       expect(

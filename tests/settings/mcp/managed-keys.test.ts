@@ -42,7 +42,7 @@ describe("the four keys are policy keys with the docs' scope lines", () => {
   });
 });
 
-spec('mcpSettings.key.managedMcpServers', () => {
+spec(['mcpSettings.key.managedMcpServers', 'mcp.behavior.Managed MCP configuration'], () => {
   const entries = { search: { type: 'http', url: 'https://search.example.com/mcp' } };
 
   test('a managed layer keeps it; the docs example is an object keyed by server name', () => {

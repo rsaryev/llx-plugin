@@ -62,7 +62,7 @@ spec('skills.behavior.Load skills in monorepos and subdirectories', () => {
   });
 });
 
-describe('a live session that moves', () => {
+spec('permissions.behavior.Move the session to another directory', () => {
   const guarded = withAudit;
 
   test('the skill hooks and the `once` keys stay: a hook that ran does not run again after /cd', async () => {
@@ -116,60 +116,66 @@ describe('a live session that moves', () => {
   });
 });
 
-spec('skills.behavior.Choose where skills load.Additional directory', () => {
-  const files = {
-    [skillFile(PROJECT, 'verify')]: skillText('project verify'),
-    [skillFile('/work/cli', 'verify')]: skillText('cli verify'),
-    [skillFile('/work/docs', 'publish')]: skillText('docs publish'),
-    [`/work/docs/.claude/commands/draft.md`]: skillText('docs draft'),
-  };
+spec(
+  [
+    'skills.behavior.Choose where skills load.Additional directory',
+    'permissions.behavior.Working directories.During session',
+  ],
+  () => {
+    const files = {
+      [skillFile(PROJECT, 'verify')]: skillText('project verify'),
+      [skillFile('/work/cli', 'verify')]: skillText('cli verify'),
+      [skillFile('/work/docs', 'publish')]: skillText('docs publish'),
+      [`/work/docs/.claude/commands/draft.md`]: skillText('docs draft'),
+    };
 
-  test('/add-dir on a live session loads that directory skills and commands now, in the order added', async () => {
-    const { session } = folderHostOf(files);
-    await session.reloadSkills({ signal: signal() });
-    expect(menuOf(session)).toEqual(['verify']);
-    await session.addDirectory('/work/cli', { signal: signal() });
-    expect(menuOf(session)).toEqual(['cli:verify', 'verify']);
-    await session.addDirectory('/work/docs', { signal: signal() });
-    expect(menuOf(session)).toEqual(['cli:verify', 'draft', 'publish', 'verify']);
-  });
+    test('/add-dir on a live session loads that directory skills and commands now, in the order added', async () => {
+      const { session } = folderHostOf(files);
+      await session.reloadSkills({ signal: signal() });
+      expect(menuOf(session)).toEqual(['verify']);
+      await session.addDirectory('/work/cli', { signal: signal() });
+      expect(menuOf(session)).toEqual(['cli:verify', 'verify']);
+      await session.addDirectory('/work/docs', { signal: signal() });
+      expect(menuOf(session)).toEqual(['cli:verify', 'draft', 'publish', 'verify']);
+    });
 
-  test('adding a directory twice changes nothing', async () => {
-    const { session } = folderHostOf(files);
-    await session.addDirectory('/work/cli', { signal: signal() });
-    await session.addDirectory('/work/cli', { signal: signal() });
-    expect(menuOf(session)).toEqual(['cli:verify', 'verify']);
-  });
+    test('adding a directory twice changes nothing', async () => {
+      const { session } = folderHostOf(files);
+      await session.addDirectory('/work/cli', { signal: signal() });
+      await session.addDirectory('/work/cli', { signal: signal() });
+      expect(menuOf(session)).toEqual(['cli:verify', 'verify']);
+    });
 
-  test('the session keeps its skill hooks and once keys across /add-dir', async () => {
-    const audit = { [skillFile(PROJECT, 'audit')]: skillText('Audit', ...ONCE_HOOK) };
-    const { session, runner } = folderHostOf({ ...files, ...audit }, { runs: [{}, {}] });
-    await session.reloadSkills({ signal: signal() });
-    await session.expandSkill('audit', { signal: signal() });
-    await session.dispatch('PostToolUse', done, { signal: signal() });
-    await session.addDirectory('/work/cli', { signal: signal() });
-    await session.dispatch('PostToolUse', done, { signal: signal() });
-    expect(runner.calls).toHaveLength(1);
-  });
+    test('the session keeps its skill hooks and once keys across /add-dir', async () => {
+      const audit = { [skillFile(PROJECT, 'audit')]: skillText('Audit', ...ONCE_HOOK) };
+      const { session, runner } = folderHostOf({ ...files, ...audit }, { runs: [{}, {}] });
+      await session.reloadSkills({ signal: signal() });
+      await session.expandSkill('audit', { signal: signal() });
+      await session.dispatch('PostToolUse', done, { signal: signal() });
+      await session.addDirectory('/work/cli', { signal: signal() });
+      await session.dispatch('PostToolUse', done, { signal: signal() });
+      expect(runner.calls).toHaveLength(1);
+    });
 
-  test('a subdirectory added with /add-dir loads now, as an added directory, and a touched file does not load it again', async () => {
-    const nested = { [skillFile(`${PROJECT}/apps/web`, 'lint')]: skillText('web lint') };
-    const { session } = folderHostOf(nested);
-    await session.addDirectory(`${PROJECT}/apps/web`, { signal: signal() });
-    expect(menuOf(session)).toEqual(['lint']);
-    await session.touchFile(`${PROJECT}/apps/web/src/page.ts`, { signal: signal() });
-    await session.reloadSkills({ signal: signal() });
-    expect(menuOf(session)).toEqual(['lint']);
-  });
+    test('a subdirectory added with /add-dir loads now, as an added directory, and a touched file does not load it again', async () => {
+      const nested = { [skillFile(`${PROJECT}/apps/web`, 'lint')]: skillText('web lint') };
+      const { session } = folderHostOf(nested);
+      await session.addDirectory(`${PROJECT}/apps/web`, { signal: signal() });
+      expect(menuOf(session)).toEqual(['lint']);
+      await session.touchFile(`${PROJECT}/apps/web/src/page.ts`, { signal: signal() });
+      await session.reloadSkills({ signal: signal() });
+      expect(menuOf(session)).toEqual(['lint']);
+    });
 
-  test('a subdirectory a touched file loaded, then added, is read as an added directory only', async () => {
-    const nested = { [skillFile(`${PROJECT}/apps/web`, 'lint')]: skillText('web lint') };
-    const { session } = folderHostOf(nested);
-    await session.touchFile(`${PROJECT}/apps/web/src/page.ts`, { signal: signal() });
-    await session.addDirectory(`${PROJECT}/apps/web`, { signal: signal() });
-    expect(menuOf(session)).toEqual(['lint']);
-  });
-});
+    test('a subdirectory a touched file loaded, then added, is read as an added directory only', async () => {
+      const nested = { [skillFile(`${PROJECT}/apps/web`, 'lint')]: skillText('web lint') };
+      const { session } = folderHostOf(nested);
+      await session.touchFile(`${PROJECT}/apps/web/src/page.ts`, { signal: signal() });
+      await session.addDirectory(`${PROJECT}/apps/web`, { signal: signal() });
+      expect(menuOf(session)).toEqual(['lint']);
+    });
+  },
+);
 
 describe('reads that overlap', () => {
   test('a touched file that finishes during a reload keeps its skills', async () => {

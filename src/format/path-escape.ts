@@ -36,6 +36,12 @@ export interface DeclaredPath {
    * a link target that is absolute or climbs out of the folder leaves the plugin (judgment).
    */
   readonly roots?: LinkRoots;
+  /**
+   * The path is one of the plugin's own files (`hooks/hooks.json`, `monitors/monitors.json`,
+   * `settings.json`, `SKILL.md` at the root): errors.md, "Path escapes plugin directory", reports it
+   * by its full path, and in a local marketplace says it is outside that marketplace too.
+   */
+  readonly own?: boolean;
 }
 
 const LEAVES_FOLDER = /^(?:[\\/]|[A-Za-z]:|\.\.(?:[\\/]|$))/;
@@ -65,5 +71,8 @@ export function escapedPathIssue(path: DeclaredPath): PluginIssue | undefined {
     return error(path.component, pathEscapes(path.component, path.written));
   }
   if (path.resolvesTo === undefined || !linkLeaves(path.resolvesTo, path.roots)) return undefined;
-  return error(path.component, pathEscapes(path.component, path.written, path.resolvesTo));
+  const own = path.own === true && path.roots !== undefined;
+  const shown = own ? `${path.roots?.pluginRoot}/${path.written}` : path.written;
+  const inMarketplace = own && path.roots?.marketplaceRoot !== undefined;
+  return error(path.component, pathEscapes(path.component, shown, path.resolvesTo, inMarketplace));
 }

@@ -27,3 +27,31 @@ export {
   type ChannelReason,
   type ChannelVerdict,
 } from './verdict.ts';
+export {
+  channelCapabilities,
+  channelInstructions,
+  channelTag,
+  deliversChannelEvents,
+  groupChannelEvents,
+  isTwoWay,
+  senderAllowed,
+  type ChannelCapabilities,
+  type ChannelNotification,
+  type InboundMessage,
+} from './contract.ts';
+export {
+  createPermissionRelay,
+  REQUEST_ID_ALPHABET,
+  type PermissionRelay,
+  type PermissionRequestParams,
+  type PermissionVerdictParams,
+  type RelayOutcome,
+  type RelayToolCall,
+} from './relay.ts';
+export {
+  elide,
+  inputPreview,
+  maskCredentials,
+  relayDescription,
+  sanitizeRelayText,
+} from './sanitize.ts';

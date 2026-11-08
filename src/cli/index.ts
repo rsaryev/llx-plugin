@@ -234,3 +234,57 @@ export type {
   PluginUpdateArguments,
   PluginUpdateFacts,
 } from './update-facts.ts';
+export {
+  planPluginTag,
+  finishPluginTag,
+  type TagFacts,
+  type TagOptions,
+  type TagPlan,
+  type TagCommand,
+} from './tag-plan.ts';
+export {
+  configurationDialog,
+  type ConfigurationDialog,
+  type ConfigurationEvent,
+} from './configure-dialog.ts';
+export {
+  unexpectedValidationError,
+  manifestFileKind,
+  validationJson,
+  validationVerdict,
+  type ValidationAdvice,
+  type ValidationFileResult,
+  type ValidationJson,
+  type ValidationVerdict,
+} from './validate-run.ts';
+export {
+  adviceNeedsSource,
+  readmeAdvice,
+  readmeInstallsPlugin,
+  renderAdvice,
+  sourceFromOrigin,
+} from './validate-advice.ts';
+export {
+  availableJson,
+  humanBytes,
+  installedJson,
+  listText,
+  planPluginList,
+  type AvailablePlugin,
+  type DataSize,
+  type ListedPlugin,
+} from './plugin-list.ts';
+export {
+  planPluginDetails,
+  roundTokens,
+  type ComponentCost,
+  type PluginDetails,
+} from './plugin-details.ts';
+export {
+  afterCleanRun,
+  cleanLaunch,
+  cleanLaunchCommands,
+  type CleanLaunch,
+  type CleanOutcome,
+  type CleanShell,
+} from './clean-configuration.ts';

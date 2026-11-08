@@ -13,18 +13,19 @@
  * No requirement id owns the aliases or the case rule; tools.tool.PowerShell is proven by the tool
  * catalogue. The AST-free split and the alias table are rows in spec/judgments.md.
  */
-import { describe, expect, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { canonicalizePowerShell } from '../../src/rules/bash/powershell.ts';
 import { splitCommand } from '../../src/rules/bash/split.ts';
 import { POWERSHELL_DIALECT } from '../../src/rules/bash/dialect.ts';
 import { covers } from '../support/bash-rules.ts';
+import { spec } from '../support/spec.ts';
 
 const allow = (rule: string, command: string) =>
   covers('allow', rule, command, { toolName: 'PowerShell' });
 const deny = (rule: string, command: string) =>
   covers('deny', rule, command, { toolName: 'PowerShell' });
 
-describe('aliases and case', () => {
+spec(['permissions.behavior.PowerShell'], () => {
   test('PowerShell(Get-ChildItem *) matches gci, ls and dir as well', () => {
     for (const command of [
       'Get-ChildItem -Recurse',
@@ -61,7 +62,7 @@ describe('aliases and case', () => {
   });
 });
 
-describe('compound commands', () => {
+spec(['permissions.behavior.PowerShell'], () => {
   test.each(['|', ';', '&&', '||', '\n'])('%j splits two subcommands', (separator) => {
     expect(splitCommand(`Get-Date ${separator} Get-Item x`, POWERSHELL_DIALECT)).toEqual({
       subcommands: ['Get-Date', 'Get-Item x'],
@@ -101,7 +102,7 @@ describe('compound commands', () => {
   });
 });
 
-describe('the example configuration', () => {
+spec(['permissions.behavior.PowerShell'], () => {
   test('allows Get-ChildItem and git commit, blocks Remove-Item', () => {
     expect(allow('PowerShell(Get-ChildItem *)', 'Get-ChildItem')).toBe(true);
     expect(allow('PowerShell(git commit *)', 'git commit -m "x"')).toBe(true);

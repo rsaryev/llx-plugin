@@ -16,6 +16,10 @@
     "reason": "sdk-api"
   },
   {
+    "page": "agent-sdk/claude-code-features.md",
+    "reason": "sdk-api"
+  },
+  {
     "page": "agent-sdk/configuration.md",
     "reason": "sdk-api"
   },
@@ -36,8 +40,16 @@
     "reason": "sdk-api"
   },
   {
+    "page": "agent-sdk/hooks.md",
+    "reason": "sdk-api"
+  },
+  {
     "page": "agent-sdk/hosting.md",
     "reason": "hosting"
+  },
+  {
+    "page": "agent-sdk/mcp.md",
+    "reason": "sdk-api"
   },
   {
     "page": "agent-sdk/migration-guide.md",
@@ -53,6 +65,14 @@
   },
   {
     "page": "agent-sdk/overview.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/permissions.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/plugins.md",
     "reason": "sdk-api"
   },
   {
@@ -76,6 +96,10 @@
     "reason": "sdk-api"
   },
   {
+    "page": "agent-sdk/skills.md",
+    "reason": "sdk-api"
+  },
+  {
     "page": "agent-sdk/streaming-output.md",
     "reason": "sdk-api"
   },
@@ -85,6 +109,10 @@
   },
   {
     "page": "agent-sdk/structured-outputs.md",
+    "reason": "sdk-api"
+  },
+  {
+    "page": "agent-sdk/subagents.md",
     "reason": "sdk-api"
   },
   {
@@ -110,6 +138,10 @@
   {
     "page": "agent-sdk/user-input.md",
     "reason": "sdk-api"
+  },
+  {
+    "page": "agent-teams.md",
+    "reason": "engine"
   },
   {
     "page": "agent-view.md",
@@ -138,6 +170,10 @@
   {
     "page": "auto-mode-classifier-billing.md",
     "reason": "billing"
+  },
+  {
+    "page": "auto-mode-config.md",
+    "reason": "engine"
   },
   {
     "page": "best-practices.md",
@@ -188,6 +224,10 @@
     "reason": "hosting"
   },
   {
+    "page": "claude-directory.md",
+    "reason": "engine"
+  },
+  {
     "page": "claude-platform-on-aws.md",
     "reason": "provider"
   },
@@ -230,6 +270,10 @@
   {
     "page": "code-review.md",
     "reason": "hosting"
+  },
+  {
+    "page": "commands.md",
+    "reason": "product"
   },
   {
     "page": "common-workflows.md",
@@ -336,8 +380,16 @@
     "reason": "guide"
   },
   {
+    "page": "goal.md",
+    "reason": "engine"
+  },
+  {
     "page": "google-vertex-ai.md",
     "reason": "provider"
+  },
+  {
+    "page": "headless.md",
+    "reason": "engine"
   },
   {
     "page": "hipaa-setup.md",
@@ -361,8 +413,7 @@
   },
   {
     "page": "large-codebases.md",
-    "reason": "duplicate",
-    "of": "memory.md"
+    "reason": "engine"
   },
   {
     "page": "legal-and-compliance.md",
@@ -390,12 +441,20 @@
     "of": "mcp.md"
   },
   {
+    "page": "memory.md",
+    "reason": "engine"
+  },
+  {
     "page": "microsoft-foundry.md",
     "reason": "provider"
   },
   {
     "page": "mobile.md",
     "reason": "product"
+  },
+  {
+    "page": "model-config.md",
+    "reason": "engine"
   },
   {
     "page": "monitoring-usage.md",
@@ -412,6 +471,10 @@
   {
     "page": "platforms.md",
     "reason": "guide"
+  },
+  {
+    "page": "plugin-evals.md",
+    "reason": "engine"
   },
   {
     "page": "prompt-caching.md",
@@ -439,6 +502,10 @@
   },
   {
     "page": "sandboxing.md",
+    "reason": "engine"
+  },
+  {
+    "page": "scheduled-tasks.md",
     "reason": "engine"
   },
   {
@@ -492,6 +559,10 @@
   },
   {
     "page": "slack.md",
+    "reason": "product"
+  },
+  {
+    "page": "statusline.md",
     "reason": "product"
   },
   {
@@ -621,6 +692,10 @@
   {
     "page": "whats-new/index.md",
     "reason": "digest"
+  },
+  {
+    "page": "worktrees.md",
+    "reason": "engine"
   },
   {
     "page": "zero-data-retention.md",

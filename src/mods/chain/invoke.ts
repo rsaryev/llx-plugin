@@ -51,6 +51,15 @@ export async function* runFrom(ctx: Context, from: number, e: unknown): Stream {
   for (let index = from; index < ctx.chain.length; index += 1) {
     const entry = ctx.chain[index];
     if (!entry) continue;
+    if (
+      ctx.admit?.({
+        event: ctx.name,
+        tier: entry.tier,
+        isBuiltin: entry.plugin.isBuiltin ?? false,
+        input: ctx.input,
+      }) === false
+    )
+      continue;
     const verdict = await entry.matcher.test(e, run);
     if (verdict.matched)
       return yield* invoke({ ctx, entry, index, e, downstream: createDownstream() });

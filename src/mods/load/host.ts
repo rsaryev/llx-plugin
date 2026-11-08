@@ -24,6 +24,7 @@ import { createReplayLedger, replayedLine } from '../api/replay.ts';
 import { pluginDirsOf, watchesPluginDirs } from './plugin-dirs.ts';
 import type { ModsPolicyInput } from './policy-input.ts';
 import { wire } from './wiring.ts';
+import type { ManagedModData } from './guard-protection.ts';
 
 /**
  * The mods runtime a host embeds (docs/API.md, "Mods"): the chain, the events, the API, the
@@ -31,7 +32,7 @@ import { wire } from './wiring.ts';
  * the kit decides which hooks modules load, in which order and tier, and runs their hooks.
  */
 
-export interface ModsHostOptions {
+export interface ModsHostOptions extends ManagedModData {
   readonly ports: ModHostPorts;
   readonly iface: ModInterface;
   readonly runtime: ModRuntime;
@@ -162,12 +163,45 @@ export interface ModsHost {
   readonly ui: ModsUi;
   readonly chain: ModChain;
   active(): readonly LoadedMod[];
+  /** Notes for plugin details/Errors; conditional protected rows with no door filter get no note. */
+  guardedHookNotes(name: string): readonly string[];
   dispose(): Promise<void>;
 }
 
 const noop = (): void => undefined;
 
 /** The mods runtime for one session. */
+function lifetime(parts: {
+  readonly wired: ReturnType<typeof wire>;
+  readonly mods: ReturnType<typeof createModSet>;
+  readonly builtIns: LoadedMod[];
+  readonly background: AbortController;
+  readonly stopListening: (() => void) | undefined;
+}): Pick<
+  ModsHost,
+  'input' | 'resetState' | 'ui' | 'chain' | 'active' | 'guardedHookNotes' | 'dispose'
+> {
+  const { wired, mods, builtIns, background, stopListening } = parts;
+  return {
+    input: wired.gate,
+    resetState: () => wired.state.reset(),
+    ui: wired.ui,
+    chain: wired.chain,
+    active: () => [...builtIns, ...mods.loaded()],
+    guardedHookNotes: (name) => {
+      const mod = mods.loaded().find((loaded) => loaded.name === name);
+      return mod === undefined ? [] : wired.guardNotes(mod);
+    },
+    async dispose() {
+      stopListening?.();
+      await mods.unloadAll();
+      for (const mod of builtIns.toReversed()) await mod.unload();
+      builtIns.length = 0;
+      background.abort(new Error('the mods host was disposed'));
+    },
+  };
+}
+
 export function createModsHost(options: ModsHostOptions): ModsHost {
   const debug = options.debug ?? noop;
   const background = new AbortController();
@@ -235,17 +269,6 @@ export function createModsHost(options: ModsHostOptions): ModsHost {
     },
     pluginDirs: () => pluginDirsOf(policy),
     watchesPluginDirs: (isInteractive) => watchesPluginDirs(policy, isInteractive),
-    input: wired.gate,
-    resetState: () => wired.state.reset(),
-    ui: wired.ui,
-    chain,
-    active: () => [...builtIns, ...mods.loaded()],
-    async dispose() {
-      stopListening?.();
-      await mods.unloadAll();
-      for (const mod of builtIns.toReversed()) await mod.unload();
-      builtIns.length = 0;
-      background.abort(new Error('the mods host was disposed'));
-    },
+    ...lifetime({ wired, mods, builtIns, background, stopListening }),
   };
 }

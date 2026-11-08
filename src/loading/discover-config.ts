@@ -48,7 +48,7 @@ async function resolveItem(
   context: DiscoverContext,
 ): Promise<Found<ConfigInput>> {
   if ('inline' in item) return { found: [{ inline: item.inline }], issues: [] };
-  const located = await locate(context, kind, item.written);
+  const located = await locate(context, kind, item.written, !declared);
   if (located.issue) return { found: [], issues: [located.issue] };
   if (!located.stat) {
     const missing: PluginIssue[] = declared ? [error(kind, pathNotFound(kind, item.written))] : [];
@@ -89,7 +89,7 @@ export async function discoverConfig(
 /** The `settings.json` at the plugin root, when it is there and inside the plugin. */
 export async function discoverSettings(context: DiscoverContext): Promise<Found<string>> {
   const { location } = STANDARD_LAYOUT.settings;
-  const located = await locate(context, 'settings', location);
+  const located = await locate(context, 'settings', location, true);
   if (located.issue) return { found: [], issues: [located.issue] };
   return { found: located.stat?.isFile ? [location] : [], issues: [] };
 }

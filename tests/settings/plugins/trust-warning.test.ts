@@ -14,7 +14,7 @@ import { viewOf } from '../../support/plugin-settings.ts';
 const standard = 'Make sure you trust a plugin before installing it.';
 const message = 'All plugins from our marketplace are approved by IT';
 
-spec('settings.key.pluginTrustMessage', () => {
+spec(['settings.key.pluginTrustMessage', 'policy.org.Control matrix.pluginTrustMessage'], () => {
   test('unset shows the standard warning alone', () => {
     expect(trustWarning(viewOf(), standard)).toBe(standard);
     expect(trustWarning(viewOf(['managed', {}]), standard)).toBe(standard);

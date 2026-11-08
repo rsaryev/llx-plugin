@@ -91,7 +91,7 @@ spec('policy.key.managedSourcesBehavior', () => {
   });
 });
 
-spec('policy.key.forceRemoteSettingsRefresh', () => {
+spec(['policy.key.forceRemoteSettingsRefresh', 'policy.server.Enforce fail-closed startup'], () => {
   test('a true from any admin source applies, even one that is not the highest-priority source', () => {
     const composed = compose({
       remote: { model: 'a' },

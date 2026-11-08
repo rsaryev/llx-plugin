@@ -8,6 +8,7 @@
 import { describe, expect, test } from 'bun:test';
 import { isNetworkPath } from '../../src/rules/index.ts';
 import { denies, allows, withPaths } from '../support/path-rules.ts';
+import { spec } from '../support/spec.ts';
 
 const ctx = withPaths({
   platform: 'windows',
@@ -62,17 +63,23 @@ describe('case on Windows (a judgment: the docs are silent)', () => {
   });
 });
 
-describe('network paths (permissions.md § Network paths)', () => {
-  test('a UNC path is a network path on Windows', () => {
-    expect(isNetworkPath('\\\\server\\share\\file', 'windows')).toBe(true);
-    expect(isNetworkPath('//server/share/file', 'windows')).toBe(true);
-    expect(isNetworkPath('C:\\work\\file', 'windows')).toBe(false);
-  });
+spec(
+  [
+    'permissions.behavior.Network paths.Windows',
+    'permissions.behavior.Network paths.macOS and Linux',
+  ],
+  () => {
+    test('a UNC path is a network path on Windows', () => {
+      expect(isNetworkPath('\\\\server\\share\\file', 'windows')).toBe(true);
+      expect(isNetworkPath('//server/share/file', 'windows')).toBe(true);
+      expect(isNetworkPath('C:\\work\\file', 'windows')).toBe(false);
+    });
 
-  test('a /net automount path is a network path on macOS and Linux', () => {
-    expect(isNetworkPath('/net/fileserver/notes.txt', 'posix')).toBe(true);
-    expect(isNetworkPath('/net', 'posix')).toBe(true);
-    expect(isNetworkPath('/network/x', 'posix')).toBe(false);
-    expect(isNetworkPath('//server/share', 'posix')).toBe(false);
-  });
-});
+    test('a /net automount path is a network path on macOS and Linux', () => {
+      expect(isNetworkPath('/net/fileserver/notes.txt', 'posix')).toBe(true);
+      expect(isNetworkPath('/net', 'posix')).toBe(true);
+      expect(isNetworkPath('/network/x', 'posix')).toBe(false);
+      expect(isNetworkPath('//server/share', 'posix')).toBe(false);
+    });
+  },
+);

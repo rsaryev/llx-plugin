@@ -44,52 +44,64 @@ const download = (
   return { ...fakes, result };
 };
 
-spec('marketplace.entry.headers', () => {
-  test('an entry sends its headers with its own archive download', async () => {
-    const entry = layerOfEntry({ headers: { Authorization: 'Bearer entry' } });
-    expect(headersOf(await download({ entry }).result)).toEqual({ authorization: 'Bearer entry' });
-  });
-
-  test('a header set on the entry replaces a header of the same name from the marketplace source, whatever the casing', async () => {
-    const marketplace = sourceLayer({
-      headers: { Authorization: 'Bearer source', 'X-Team': 'infra' },
-    });
-    const entry = layerOfEntry({ headers: { authorization: 'Bearer entry' } });
-    const result = await download({ marketplace, entry }).result;
-    expect(headersOf(result)).toEqual({ authorization: 'Bearer entry', 'x-team': 'infra' });
-  });
-
-  test('Host, Cookie and X-Forwarded-* are dropped from a catalog entry; Authorization is kept', async () => {
-    const entry = layerOfEntry({
-      headers: {
-        Host: 'evil',
-        cookie: 'a=b',
-        'X-Forwarded-For': '1.2.3.4',
-        Authorization: 'Bearer t',
-        'X-Team': 'infra',
-      },
-    });
-    expect(headersOf(await download({ entry }).result)).toEqual({
-      authorization: 'Bearer t',
-      'x-team': 'infra',
-    });
-  });
-
-  test('the filter is the same for an entry in project or --add-dir settings, and absent in user, --settings and managed settings', async () => {
-    const headers = { Cookie: 'a=b', Authorization: 'Bearer t' };
-    for (const origin of ['project', 'add-dir'] as const) {
-      const entry = layerOfEntry({ headers }, { origin });
-      expect(headersOf(await download({ entry }).result)).toEqual({ authorization: 'Bearer t' });
-    }
-    for (const origin of ['user', 'cli-settings', 'managed', 'server-managed'] as const) {
-      const entry = layerOfEntry({ headers }, { origin });
+spec(
+  [
+    'marketplace.entry.headers',
+    'marketplace.hosting.Authenticate archive downloads',
+    'marketplace.hosting.When Claude Code skips a headersHelper command or drops its output',
+    'marketplace.hosting.When Claude Code skips a headersHelper command or drops its output.Entry sets a routing or identity header',
+    "marketplace.hosting.Work around what a marketplace can't do",
+    "marketplace.hosting.Work around what a marketplace can't do.Carry git credentials",
+  ],
+  () => {
+    test('an entry sends its headers with its own archive download', async () => {
+      const entry = layerOfEntry({ headers: { Authorization: 'Bearer entry' } });
       expect(headersOf(await download({ entry }).result)).toEqual({
-        cookie: 'a=b',
-        authorization: 'Bearer t',
+        authorization: 'Bearer entry',
       });
-    }
-  });
-});
+    });
+
+    test('a header set on the entry replaces a header of the same name from the marketplace source, whatever the casing', async () => {
+      const marketplace = sourceLayer({
+        headers: { Authorization: 'Bearer source', 'X-Team': 'infra' },
+      });
+      const entry = layerOfEntry({ headers: { authorization: 'Bearer entry' } });
+      const result = await download({ marketplace, entry }).result;
+      expect(headersOf(result)).toEqual({ authorization: 'Bearer entry', 'x-team': 'infra' });
+    });
+
+    test('Host, Cookie and X-Forwarded-* are dropped from a catalog entry; Authorization is kept', async () => {
+      const entry = layerOfEntry({
+        headers: {
+          Host: 'evil',
+          cookie: 'a=b',
+          'X-Forwarded-For': '1.2.3.4',
+          Authorization: 'Bearer t',
+          'X-Team': 'infra',
+        },
+      });
+      expect(headersOf(await download({ entry }).result)).toEqual({
+        authorization: 'Bearer t',
+        'x-team': 'infra',
+      });
+    });
+
+    test('the filter is the same for an entry in project or --add-dir settings, and absent in user, --settings and managed settings', async () => {
+      const headers = { Cookie: 'a=b', Authorization: 'Bearer t' };
+      for (const origin of ['project', 'add-dir'] as const) {
+        const entry = layerOfEntry({ headers }, { origin });
+        expect(headersOf(await download({ entry }).result)).toEqual({ authorization: 'Bearer t' });
+      }
+      for (const origin of ['user', 'cli-settings', 'managed', 'server-managed'] as const) {
+        const entry = layerOfEntry({ headers }, { origin });
+        expect(headersOf(await download({ entry }).result)).toEqual({
+          cookie: 'a=b',
+          authorization: 'Bearer t',
+        });
+      }
+    });
+  },
+);
 
 spec('marketplace.entry.headersHelper', () => {
   test('an entry command runs for that entry only and its output joins the entry headers; the output wins within the entry', async () => {
@@ -182,33 +194,40 @@ spec('marketplace.entry.headersHelper', () => {
 });
 
 describe('after a redirect to another origin the request carries none of the merged headers', () => {
-  spec(['marketplace.sourceField.headers', 'marketplace.entry.headers'], () => {
-    test('merged headers go on the first request only; the redirected request has none', async () => {
-      const marketplace = sourceLayer({ headers: { Authorization: 'Bearer s' } });
-      const entry = layerOfEntry({ headers: { 'X-Team': 'infra' } });
-      const headers = headersOf(await download({ marketplace, entry }).result);
-      const http = recordingHttp(
-        { status: 302, headers: { location: 'https://cdn.example.net/p.zip' } },
-        { status: 200, bytes: new Uint8Array([80, 75, 3, 4]) },
-      );
-      const fetched = await fetchArchive(
-        {
-          kind: 'archive',
-          url: ARCHIVE_URL,
-          limits: ARCHIVE_LIMITS,
-          headers,
-          rootDepth: 'top-or-one-down',
-        },
-        { http, sha256: fakeSha256('0'), archive: fakeArchive(stats()) },
-        signal,
-      );
-      expect('bytes' in fetched).toBe(true);
-      expect(http.requests.map((request) => request.headers)).toEqual([
-        { authorization: 'Bearer s', 'x-team': 'infra' },
-        {},
-      ]);
-    });
-  });
+  spec(
+    [
+      'marketplace.sourceField.headers',
+      'marketplace.entry.headers',
+      'marketplace.hosting.When Claude Code skips a headersHelper command or drops its output.Redirect leaves the origin',
+    ],
+    () => {
+      test('merged headers go on the first request only; the redirected request has none', async () => {
+        const marketplace = sourceLayer({ headers: { Authorization: 'Bearer s' } });
+        const entry = layerOfEntry({ headers: { 'X-Team': 'infra' } });
+        const headers = headersOf(await download({ marketplace, entry }).result);
+        const http = recordingHttp(
+          { status: 302, headers: { location: 'https://cdn.example.net/p.zip' } },
+          { status: 200, bytes: new Uint8Array([80, 75, 3, 4]) },
+        );
+        const fetched = await fetchArchive(
+          {
+            kind: 'archive',
+            url: ARCHIVE_URL,
+            limits: ARCHIVE_LIMITS,
+            headers,
+            rootDepth: 'top-or-one-down',
+          },
+          { http, sha256: fakeSha256('0'), archive: fakeArchive(stats()) },
+          signal,
+        );
+        expect('bytes' in fetched).toBe(true);
+        expect(http.requests.map((request) => request.headers)).toEqual([
+          { authorization: 'Bearer s', 'x-team': 'infra' },
+          {},
+        ]);
+      });
+    },
+  );
 });
 
 describe('merging and normalising header maps (judgment: names are lower case, as on the HttpClient port)', () => {

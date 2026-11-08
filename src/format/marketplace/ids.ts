@@ -26,7 +26,7 @@ const KEBAB_EXAMPLE: { readonly [P in IdPart]: string } = {
   plugin: 'my-plugin',
 };
 
-const INSTALL_RULE =
+export const INSTALL_RULE =
   'Each part of a plugin id (plugin@marketplace) may use only the letters a-z and A-Z, digits, ".", "_" and "-", and must start with a letter or digit.';
 const INSTALL_MESSAGE: { readonly [P in IdPart]: (name: string) => string } = {
   marketplace: (name) =>

@@ -45,7 +45,7 @@ async function defaultLocations(
   if (kind !== 'skills' || declaredKey(context.manifest, kind) !== undefined) return standard;
   const folder = await context.files.stat(STANDARD_LAYOUT.skills.location, context.signal);
   if (folder?.isDirectory) return standard;
-  const root = await locate(context, kind, 'SKILL.md');
+  const root = await locate(context, kind, 'SKILL.md', true);
   if (root.issue) return { found: standard.found, issues: [root.issue] };
   return root.stat?.isFile ? { found: ['.'], issues: [] } : standard;
 }

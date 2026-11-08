@@ -27,9 +27,9 @@ describe('an allow rule with a * before the subcommand warns', () => {
       expect(rest).toEqual([]);
       expect(issue?.severity).toBe('warning');
       expect(issue?.path).toBe('permissions.allow');
-      expect(issue?.message).toContain(`"${text}"`);
+      expect(issue?.message).toContain(`(~/.claude/settings.json): ${text} has a wildcard`);
       expect(issue?.message).toContain('has a wildcard before the rest of the command');
-      expect(issue?.message).toContain('use * after the subcommand');
+      expect(issue?.message).toContain('only use * after the subcommand');
     },
   );
 

@@ -4,6 +4,7 @@
  * `spec(...)` and count for no requirement.
  */
 import { describe, expect, test } from 'bun:test';
+import { spec } from '../../support/spec.ts';
 import { engineStackIssue } from '../../../src/mods/load/engine-faults.ts';
 import type { ModPlugin } from '../../../src/mods/load/index.ts';
 import type { ModRuntime } from '../../../src/mods/ports.ts';
@@ -12,7 +13,7 @@ import { memoryFiles } from '../../support/ports.ts';
 
 const noop = registerOf(() => undefined);
 
-describe('the engine ran out of stack linking the file and its imports', () => {
+spec('mods.troubleshoot.the engine ran out of stack linking the file and its imports', () => {
   // Nothing in the kit detects linking: a host's runtime returns the issue, and the kit owns the words.
   test('a runtime that returns the linking issue gives the line with the mod, the file and the documented reason, and the mod does not load', async () => {
     const runtime: ModRuntime = {
@@ -26,7 +27,9 @@ describe('the engine ran out of stack linking the file and its imports', () => {
     ]);
     expect(host.active()).toEqual([]);
   });
+});
 
+describe('the linking reason (a judgment)', () => {
   test('the reason is the same whatever the engine says: it names no message and no line', () => {
     expect(engineStackIssue('link', 'a.js', 'Maximum call stack size exceeded.').message).toBe(
       engineStackIssue('link', 'a.js', 'RangeError at 1:2').message,

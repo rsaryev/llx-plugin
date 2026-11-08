@@ -41,7 +41,7 @@ function oneBlocked(
   if (required?.has(id) === true) {
     return failure(
       'disable',
-      `Plugin "${id}" is required by your organization and cannot be disabled`,
+      `Plugin "${id}" is required by your organization and can't be disabled here. Contact your admin to change it.`,
       'required_by_organization',
       {
         pluginId: id,

@@ -13,3 +13,4 @@ export {
 export type { SettingsDirectory, SettingsRule } from './managed-only.ts';
 export { createPermissionsPolicy, type PermissionsPolicy } from './policy.ts';
 export { HIPAA_AUTO_NOTICE } from './start-notices.ts';
+export { BLOCKED_USER_ROOTS, gitConfigReopened, sandboxReadBlock } from './sandbox-read-block.ts';

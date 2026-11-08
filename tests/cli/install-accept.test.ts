@@ -132,34 +132,40 @@ spec('cli.plugin.Accept a displayed install command', () => {
   });
 });
 
-spec('cli.plugin.plugin install.--accept-command <sha256>', () => {
-  test('is accepted in place of -y for a headersHelper entry too', async () => {
-    const first = await run({
-      args: { plugin: 'helped@m', json: true },
-      catalog: [['helped@m', HEADERS_ENTRY]],
+spec(
+  [
+    'cli.plugin.plugin install.--accept-command <sha256>',
+    'marketplace.hosting.How users accept a headersHelper command.Shell',
+  ],
+  () => {
+    test('is accepted in place of -y for a headersHelper entry too', async () => {
+      const first = await run({
+        args: { plugin: 'helped@m', json: true },
+        catalog: [['helped@m', HEADERS_ENTRY]],
+      });
+      const sha256 = shownCommandOf(first).sha256;
+      const second = await run({
+        args: { plugin: 'helped@m', json: true, acceptCommand: sha256 },
+        catalog: [['helped@m', HEADERS_ENTRY]],
+      });
+      expect(lastJson(second)).toMatchObject({ outcome: 'ok' });
     });
-    const sha256 = shownCommandOf(first).sha256;
-    const second = await run({
-      args: { plugin: 'helped@m', json: true, acceptCommand: sha256 },
-      catalog: [['helped@m', HEADERS_ENTRY]],
+
+    test('a sha256 that matches nothing is refused with acceptCommandMatched false', async () => {
+      const found = await run(setup({ args: { acceptCommand: 'f'.repeat(64) } }));
+      expect(lastJson(found)['shownCommand']).toMatchObject({ acceptCommandMatched: false });
+      expect(printed(found).exitCode).toBe(1);
     });
-    expect(lastJson(second)).toMatchObject({ outcome: 'ok' });
-  });
 
-  test('a sha256 that matches nothing is refused with acceptCommandMatched false', async () => {
-    const found = await run(setup({ args: { acceptCommand: 'f'.repeat(64) } }));
-    expect(lastJson(found)['shownCommand']).toMatchObject({ acceptCommandMatched: false });
-    expect(printed(found).exitCode).toBe(1);
-  });
-
-  test('cannot be combined with -y: a usage error that prints no result line', () => {
-    const begun = startInstall(
-      { plugin: 'formatter@m', yes: true, acceptCommand: 'a'.repeat(64), json: true },
-      contextOf(),
-    );
-    expect(begun).toMatchObject({ kind: 'done', output: { kind: 'usage-error' } });
-  });
-});
+    test('cannot be combined with -y: a usage error that prints no result line', () => {
+      const begun = startInstall(
+        { plugin: 'formatter@m', yes: true, acceptCommand: 'a'.repeat(64), json: true },
+        contextOf(),
+      );
+      expect(begun).toMatchObject({ kind: 'done', output: { kind: 'usage-error' } });
+    });
+  },
+);
 
 describe('the digest', () => {
   test('is the same for the same command, plugin and catalog', async () => {

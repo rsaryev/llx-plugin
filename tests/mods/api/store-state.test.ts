@@ -1,3 +1,4 @@
+/** Also plugins/mods/api.md § Reach files, processes, and the network. */
 /**
  * `$.store` and `$.state`.
  * plugins/mods/interface.md § Keep state (`$.store.get(key)` resolves to the value or `undefined`,
@@ -18,67 +19,74 @@ import { apiHarness, expectMethods, memoryStore } from '../../support/mods-api.t
 import { rejection } from '../../support/rejection.ts';
 import { spec } from '../../support/spec.ts';
 
-spec('mods.api.$.store', () => {
-  test('$.store has get, set, delete and keys', async () => {
-    const { api } = await apiHarness({ ports: { store: memoryStore() } });
-    expectMethods(api.store, MODS_API.store);
-  });
+spec(
+  [
+    'mods.api.$.store',
+    'mods.apiGuide.Reach files, processes, and the network',
+    'mods.apiGuide.Reach files, processes, and the network.$.store',
+  ],
+  () => {
+    test('$.store has get, set, delete and keys', async () => {
+      const { api } = await apiHarness({ ports: { store: memoryStore() } });
+      expectMethods(api.store, MODS_API.store);
+    });
 
-  test('set takes any JSON value and get resolves to it, or to undefined for a key never set', async () => {
-    const h = await apiHarness({ ports: { store: memoryStore() } });
-    await h.api.store.set('count', 7);
-    await h.api.store.set('notes', [{ text: 'a', done: false }]);
-    expect(await h.api.store.get('count')).toBe(7);
-    expect(await h.api.store.get('notes')).toEqual([{ text: 'a', done: false }]);
-    expect(await h.api.store.get('missing')).toBeUndefined();
-  });
+    test('set takes any JSON value and get resolves to it, or to undefined for a key never set', async () => {
+      const h = await apiHarness({ ports: { store: memoryStore() } });
+      await h.api.store.set('count', 7);
+      await h.api.store.set('notes', [{ text: 'a', done: false }]);
+      expect(await h.api.store.get('count')).toBe(7);
+      expect(await h.api.store.get('notes')).toEqual([{ text: 'a', done: false }]);
+      expect(await h.api.store.get('missing')).toBeUndefined();
+    });
 
-  test('delete removes one key and keys lists the rest', async () => {
-    const h = await apiHarness({ ports: { store: memoryStore({ a: 1, b: 2 }) } });
-    expect(await h.api.store.keys()).toEqual(['a', 'b']);
-    await h.api.store.delete('a');
-    expect(await h.api.store.keys()).toEqual(['b']);
-    expect(await h.api.store.get('a')).toBeUndefined();
-  });
+    test('delete removes one key and keys lists the rest', async () => {
+      const h = await apiHarness({ ports: { store: memoryStore({ a: 1, b: 2 }) } });
+      expect(await h.api.store.keys()).toEqual(['a', 'b']);
+      await h.api.store.delete('a');
+      expect(await h.api.store.keys()).toEqual(['b']);
+      expect(await h.api.store.get('a')).toBeUndefined();
+    });
 
-  test('the store is the mod own: the port is asked for this plugin', async () => {
-    const asked: string[] = [];
-    const store = {
-      read: (plugin: string) => (asked.push(plugin), Promise.resolve({})),
-      write: () => Promise.resolve(),
-    };
-    const h = await apiHarness({ plugin: 'my-mod', ports: { store } });
-    await h.api.store.get('x');
-    expect(asked).toEqual(['my-mod']);
-  });
+    test('the store is the mod own: the port is asked for this plugin', async () => {
+      const asked: string[] = [];
+      const store = {
+        read: (plugin: string) => (asked.push(plugin), Promise.resolve({})),
+        write: () => Promise.resolve(),
+      };
+      const h = await apiHarness({ plugin: 'my-mod', ports: { store } });
+      await h.api.store.get('x');
+      expect(asked).toEqual(['my-mod']);
+    });
 
-  test('a set changes only its own key: two keys written one after the other both stay', async () => {
-    const h = await apiHarness({ ports: { store: memoryStore() } });
-    await h.api.store.set('a', 1);
-    await h.api.store.set('b', 2);
-    expect(await h.api.store.keys()).toEqual(['a', 'b']);
-  });
+    test('a set changes only its own key: two keys written one after the other both stay', async () => {
+      const h = await apiHarness({ ports: { store: memoryStore() } });
+      await h.api.store.set('a', 1);
+      await h.api.store.set('b', 2);
+      expect(await h.api.store.keys()).toEqual(['a', 'b']);
+    });
 
-  test('a value that is not JSON rejects and nothing is written', async () => {
-    const store = memoryStore();
-    const h = await apiHarness({ ports: { store } });
-    const cycle: Record<string, unknown> = {};
-    cycle.self = cycle;
-    expect(await rejection(h.api.store.set('x', () => 1))).toContain('$.store.set');
-    expect(await rejection(h.api.store.set('x', cycle))).toContain('$.store.set');
-    expect(store.writes).toHaveLength(0);
-  });
+    test('a value that is not JSON rejects and nothing is written', async () => {
+      const store = memoryStore();
+      const h = await apiHarness({ ports: { store } });
+      const cycle: Record<string, unknown> = {};
+      cycle.self = cycle;
+      expect(await rejection(h.api.store.set('x', () => 1))).toContain('$.store.set');
+      expect(await rejection(h.api.store.set('x', cycle))).toContain('$.store.set');
+      expect(store.writes).toHaveLength(0);
+    });
 
-  test('a stub answers store.get with { value } and store.set with { value: undefined }', async () => {
-    const h = await apiHarness();
-    await h.mod('stub', 'prepend', [
-      fn('store.get', (_$, e) => ({ value: e.key === 'count' ? 7 : undefined })),
-      fn('store.set', () => ({ value: undefined })),
-    ]);
-    expect(await h.api.store.get('count')).toBe(7);
-    await h.api.store.set('count', 8);
-  });
-});
+    test('a stub answers store.get with { value } and store.set with { value: undefined }', async () => {
+      const h = await apiHarness();
+      await h.mod('stub', 'prepend', [
+        fn('store.get', (_$, e) => ({ value: e.key === 'count' ? 7 : undefined })),
+        fn('store.set', () => ({ value: undefined })),
+      ]);
+      expect(await h.api.store.get('count')).toBe(7);
+      await h.api.store.set('count', 8);
+    });
+  },
+);
 
 spec('mods.limit.$.store', () => {
   // The JSON of { "k": "<n characters>" } is n + 8 characters.

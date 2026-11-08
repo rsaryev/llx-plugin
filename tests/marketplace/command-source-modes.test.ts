@@ -16,7 +16,7 @@ const linksUnderSkills = (count: number) =>
     ),
   );
 
-spec('marketplace.source.command', () => {
+spec(['marketplace.source.command', 'marketplace.rule.command plugin source.mode'], () => {
   const link = { mode: 'link' } as const;
 
   test('link mode does not apply the size limits', async () => {

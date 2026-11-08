@@ -5,6 +5,8 @@
  * write no placeholder code of their own (docs/ARCHITECTURE.md, "Homes shared between streams").
  */
 export { pluginDataId } from './data-id.ts';
+export { monitorsToStop } from './monitor-trigger.ts';
+export { planLspStartup, type LspProcessPlan, type LspStartupPlan } from './lsp-startup.ts';
 export { substituteDeep, type DeepSubstituted, type ValuePath } from './deep.ts';
 export {
   LSP_DEFAULTS,

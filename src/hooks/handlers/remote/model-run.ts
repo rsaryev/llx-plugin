@@ -24,9 +24,11 @@ export async function runModelHook(
 ): Promise<HandlerResult> {
   const { prompt, model } = entry.handler;
   const timeoutMs = handlerTimeoutMs(entry, context.timeouts);
+  const modelChoice: Pick<ModelRequest, 'model' | 'modelPreference'> =
+    model === undefined ? { modelPreference: 'small-fast' } : { model };
   const answer = await call({
     prompt: `${composePrompt(prompt, context.input)}\n\n${responseInstruction({ impossible })}`,
-    ...(model === undefined ? {} : { model }),
+    ...modelChoice,
     ...(timeoutMs === undefined ? {} : { timeoutMs }),
     signal: context.signal,
   });

@@ -31,6 +31,9 @@ export interface LocateContext {
   readonly signal?: AbortSignal;
 }
 
+/** Whether the path is one of the plugin's own files (errors.md reports those by full path). */
+const ownedBy = (own: boolean | undefined): boolean => own === true;
+
 /**
  * Containment and existence (plugins/manifest-reference.md, "Containment and existence"; loading.md,
  * "Paths that escape the plugin directory"): a path with `..`, an absolute path, a backslash on
@@ -43,8 +46,9 @@ export async function locate(
   context: LocateContext,
   component: string,
   written: string,
+  own?: boolean,
 ): Promise<Located> {
-  const declared = { component, written, platform: context.platform };
+  const declared = { component, written, platform: context.platform, own: ownedBy(own) };
   const asWritten = escapedPathIssue(declared);
   if (asWritten) return { issue: asWritten };
   const stat = await context.files.stat(rootRelative(written), context.signal);

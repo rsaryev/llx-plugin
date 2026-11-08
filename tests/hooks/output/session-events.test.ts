@@ -105,26 +105,34 @@ spec('hooks.output.SessionStart.watchPaths', () => {
   });
 });
 
-spec('hooks.output.SessionStart.reloadSkills', () => {
-  test('true asks for a re-scan of the skill and command directories after the hooks complete', () => {
-    expect(merged('SessionStart', [start({ reloadSkills: true })]).effects.reloadSkills).toBe(true);
-  });
+spec(
+  [
+    'hooks.output.SessionStart.reloadSkills',
+    'environment.behavior.Reload skills that a hook installs',
+  ],
+  () => {
+    test('true asks for a re-scan of the skill and command directories after the hooks complete', () => {
+      expect(merged('SessionStart', [start({ reloadSkills: true })]).effects.reloadSkills).toBe(
+        true,
+      );
+    });
 
-  test('false and absent do not; one hook that asks is enough', () => {
-    expect(
-      merged('SessionStart', [start({ reloadSkills: false })]).effects.reloadSkills,
-    ).toBeUndefined();
-    expect(
-      merged('SessionStart', [start({}), start({ reloadSkills: true })]).effects.reloadSkills,
-    ).toBe(true);
-  });
+    test('false and absent do not; one hook that asks is enough', () => {
+      expect(
+        merged('SessionStart', [start({ reloadSkills: false })]).effects.reloadSkills,
+      ).toBeUndefined();
+      expect(
+        merged('SessionStart', [start({}), start({ reloadSkills: true })]).effects.reloadSkills,
+      ).toBe(true);
+    });
 
-  test('a value that is not a boolean fails validation', () => {
-    expect(parseHookOutput('SessionStart', start({ reloadSkills: 'yes' })).failure).toContain(
-      'reloadSkills',
-    );
-  });
-});
+    test('a value that is not a boolean fails validation', () => {
+      expect(parseHookOutput('SessionStart', start({ reloadSkills: 'yes' })).failure).toContain(
+        'reloadSkills',
+      );
+    });
+  },
+);
 
 const watchOf = (event: 'CwdChanged' | 'FileChanged', watchPaths: readonly string[]) =>
   specific(event, { watchPaths });

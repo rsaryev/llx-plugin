@@ -31,78 +31,85 @@ function redrawsPerSecond(rate: 'default' | 'terminal-visible'): { most: number;
 }
 
 // The id holds both kinds of quote, so a template literal names it (the SP2 gate reads quoted literals; spec() checks the id when the file runs).
-spec(`mods.limit.$.ui.invalidate('ui.render')`, () => {
-  test('redraws are throttled to 10 a second', () => {
-    // never more than 10 in any second, and calls every millisecond keep it at the limit
-    expect(redrawsPerSecond('default').most).toBe(10);
-    expect(redrawsPerSecond('default').total).toBeGreaterThan(18);
-  });
-
-  test('in the terminal, for the visible pane, the expanded band and the hint line, to 30 a second', () => {
-    expect(redrawsPerSecond('terminal-visible')).toMatchObject({ most: 30 });
-    expect(redrawsPerSecond('terminal-visible').total).toBeGreaterThan(55);
-  });
-
-  test('calls that come sooner are coalesced into one redraw that reads the latest data, not the values between', () => {
-    const clock = fixedClock();
-    let data = 0;
-    const drawn: number[] = [];
-    const gate = createRedrawGate(clock, 'default', () => drawn.push(data));
-    data = 1;
-    gate.invalidate();
-    data = 2;
-    gate.invalidate();
-    data = 3;
-    gate.invalidate();
-    expect(drawn).toEqual([1]);
-    clock.advance(99);
-    expect(drawn).toEqual([1]);
-    clock.advance(1);
-    expect(drawn).toEqual([1, 3]);
-    clock.advance(1000);
-    expect(drawn).toEqual([1, 3]);
-    expect(clock.pending()).toBe(0);
-  });
-
-  test('a call after the wait redraws at once', () => {
-    const clock = fixedClock();
-    let redraws = 0;
-    const gate = createRedrawGate(clock, 'default', () => (redraws += 1));
-    gate.invalidate();
-    clock.advance(100);
-    gate.invalidate();
-    expect(redraws).toBe(2);
-  });
-
-  test("$.ui.invalidate('ui.render') asks the host to draw the sites again, at the rate of what is redrawn", async () => {
-    let visible = false;
-    let now = () => 0;
-    const times: number[] = [];
-    const { iface } = fakeInterface({
-      isTerminalVisible: () => visible,
-      redraw: () => void times.push(now()),
+spec(
+  [
+    `mods.limit.$.ui.invalidate('ui.render')`,
+    'mods.interface.Redraw when your data changes',
+    'mods.interface.How often a site can redraw',
+  ],
+  () => {
+    test('redraws are throttled to 10 a second', () => {
+      // never more than 10 in any second, and calls every millisecond keep it at the limit
+      expect(redrawsPerSecond('default').most).toBe(10);
+      expect(redrawsPerSecond('default').total).toBeGreaterThan(18);
     });
-    const h = await apiHarness({
-      rules: withUiRules,
-      ui: uiOver(iface),
+
+    test('in the terminal, for the visible pane, the expanded band and the hint line, to 30 a second', () => {
+      expect(redrawsPerSecond('terminal-visible')).toMatchObject({ most: 30 });
+      expect(redrawsPerSecond('terminal-visible').total).toBeGreaterThan(55);
     });
-    now = () => h.clock.now();
-    const run = async (): Promise<number> => {
-      times.length = 0;
-      for (let ms = 0; ms < 2000; ms += 1) {
-        await h.api.ui.invalidate('ui.render');
-        h.clock.advance(1);
-      }
-      return Math.max(...times.map((at) => times.filter((t) => t >= at && t < at + 1000).length));
-    };
-    expect(await run()).toBe(10);
-    visible = true;
-    expect(await run()).toBe(30);
-    expect(await rejection(h.api.ui.invalidate('other'))).toBe(
-      "$.ui.invalidate: takes 'ui.render'",
-    );
-  });
-});
+
+    test('calls that come sooner are coalesced into one redraw that reads the latest data, not the values between', () => {
+      const clock = fixedClock();
+      let data = 0;
+      const drawn: number[] = [];
+      const gate = createRedrawGate(clock, 'default', () => drawn.push(data));
+      data = 1;
+      gate.invalidate();
+      data = 2;
+      gate.invalidate();
+      data = 3;
+      gate.invalidate();
+      expect(drawn).toEqual([1]);
+      clock.advance(99);
+      expect(drawn).toEqual([1]);
+      clock.advance(1);
+      expect(drawn).toEqual([1, 3]);
+      clock.advance(1000);
+      expect(drawn).toEqual([1, 3]);
+      expect(clock.pending()).toBe(0);
+    });
+
+    test('a call after the wait redraws at once', () => {
+      const clock = fixedClock();
+      let redraws = 0;
+      const gate = createRedrawGate(clock, 'default', () => (redraws += 1));
+      gate.invalidate();
+      clock.advance(100);
+      gate.invalidate();
+      expect(redraws).toBe(2);
+    });
+
+    test("$.ui.invalidate('ui.render') asks the host to draw the sites again, at the rate of what is redrawn", async () => {
+      let visible = false;
+      let now = () => 0;
+      const times: number[] = [];
+      const { iface } = fakeInterface({
+        isTerminalVisible: () => visible,
+        redraw: () => void times.push(now()),
+      });
+      const h = await apiHarness({
+        rules: withUiRules,
+        ui: uiOver(iface),
+      });
+      now = () => h.clock.now();
+      const run = async (): Promise<number> => {
+        times.length = 0;
+        for (let ms = 0; ms < 2000; ms += 1) {
+          await h.api.ui.invalidate('ui.render');
+          h.clock.advance(1);
+        }
+        return Math.max(...times.map((at) => times.filter((t) => t >= at && t < at + 1000).length));
+      };
+      expect(await run()).toBe(10);
+      visible = true;
+      expect(await run()).toBe(30);
+      expect(await rejection(h.api.ui.invalidate('other'))).toBe(
+        "$.ui.invalidate: takes 'ui.render'",
+      );
+    });
+  },
+);
 
 spec('mods.api.$.state', () => {
   test('a ui.render hook that reads a $.state value subscribes its site: writing the value redraws, and a value it did not read does not', async () => {

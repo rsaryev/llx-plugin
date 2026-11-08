@@ -16,7 +16,7 @@ const load = async (tree: Record<string, string>, fallbackName?: string) =>
 
 const manifest = (settings: unknown) => json({ name: 'p', settings });
 
-spec('manifest.field.settings', () => {
+spec(['manifest.field.settings', 'manifest.rule.settings'], () => {
   test('settings.json applies when it sets a supported key, and the manifest settings is ignored', async () => {
     const { plugin } = await load({
       '.claude-plugin/plugin.json': manifest({ agent: 'from-manifest' }),

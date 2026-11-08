@@ -35,7 +35,7 @@ const slowServer = () =>
     tools: { 's/gate': { failure: 'timeout', message: 'late' } },
   });
 
-spec('hooks.behavior.Timeouts', () => {
+spec(['hooks.behavior.Timeouts', 'hooks.guide.Limitations'], () => {
   test('a command hook that reaches its timeout is canceled and its output is discarded: no decision', async () => {
     const { fire, runner } = engineSession([preTool({ timeout: 5 })], [TIMED_OUT]);
     const outcome = await fire('PreToolUse');

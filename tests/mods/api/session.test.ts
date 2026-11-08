@@ -1,3 +1,4 @@
+/** Also plugins/mods/api.md § Reach files, processes, and the network. */
 /**
  * `$.session`, `$.prompt`, `$.turn` and `$.config`.
  * plugins/mods/api.md § Send and receive messages between sessions (`$.session.send({ to, text })`
@@ -47,139 +48,151 @@ const sessionPort = (over: Partial<ModSession> = {}): ModSession => ({
   ...over,
 });
 
-spec('mods.api.$.session', () => {
-  test('$.session has the fourteen methods of the reference', async () => {
-    const { api } = await apiHarness({ ports: { session: sessionPort() } });
-    expectMethods(api.session, MODS_API.session);
-  });
-
-  test('the plain questions answer from the host: cwd, root, model, turns, id, repo, surfaces, version', async () => {
-    const { api } = await apiHarness({ ports: { session: sessionPort() } });
-    expect(
-      await Promise.all([
-        api.session.cwd(),
-        api.session.root(),
-        api.session.model(),
-        api.session.turns(),
-        api.session.id(),
-        api.session.repo(),
-        api.session.surfaces(),
-        api.session.version(),
-      ]),
-    ).toEqual([
-      '/work',
-      '/work',
-      'claude-test',
-      3,
-      'abc123',
-      { branch: 'main' },
-      ['terminal'],
-      '2.1.319',
-    ]);
-  });
-
-  test('usage resolves to { startedAt, context, rateLimits, cost } as the host gave it', async () => {
-    const { api } = await apiHarness({ ports: { session: sessionPort() } });
-    expect(await api.session.usage()).toMatchObject({
-      context: { tokens: 10, window: 200, percent: 5 },
-      rateLimits: [{ kind: 'five_hour', percentUsed: 12, resetsAt: 99 }],
+spec(
+  [
+    'mods.api.$.session',
+    'mods.apiGuide.Send and receive messages between sessions.A subagent or teammate',
+    'mods.apiGuide.Send and receive messages between sessions.Another of your sessions',
+    'mods.apiGuide.Send and receive messages between sessions.The sender of a message you received',
+    'mods.apiGuide.Reach files, processes, and the network',
+    'mods.apiGuide.Reach files, processes, and the network.$.session',
+  ],
+  () => {
+    test('$.session has the fourteen methods of the reference', async () => {
+      const { api } = await apiHarness({ ports: { session: sessionPort() } });
+      expectMethods(api.session, MODS_API.session);
     });
-  });
 
-  test('messages returns { role, text, toolUses } entries', async () => {
-    const { api } = await apiHarness({ ports: { session: sessionPort() } });
-    expect(await api.session.messages()).toEqual([{ role: 'user', text: 'm0', toolUses: [] }]);
-  });
-
-  test('send to { sessionId } fires session.send with e.to as the id string and resolves to { isDelivered: true }', async () => {
-    const sent: unknown[] = [];
-    const h = await apiHarness({
-      ports: {
-        session: sessionPort({
-          send: (to, text) => (sent.push([to, text]), Promise.resolve({ isDelivered: true })),
-        }),
-      },
+    test('the plain questions answer from the host: cwd, root, model, turns, id, repo, surfaces, version', async () => {
+      const { api } = await apiHarness({ ports: { session: sessionPort() } });
+      expect(
+        await Promise.all([
+          api.session.cwd(),
+          api.session.root(),
+          api.session.model(),
+          api.session.turns(),
+          api.session.id(),
+          api.session.repo(),
+          api.session.surfaces(),
+          api.session.version(),
+        ]),
+      ).toEqual([
+        '/work',
+        '/work',
+        'claude-test',
+        3,
+        'abc123',
+        { branch: 'main' },
+        ['terminal'],
+        '2.1.319',
+      ]);
     });
-    const seen: unknown[] = [];
-    await h.mod('spy', 'prepend', [fn('session.send', (_$, e, next) => (seen.push(e), next(e)))]);
-    expect(
-      await h.api.session.send({ to: { sessionId: 's-9' }, text: 'Status? One line.' }),
-    ).toEqual({ isDelivered: true });
-    expect(seen).toEqual([{ to: 's-9', text: 'Status? One line.' }]);
-    expect(sent).toEqual([['s-9', 'Status? One line.']]);
-  });
 
-  test('send to { agentId } and to the string address a message came from', async () => {
-    const targets: string[] = [];
-    const h = await apiHarness({
-      ports: {
-        session: sessionPort({
-          send: (to) => (targets.push(to), Promise.resolve({ isDelivered: true })),
-        }),
-      },
+    test('usage resolves to { startedAt, context, rateLimits, cost } as the host gave it', async () => {
+      const { api } = await apiHarness({ ports: { session: sessionPort() } });
+      expect(await api.session.usage()).toMatchObject({
+        context: { tokens: 10, window: 200, percent: 5 },
+        rateLimits: [{ kind: 'five_hour', percentUsed: 12, resetsAt: 99 }],
+      });
     });
-    await h.api.session.send({ to: { agentId: 'ag-1' }, text: 'hi' });
-    await h.api.session.send({ to: 'peer@host', text: 'hi' });
-    expect(targets).toEqual(['ag-1', 'peer@host']);
-  });
 
-  test('a hook that delivers nothing answers { isDelivered: false, reason }: the call resolves to it and the host is never reached', async () => {
-    const reason =
-      'Agent "ag-1" was not resumed: the session was stopped and nobody has sent input since.';
-    const sent: string[] = [];
-    const h = await apiHarness({
-      ports: {
-        session: sessionPort({
-          send: (to) => (sent.push(to), Promise.resolve({ isDelivered: true })),
-        }),
-      },
+    test('messages returns { role, text, toolUses } entries', async () => {
+      const { api } = await apiHarness({ ports: { session: sessionPort() } });
+      expect(await api.session.messages()).toEqual([{ role: 'user', text: 'm0', toolUses: [] }]);
     });
-    await h.mod('stopped', 'prepend', [fn('session.send', () => ({ isDelivered: false, reason }))]);
-    expect(await h.api.session.send({ to: { agentId: 'ag-1' }, text: 'hi' })).toEqual({
-      isDelivered: false,
-      reason,
+
+    test('send to { sessionId } fires session.send with e.to as the id string and resolves to { isDelivered: true }', async () => {
+      const sent: unknown[] = [];
+      const h = await apiHarness({
+        ports: {
+          session: sessionPort({
+            send: (to, text) => (sent.push([to, text]), Promise.resolve({ isDelivered: true })),
+          }),
+        },
+      });
+      const seen: unknown[] = [];
+      await h.mod('spy', 'prepend', [fn('session.send', (_$, e, next) => (seen.push(e), next(e)))]);
+      expect(
+        await h.api.session.send({ to: { sessionId: 's-9' }, text: 'Status? One line.' }),
+      ).toEqual({ isDelivered: true });
+      expect(seen).toEqual([{ to: 's-9', text: 'Status? One line.' }]);
+      expect(sent).toEqual([['s-9', 'Status? One line.']]);
     });
-    expect(sent).toEqual([]);
-  });
 
-  test('a send without a target or text rejects', async () => {
-    const h = await apiHarness({ ports: { session: sessionPort() } });
-    expect(await rejection(h.api.session.send({ text: 'hi' }))).toContain('$.session.send');
-    expect(await rejection(h.api.session.send({ to: { sessionId: 's' } }))).toContain(
-      '$.session.send',
-    );
-  });
-
-  test('a hook on session.send answers with the event result, as a stub does', async () => {
-    const h = await apiHarness({ ports: { session: sessionPort() } });
-    await h.mod('stub', 'prepend', [fn('session.send', () => ({ isDelivered: true }))]);
-    expect(await h.api.session.send({ to: 'x', text: 'y' })).toEqual({ isDelivered: true });
-  });
-
-  test('append, compact and authorize reach the host', async () => {
-    const seen: string[] = [];
-    const h = await apiHarness({
-      ports: {
-        session: sessionPort({
-          append: (row) => (seen.push(`append ${JSON.stringify(row)}`), Promise.resolve()),
-          compact: () => (seen.push('compact'), Promise.resolve()),
-          authorize: (request) => (
-            seen.push(`authorize ${JSON.stringify(request)}`),
-            Promise.resolve({ isAuthorized: false })
-          ),
-        }),
-      },
+    test('send to { agentId } and to the string address a message came from', async () => {
+      const targets: string[] = [];
+      const h = await apiHarness({
+        ports: {
+          session: sessionPort({
+            send: (to) => (targets.push(to), Promise.resolve({ isDelivered: true })),
+          }),
+        },
+      });
+      await h.api.session.send({ to: { agentId: 'ag-1' }, text: 'hi' });
+      await h.api.session.send({ to: 'peer@host', text: 'hi' });
+      expect(targets).toEqual(['ag-1', 'peer@host']);
     });
-    await h.api.session.append({ type: 'user', message: { content: 'hi' } });
-    await h.api.session.compact();
-    expect(await h.api.session.authorize({ action: 'x' })).toEqual({ isAuthorized: false });
-    expect(seen).toEqual([
-      'append {"type":"user","message":{"content":"hi"}}',
-      'compact',
-      'authorize {"action":"x"}',
-    ]);
-  });
-});
+
+    test('a hook that delivers nothing answers { isDelivered: false, reason }: the call resolves to it and the host is never reached', async () => {
+      const reason =
+        'Agent "ag-1" was not resumed: the session was stopped and nobody has sent input since.';
+      const sent: string[] = [];
+      const h = await apiHarness({
+        ports: {
+          session: sessionPort({
+            send: (to) => (sent.push(to), Promise.resolve({ isDelivered: true })),
+          }),
+        },
+      });
+      await h.mod('stopped', 'prepend', [
+        fn('session.send', () => ({ isDelivered: false, reason })),
+      ]);
+      expect(await h.api.session.send({ to: { agentId: 'ag-1' }, text: 'hi' })).toEqual({
+        isDelivered: false,
+        reason,
+      });
+      expect(sent).toEqual([]);
+    });
+
+    test('a send without a target or text rejects', async () => {
+      const h = await apiHarness({ ports: { session: sessionPort() } });
+      expect(await rejection(h.api.session.send({ text: 'hi' }))).toContain('$.session.send');
+      expect(await rejection(h.api.session.send({ to: { sessionId: 's' } }))).toContain(
+        '$.session.send',
+      );
+    });
+
+    test('a hook on session.send answers with the event result, as a stub does', async () => {
+      const h = await apiHarness({ ports: { session: sessionPort() } });
+      await h.mod('stub', 'prepend', [fn('session.send', () => ({ isDelivered: true }))]);
+      expect(await h.api.session.send({ to: 'x', text: 'y' })).toEqual({ isDelivered: true });
+    });
+
+    test('append, compact and authorize reach the host', async () => {
+      const seen: string[] = [];
+      const h = await apiHarness({
+        ports: {
+          session: sessionPort({
+            append: (row) => (seen.push(`append ${JSON.stringify(row)}`), Promise.resolve()),
+            compact: () => (seen.push('compact'), Promise.resolve()),
+            authorize: (request) => (
+              seen.push(`authorize ${JSON.stringify(request)}`),
+              Promise.resolve({ isAuthorized: false })
+            ),
+          }),
+        },
+      });
+      await h.api.session.append({ type: 'user', message: { content: 'hi' } });
+      await h.api.session.compact();
+      expect(await h.api.session.authorize({ action: 'x' })).toEqual({ isAuthorized: false });
+      expect(seen).toEqual([
+        'append {"type":"user","message":{"content":"hi"}}',
+        'compact',
+        'authorize {"action":"x"}',
+      ]);
+    });
+  },
+);
 
 const all = (count: number) => Array.from({ length: count }, (_, index) => entry(index));
 

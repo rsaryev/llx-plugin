@@ -18,8 +18,9 @@ import { requiresPromptDespitePrefixRule } from '../../src/rules/bash/exec-wrapp
 import { stripWrappers } from '../../src/rules/bash/wrappers.ts';
 import { matchContext } from '../support/rule-context.ts';
 import { allows, denies } from '../support/bash-rules.ts';
+import { spec } from '../support/spec.ts';
 
-describe('the fixed wrapper list is stripped before matching', () => {
+spec(['permissions.behavior.Wrappers'], () => {
   test.each([
     'timeout 30 npm test',
     'time npm test',
@@ -126,7 +127,7 @@ describe('xargs and environment runners', () => {
   });
 });
 
-describe('exec wrappers and find actions need an exact rule', () => {
+spec(['permissions.behavior.Exec wrappers and find actions'], () => {
   test.each(['watch ls', 'setsid ls', 'ionice -c3 ls', 'flock /tmp/l ls'])(
     'a prefix rule cannot approve %j',
     (command) => {

@@ -6,7 +6,7 @@
  * satisfies the entry and no range is checked against it), § Dependencies when your plugin loads
  * from claude.ai (the `@synced` rule); plugins/troubleshooting.md § Dependency errors (the quoted
  * messages). What the docs leave open (an empty `version`, the text after a quoted prefix) is
- * outside `spec(...)` and in spec/judgments.md.
+ * outside `spec([...)` and in spec/judgments.md.
  */
 import { describe, expect, test } from 'bun:test';
 import {
@@ -169,62 +169,68 @@ spec('dependencies.field.marketplace', () => {
   });
 });
 
-spec('dependencies.field.version', () => {
-  test('the documented ranges are accepted as the constraint: ~2.1.0, ^2.0, >=1.4 and =2.1.0', () => {
-    for (const range of ['~2.1.0', '^2.0', '>=1.4', '=2.1.0']) {
-      expect(normalized({ name: 'secrets-vault', version: range })).toMatchObject({ range });
-    }
-  });
-
-  test('`version` is a string, and a range that is not valid semver is an invalid version requirement', () => {
-    expect(normalized({ name: 'a', version: 2 })).toMatchObject({
-      severity: 'error',
-      path: `${PATH}.version`,
+spec(
+  [
+    'dependencies.field.version',
+    'install.troubleshooting.Dependency errors.has an invalid version requirement',
+  ],
+  () => {
+    test('the documented ranges are accepted as the constraint: ~2.1.0, ^2.0, >=1.4 and =2.1.0', () => {
+      for (const range of ['~2.1.0', '^2.0', '>=1.4', '=2.1.0']) {
+        expect(normalized({ name: 'secrets-vault', version: range })).toMatchObject({ range });
+      }
     });
-    expect(errorOf({ name: 'secrets-vault', version: 'not a range' })).toContain(
-      'has an invalid version requirement',
-    );
-    expect(errorOf({ name: 'secrets-vault', version: 'not a range' })).toContain(
-      '"secrets-vault@your-marketplace"',
-    );
-  });
 
-  test('a dependency with no `version` carries no range and tracks what its marketplace provides', () => {
-    expect(normalized('audit-logger')).not.toHaveProperty('range');
-  });
-
-  test('an installed version outside the range is `Requires "<dep>" <range>, installed <version>`', () => {
-    const dep = { name: 'secrets-vault', marketplace: MARKETPLACE, range: '~2.1.0' };
-    expect(checkInstalledDependency(dep, { version: '3.0.0', enabled: true })).toEqual({
-      severity: 'error',
-      path: 'dependencies.secrets-vault@your-marketplace',
-      message: 'Requires "secrets-vault@your-marketplace" ~2.1.0, installed 3.0.0',
-      errorType: 'dependency-version-unsatisfied',
+    test('`version` is a string, and a range that is not valid semver is an invalid version requirement', () => {
+      expect(normalized({ name: 'a', version: 2 })).toMatchObject({
+        severity: 'error',
+        path: `${PATH}.version`,
+      });
+      expect(errorOf({ name: 'secrets-vault', version: 'not a range' })).toContain(
+        'has an invalid version requirement',
+      );
+      expect(errorOf({ name: 'secrets-vault', version: 'not a range' })).toContain(
+        '"secrets-vault@your-marketplace"',
+      );
     });
-    expect(checkInstalledDependency(dep, { version: '2.1.7', enabled: true })).toBeUndefined();
-  });
 
-  test('a range does not match a pre-release version unless it opts in with a suffix such as ^2.0.0-0', () => {
-    const plain = { name: 'a', marketplace: MARKETPLACE, range: '^2.0.0' };
-    const optIn = { name: 'a', marketplace: MARKETPLACE, range: '^2.0.0-0' };
-    const beta = { version: '2.0.0-beta.1', enabled: true };
-    expect(checkInstalledDependency(plain, beta)).toMatchObject({ severity: 'error' });
-    expect(checkInstalledDependency(optIn, beta)).toBeUndefined();
-  });
+    test('a dependency with no `version` carries no range and tracks what its marketplace provides', () => {
+      expect(normalized('audit-logger')).not.toHaveProperty('range');
+    });
 
-  test('a plugin.json that sets no version satisfies no constraint', () => {
-    const dep = { name: 'a', marketplace: MARKETPLACE, range: '>=0.0.0' };
-    expect(checkInstalledDependency(dep, { enabled: true })).toMatchObject({ severity: 'error' });
-  });
+    test('an installed version outside the range is `Requires "<dep>" <range>, installed <version>`', () => {
+      const dep = { name: 'secrets-vault', marketplace: MARKETPLACE, range: '~2.1.0' };
+      expect(checkInstalledDependency(dep, { version: '3.0.0', enabled: true })).toEqual({
+        severity: 'error',
+        path: 'dependencies.secrets-vault@your-marketplace',
+        message: 'Requires "secrets-vault@your-marketplace" ~2.1.0, installed 3.0.0',
+        errorType: 'dependency-version-unsatisfied',
+      });
+      expect(checkInstalledDependency(dep, { version: '2.1.7', enabled: true })).toBeUndefined();
+    });
 
-  test('a version constraint is not checked against a local --plugin-dir copy', () => {
-    const dep = { name: 'a', marketplace: MARKETPLACE, range: '~2.1.0' };
-    expect(checkInstalledDependency(dep, { enabled: true, local: true })).toBeUndefined();
-    expect(
-      checkInstalledDependency(dep, { version: '9.9.9', enabled: true, local: true }),
-    ).toBeUndefined();
-  });
-});
+    test('a range does not match a pre-release version unless it opts in with a suffix such as ^2.0.0-0', () => {
+      const plain = { name: 'a', marketplace: MARKETPLACE, range: '^2.0.0' };
+      const optIn = { name: 'a', marketplace: MARKETPLACE, range: '^2.0.0-0' };
+      const beta = { version: '2.0.0-beta.1', enabled: true };
+      expect(checkInstalledDependency(plain, beta)).toMatchObject({ severity: 'error' });
+      expect(checkInstalledDependency(optIn, beta)).toBeUndefined();
+    });
+
+    test('a plugin.json that sets no version satisfies no constraint', () => {
+      const dep = { name: 'a', marketplace: MARKETPLACE, range: '>=0.0.0' };
+      expect(checkInstalledDependency(dep, { enabled: true })).toMatchObject({ severity: 'error' });
+    });
+
+    test('a version constraint is not checked against a local --plugin-dir copy', () => {
+      const dep = { name: 'a', marketplace: MARKETPLACE, range: '~2.1.0' };
+      expect(checkInstalledDependency(dep, { enabled: true, local: true })).toBeUndefined();
+      expect(
+        checkInstalledDependency(dep, { version: '9.9.9', enabled: true, local: true }),
+      ).toBeUndefined();
+    });
+  },
+);
 
 describe('judgments (outside spec)', () => {
   test('an empty or blank `version` is no constraint, as node-semver reads "" as any version', () => {

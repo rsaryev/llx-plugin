@@ -174,34 +174,44 @@ spec('settingsMerge.managed.When an admin document counts as present', () => {
   });
 });
 
-spec(`${DROPPED}.Managed settings file or drop-in file`, () => {
-  test('a file that is not valid JSON, or whose top level is not an object, stops Claude Code', () => {
-    for (const text of ['{ not json', '[1, 2]', '"text"', '7']) {
-      const read = readAdminDocument('file', found(text), '/etc/claude-code/managed-settings.json');
-      expect(read.broken).toBe(true);
-      expect(read.issues[0]?.severity).toBe('error');
-      expect(read.issues[0]?.message).toStartWith(
-        `/etc/claude-code/managed-settings.json: ${PARSE_FAILURE}`,
-      );
-    }
-  });
+spec(
+  [
+    `${DROPPED}.Managed settings file or drop-in file`,
+    'cli.errors.Managed settings document could not be parsed',
+  ],
+  () => {
+    test('a file that is not valid JSON, or whose top level is not an object, stops Claude Code', () => {
+      for (const text of ['{ not json', '[1, 2]', '"text"', '7']) {
+        const read = readAdminDocument(
+          'file',
+          found(text),
+          '/etc/claude-code/managed-settings.json',
+        );
+        expect(read.broken).toBe(true);
+        expect(read.issues[0]?.severity).toBe('error');
+        expect(read.issues[0]?.message).toStartWith(
+          `/etc/claude-code/managed-settings.json: ${PARSE_FAILURE}`,
+        );
+      }
+    });
 
-  test('it stops Claude Code even when another admin source delivers a valid policy', () => {
-    const composed = composeManaged([
-      document('remote', { model: 'opus' }),
-      readAdminDocument('file', found('{ nope')),
-    ]);
-    expect(composed.fatal).toBe(true);
-  });
+    test('it stops Claude Code even when another admin source delivers a valid policy', () => {
+      const composed = composeManaged([
+        document('remote', { model: 'opus' }),
+        readAdminDocument('file', found('{ nope')),
+      ]);
+      expect(composed.fatal).toBe(true);
+    });
 
-  test('an empty file counts as {} and an absent one is not a failure', () => {
-    const empty = readAdminDocument('file', found(''));
-    expect(empty.broken).toBe(false);
-    expect(empty.delivers).toBe(false);
-    expect(composeManaged([empty]).fatal).toBe(false);
-    expect(composeManaged([readAdminDocument('file', undefined)]).fatal).toBe(false);
-  });
-});
+    test('an empty file counts as {} and an absent one is not a failure', () => {
+      const empty = readAdminDocument('file', found(''));
+      expect(empty.broken).toBe(false);
+      expect(empty.delivers).toBe(false);
+      expect(composeManaged([empty]).fatal).toBe(false);
+      expect(composeManaged([readAdminDocument('file', undefined)]).fatal).toBe(false);
+    });
+  },
+);
 
 spec(`${DROPPED}.MDM plist`, () => {
   test('a plist plutil reports malformed, or whose converted content is not an object, stops Claude Code', () => {

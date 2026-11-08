@@ -11,95 +11,102 @@ import { spec } from '../../support/spec.ts';
 const mode = (value: unknown) => ({ crossSessionInbound: value });
 const get = (...sources: readonly Source[]) => viewOf(...sources).get('crossSessionInbound');
 
-spec('settings.key.crossSessionInbound', () => {
-  describe('the value in force', () => {
-    test('is unset when no file sets it, so Claude Code decides per message', () => {
-      expect(get(['user', { model: 'a' }])).toBeUndefined();
-    });
-
-    test('managed settings are read first, then --settings, then user settings: the first value found applies', () => {
-      expect(
-        get(['managed', mode('accept')], ['flag', mode('refuse')], ['user', mode('hold')]),
-      ).toBe('accept');
-      expect(get(['flag', mode('accept')], ['user', mode('refuse')])).toBe('accept');
-      expect(get(['user', mode('hold')])).toBe('hold');
-    });
-
-    test('a project or local value applies only when it is stricter than what the trusted sources give', () => {
-      expect(get(['user', mode('hold')], ['project', mode('refuse')])).toBe('refuse');
-      expect(get(['user', mode('refuse')], ['local', mode('hold')])).toBe('refuse');
-      expect(get(['managed', mode('hold')], ['project', mode('accept')])).toBe('hold');
-      expect(get(['user', mode('accept')], ['local', mode('accept')])).toBe('accept');
-    });
-
-    test('when none of the trusted sources sets a value, a project or local hold or refuse still applies', () => {
-      expect(get(['project', mode('hold')])).toBe('hold');
-      expect(get(['local', mode('refuse')])).toBe('refuse');
-    });
-
-    test('a project or local accept does not replace the per-message default', () => {
-      expect(get(['project', mode('accept')])).toBeUndefined();
-    });
-  });
-
-  describe('a value Claude Code does not recognize', () => {
-    test('is reported with the warning of the docs, naming the value', () => {
-      const [message] = messagesOf('user', mode('reject'));
-      expect(message).toBe(
-        '"crossSessionInbound" must be one of "accept", "hold", "refuse"; received "reject". This value was ignored; while it is present, cross-session messages are held for your approval instead of being delivered. Set it to one of the values above.',
-      );
-    });
-
-    for (const scope of ['user', 'project', 'local', 'flag'] as const) {
-      test(`in a ${scope} file it holds inbound messages`, () => {
-        expect(get([scope, mode('reject')])).toBe('hold');
+spec(
+  [
+    'settings.key.crossSessionInbound',
+    'cli.errors.crossSessionInbound must be one of accept, hold, refuse',
+  ],
+  () => {
+    describe('the value in force', () => {
+      test('is unset when no file sets it, so Claude Code decides per message', () => {
+        expect(get(['user', { model: 'a' }])).toBeUndefined();
       });
 
-      test(`in a ${scope} file it holds them even when a source that takes precedence sets accept`, () => {
-        expect(get(['managed', mode('accept')], [scope, mode('reject')])).toBe('hold');
+      test('managed settings are read first, then --settings, then user settings: the first value found applies', () => {
+        expect(
+          get(['managed', mode('accept')], ['flag', mode('refuse')], ['user', mode('hold')]),
+        ).toBe('accept');
+        expect(get(['flag', mode('accept')], ['user', mode('refuse')])).toBe('accept');
+        expect(get(['user', mode('hold')])).toBe('hold');
       });
 
-      test(`a refuse that another source sets still applies over a ${scope} unrecognized value`, () => {
-        expect(get(['managed', mode('refuse')], [scope, mode('reject')])).toBe('refuse');
+      test('a project or local value applies only when it is stricter than what the trusted sources give', () => {
+        expect(get(['user', mode('hold')], ['project', mode('refuse')])).toBe('refuse');
+        expect(get(['user', mode('refuse')], ['local', mode('hold')])).toBe('refuse');
+        expect(get(['managed', mode('hold')], ['project', mode('accept')])).toBe('hold');
+        expect(get(['user', mode('accept')], ['local', mode('accept')])).toBe('accept');
       });
-    }
 
-    for (const scope of ['user', 'project', 'local', 'flag'] as const) {
-      test(`the merged settings carry the hold of a lone ${scope} unrecognized value`, () => {
-        expect(viewOf([scope, { ...mode('reject'), model: 'a' }]).merged()).toEqual({
-          crossSessionInbound: 'hold',
-          model: 'a',
+      test('when none of the trusted sources sets a value, a project or local hold or refuse still applies', () => {
+        expect(get(['project', mode('hold')])).toBe('hold');
+        expect(get(['local', mode('refuse')])).toBe('refuse');
+      });
+
+      test('a project or local accept does not replace the per-message default', () => {
+        expect(get(['project', mode('accept')])).toBeUndefined();
+      });
+    });
+
+    describe('a value Claude Code does not recognize', () => {
+      test('is reported with the warning of the docs, naming the value', () => {
+        const [message] = messagesOf('user', mode('reject'));
+        expect(message).toBe(
+          '"crossSessionInbound" must be one of "accept", "hold", "refuse"; received "reject". This value was ignored; while it is present, cross-session messages are held for your approval instead of being delivered. Set it to one of the values above.',
+        );
+      });
+
+      for (const scope of ['user', 'project', 'local', 'flag'] as const) {
+        test(`in a ${scope} file it holds inbound messages`, () => {
+          expect(get([scope, mode('reject')])).toBe('hold');
         });
+
+        test(`in a ${scope} file it holds them even when a source that takes precedence sets accept`, () => {
+          expect(get(['managed', mode('accept')], [scope, mode('reject')])).toBe('hold');
+        });
+
+        test(`a refuse that another source sets still applies over a ${scope} unrecognized value`, () => {
+          expect(get(['managed', mode('refuse')], [scope, mode('reject')])).toBe('refuse');
+        });
+      }
+
+      for (const scope of ['user', 'project', 'local', 'flag'] as const) {
+        test(`the merged settings carry the hold of a lone ${scope} unrecognized value`, () => {
+          expect(viewOf([scope, { ...mode('reject'), model: 'a' }]).merged()).toEqual({
+            crossSessionInbound: 'hold',
+            model: 'a',
+          });
+        });
+
+        test(`the merged settings agree with get over a managed accept and a ${scope} unrecognized value`, () => {
+          const view = viewOf(['managed', mode('accept')], [scope, mode('reject')]);
+          expect(view.merged().crossSessionInbound).toBe('hold');
+          expect(view.merged().crossSessionInbound).toBe(view.get('crossSessionInbound'));
+        });
+      }
+
+      test('the merged settings keep a stricter value over the floor', () => {
+        expect(
+          viewOf(['managed', mode('refuse')], ['user', mode('reject')]).merged()
+            .crossSessionInbound,
+        ).toBe('refuse');
       });
 
-      test(`the merged settings agree with get over a managed accept and a ${scope} unrecognized value`, () => {
-        const view = viewOf(['managed', mode('accept')], [scope, mode('reject')]);
-        expect(view.merged().crossSessionInbound).toBe('hold');
-        expect(view.merged().crossSessionInbound).toBe(view.get('crossSessionInbound'));
+      test('the merged settings carry nothing for it once the value is removed', () => {
+        expect(viewOf(['user', { model: 'a' }]).merged()).toEqual({ model: 'a' });
       });
-    }
 
-    test('the merged settings keep a stricter value over the floor', () => {
-      expect(
-        viewOf(['managed', mode('refuse')], ['user', mode('reject')]).merged().crossSessionInbound,
-      ).toBe('refuse');
-    });
+      test('clears when the value is fixed or removed', () => {
+        expect(get(['managed', mode('accept')], ['user', mode('accept')])).toBe('accept');
+        expect(get(['managed', mode('accept')], ['user', { model: 'a' }])).toBe('accept');
+      });
 
-    test('the merged settings carry nothing for it once the value is removed', () => {
-      expect(viewOf(['user', { model: 'a' }]).merged()).toEqual({ model: 'a' });
+      test('in managed settings it is treated as refuse', () => {
+        expect(get(['managed', mode('reject')])).toBe('refuse');
+        expect(get(['managed', mode('reject')], ['user', mode('accept')])).toBe('refuse');
+      });
     });
-
-    test('clears when the value is fixed or removed', () => {
-      expect(get(['managed', mode('accept')], ['user', mode('accept')])).toBe('accept');
-      expect(get(['managed', mode('accept')], ['user', { model: 'a' }])).toBe('accept');
-    });
-
-    test('in managed settings it is treated as refuse', () => {
-      expect(get(['managed', mode('reject')])).toBe('refuse');
-      expect(get(['managed', mode('reject')], ['user', mode('accept')])).toBe('refuse');
-    });
-  });
-});
+  },
+);
 
 spec('settings.key.isolatePeerMachines', () => {
   const get = (...sources: readonly Source[]) => viewOf(...sources).get('isolatePeerMachines');

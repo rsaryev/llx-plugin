@@ -24,12 +24,45 @@ function hasWildcardBeforeSubcommand(pattern: string): boolean {
   return rest.slice(star + 1).some((word) => !hasStar(word));
 }
 
+/**
+ * The row shown below the startup banner in an interactive session (errors.md, "Has a wildcard
+ * before the rest of the command"): `⚠ Allow rule Bash(git -C * status *) allows any option at its * · use an exact value`.
+ */
+export const wildcardBannerRow = (rule: PermissionRule): string =>
+  `⚠ Allow rule ${rule.text} allows any option at its * · use an exact value`;
+
 /** errors.md: the warning is about an allow rule (a deny or ask rule only restricts more). */
 const WARNS: { readonly [B in PermissionBehavior]: boolean } = {
   allow: true,
   deny: false,
   ask: false,
 };
+
+/**
+ * What follows `Permission allow rule` in parentheses: "a settings file path, or the `--allowed-tools`
+ * flag itself". The file names are the documented locations of each source; a registry typed over
+ * the source kinds, so a new kind fails the typecheck.
+ */
+type Source = PermissionRule['source'];
+const SOURCE_LABELS: {
+  readonly [K in Source['kind']]: (source: Extract<Source, { kind: K }>) => string;
+} = {
+  managed: () => 'managed settings',
+  'embedder-managed': () => 'managed settings',
+  project: () => '.claude/settings.json',
+  local: () => '.claude/settings.local.json',
+  user: () => '~/.claude/settings.json',
+  'flag-settings': (source) => source.file,
+  cli: () => '--allowed-tools',
+  session: () => 'session',
+};
+
+const sourceLabel = <K extends Source['kind']>(rule: {
+  readonly source: Extract<Source, { kind: K }>;
+}): string => SOURCE_LABELS[rule.source.kind](rule.source);
+
+/** The part of the warning that is specific to git, whose options can run commands (errors.md). */
+const GIT_NOTE = ' For git, options such as -c and --exec-path can run arbitrary commands.';
 
 /** errors.md names a `Bash` rule; Monitor and PowerShell are not named (spec/judgments.md). */
 const WARNED_TOOLS: ReadonlySet<string> = new Set(['Bash']);
@@ -49,7 +82,7 @@ export function wildcardBeforeSubcommand(rule: PermissionRule): readonly PluginI
     ? [
         warning(
           'permissions.allow',
-          `Permission allow rule "${rule.text}" has a wildcard before the rest of the command, so it also matches any options inserted at that position and approves them without a prompt. Replace that * with the exact value you mean, or only use * after the subcommand.`,
+          `Permission allow rule (${sourceLabel(rule)}): ${rule.text} has a wildcard before the rest of the command, so it also matches any options inserted at that position and approves them without a prompt.${text.startsWith('git ') ? GIT_NOTE : ''} Replace that * with the exact value you mean, or only use * after the subcommand (for example Bash(git status *)).`,
         ),
       ]
     : [];

@@ -9,6 +9,7 @@ import { planPluginFetch } from '../../src/marketplace/fetch-plan.ts';
 import type { FetchPlanContext } from '../../src/marketplace/types.ts';
 import { spec } from '../support/spec.ts';
 
+const SRC = 'marketplace.create.Choose a plugin source';
 const SHA = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0';
 const posix: FetchPlanContext = { platform: 'posix' };
 const plan = (source: PluginSource, context: FetchPlanContext = posix) =>
@@ -20,65 +21,73 @@ const withOrigin = (marketplaceOrigin: MarketplaceSource): FetchPlanContext => (
 
 const relative = (path: string): PluginSource => ({ kind: 'relative', path, bare: false });
 
-spec('marketplace.source.Relative path', () => {
-  test('resolves from the marketplace root: ./plugins/formatter is <root>/plugins/formatter', () => {
-    expect(plan(relative('plugins/formatter'))).toEqual({
-      plan: {
+spec(
+  [
+    'marketplace.source.Relative path',
+    `${SRC}.Relative path`,
+    'marketplace.hosting.Avoid relative-path entries in a URL-hosted marketplace',
+    'marketplace.troubleshooting.Plugins with relative paths fail in URL-based marketplaces',
+  ],
+  () => {
+    test('resolves from the marketplace root: ./plugins/formatter is <root>/plugins/formatter', () => {
+      expect(plan(relative('plugins/formatter'))).toEqual({
+        plan: {
+          kind: 'local',
+          fromMarketplaceRoot: 'plugins/formatter',
+          submodules: 'plugin-subtree',
+        },
+        issues: [],
+      });
+    });
+
+    test('"." is the marketplace root itself', () => {
+      expect(plan(relative('.')).plan).toEqual({
         kind: 'local',
-        fromMarketplaceRoot: 'plugins/formatter',
-        submodules: 'plugin-subtree',
-      },
-      issues: [],
+        fromMarketplaceRoot: '.',
+        submodules: 'whole-repository',
+      });
     });
-  });
 
-  test('"." is the marketplace root itself', () => {
-    expect(plan(relative('.')).plan).toEqual({
-      kind: 'local',
-      fromMarketplaceRoot: '.',
-      submodules: 'whole-repository',
+    test('github, git, file and directory marketplaces have the files, so a relative path resolves', () => {
+      const origins: MarketplaceSource[] = [
+        { kind: 'github', repo: 'o/r', path: '.claude-plugin/marketplace.json' },
+        { kind: 'git', url: 'https://h/r.git', path: '.claude-plugin/marketplace.json' },
+        { kind: 'file', path: '/m/.claude-plugin/marketplace.json' },
+        { kind: 'directory', path: '/m' },
+      ];
+      for (const origin of origins) {
+        expect(plan(relative('plugins/f'), withOrigin(origin)).plan?.kind).toBe('local');
+      }
     });
-  });
 
-  test('github, git, file and directory marketplaces have the files, so a relative path resolves', () => {
-    const origins: MarketplaceSource[] = [
-      { kind: 'github', repo: 'o/r', path: '.claude-plugin/marketplace.json' },
-      { kind: 'git', url: 'https://h/r.git', path: '.claude-plugin/marketplace.json' },
-      { kind: 'file', path: '/m/.claude-plugin/marketplace.json' },
-      { kind: 'directory', path: '/m' },
-    ];
-    for (const origin of origins) {
-      expect(plan(relative('plugins/f'), withOrigin(origin)).plan?.kind).toBe('local');
-    }
-  });
+    test('a url marketplace has only marketplace.json: relative paths cannot resolve', () => {
+      const result = plan(
+        relative('plugins/formatter'),
+        withOrigin({ kind: 'url', url: 'https://example.com/marketplace.json' }),
+      );
+      expect(result.plan).toBeUndefined();
+      expect(result.issues).toHaveLength(1);
+      expect(result.issues[0]?.severity).toBe('error');
+      expect(result.issues[0]?.message).toContain('cannot resolve');
+      expect(result.issues[0]?.message).toContain(
+        'its marketplace entry path does not stay inside the marketplace directory',
+      );
+    });
 
-  test('a url marketplace has only marketplace.json: relative paths cannot resolve', () => {
-    const result = plan(
-      relative('plugins/formatter'),
-      withOrigin({ kind: 'url', url: 'https://example.com/marketplace.json' }),
-    );
-    expect(result.plan).toBeUndefined();
-    expect(result.issues).toHaveLength(1);
-    expect(result.issues[0]?.severity).toBe('error');
-    expect(result.issues[0]?.message).toContain('cannot resolve');
-    expect(result.issues[0]?.message).toContain(
-      'its marketplace entry path does not stay inside the marketplace directory',
-    );
-  });
+    test('a settings marketplace rejects relative paths outright', () => {
+      const result = plan(
+        relative('plugins/f'),
+        withOrigin({ kind: 'settings', name: 'm', plugins: [] }),
+      );
+      expect(result.plan).toBeUndefined();
+      expect(result.issues[0]?.message).toContain('rejected');
+    });
 
-  test('a settings marketplace rejects relative paths outright', () => {
-    const result = plan(
-      relative('plugins/f'),
-      withOrigin({ kind: 'settings', name: 'm', plugins: [] }),
-    );
-    expect(result.plan).toBeUndefined();
-    expect(result.issues[0]?.message).toContain('rejected');
-  });
-
-  test('without a known origin the path is planned from the marketplace root', () => {
-    expect(plan(relative('x'), posix).plan?.kind).toBe('local');
-  });
-});
+    test('without a known origin the path is planned from the marketplace root', () => {
+      expect(plan(relative('x'), posix).plan?.kind).toBe('local');
+    });
+  },
+);
 
 describe('plugin sources that are not relative are fetched on their own, whatever the origin', () => {
   test('a github source plans the same for a url marketplace', () => {
@@ -90,39 +99,44 @@ describe('plugin sources that are not relative are fetched on their own, whateve
   });
 });
 
-spec('marketplace.source.github', () => {
-  test('repo is owner/repo; with no ref and no sha the default branch is cloned', () => {
-    expect(plan({ kind: 'github', repo: 'your-org/formatter' })).toEqual({
-      plan: {
-        kind: 'git',
-        repo: { shorthand: 'your-org/formatter' },
-        checkout: 'default-branch',
-        sparse: false,
-        partialClone: false,
-        lfs: 'pointer-files',
-      },
-      issues: [],
+spec(
+  ['marketplace.source.github', `${SRC}.github`, 'marketplace.rule.github plugin source'],
+  () => {
+    test('repo is owner/repo; with no ref and no sha the default branch is cloned', () => {
+      expect(plan({ kind: 'github', repo: 'your-org/formatter' })).toEqual({
+        plan: {
+          kind: 'git',
+          repo: { shorthand: 'your-org/formatter' },
+          checkout: 'default-branch',
+          sparse: false,
+          partialClone: false,
+          lfs: 'pointer-files',
+        },
+        issues: [],
+      });
     });
-  });
 
-  test('ref is a branch or tag', () => {
-    expect(plan({ kind: 'github', repo: 'o/r', ref: 'v2.0.0' }).plan).toMatchObject({
-      ref: 'v2.0.0',
-      checkout: 'ref',
+    test('ref is a branch or tag', () => {
+      expect(plan({ kind: 'github', repo: 'o/r', ref: 'v2.0.0' }).plan).toMatchObject({
+        ref: 'v2.0.0',
+        checkout: 'ref',
+      });
     });
-  });
 
-  test('when both ref and sha are set, the sha is checked out', () => {
-    expect(plan({ kind: 'github', repo: 'o/r', ref: 'v2.0.0', sha: SHA }).plan).toMatchObject({
-      ref: 'v2.0.0',
-      sha: SHA,
-      checkout: 'sha',
+    test('when both ref and sha are set, the sha is checked out', () => {
+      expect(plan({ kind: 'github', repo: 'o/r', ref: 'v2.0.0', sha: SHA }).plan).toMatchObject({
+        ref: 'v2.0.0',
+        sha: SHA,
+        checkout: 'sha',
+      });
+      expect(plan({ kind: 'github', repo: 'o/r', sha: SHA }).plan).toMatchObject({
+        checkout: 'sha',
+      });
     });
-    expect(plan({ kind: 'github', repo: 'o/r', sha: SHA }).plan).toMatchObject({ checkout: 'sha' });
-  });
-});
+  },
+);
 
-spec('marketplace.source.url', () => {
+spec(['marketplace.source.url', `${SRC}.url`, 'marketplace.rule.url plugin source'], () => {
   test('https, http, file and git@ URLs are planned as written, with no .git suffix needed', () => {
     for (const url of [
       'https://gitlab.example.com/your-group/formatter.git',
@@ -173,63 +187,70 @@ spec('marketplace.source.url', () => {
   });
 });
 
-spec('marketplace.source.git-subdir', () => {
-  test('checks out only the subdirectory, sparsely, and asks for a partial clone over https', () => {
-    expect(
-      plan({
-        kind: 'git-subdir',
-        url: 'https://github.com/your-org/monorepo.git',
-        path: 'tools/formatter',
-      }),
-    ).toEqual({
-      plan: {
-        kind: 'git',
-        repo: { url: 'https://github.com/your-org/monorepo.git' },
-        subdir: 'tools/formatter',
-        checkout: 'default-branch',
-        sparse: true,
-        partialClone: true,
-        lfs: 'pointer-files',
-      },
-      issues: [],
-    });
-  });
-
-  test('a partial clone is asked over SSH, and for GitHub shorthand', () => {
-    for (const url of ['git@github.com:your-org/monorepo.git', 'your-org/monorepo']) {
-      expect(plan({ kind: 'git-subdir', url, path: 'p' }).plan).toMatchObject({
-        sparse: true,
-        partialClone: true,
-        lfs: 'pointer-files',
+spec(
+  [
+    'marketplace.source.git-subdir',
+    `${SRC}.git-subdir`,
+    'marketplace.rule.git-subdir plugin source',
+  ],
+  () => {
+    test('checks out only the subdirectory, sparsely, and asks for a partial clone over https', () => {
+      expect(
+        plan({
+          kind: 'git-subdir',
+          url: 'https://github.com/your-org/monorepo.git',
+          path: 'tools/formatter',
+        }),
+      ).toEqual({
+        plan: {
+          kind: 'git',
+          repo: { url: 'https://github.com/your-org/monorepo.git' },
+          subdir: 'tools/formatter',
+          checkout: 'default-branch',
+          sparse: true,
+          partialClone: true,
+          lfs: 'pointer-files',
+        },
+        issues: [],
       });
-    }
-  });
-
-  test('shorthand becomes a GitHub shorthand repository, a URL stays a URL', () => {
-    expect(plan({ kind: 'git-subdir', url: 'your-org/monorepo', path: 'p' }).plan).toMatchObject({
-      repo: { shorthand: 'your-org/monorepo' },
     });
-  });
 
-  test('over http or file:// there is no partial clone, the checkout is still sparse', () => {
-    for (const url of ['http://git.internal/monorepo.git', 'file:///srv/monorepo']) {
-      expect(plan({ kind: 'git-subdir', url, path: 'p' }).plan).toMatchObject({
-        sparse: true,
-        partialClone: false,
-        lfs: 'pointer-files',
+    test('a partial clone is asked over SSH, and for GitHub shorthand', () => {
+      for (const url of ['git@github.com:your-org/monorepo.git', 'your-org/monorepo']) {
+        expect(plan({ kind: 'git-subdir', url, path: 'p' }).plan).toMatchObject({
+          sparse: true,
+          partialClone: true,
+          lfs: 'pointer-files',
+        });
+      }
+    });
+
+    test('shorthand becomes a GitHub shorthand repository, a URL stays a URL', () => {
+      expect(plan({ kind: 'git-subdir', url: 'your-org/monorepo', path: 'p' }).plan).toMatchObject({
+        repo: { shorthand: 'your-org/monorepo' },
       });
-    }
-  });
-
-  test('ref and sha are shared with github and url', () => {
-    expect(
-      plan({ kind: 'git-subdir', url: 'o/r', path: 'p', ref: 'v1', sha: SHA }).plan,
-    ).toMatchObject({ ref: 'v1', sha: SHA, checkout: 'sha' });
-    expect(plan({ kind: 'git-subdir', url: 'o/r', path: 'p', ref: 'v1' }).plan).toMatchObject({
-      checkout: 'ref',
     });
-  });
-});
+
+    test('over http or file:// there is no partial clone, the checkout is still sparse', () => {
+      for (const url of ['http://git.internal/monorepo.git', 'file:///srv/monorepo']) {
+        expect(plan({ kind: 'git-subdir', url, path: 'p' }).plan).toMatchObject({
+          sparse: true,
+          partialClone: false,
+          lfs: 'pointer-files',
+        });
+      }
+    });
+
+    test('ref and sha are shared with github and url', () => {
+      expect(
+        plan({ kind: 'git-subdir', url: 'o/r', path: 'p', ref: 'v1', sha: SHA }).plan,
+      ).toMatchObject({ ref: 'v1', sha: SHA, checkout: 'sha' });
+      expect(plan({ kind: 'git-subdir', url: 'o/r', path: 'p', ref: 'v1' }).plan).toMatchObject({
+        checkout: 'ref',
+      });
+    });
+  },
+);
 
 describe('judgments: git plans', () => {
   test('a github repo that is not owner/repo is refused before cloning', () => {

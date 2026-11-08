@@ -20,6 +20,7 @@ import { auditPage } from './sections.ts';
 import { SCOPES } from './scopes.ts';
 import { HEADING_RULES, TABLE_RULES, type HeadingRule, type TableRule } from './sources.ts';
 import { EXTRA_TABLE_RULES } from './tables-extra.ts';
+import { createTableAudit } from './table-audit.ts';
 
 const pages = new Map<string, Page>();
 async function page(path: string): Promise<Page> {
@@ -66,6 +67,7 @@ function fromHeadings(rule: HeadingRule, source: Page): Requirement[] {
 
 const found = new Map<string, Requirement>();
 const empty: string[] = [];
+const tableAudit = createTableAudit();
 const rules: readonly (TableRule | HeadingRule)[] = [
   ...TABLE_RULES,
   ...EXTRA_TABLE_RULES,
@@ -73,6 +75,7 @@ const rules: readonly (TableRule | HeadingRule)[] = [
 ];
 for (const rule of rules) {
   const source = await page(rule.page);
+  if ('section' in rule) tableAudit.visit(rule, source);
   const extracted = 'section' in rule ? fromTables(rule, source) : fromHeadings(rule, source);
   const label = 'section' in rule ? rule.section : rule.under;
   if (extracted.length === 0) empty.push(`${rule.page} ${label}`);
@@ -89,7 +92,7 @@ if (empty.length > 0) {
 // The prose of the audited pages (scripts/spec/scope.ts): sections not already read as tables.
 const covered = (path: string): Set<string> =>
   new Set([...found.values()].filter((r) => r.page === path).map((r) => r.section));
-const excluded: { page: string; section: string; reason: string }[] = [];
+const excluded = [...tableAudit.excluded()];
 const stale: string[] = [];
 for (const scope of SCOPES) {
   const audit = auditPage(scope, await page(scope.page), covered(scope.page));

@@ -134,7 +134,7 @@ describe('Hook loads but never fires', () => {
     return runner.calls.length;
   };
 
-  spec('hooks.troubleshooting.Hook loads but never fires', () => {
+  spec(['hooks.troubleshooting.Hook loads but never fires', 'cli.debug.Check hooks'], () => {
     test('1. event names are case-sensitive: "posttooluse" loads, warns and never fires; "PostToolUse" fires', async () => {
       const wrong = readHooksFile(
         file({ posttooluse: [{ hooks: [{ type: 'command', command: './fmt.sh' }] }] }),

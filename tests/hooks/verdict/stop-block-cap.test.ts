@@ -51,194 +51,197 @@ async function holds(times: number, environment: Record<string, string> = {}) {
   return results;
 }
 
-spec('environment.host.CLAUDE_CODE_STOP_HOOK_BLOCK_CAP', () => {
-  test('by default a Stop hook may keep the turn open 8 times in a row; the 9th block is overridden', async () => {
-    const results = await holds(10);
-    expect(results.slice(0, 8)).toEqual(Array(8).fill(true));
-    expect(results.slice(8)).toEqual([false, true]);
-  });
-
-  test('the override ends the turn and says so with a warning naming the variable', async () => {
-    const { fire } = engineSession([gate()], keepGoing(3), {
-      environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '2' },
+spec(
+  ['environment.host.CLAUDE_CODE_STOP_HOOK_BLOCK_CAP', 'hooks.guide.Stop hook hits the block cap'],
+  () => {
+    test('by default a Stop hook may keep the turn open 8 times in a row; the 9th block is overridden', async () => {
+      const results = await holds(10);
+      expect(results.slice(0, 8)).toEqual(Array(8).fill(true));
+      expect(results.slice(8)).toEqual([false, true]);
     });
-    await fire('Stop', AGAIN);
-    await fire('Stop', AGAIN);
-    const third = await fire('Stop', AGAIN);
-    expect(third.proceed).toBe(true);
-    expect(third.block).toBeUndefined();
-    expect(third.issues).toEqual([
-      expect.objectContaining({
-        severity: 'warning',
-        message: expect.stringContaining('CLAUDE_CODE_STOP_HOOK_BLOCK_CAP'),
-      }),
-    ]);
-  });
 
-  test('the variable sets the cap: 3 holds three times', async () => {
-    expect(await holds(5, { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '3' })).toEqual([
-      true,
-      true,
-      true,
-      false,
-      true,
-    ]);
-  });
-
-  test('0 disables the cap', async () => {
-    const results = await holds(12, { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '0' });
-    expect(results.every(Boolean)).toBe(true);
-  });
-
-  test('a Stop that does not block ends the run of blocks: the count starts again', async () => {
-    const replies: RunnerReply[] = [
-      KEEP_GOING,
-      KEEP_GOING,
-      { exitCode: 0 },
-      KEEP_GOING,
-      KEEP_GOING,
-    ];
-    const { fire } = engineSession([gate()], replies, {
-      environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '2' },
+    test('the override ends the turn and says so with a warning naming the variable', async () => {
+      const { fire } = engineSession([gate()], keepGoing(3), {
+        environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '2' },
+      });
+      await fire('Stop', AGAIN);
+      await fire('Stop', AGAIN);
+      const third = await fire('Stop', AGAIN);
+      expect(third.proceed).toBe(true);
+      expect(third.block).toBeUndefined();
+      expect(third.issues).toEqual([
+        expect.objectContaining({
+          severity: 'warning',
+          message: expect.stringContaining('CLAUDE_CODE_STOP_HOOK_BLOCK_CAP'),
+        }),
+      ]);
     });
-    const seen: boolean[] = [];
-    for (let n = 0; n < replies.length; n += 1) seen.push(!(await fire('Stop', AGAIN)).proceed);
-    expect(seen).toEqual([true, true, false, true, true]);
-  });
 
-  test('a tool call between two blocks starts the count again: block, tool call, block stays under the cap', async () => {
-    for (const toolEvent of ['PreToolUse', 'PostToolUse', 'PostToolUseFailure'] as const) {
-      const { fire } = engineSession([gate()], keepGoing(9), {
-        environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' },
+    test('the variable sets the cap: 3 holds three times', async () => {
+      expect(await holds(5, { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '3' })).toEqual([
+        true,
+        true,
+        true,
+        false,
+        true,
+      ]);
+    });
+
+    test('0 disables the cap', async () => {
+      const results = await holds(12, { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '0' });
+      expect(results.every(Boolean)).toBe(true);
+    });
+
+    test('a Stop that does not block ends the run of blocks: the count starts again', async () => {
+      const replies: RunnerReply[] = [
+        KEEP_GOING,
+        KEEP_GOING,
+        { exitCode: 0 },
+        KEEP_GOING,
+        KEEP_GOING,
+      ];
+      const { fire } = engineSession([gate()], replies, {
+        environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '2' },
       });
       const seen: boolean[] = [];
-      for (let n = 0; n < 9; n += 1) {
-        seen.push(!(await fire('Stop', AGAIN)).proceed);
-        await fire(toolEvent);
-      }
-      expect(seen).toEqual(Array(9).fill(true));
-    }
-  });
-
-  test('9 blocks with a tool call between each of them are never capped; 9 with none are', async () => {
-    const { fire } = engineSession([gate()], keepGoing(18));
-    for (let n = 0; n < 9; n += 1) {
-      expect((await fire('Stop', AGAIN)).proceed).toBe(false);
-      await fire('PreToolUse');
-    }
-    const without: boolean[] = [];
-    for (let n = 0; n < 9; n += 1) without.push(!(await fire('Stop', AGAIN)).proceed);
-    expect(without).toEqual([...Array(8).fill(true), false]);
-  });
-
-  test('a stop_hook_active that is not true does not start the count again: only a tool call does', async () => {
-    const { fire } = engineSession([gate()], keepGoing(3), {
-      environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' },
+      for (let n = 0; n < replies.length; n += 1) seen.push(!(await fire('Stop', AGAIN)).proceed);
+      expect(seen).toEqual([true, true, false, true, true]);
     });
-    expect((await fire('Stop', AGAIN)).proceed).toBe(false);
-    expect((await fire('Stop', { facts: { stop_hook_active: false } })).proceed).toBe(true);
-  });
 
-  test('a Stop with no hook to run ends the run of blocks too (the early return of an idle dispatch)', async () => {
-    const stopCap = createStopBlockCap();
-    const environment = fakeEnvironment({ CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' });
-    const engineOver = (
-      entries: Parameters<typeof createHookRegistry>[0],
-      replies: RunnerReply[],
-    ) => {
-      const engine = createHookEngine(
-        { commands: scriptedRunner(...replies), locations: locations(), environment },
-        { stopCap },
-      );
-      const registry = createHookRegistry(entries);
-      return (event: 'Stop' | 'PreToolUse') =>
-        engine.dispatch(registry, {
-          event,
-          facts: event === 'Stop' ? { stop_hook_active: true } : FACTS.PreToolUse,
-          session: session(),
-          signal: new AbortController().signal,
+    test('a tool call between two blocks starts the count again: block, tool call, block stays under the cap', async () => {
+      for (const toolEvent of ['PreToolUse', 'PostToolUse', 'PostToolUseFailure'] as const) {
+        const { fire } = engineSession([gate()], keepGoing(9), {
+          environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' },
         });
-    };
-    const withGate = engineOver([gate()], [KEEP_GOING, KEEP_GOING]);
-    const empty = engineOver([], []);
-    expect((await withGate('Stop')).proceed).toBe(false);
-    await empty('Stop');
-    expect((await withGate('Stop')).proceed).toBe(false);
-    await empty('PreToolUse');
-  });
-
-  test('a tool call of one subagent does not reset the main agent or another subagent', async () => {
-    const stop = entry('SubagentStop', { handler: { type: 'command', command: './sub.sh' } });
-    const { fire } = engineSession([stop], keepGoing(4), {
-      environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' },
+        const seen: boolean[] = [];
+        for (let n = 0; n < 9; n += 1) {
+          seen.push(!(await fire('Stop', AGAIN)).proceed);
+          await fire(toolEvent);
+        }
+        expect(seen).toEqual(Array(9).fill(true));
+      }
     });
-    expect((await fire('SubagentStop', subagentStop('a1'))).proceed).toBe(false);
-    await fire('PreToolUse');
-    await fire('PreToolUse', { session: session({ agent: { id: 'a2', type: 'reviewer' } }) });
-    expect((await fire('SubagentStop', subagentStop('a1'))).proceed).toBe(true);
-    expect((await fire('SubagentStop', subagentStop('a3'))).proceed).toBe(false);
-    await fire('PreToolUse', { session: session({ agent: { id: 'a3', type: 'reviewer' } }) });
-    expect((await fire('SubagentStop', subagentStop('a3'))).proceed).toBe(false);
-  });
 
-  test('the host owns an injected counter: it outlives the engine, and reset starts it again', async () => {
-    const stopCap = createStopBlockCap();
-    const environment = { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' };
-    const run = () => engineSession([gate()], [KEEP_GOING], { environment, stopCap });
-    expect((await run().fire('Stop', AGAIN)).proceed).toBe(false);
-    stopCap.reset('another-session');
-    expect((await run().fire('Stop', AGAIN)).proceed).toBe(true);
-    expect((await run().fire('Stop', AGAIN)).proceed).toBe(false);
-    stopCap.reset(session().sessionId);
-    expect((await run().fire('Stop', AGAIN)).proceed).toBe(false);
-  });
-
-  test('without an injected counter each engine counts for itself', async () => {
-    const environment = { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' };
-    const run = () => engineSession([gate()], [KEEP_GOING], { environment });
-    expect((await run().fire('Stop', AGAIN)).proceed).toBe(false);
-    expect((await run().fire('Stop', AGAIN)).proceed).toBe(false);
-  });
-
-  test('a block by a JSON decision counts like exit 2', async () => {
-    const json = JSON.stringify({ decision: 'block', reason: 'keep going' });
-    const { fire } = engineSession([gate()], [{ stdout: json }, { stdout: json }], {
-      environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' },
+    test('9 blocks with a tool call between each of them are never capped; 9 with none are', async () => {
+      const { fire } = engineSession([gate()], keepGoing(18));
+      for (let n = 0; n < 9; n += 1) {
+        expect((await fire('Stop', AGAIN)).proceed).toBe(false);
+        await fire('PreToolUse');
+      }
+      const without: boolean[] = [];
+      for (let n = 0; n < 9; n += 1) without.push(!(await fire('Stop', AGAIN)).proceed);
+      expect(without).toEqual([...Array(8).fill(true), false]);
     });
-    expect((await fire('Stop', AGAIN)).proceed).toBe(false);
-    expect((await fire('Stop', AGAIN)).proceed).toBe(true);
-  });
 
-  test('additionalContext keeps the conversation going and counts toward the same cap', async () => {
-    const json = JSON.stringify({
-      hookSpecificOutput: { hookEventName: 'Stop', additionalContext: 'run the tests' },
+    test('a stop_hook_active that is not true does not start the count again: only a tool call does', async () => {
+      const { fire } = engineSession([gate()], keepGoing(3), {
+        environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' },
+      });
+      expect((await fire('Stop', AGAIN)).proceed).toBe(false);
+      expect((await fire('Stop', { facts: { stop_hook_active: false } })).proceed).toBe(true);
     });
-    const { fire } = engineSession([gate()], [{ stdout: json }, { stdout: json }], {
-      environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' },
-    });
-    expect((await fire('Stop', AGAIN)).effects.continuesTurn).toBe(true);
-    const capped = await fire('Stop', AGAIN);
-    expect(capped.effects.continuesTurn).toBeUndefined();
-  });
 
-  test('SubagentStop is capped too, apart from the main agent and from other subagents', async () => {
-    const stop = entry('SubagentStop', { handler: { type: 'command', command: './sub.sh' } });
-    const { fire } = engineSession([stop], keepGoing(4), {
-      environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' },
+    test('a Stop with no hook to run ends the run of blocks too (the early return of an idle dispatch)', async () => {
+      const stopCap = createStopBlockCap();
+      const environment = fakeEnvironment({ CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' });
+      const engineOver = (
+        entries: Parameters<typeof createHookRegistry>[0],
+        replies: RunnerReply[],
+      ) => {
+        const engine = createHookEngine(
+          { commands: scriptedRunner(...replies), locations: locations(), environment },
+          { stopCap },
+        );
+        const registry = createHookRegistry(entries);
+        return (event: 'Stop' | 'PreToolUse') =>
+          engine.dispatch(registry, {
+            event,
+            facts: event === 'Stop' ? { stop_hook_active: true } : FACTS.PreToolUse,
+            session: session(),
+            signal: new AbortController().signal,
+          });
+      };
+      const withGate = engineOver([gate()], [KEEP_GOING, KEEP_GOING]);
+      const empty = engineOver([], []);
+      expect((await withGate('Stop')).proceed).toBe(false);
+      await empty('Stop');
+      expect((await withGate('Stop')).proceed).toBe(false);
+      await empty('PreToolUse');
     });
-    expect((await fire('SubagentStop', subagentStop('a1'))).proceed).toBe(false);
-    expect((await fire('SubagentStop', subagentStop('a2'))).proceed).toBe(false);
-    expect((await fire('SubagentStop', subagentStop('a1'))).proceed).toBe(true);
-  });
 
-  test('other events are not capped: a PreToolUse hook that blocks always blocks', async () => {
-    const pre = entry('PreToolUse', { handler: { type: 'command', command: './g.sh' } });
-    const { fire } = engineSession([pre], keepGoing(12), {
-      environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' },
+    test('a tool call of one subagent does not reset the main agent or another subagent', async () => {
+      const stop = entry('SubagentStop', { handler: { type: 'command', command: './sub.sh' } });
+      const { fire } = engineSession([stop], keepGoing(4), {
+        environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' },
+      });
+      expect((await fire('SubagentStop', subagentStop('a1'))).proceed).toBe(false);
+      await fire('PreToolUse');
+      await fire('PreToolUse', { session: session({ agent: { id: 'a2', type: 'reviewer' } }) });
+      expect((await fire('SubagentStop', subagentStop('a1'))).proceed).toBe(true);
+      expect((await fire('SubagentStop', subagentStop('a3'))).proceed).toBe(false);
+      await fire('PreToolUse', { session: session({ agent: { id: 'a3', type: 'reviewer' } }) });
+      expect((await fire('SubagentStop', subagentStop('a3'))).proceed).toBe(false);
     });
-    for (let n = 0; n < 12; n += 1) expect((await fire('PreToolUse')).proceed).toBe(false);
-  });
-});
+
+    test('the host owns an injected counter: it outlives the engine, and reset starts it again', async () => {
+      const stopCap = createStopBlockCap();
+      const environment = { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' };
+      const run = () => engineSession([gate()], [KEEP_GOING], { environment, stopCap });
+      expect((await run().fire('Stop', AGAIN)).proceed).toBe(false);
+      stopCap.reset('another-session');
+      expect((await run().fire('Stop', AGAIN)).proceed).toBe(true);
+      expect((await run().fire('Stop', AGAIN)).proceed).toBe(false);
+      stopCap.reset(session().sessionId);
+      expect((await run().fire('Stop', AGAIN)).proceed).toBe(false);
+    });
+
+    test('without an injected counter each engine counts for itself', async () => {
+      const environment = { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' };
+      const run = () => engineSession([gate()], [KEEP_GOING], { environment });
+      expect((await run().fire('Stop', AGAIN)).proceed).toBe(false);
+      expect((await run().fire('Stop', AGAIN)).proceed).toBe(false);
+    });
+
+    test('a block by a JSON decision counts like exit 2', async () => {
+      const json = JSON.stringify({ decision: 'block', reason: 'keep going' });
+      const { fire } = engineSession([gate()], [{ stdout: json }, { stdout: json }], {
+        environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' },
+      });
+      expect((await fire('Stop', AGAIN)).proceed).toBe(false);
+      expect((await fire('Stop', AGAIN)).proceed).toBe(true);
+    });
+
+    test('additionalContext keeps the conversation going and counts toward the same cap', async () => {
+      const json = JSON.stringify({
+        hookSpecificOutput: { hookEventName: 'Stop', additionalContext: 'run the tests' },
+      });
+      const { fire } = engineSession([gate()], [{ stdout: json }, { stdout: json }], {
+        environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' },
+      });
+      expect((await fire('Stop', AGAIN)).effects.continuesTurn).toBe(true);
+      const capped = await fire('Stop', AGAIN);
+      expect(capped.effects.continuesTurn).toBeUndefined();
+    });
+
+    test('SubagentStop is capped too, apart from the main agent and from other subagents', async () => {
+      const stop = entry('SubagentStop', { handler: { type: 'command', command: './sub.sh' } });
+      const { fire } = engineSession([stop], keepGoing(4), {
+        environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' },
+      });
+      expect((await fire('SubagentStop', subagentStop('a1'))).proceed).toBe(false);
+      expect((await fire('SubagentStop', subagentStop('a2'))).proceed).toBe(false);
+      expect((await fire('SubagentStop', subagentStop('a1'))).proceed).toBe(true);
+    });
+
+    test('other events are not capped: a PreToolUse hook that blocks always blocks', async () => {
+      const pre = entry('PreToolUse', { handler: { type: 'command', command: './g.sh' } });
+      const { fire } = engineSession([pre], keepGoing(12), {
+        environment: { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: '1' },
+      });
+      for (let n = 0; n < 12; n += 1) expect((await fire('PreToolUse')).proceed).toBe(false);
+    });
+  },
+);
 
 test('a value that is not a whole number is the default of 8 (judgment)', async () => {
   const results = await holds(9, { CLAUDE_CODE_STOP_HOOK_BLOCK_CAP: 'many' });

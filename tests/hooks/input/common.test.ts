@@ -28,7 +28,7 @@ const placedBeforeEventName = (key: string): void => {
   }
 };
 
-spec('hooks.input.common.session_id', () => {
+spec(['hooks.input.common.session_id', 'hooks.guide.Hook input'], () => {
   test('every event carries the session id as a string, first among the common fields', () => {
     for (const event of HOOK_EVENTS) {
       expect(build(event, {}, { sessionId: 'abc123' }).wire?.['session_id']).toBe('abc123');

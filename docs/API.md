@@ -902,7 +902,8 @@ for (const monitor of toStart) started.add(monitor.name); // the host spawns eac
 | `Monitor`, `MonitorTrigger` | kit-owned types (the SDK has no monitor config type): `name`, `command`, `description`, and `when` as a tagged trigger |
 | `readMonitors(raw, origin)` | the array of one source; a strict entry (an unknown key is an error), `when` absent is `always`, a malformed `when` is an error naming the two forms, a repeated `name` is an error and the first keeps it; valid entries are still returned |
 | `resolveMonitor(monitor, scope)` | `command` gets the three path variables and `${ENV_VAR}`; `${user_config.*}` in it is the errors.md message and `resolved` is `undefined`, with no value needed; `environment` is empty (nothing exported, no `CLAUDE_PLUGIN_OPTION_<KEY>`) unless the scope opts in with `monitorPaths: 'environment-reference'`: then `command` holds `${CLAUDE_PLUGIN_ROOT}` (braced, as the template wrote it) instead of the path and `environment` carries the path variables the command references, so a path with shell metacharacters is never parsed as shell and the command line is the same when run with `environment` |
-| `monitorsToStart(monitors, event, started, mode)` | pure: `always` starts on `session-start` and `plugin-reload`; `on-skill-invoke:<skill>` starts on `skill-invoked` for that skill, the first time only; nothing starts when `mode.interactive` is false (`-p`) |
+| `monitorsToStart(monitors, event, started, mode)` | pure: `always` starts on `session-start` and `plugin-reload`; `on-skill-invoke:<skill>` starts on `skill-invoked` for that skill, the first time only; nothing starts when `mode.interactive` is false (`-p`). With `featureFlagsAvailable: false`, a supplied host `version` must be at least `2.1.310` |
+| `monitorsToStop(started, event)` | no running monitor is stopped by `plugin-disabled`; `session-ended` returns all the started names for the host to stop |
 | `MONITOR_GUARD` | the monitor message for `rejectUserConfigInShell` |
 
 The kit never spawns a monitor: the host runs `command` in a shell in the session's working
@@ -1793,7 +1794,7 @@ mergeSettingsHooks(view.layers); // every file's hooks, managed ones never remov
 | `pluginConfig(view, id)`                | done    | `pluginConfigs`: the options and per-server values of one plugin, from user or managed settings only, a built-in plugin read under either id; a value of another shape is dropped with a warning |
 | `modOrder(view, context, orgMods)`      | done    | `prependPlugins` and `appendPlugins`: the ids that take effect in the listed order, the organization's mods no list names (`unlisted`), the skipped ones with the debug-log line, and where the built-in guard loads |
 | `syncDecision(view)`                    | done    | `syncClaudeAiPlugins`: only `false` counts, from user, local, managed and `--settings`, also over a managed `true`; the move to the trash for user and managed |
-| `trustWarning(view, standard)`          | done    | `pluginTrustMessage`: the managed text appended to the host's standard warning, which stays whole |
+| `trustWarning(view, standard?)`          | done    | the verbatim warning from plugins/security.md by default; `pluginTrustMessage` appends managed text. A host may supply its own standard warning, which stays whole |
 | `createPluginSettingsPolicy(view, context)` | done | the five above as one object (`PluginSettingsPolicy`); `pluginSuggestionMarketplaces` joins it in the composed policy |
 | hooks engine: one run of the same handler across the groups that matched an event | planned | hooks.md, "Hook handler fields": a handler defined in more than one settings file runs once whatever its matcher; a plugin's or skill's copy stays separate. `mergeSettingsHooks` keeps both groups when the matchers differ |
 | `createMarketplaceGate(view)`, `matchMarketplaceSource(list, entry, source)` | done | `strictKnownMarketplaces` and `blockedMarketplaces`: `check(source)` for add, install, update, refresh and auto-update (blocklist first; `is blocked by enterprise policy`, with the allowed sources for the allowlist), `checkRegistered` and `checkMissing` for session start (`is not in the allowed marketplace list`), `restrictionActive`, `skillsDirectoryPlugins`; the matcher: exact entries, owner wildcards, `hostPattern`, `pathPattern`, canonical git URLs on the blocklist |
@@ -2208,3 +2209,43 @@ Only an unresolved `ask` reaches `afterCheck`; a decisive `allow` or `deny` neve
 `turn.step` hook can rewrite tool frames, pass the model's original call as `review.written`, before
 that rewrite. A failed tool result (`isError: true`) never receives the successful-withheld-result
 prefix.
+
+### Managed hook filtering
+
+The built-in guard installs admission checks in the hook chain, before a user callback or matcher
+runs. It skips the protected classic, prompt, settings, skill, attribution and compaction events,
+and the three protected `session.append` doors. Organization tiers and built-in modules are not
+filtered, including a built-in module deliberately registered in the user tier.
+
+An embedding host supplies `isManagedTool(input)` for managed MCP descriptors and
+`isProtectedRow(input)` for additional protected rows such as stored skill text. These callbacks
+classify the **original** host event, not a value another hook has rewritten; they must use trusted
+artifact identity. A failed lookup skips the untrusted hook. `host.guardedHookNotes(name)` returns
+the documented per-plugin explanation for fully skipped registrations, for a host's plugin profile
+and diagnostics UI. An unfiltered `session.append` is not reported as wholly skipped.
+
+### Canonical settings, preload and system-prompt adapters
+
+`createModSettingsReader` defaults to `mergeModSettingsLayers`, using the existing settings
+repair/merge core rather than an `Object.assign` approximation. Canonical source precedence,
+managed exceptions, the permitted plugin defaults and original invalid-value floors survive mod
+settings hooks. A host may still supply its `merged` port for additional application-specific keys.
+
+`preloadAgentSkills(definition, available)` returns the selected full skill/command artifacts and
+the bounded preload plan. It neither inherits a parent's preload list nor grants the Skill tool.
+The host attaches the bodies to the subagent context; this artifact-selection helper does not run
+shell preprocessing. `outputStyleSystem(selection, defaults)` preserves general system sections,
+replaces coding sections unless the style keeps them, and appends the style instructions. Short
+prompts have no coding section.
+
+`planLspStartup(server, facts)` prepares the process argument vector, environment, transport and
+timeouts from an already resolved LSP definition. Missing executables produce a diagnostic and no
+launch plan, never an installation command; the host provides executable lookup and the LSP client.
+`LoadedPlugin.debug` carries empty-custom-command-directory notices separately from validation
+findings, so a host need not put a debug message in its Errors view.
+
+### Release tags and user-config dialogs
+
+`planPluginTag(options, facts)` validates the plugin and its matching marketplace version, refuses a dirty plugin tree or an existing tag unless forced, and returns annotated git-tag/push argument vectors. `facts.directory` is the requested path or the host's current directory; the host supplies validation findings and the matching entry found by walking upward. A dry run has only a preview and no commands. `finishPluginTag(plan, effects)` reports the observed result without undoing a locally created tag if pushing failed.
+
+`configurationDialog(event, config)` returns the option keys and non-sensitive starting inputs a host renders. Interactive session/VS Code installs and session enable ask only for unset options. Explicit configure opens every option. Shell install never opens a dialog; `applyConfig` and `notYetSetLine` cover its values and follow-up instructions. Saving through `planConfigure` or `applyConfig` separates regular settings from secure-store values; the host persists them.

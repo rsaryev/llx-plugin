@@ -50,109 +50,118 @@ const FROM_HIGHEST: readonly (readonly [path: string, high: unknown, low: unknow
   ['sandbox.ripgrep', { command: '/usr/bin/rg' }, { command: '/opt/rg', args: ['--low'] }],
 ];
 
-spec(CROSS, () => {
-  describe.each(LOCKS)('%s: a true in any admin source turns it on', (path) => {
-    test('a lower admin source supplies it when the selected source does not', () => {
-      for (const settings of underBoth({ remote: { model: 'a' }, file: holding(path, true) }))
-        expect(read(settings, path)).toBe(true);
+spec(
+  [CROSS, 'policy.server.Per-key exceptions across managed sources.Cross-source lock keys'],
+  () => {
+    describe.each(LOCKS)('%s: a true in any admin source turns it on', (path) => {
+      test('a lower admin source supplies it when the selected source does not', () => {
+        for (const settings of underBoth({ remote: { model: 'a' }, file: holding(path, true) }))
+          expect(read(settings, path)).toBe(true);
+      });
+
+      test('a true wins over a false in another admin source, whichever ranks higher', () => {
+        for (const [high, low] of [
+          [false, true],
+          [true, false],
+        ] as const)
+          expect(
+            read(
+              policyOf({
+                remote: { model: 'a', ...holding(path, high) },
+                file: holding(path, low),
+              }),
+              path,
+            ),
+          ).toBe(true);
+      });
+
+      test('an unselected source without the key sets nothing, and a lower false is not a lock', () => {
+        expect(
+          read(policyOf({ remote: { model: 'a' }, file: { model: 'b' } }), path),
+        ).toBeUndefined();
+        expect(
+          read(policyOf({ remote: { model: 'a' }, file: holding(path, false) }), path),
+        ).toBeUndefined();
+      });
+
+      test('the HKCU registry is left out of the scan', () => {
+        expect(
+          read(policyOf({ file: { model: 'a' }, hkcu: holding(path, true) }), path),
+        ).toBeUndefined();
+      });
     });
 
-    test('a true wins over a false in another admin source, whichever ranks higher', () => {
-      for (const [high, low] of [
-        [false, true],
-        [true, false],
-      ] as const)
+    describe.each(DENIALS)('%s: a false in any admin source turns it off', (path) => {
+      test('a lower admin source supplies the false when the selected source does not', () => {
+        for (const settings of underBoth({ remote: { model: 'a' }, file: holding(path, false) }))
+          expect(read(settings, path)).toBe(false);
+      });
+
+      test('a false wins over a true in another admin source, whichever ranks higher', () => {
+        for (const [high, low] of [
+          [true, false],
+          [false, true],
+        ] as const)
+          expect(
+            read(
+              policyOf({
+                remote: { model: 'a', ...holding(path, high) },
+                file: holding(path, low),
+              }),
+              path,
+            ),
+          ).toBe(false);
+      });
+
+      test('it can only deny: a lower true turns nothing on, an unselected source without the key sets nothing', () => {
+        expect(
+          read(policyOf({ remote: { model: 'a' }, file: holding(path, true) }), path),
+        ).toBeUndefined();
+        expect(
+          read(policyOf({ remote: { model: 'a' }, file: { model: 'b' } }), path),
+        ).toBeUndefined();
+      });
+
+      test('the HKCU registry is left out of the scan', () => {
+        expect(
+          read(policyOf({ file: { model: 'a' }, hkcu: holding(path, false) }), path),
+        ).toBeUndefined();
+      });
+    });
+
+    describe.each(FROM_HIGHEST)('%s: read from every admin source', (path, high, low) => {
+      test('the highest admin source that sets it supplies it, however many rank below', () => {
+        const all = {
+          remote: { model: 'a', ...holding(path, high) },
+          plist: holding(path, low),
+          file: holding(path, 'ignored'),
+        };
+        expect(read(policyOf(all), path)).toEqual(high);
         expect(
           read(
-            policyOf({ remote: { model: 'a', ...holding(path, high) }, file: holding(path, low) }),
+            policyOf({
+              remote: { model: 'a' },
+              plist: holding(path, low),
+              file: holding(path, high),
+            }),
             path,
           ),
-        ).toBe(true);
-    });
+        ).toEqual(low);
+      });
 
-    test('an unselected source without the key sets nothing, and a lower false is not a lock', () => {
-      expect(
-        read(policyOf({ remote: { model: 'a' }, file: { model: 'b' } }), path),
-      ).toBeUndefined();
-      expect(
-        read(policyOf({ remote: { model: 'a' }, file: holding(path, false) }), path),
-      ).toBeUndefined();
-    });
+      test('a lower admin source supplies it when the selected source does not, under both settings', () => {
+        for (const settings of underBoth({ remote: { model: 'a' }, file: holding(path, low) }))
+          expect(read(settings, path)).toEqual(low);
+      });
 
-    test('the HKCU registry is left out of the scan', () => {
-      expect(
-        read(policyOf({ file: { model: 'a' }, hkcu: holding(path, true) }), path),
-      ).toBeUndefined();
-    });
-  });
-
-  describe.each(DENIALS)('%s: a false in any admin source turns it off', (path) => {
-    test('a lower admin source supplies the false when the selected source does not', () => {
-      for (const settings of underBoth({ remote: { model: 'a' }, file: holding(path, false) }))
-        expect(read(settings, path)).toBe(false);
-    });
-
-    test('a false wins over a true in another admin source, whichever ranks higher', () => {
-      for (const [high, low] of [
-        [true, false],
-        [false, true],
-      ] as const)
+      test('an unselected source without the key and the HKCU registry supply nothing', () => {
         expect(
-          read(
-            policyOf({ remote: { model: 'a', ...holding(path, high) }, file: holding(path, low) }),
-            path,
-          ),
-        ).toBe(false);
+          read(policyOf({ remote: { model: 'a' }, file: { model: 'b' } }), path),
+        ).toBeUndefined();
+        expect(
+          read(policyOf({ file: { model: 'a' }, hkcu: holding(path, high) }), path),
+        ).toBeUndefined();
+      });
     });
-
-    test('it can only deny: a lower true turns nothing on, an unselected source without the key sets nothing', () => {
-      expect(
-        read(policyOf({ remote: { model: 'a' }, file: holding(path, true) }), path),
-      ).toBeUndefined();
-      expect(
-        read(policyOf({ remote: { model: 'a' }, file: { model: 'b' } }), path),
-      ).toBeUndefined();
-    });
-
-    test('the HKCU registry is left out of the scan', () => {
-      expect(
-        read(policyOf({ file: { model: 'a' }, hkcu: holding(path, false) }), path),
-      ).toBeUndefined();
-    });
-  });
-
-  describe.each(FROM_HIGHEST)('%s: read from every admin source', (path, high, low) => {
-    test('the highest admin source that sets it supplies it, however many rank below', () => {
-      const all = {
-        remote: { model: 'a', ...holding(path, high) },
-        plist: holding(path, low),
-        file: holding(path, 'ignored'),
-      };
-      expect(read(policyOf(all), path)).toEqual(high);
-      expect(
-        read(
-          policyOf({
-            remote: { model: 'a' },
-            plist: holding(path, low),
-            file: holding(path, high),
-          }),
-          path,
-        ),
-      ).toEqual(low);
-    });
-
-    test('a lower admin source supplies it when the selected source does not, under both settings', () => {
-      for (const settings of underBoth({ remote: { model: 'a' }, file: holding(path, low) }))
-        expect(read(settings, path)).toEqual(low);
-    });
-
-    test('an unselected source without the key and the HKCU registry supply nothing', () => {
-      expect(
-        read(policyOf({ remote: { model: 'a' }, file: { model: 'b' } }), path),
-      ).toBeUndefined();
-      expect(
-        read(policyOf({ file: { model: 'a' }, hkcu: holding(path, high) }), path),
-      ).toBeUndefined();
-    });
-  });
-});
+  },
+);

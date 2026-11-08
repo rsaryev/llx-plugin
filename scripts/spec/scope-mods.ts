@@ -34,7 +34,7 @@ export const MOD_SCOPES: readonly PageScope[] = [
     page: 'plugins/mods/api.md',
     category: 'mods',
     slug: 'apiGuide',
-    skip: [NAVIGATION],
+    skip: [['Check for cache hits', 'model'], NAVIGATION],
   },
   {
     page: 'plugins/mods/create.md',

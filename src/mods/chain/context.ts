@@ -1,7 +1,7 @@
 import type { Budget } from '../../foundation/index.ts';
 import { MOD_LIMITS } from '../../protocol/mods-limits.ts';
 import type { Clock } from '../../ports/index.ts';
-import type { DispatchOptions, EventRules } from '../types.ts';
+import type { DispatchOptions, EventRules, HookAccess } from '../types.ts';
 import type { ChainEntry } from './registry.ts';
 
 /** What one dispatch of an event shares across the hooks it runs. */
@@ -19,6 +19,7 @@ export interface Context {
   readonly rules: EventRules;
   /** How long the matcher engine has for one test. */
   readonly matcherMs: number;
+  readonly admit?: (access: HookAccess) => boolean;
 }
 
 /** The events whose hooks have less than the usual 10 seconds (reference.md, "Limits"). */

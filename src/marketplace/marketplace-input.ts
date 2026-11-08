@@ -115,7 +115,7 @@ function fromShorthand(text: string): Parsed | undefined {
   const owner = text.slice(0, slash);
   if (!isGitHubRepository(owner, repo) || ref === '') {
     return refused(
-      `"${text}" is not a valid owner/repo shorthand. Add https:// to use it as a URL, or give a local path`,
+      `'${text}' is not a valid GitHub owner/repo shorthand. For a git repo, use the full https:// clone URL from your host (typically ending in .git — some hosts like Azure DevOps omit it). For a hosted marketplace.json, use its https:// URL. For a local path, use ./ or an absolute path.`,
     );
   }
   return {

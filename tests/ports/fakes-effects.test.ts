@@ -178,7 +178,15 @@ describe('fakeModel and fakeMcp', () => {
   test('fakeModel serves evaluate and runAgent from one script and records calls', async () => {
     const model = fakeModel({ text: 'ok' }, { failure: 'boom', message: 'x' });
     expect(await model.evaluate({ prompt: 'p', signal })).toEqual({ text: 'ok' });
-    expect(await model.runAgent({ prompt: 'q', tools: ['Read'], signal })).toEqual({
+    expect(
+      await model.runAgent({
+        prompt: 'q',
+        tools: ['Read'],
+        signal,
+        readOnly: true,
+        maxTurns: 50,
+      }),
+    ).toEqual({
       failure: 'boom',
       message: 'x',
     });

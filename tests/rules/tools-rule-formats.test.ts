@@ -106,8 +106,26 @@ const PROBES: { readonly [F in ToolRow['format']]: Probe } = {
   bare: bareProbe,
 };
 
+const CONFIGURE = 'tools.behavior.Configure tools with permission rules and hooks';
+/** The docs' example rule of each format, one id each. */
+const EXAMPLE: Readonly<Record<string, string>> = {
+  Bash: 'Bash(npm run *)',
+  PowerShell: 'PowerShell(Get-ChildItem *)',
+  Read: 'Read(~/secrets/**)',
+  Edit: 'Edit(/src/**)',
+  Skill: 'Skill(deploy *)',
+  Agent: 'Agent(Explore)',
+  WebFetch: 'WebFetch(domain:example.com)',
+  WebSearch: 'WebSearch',
+};
+
 for (const row of TOOL_TABLE) {
-  spec(`tools.tool.${row.tool}`, () => {
+  const example = EXAMPLE[row.tool];
+  const ids = [
+    `tools.tool.${row.tool}`,
+    ...(example === undefined ? [] : [`${CONFIGURE}.${example}`]),
+  ];
+  spec(ids, () => {
     PROBES[row.format](row);
   });
 }
@@ -121,5 +139,13 @@ describe('the format the kit reads a tool with is the documented one', () => {
     expect(ruleFormatOf('mcp__github__get_issue')).toBe('bare');
     expect(ruleFormatOf('NoSuchTool')).toBe('bare');
     expect(ruleFormatOf('MultiEdit')).toBe('edit-path');
+  });
+});
+
+spec(CONFIGURE, () => {
+  test('every example rule of the table parses with the tool it names', () => {
+    for (const rule of Object.values(EXAMPLE)) {
+      expect(parsed(rule, 'allow').value.toolName).toBe(rule.split('(')[0] ?? '');
+    }
   });
 });

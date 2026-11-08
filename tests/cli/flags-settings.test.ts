@@ -83,7 +83,7 @@ spec('cli.flag.--setting-sources', () => {
 const given = (value: string, extra = {}) => planOf({ '--settings': value }, extra);
 
 describe('--settings', () => {
-  spec('cli.flag.--settings', () => {
+  spec(['cli.flag.--settings', 'cli.errors.Settings file exceeds the 2MiB limit'], () => {
     test('an inline JSON string is the flag layer', () => {
       const plan = given('{"enableWorkflows": false}');
       expect(plan.flagSettings?.scope).toBe('flag');

@@ -1,5 +1,3030 @@
 [
   {
+    "page": "settings-reference.md",
+    "section": "Settings index — advisorModel",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — agentPushNotifEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — allowedProviders",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — alwaysThinkingEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — apiKeyHelper",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — askUserQuestionTimeout",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — attribution",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — attribution.commit",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — attribution.pr",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — attribution.sessionUrl",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — autoCompactEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — autoCompactWindow",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — autoConnectIde",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — autoContinueAtUsageLimit",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — autoInstallIdeExtension",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — autoMemoryDirectory",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — autoMemoryEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — autoScrollEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — availableModels",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — availableModelsMatch",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — awaySummaryEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — awsAuthRefresh",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — awsCredentialExport",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — axScreenReader",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — bashEditDiffEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — bashOutputMaxChars",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — browserExternalPageTools",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — claudeInChromeDefaultEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — claudeMd",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — claudeMdExcludes",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — cleanupPeriodDays",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — companyAnnouncements",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — copyFullResponse",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — copyOnSelect",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — defaultShell",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — defaultToAgentsView",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — deniedModels",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — desktopSessionCleanupPeriodDays",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — dialogExpiry",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — diffTool",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — disableArtifact",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — disableBrowserExternalNavigation",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — disableDeepLinkRegistration",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — disableDesktopLocalSessions",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — disableMobileSimulatorTools",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — disableRemoteControl",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — editorMode",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — effortLevel",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — emojiCompletionEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — enableArtifact",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — enforceAvailableModels",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — externalEditorContext",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — fallbackModel",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — fastMode",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — fastModePerSessionOptIn",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — feedbackDrafts",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — feedbackSurveyRate",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — fileCheckpointingEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — fileSuggestion",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — footerLinksRegexes",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — forceLoginGatewayUrl",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — forceLoginMethod",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — forceLoginOrgUUID",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — gatewayInternalNetworks",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — gcpAuthRefresh",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — idleCompaction",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — includeCoAuthoredBy",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — includeGitInstructions",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — inputNeededNotifEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — keybindingFlavor",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — language",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — leftArrowOpensAgents",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — maxEffortLevel",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — maxProseWidth",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — model",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — modelOverrides",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — modelPicker",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — modelPricing",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — modelSettings",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — otelHeadersHelper",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — permissionExplainerEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — plansDirectory",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — preferredNotifChannel",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — prefersReducedMotion",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — promptCacheTtl",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — promptSuggestionEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — prStatusFooterEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — prUrlTemplate",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — remote.defaultEnvironmentId",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — remoteControlAtStartup",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — respectGitignore",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — respondToBashCommands",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.allowAppleEvents",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.allowNestedUserNamespaces",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.allowUnsandboxedCommands",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.autoAllowBashIfSandboxed",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.bwrapPath",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.credentials",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.credentials.allowPlaintextInject",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.credentials.awsPairs",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.credentials.envVars",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.credentials.files",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.credentials.sigv4",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.enabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.enableWeakerNestedSandbox",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.enableWeakerNetworkIsolation",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.excludedCommands",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.failIfUnavailable",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.filesystem",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.filesystem.allowManagedReadPathsOnly",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.filesystem.allowRead",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.filesystem.allowWrite",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.filesystem.denyRead",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.filesystem.denyWrite",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.filesystem.disabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.ignoreViolations",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.network",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.network.allowAllUnixSockets",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.network.allowedDomains",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.network.allowLocalBinding",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.network.allowMachLookup",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.network.allowManagedDomainsOnly",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.network.allowUnixSockets",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.network.deniedDomains",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.network.httpProxyPort",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.network.socksProxyPort",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.network.strictAllowlist",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.network.tlsTerminate",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.ripgrep",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sandbox.socatPath",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — showClearContextOnPlanAccept",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — showThinkingSummaries",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — showTurnDuration",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — skillListingBudgetFraction",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — skillListingMaxDescChars",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — skipWebFetchPreflight",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — spellcheck",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — spinnerTipsEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — spinnerTipsOverride",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — spinnerVerbs",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sshConfigs",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sshHostAllowlist",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — sshHostCommands",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — subagentPromptCacheTtl",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — subagentStatusLine",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — switchModelsOnFlag",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — syntaxHighlightingDisabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — taskOutputMaxChars",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — teammateDefaultModel",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — terminalProgressBarEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — terminalTitleFromRename",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — timeFormat",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — timeZone",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — tui",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — ultracode",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — verbose",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — viewMode",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — vimInsertModeRemaps",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — voice",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — voiceEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Settings index — wheelScrollAccelerationEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_API_KEY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_AUTH_TOKEN",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_AWS_API_KEY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_AWS_BASE_URL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_AWS_WORKSPACE_ID",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_BASE_URL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_BEDROCK_BASE_URL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_BEDROCK_MANTLE_BASE_URL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_BEDROCK_REGION_PREFIX",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_BEDROCK_SERVICE_TIER",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_BETAS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_CUSTOM_HEADERS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_CUSTOM_MODEL_OPTION",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_CUSTOM_MODEL_OPTION_NAME",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_CUSTOM_MODEL_OPTION_SUPPORTED_CAPABILITIES",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_FABLE_MODEL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_FABLE_MODEL_DESCRIPTION",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_FABLE_MODEL_NAME",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_FABLE_MODEL_SUPPORTED_CAPABILITIES",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_HAIKU_MODEL_DESCRIPTION",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_MODEL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_OPUS_MODEL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_OPUS_MODEL_DESCRIPTION",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_OPUS_MODEL_NAME",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_OPUS_MODEL_SUPPORTED_CAPABILITIES",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_SONNET_MODEL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_SONNET_MODEL_DESCRIPTION",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_SONNET_MODEL_NAME",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_FEDERATION_RULE_ID",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_FOUNDRY_API_KEY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_FOUNDRY_AUTH_TOKEN",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_FOUNDRY_BASE_URL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_FOUNDRY_RESOURCE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_MODEL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_ORGANIZATION_ID",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_PROFILE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_SMALL_FAST_MODEL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_VERTEX_BASE_URL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_VERTEX_PROJECT_ID",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ANTHROPIC_WORKSPACE_ID",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — API_FORCE_IDLE_TIMEOUT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — API_TIMEOUT_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — AWS_BEARER_TOKEN_BEDROCK",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — BASH_DEFAULT_TIMEOUT_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — BASH_MAX_OUTPUT_LENGTH",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — BASH_MAX_TIMEOUT_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — BETA_TRACING_ENDPOINT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CCR_FORCE_BUNDLE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_AGENT_SDK_MCP_NO_PREFIX",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_ASYNC_AGENT_STALL_TIMEOUT_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_AUTOCOMPACT_PCT_OVERRIDE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_AUTO_BACKGROUND_TASKS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_AX_PREPARK_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_AX_SCREEN_READER",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_AX_STARTUP_QUIET_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_BYTE_STREAM_IDLE_TIMEOUT_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CLIENT_PRESENCE_FILE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ACCESSIBILITY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ALT_SCREEN_FULL_REPAINT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ALWAYS_ENABLE_EFFORT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_API_KEY_HELPER_TTL_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ARTIFACT_AUTO_OPEN",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ARTIFACT_COMMENTS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ARTIFACT_COMMENTS_AUTOREACT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ARTIFACT_PUBLISH_EDITS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ATTRIBUTION_HEADER",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_AUTO_BACKGROUND_WORKER_CHECKIN_SECONDS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_AUTO_COMPACT_WINDOW",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_AUTO_CONNECT_IDE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_AUTO_MODE_MODEL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_AUTO_MODE_SERVER",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_AWS_CHAIN_RESOLVE_TIMEOUT_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_BASH_EDIT_DIFF",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_BG_TASKS_REPORT_RUNNING",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_BRIDGE_SESSION_ID",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_BS_AS_CTRL_BACKSPACE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_CERT_STORE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_CHILD_SESSION",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_CLIENT_CERT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_CLIENT_KEY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_CLIENT_KEY_PASSPHRASE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_CONFIG_LOCK_WAIT_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_CONNECT_TIMEOUT_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DEBUG_LOGS_DIR",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DEBUG_LOG_LEVEL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_1M_CONTEXT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_ADVISOR_TOOL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_AGENT_VIEW",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_ARTIFACT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_ATTACHMENTS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_AUTH_REFRESH_LOCK",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_AUTO_MEMORY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_BACKGROUND_TASKS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_BEDROCK_CONTENT_TYPE_DEFAULT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_BEDROCK_CONTENT_TYPE_GUARD",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_BG_EXIT_HANDOFF",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_BG_SHELL_PRESSURE_REAP",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_BG_STABLE_PATH",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_BUNDLED_SKILLS",
+    "reason": "builtin"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_CFC_PROMPT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_CLAUDE_MDS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_CRON",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_DANGEROUS_RM_TIMEOUT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_FAST_MODE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_FILE_CHECKPOINTING",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_FILE_MENTIONS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_INLINE_SHELL_RM_PROMPT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_LEGACY_MODEL_REMAP",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_MODEL_ACCESS_FALLBACK",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_MOUNTED_DRIVE_RM_PROMPT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_MOUSE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_MOUSE_CLICKS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_MTLS_RELOAD_ON_STALE_CONNECTION",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_NOTIFICATION_PRESENCE_CHECK",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_POWERSHELL_CMD_RM_DENY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_STRUCTURED_OUTPUTS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_SUBSTITUTION_RM_PROMPT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_TERMINAL_TITLE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_THINKING",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_ULTRAREVIEW_TRUST_CHECK",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_VIRTUAL_SCROLL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_WEB_FETCH",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DISABLE_WINDOWS_SHELL_LAUNCHER",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_DROP_UNAVAILABLE_DEFERRED_TOOL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_EFFORT_LEVEL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_EMIT_SESSION_STATE_EVENTS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ENABLE_AUTO_MODE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ENABLE_AWAY_SUMMARY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ENABLE_CFC",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ENABLE_FEEDBACK_SURVEY_FOR_OTEL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ENABLE_FINE_GRAINED_TOOL_STREAMING",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ENABLE_OPUS_4_7_FAST_MODE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ENABLE_SHARE_BUNDLE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ENABLE_TASKS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ENABLE_TELEMETRY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_ENABLE_TODO_TOOLS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_EVEN_MORE_DANGEROUSLY_SKIP_PERMISSIONS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_EXIT_AFTER_STOP_DELAY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_EXTRA_BODY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_FORCE_SESSION_PERSISTENCE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_FORCE_STRIKETHROUGH",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_FORCE_SYNC_OUTPUT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_FORCE_TERMINAL_IMAGES",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_FORK_SUBAGENT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_FORWARD_SUBAGENT_TEXT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_GATEWAY_HINT_HEADERS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_GATEWAY_MODEL_DISCOVERY_TIMEOUT_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_GIT_BASH_PATH",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_GLOB_HIDDEN",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_GLOB_NO_IGNORE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_GLOB_TIMEOUT_SECONDS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_GOAL_CHECKIN_MINUTES",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_GZIP_REQUEST_BODIES",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_HIDE_CWD",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_IDE_HOST_OVERRIDE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_IDE_SKIP_AUTO_INSTALL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_IDE_SKIP_VALID_CHECK",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_IDLE_COMPACT_MIN_TOKENS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_MAX_CONTEXT_TOKENS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_MAX_OUTPUT_TOKENS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_MAX_RETRIES",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_MAX_TURNS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_MESSAGING_SOCKET",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_MESSAGING_TOKEN",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_NATIVE_CURSOR",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_NEW_INIT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_NONBLOCKING_STDOUT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_NONSTREAMING_TIMEOUT_RETRIES",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_NO_FLICKER",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_OAUTH_REFRESH_TOKEN",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_OAUTH_SCOPES",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_OAUTH_TOKEN",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_OPUS_4_6_FAST_MODE_OVERRIDE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_OTEL_CONTENT_MAX_LENGTH",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_OTEL_DIAG_STDERR",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_OTEL_FLUSH_TIMEOUT_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_OTEL_HEADERS_HELPER_DEBOUNCE_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_OTEL_SHUTDOWN_TIMEOUT_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_OVERLOADED_RETRY_BASE_DELAY_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_OVERLOADED_RETRY_MAX_DELAY_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_PACKAGE_MANAGER_AUTO_UPDATE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_PERFORCE_MODE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_POWERSHELL_RESPECT_EXECUTION_POLICY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_PROCESS_WRAPPER",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_PROJECT_DIR_NAME",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_PROMPT_CACHE_TTL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_PROPAGATE_TRACEPARENT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_PROXY_RESOLVES_HOSTS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_REMOTE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_REMOTE_SESSION_ID",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_RESTRICTED",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_RESUME_INTERRUPTED_TURN",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_RESUME_INTERRUPTED_TURN_MAX_AGE_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_RESUME_PROMPT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_RESUME_SHOWS_CUT_OFF_CALLS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_RETRY_WATCHDOG",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_RETRY_WATCHDOG_MAX_WAIT_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_RETRY_WATCHDOG_USAGE_LIMIT_RECHECK_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SAFE_MODE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SCRIPT_CAPS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SCROLL_SPEED",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SEND_FEEDBACK",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SHELL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SHELL_PREFIX",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SIMPLE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUTH",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SKIP_AWS_CRED_CACHE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SKIP_BEDROCK_AUTH",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SKIP_FAST_MODE_NETWORK_ERRORS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SKIP_FAST_MODE_ORG_CHECK",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SKIP_FOUNDRY_AUTH",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SKIP_MANTLE_AUTH",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SKIP_MODEL_ACCESS_MEMORY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SKIP_PROMPT_HISTORY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SKIP_VERTEX_AUTH",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_STARTUP_FAILURE_RESULTS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL",
+    "reason": "model"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SYNC_SKILLS",
+    "reason": "service"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SYNC_SKILLS_INSTALL_TIMEOUT_MS",
+    "reason": "service"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SYNC_SKILLS_WAIT_TIMEOUT_MS",
+    "reason": "service"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_SYNTAX_HIGHLIGHT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_TASK_LIST_ID",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_TMUX_TRUECOLOR",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_TOOL_MEMORY_CGROUP_EXCLUDE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_TOOL_MEMORY_LIMIT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_TRANSCRIPT_LOCAL_GC",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_USER_DIALOG_TIMEOUT_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_USE_ANTHROPIC_AWS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_USE_BEDROCK",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_USE_FOUNDRY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_USE_MANTLE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_USE_POWERSHELL_TOOL",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_USE_VERTEX",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_WARN_DISK_FREE_GIB",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_WARN_MEMORY_FREE_GIB",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_WEBFETCH_CACHE_TTL_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_WEBFETCH_DEADLINE_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_WEB_SEARCH_REFILLS_PER_HOUR",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_WORKER_CHECKIN_SCHEDULE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_CODE_YOU_SHOULD_KNOW_DEBUG",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_EFFORT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_ENABLE_BYTE_WATCHDOG",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_ENABLE_BYTE_WATCHDOG_BEDROCK",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_ENABLE_STREAM_WATCHDOG",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_JOB_DIR",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_REMOTE_CONTROL_SESSION_NAME_PREFIX",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_STREAM_FIRST_BYTE_TIMEOUT_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_STREAM_IDLE_TIMEOUT_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — CLAUDE_SUBAGENT_BG_SHELL_MAX_MS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DEBUG",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_AUTO_COMPACT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_COMPACT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_COST_WARNINGS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_DOCTOR_COMMAND",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_ERROR_REPORTING",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_EXTRA_USAGE_COMMAND",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_FEEDBACK_COMMAND",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_GROWTHBOOK",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_INSTALLATION_CHECKS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_INSTALL_GITHUB_APP_COMMAND",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_INTERLEAVED_THINKING",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_LOGIN_COMMAND",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_LOGOUT_COMMAND",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_PROMPT_CACHING",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_PROMPT_CACHING_FABLE",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_PROMPT_CACHING_HAIKU",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_PROMPT_CACHING_OPUS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_PROMPT_CACHING_SONNET",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — DISABLE_UPGRADE_COMMAND",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ENABLE_BETA_TRACING_DETAILED",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ENABLE_PROMPT_CACHING_1H",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ENABLE_PROMPT_CACHING_1H_BEDROCK",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — ENABLE_TOOL_SEARCH",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — FORCE_HYPERLINK",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — FORCE_PROMPT_CACHING_5M",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — HTTP_PROXY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — HTTPS_PROXY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — IS_DEMO",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — MAX_STRUCTURED_OUTPUT_RETRIES",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — MAX_THINKING_TOKENS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — NO_PROXY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — OTEL_LOG_ASSISTANT_RESPONSES",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — OTEL_LOG_MANAGED_SETTINGS",
+    "reason": "telemetry"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — OTEL_LOG_RAW_API_BODIES",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — OTEL_LOG_TOOL_CONTENT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — OTEL_LOG_TOOL_DETAILS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — OTEL_LOG_USER_PROMPTS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — OTEL_METRICS_INCLUDE_ACCOUNT_UUID",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — OTEL_METRICS_INCLUDE_ENTRYPOINT",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — OTEL_METRICS_INCLUDE_REPOSITORY",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — OTEL_METRICS_INCLUDE_RESOURCE_ATTRIBUTES",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — OTEL_METRICS_INCLUDE_SESSION_ID",
+    "reason": "telemetry"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — OTEL_METRICS_INCLUDE_VERSION",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — TASK_MAX_OUTPUT_LENGTH",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — USE_BUILTIN_RIPGREP",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_3_5_HAIKU",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_3_5_SONNET",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_3_7_SONNET",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_4_0_OPUS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_4_0_SONNET",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_4_1_OPUS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_4_5_OPUS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_4_5_SONNET",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_4_6_OPUS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_4_6_SONNET",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_4_7_OPUS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_4_8_OPUS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_5_5_OPUS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_5_5_SONNET",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_5_OPUS",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_5_SONNET",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_FABLE_5",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_FABLE_5_1",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_HAIKU_4_5",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Variables — VERTEX_REGION_CLAUDE_HAIKU_5_5",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude \"query\"",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude -p \"query\"",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — cat file | claude -p \"query\"",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude -c",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude -c -p \"query\"",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude -r \"<session>\" \"query\"",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude update",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude gateway",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude install [version]",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude auth login",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude auth logout",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude auth status",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude agents",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude attach <id|name>",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude auto-mode defaults",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude auto-mode reset",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude daemon logs",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude daemon run",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude daemon status",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude daemon stop --any",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude doctor",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude import [source]",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude logs <id|name>",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude mcp",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude mcp login <name>",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude mcp logout <name>",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude purge [path]",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude remote-control",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude respawn <id>",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude rm <id>",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude self-hosted-runner",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude setup-token",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude stop <id>",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI commands — claude ultrareview [target]",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --advisor <model>",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --allow-dangerously-skip-permissions",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --allowedTools / --allowed-tools",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --append-subagent-system-prompt",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --append-subagent-system-prompt-file",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --append-system-prompt",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --append-system-prompt-file",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --autocompact <auto|tokens>",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --ax-screen-reader",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --betas",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --bg / --background",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --chrome",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --cloud",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --continue / -c",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --dangerously-skip-permissions",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --debug",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --debug-file <path>",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --desktop",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --disallowedTools / --disallowed-tools",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --effort",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --enable-auto-mode",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --environment <environment-id>",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --exclude-dynamic-system-prompt-sections",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --exec",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --fallback-model",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --fork-session",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --forward-subagent-text",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --from-pr",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --ide",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --init",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --init-only",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --include-hook-events",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --include-partial-messages",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --input-format",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --json-schema",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --maintenance",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --max-budget-usd",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --max-turns",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --model",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --name / -n",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --no-chrome",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --no-session-persistence",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --output-format",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --permission-prompt-tool",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --permission-prompts",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --print / -p",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --prompt-suggestions",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --ref <branch>",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --remote",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --remote-control / --rc",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --remote-control-session-name-prefix <prefix>",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --replay-user-messages",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --resume / -r",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --session-id",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --system-prompt",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --system-prompt-file",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --system-prompt-snapshot",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --teleport",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --teammate-mode",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --tmux",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --verbose",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --version / -v",
+    "reason": "runtime"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "CLI flags — --worktree / -w",
+    "reason": "runtime"
+  },
+  {
     "page": "plugins/loading.md",
     "section": "Find where a plugin came from",
     "reason": "container"
@@ -96,6 +3121,16 @@
   },
   {
     "page": "plugins/host-marketplace.md",
+    "section": "Distribute through organization settings",
+    "reason": "service"
+  },
+  {
+    "page": "plugins/host-marketplace.md",
+    "section": "Roll out to a whole company",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/host-marketplace.md",
     "section": "Keep users up to date",
     "reason": "container"
   },
@@ -161,6 +3196,11 @@
   },
   {
     "page": "plugins/cli-reference.md",
+    "section": "plugin init",
+    "reason": "tooling"
+  },
+  {
+    "page": "plugins/cli-reference.md",
     "section": "plugin update",
     "reason": "container"
   },
@@ -172,6 +3212,11 @@
   {
     "page": "plugins/cli-reference.md",
     "section": "plugin eval init",
+    "reason": "tooling"
+  },
+  {
+    "page": "plugins/cli-reference.md",
+    "section": "plugin test",
     "reason": "tooling"
   },
   {
@@ -416,8 +3461,18 @@
   },
   {
     "page": "plugins/org.md",
+    "section": "When each surface applies the plugin keys",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/org.md",
     "section": "Confirm the rollout",
     "reason": "ui"
+  },
+  {
+    "page": "plugins/org.md",
+    "section": "Marketplaces hosted on claude.ai",
+    "reason": "service"
   },
   {
     "page": "plugins/org.md",
@@ -888,6 +3943,11 @@
     "page": "plugins/mods/api.md",
     "section": "Call a model",
     "reason": "container"
+  },
+  {
+    "page": "plugins/mods/api.md",
+    "section": "Check for cache hits",
+    "reason": "model"
   },
   {
     "page": "plugins/mods/api.md",
@@ -1396,6 +4456,11 @@
   },
   {
     "page": "sub-agents.md",
+    "section": "Enable persistent memory",
+    "reason": "runtime"
+  },
+  {
+    "page": "sub-agents.md",
     "section": "Define hooks for subagents",
     "reason": "container"
   },
@@ -1412,12 +4477,37 @@
   {
     "page": "sub-agents.md",
     "section": "Run subagents in foreground or background",
-    "reason": "container"
+    "reason": "runtime"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Which subagents run in the background",
+    "reason": "runtime"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Let Claude wait for a subagent",
+    "reason": "runtime"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Tools, permissions, and results of background subagents",
+    "reason": "runtime"
   },
   {
     "page": "sub-agents.md",
     "section": "Finished subagents in the panel and task list",
     "reason": "ui"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "API errors in subagents",
+    "reason": "runtime"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Subagent output scanning",
+    "reason": "runtime"
   },
   {
     "page": "sub-agents.md",
@@ -1446,18 +4536,48 @@
   },
   {
     "page": "sub-agents.md",
+    "section": "Concurrent subagent limit",
+    "reason": "runtime"
+  },
+  {
+    "page": "sub-agents.md",
     "section": "Manage subagent context",
-    "reason": "container"
+    "reason": "runtime"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "What loads at startup",
+    "reason": "runtime"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Resume subagents",
+    "reason": "runtime"
   },
   {
     "page": "sub-agents.md",
     "section": "Auto-compaction",
-    "reason": "container"
+    "reason": "runtime"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Fork the current conversation",
+    "reason": "runtime"
   },
   {
     "page": "sub-agents.md",
     "section": "Observe and steer running forks",
     "reason": "ui"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "How forks differ from other subagents",
+    "reason": "runtime"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Turn fork mode off",
+    "reason": "runtime"
   },
   {
     "page": "sub-agents.md",
@@ -3941,6 +7061,11 @@
   },
   {
     "page": "output-styles.md",
+    "section": "Change your output style",
+    "reason": "ui"
+  },
+  {
+    "page": "output-styles.md",
     "section": "Choose between an output style and other features",
     "reason": "advice"
   },
@@ -4105,546 +7230,6 @@
     "reason": "navigation"
   },
   {
-    "page": "claude-directory.md",
-    "section": "Explore the directory",
-    "reason": "ui"
-  },
-  {
-    "page": "claude-directory.md",
-    "section": "Choose the right file",
-    "reason": "advice"
-  },
-  {
-    "page": "claude-directory.md",
-    "section": "Troubleshoot configuration",
-    "reason": "advice"
-  },
-  {
-    "page": "claude-directory.md",
-    "section": "Application data",
-    "reason": "container"
-  },
-  {
-    "page": "claude-directory.md",
-    "section": "Kept until you delete them",
-    "reason": "container"
-  },
-  {
-    "page": "claude-directory.md",
-    "section": "Clear local data",
-    "reason": "advice"
-  },
-  {
-    "page": "claude-directory.md",
-    "section": "Related resources",
-    "reason": "navigation"
-  },
-  {
-    "page": "memory.md",
-    "section": "CLAUDE.md vs auto memory",
-    "reason": "advice"
-  },
-  {
-    "page": "memory.md",
-    "section": "CLAUDE.md files",
-    "reason": "container"
-  },
-  {
-    "page": "memory.md",
-    "section": "When to add to CLAUDE.md",
-    "reason": "advice"
-  },
-  {
-    "page": "memory.md",
-    "section": "Set up a project CLAUDE.md",
-    "reason": "tutorial"
-  },
-  {
-    "page": "memory.md",
-    "section": "Write effective instructions",
-    "reason": "advice"
-  },
-  {
-    "page": "memory.md",
-    "section": "Audit your instruction files",
-    "reason": "advice"
-  },
-  {
-    "page": "memory.md",
-    "section": "How CLAUDE.md files load",
-    "reason": "container"
-  },
-  {
-    "page": "memory.md",
-    "section": "Organize rules with .claude/rules/",
-    "reason": "container"
-  },
-  {
-    "page": "memory.md",
-    "section": "Manage CLAUDE.md for large teams",
-    "reason": "container"
-  },
-  {
-    "page": "memory.md",
-    "section": "AGENTS.md",
-    "reason": "container"
-  },
-  {
-    "page": "memory.md",
-    "section": "Remove an earlier AGENTS.md workaround",
-    "reason": "advice"
-  },
-  {
-    "page": "memory.md",
-    "section": "Share one file with other coding tools",
-    "reason": "advice"
-  },
-  {
-    "page": "memory.md",
-    "section": "Migrate instructions from other tools",
-    "reason": "tutorial"
-  },
-  {
-    "page": "memory.md",
-    "section": "Audit and edit your memory",
-    "reason": "ui"
-  },
-  {
-    "page": "memory.md",
-    "section": "View and edit with /memory",
-    "reason": "ui"
-  },
-  {
-    "page": "memory.md",
-    "section": "Troubleshoot memory issues",
-    "reason": "advice"
-  },
-  {
-    "page": "memory.md",
-    "section": "Claude isn't following my CLAUDE.md",
-    "reason": "advice"
-  },
-  {
-    "page": "memory.md",
-    "section": "My AGENTS.md isn't loading",
-    "reason": "advice"
-  },
-  {
-    "page": "memory.md",
-    "section": "I don't know what auto memory saved",
-    "reason": "advice"
-  },
-  {
-    "page": "memory.md",
-    "section": "My CLAUDE.md is too large",
-    "reason": "advice"
-  },
-  {
-    "page": "memory.md",
-    "section": "Claude ignores the end of my subdirectory CLAUDE.md",
-    "reason": "advice"
-  },
-  {
-    "page": "memory.md",
-    "section": "Instructions seem lost after /compact",
-    "reason": "advice"
-  },
-  {
-    "page": "memory.md",
-    "section": "Related resources",
-    "reason": "navigation"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Set up a status line",
-    "reason": "container"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Use the /statusline command",
-    "reason": "ui"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Build a status line step by step",
-    "reason": "tutorial"
-  },
-  {
-    "page": "statusline.md",
-    "section": "How status lines work",
-    "reason": "container"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Prompt cache fields",
-    "reason": "container"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Examples",
-    "reason": "container"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Context window usage",
-    "reason": "tutorial"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Git status with colors",
-    "reason": "tutorial"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Cost and duration tracking",
-    "reason": "tutorial"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Display multiple lines",
-    "reason": "tutorial"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Clickable links",
-    "reason": "tutorial"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Rate limit usage",
-    "reason": "tutorial"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Cache expensive operations",
-    "reason": "tutorial"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Windows configuration",
-    "reason": "tutorial"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Subagent status lines",
-    "reason": "container"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Tips",
-    "reason": "advice"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Troubleshooting",
-    "reason": "container"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Status line not appearing",
-    "reason": "advice"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Status line shows -- or empty values",
-    "reason": "advice"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Context percentage shows unexpected values",
-    "reason": "advice"
-  },
-  {
-    "page": "statusline.md",
-    "section": "OSC 8 links not clickable",
-    "reason": "advice"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Display glitches with escape sequences",
-    "reason": "advice"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Script errors or hangs",
-    "reason": "advice"
-  },
-  {
-    "page": "statusline.md",
-    "section": "Notifications share the status line row",
-    "reason": "advice"
-  },
-  {
-    "page": "worktrees.md",
-    "section": "Claude has no EnterWorktree tool",
-    "reason": "advice"
-  },
-  {
-    "page": "worktrees.md",
-    "section": "Isolate subagents with worktrees",
-    "reason": "container"
-  },
-  {
-    "page": "worktrees.md",
-    "section": "Customize worktree creation",
-    "reason": "container"
-  },
-  {
-    "page": "worktrees.md",
-    "section": "Manage worktrees manually",
-    "reason": "machine"
-  },
-  {
-    "page": "worktrees.md",
-    "section": "Troubleshooting",
-    "reason": "advice"
-  },
-  {
-    "page": "worktrees.md",
-    "section": "Claude Code can't enter the worktree at startup",
-    "reason": "advice"
-  },
-  {
-    "page": "worktrees.md",
-    "section": "Worktree creation fails on a symlinked path",
-    "reason": "advice"
-  },
-  {
-    "page": "worktrees.md",
-    "section": "A worktree Claude Code created has the original content of replaced objects",
-    "reason": "advice"
-  },
-  {
-    "page": "worktrees.md",
-    "section": "Git LFS files are pointer files in a worktree Claude Code created",
-    "reason": "advice"
-  },
-  {
-    "page": "worktrees.md",
-    "section": "Worktree creation fails in a partial clone",
-    "reason": "advice"
-  },
-  {
-    "page": "worktrees.md",
-    "section": "Can only use --worktree in a git repository",
-    "reason": "advice"
-  },
-  {
-    "page": "worktrees.md",
-    "section": "The worktree directory belongs to a different repository",
-    "reason": "advice"
-  },
-  {
-    "page": "worktrees.md",
-    "section": "Claude Code refuses to use a worktree",
-    "reason": "advice"
-  },
-  {
-    "page": "worktrees.md",
-    "section": "The session resumes outside its worktree",
-    "reason": "advice"
-  },
-  {
-    "page": "worktrees.md",
-    "section": "See also",
-    "reason": "navigation"
-  },
-  {
-    "page": "headless.md",
-    "section": "Examples",
-    "reason": "container"
-  },
-  {
-    "page": "headless.md",
-    "section": "Pipe data through Claude",
-    "reason": "tutorial"
-  },
-  {
-    "page": "headless.md",
-    "section": "Add Claude to a build script",
-    "reason": "tutorial"
-  },
-  {
-    "page": "headless.md",
-    "section": "Create a commit",
-    "reason": "tutorial"
-  },
-  {
-    "page": "headless.md",
-    "section": "Next steps",
-    "reason": "navigation"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "How an eval run works",
-    "reason": "container"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "Create your first eval suite",
-    "reason": "tutorial"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "Write and refine cases",
-    "reason": "container"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "Write a case manually",
-    "reason": "tutorial"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "Choose and weight graders",
-    "reason": "container"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "Choose graders that give a stable signal",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "Set up fixtures and mocks",
-    "reason": "container"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "Run evals",
-    "reason": "container"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "Read the results",
-    "reason": "container"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "HTML report",
-    "reason": "ui"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "What a run can access",
-    "reason": "container"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "Eval suite reference",
-    "reason": "container"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "Grader frontmatter",
-    "reason": "container"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "Mock files",
-    "reason": "container"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "Troubleshooting",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "\"plugin eval is currently in early access\"",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "\"plugin eval is currently unavailable\"",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "\"is not a trusted plugin directory, and this run cannot stop to ask you about it\"",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "\"is too old for claude plugin eval\"",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "\"cannot be evaluated where sessions load it\"",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "\"No eval cases found\"",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "The baseline arm shows no plugin, or delta is zero",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "\"Agent type '...' not found\" for one of your plugin's agents",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "Everything scores zero although the right files were produced",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "A regex over the trace doesn't match text I can see",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "Tools are denied, MCP tools are missing, or Bash won't run",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "The run exits 1 but the results look fine",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "--json output path must end in .json",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "A grader shows passed: false under a run that scored 1.0",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "\"ended on an API error and scored 0 without grading\"",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "Runs fail with a usage-limit or rate-limit error partway through",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "\"mock call budget exceeded\"",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "Runs time out or hit the turn cap",
-    "reason": "advice"
-  },
-  {
-    "page": "plugin-evals.md",
-    "section": "See also",
-    "reason": "navigation"
-  },
-  {
     "page": "server-managed-settings.md",
     "section": "Requirements",
     "reason": "service"
@@ -4676,6 +7261,26 @@
   },
   {
     "page": "server-managed-settings.md",
+    "section": "When a machine's apiKeyHelper isn't in effect",
+    "reason": "runtime"
+  },
+  {
+    "page": "server-managed-settings.md",
+    "section": "Fetch and caching behavior",
+    "reason": "service"
+  },
+  {
+    "page": "server-managed-settings.md",
+    "section": "Approval memory",
+    "reason": "service"
+  },
+  {
+    "page": "server-managed-settings.md",
+    "section": "Environment variables and the approval dialog",
+    "reason": "runtime"
+  },
+  {
+    "page": "server-managed-settings.md",
     "section": "Platform availability",
     "reason": "service"
   },
@@ -4686,82 +7291,12 @@
   },
   {
     "page": "server-managed-settings.md",
+    "section": "Security considerations",
+    "reason": "advice"
+  },
+  {
+    "page": "server-managed-settings.md",
     "section": "See also",
-    "reason": "navigation"
-  },
-  {
-    "page": "model-config.md",
-    "section": "Work with Fable",
-    "reason": "builtin"
-  },
-  {
-    "page": "model-config.md",
-    "section": "Fable and usage credits",
-    "reason": "service"
-  },
-  {
-    "page": "model-config.md",
-    "section": "A new session starts on a different model than you picked",
-    "reason": "advice"
-  },
-  {
-    "page": "model-config.md",
-    "section": "Mantle model IDs",
-    "reason": "runtime"
-  },
-  {
-    "page": "model-config.md",
-    "section": "Special model behavior",
-    "reason": "container"
-  },
-  {
-    "page": "model-config.md",
-    "section": "Security research and biology workloads",
-    "reason": "model"
-  },
-  {
-    "page": "model-config.md",
-    "section": "Choose an effort level",
-    "reason": "advice"
-  },
-  {
-    "page": "model-config.md",
-    "section": "Adaptive reasoning and fixed thinking budgets",
-    "reason": "model"
-  },
-  {
-    "page": "model-config.md",
-    "section": "Extended context",
-    "reason": "container"
-  },
-  {
-    "page": "model-config.md",
-    "section": "Haiku 5.5 context window and pricing",
-    "reason": "model"
-  },
-  {
-    "page": "model-config.md",
-    "section": "Context window and auto-compaction",
-    "reason": "container"
-  },
-  {
-    "page": "model-config.md",
-    "section": "Checking your current model",
-    "reason": "ui"
-  },
-  {
-    "page": "model-config.md",
-    "section": "Environment variables",
-    "reason": "container"
-  },
-  {
-    "page": "model-config.md",
-    "section": "Prompt caching configuration",
-    "reason": "model"
-  },
-  {
-    "page": "model-config.md",
-    "section": "Version history",
     "reason": "navigation"
   },
   {
@@ -4785,294 +7320,149 @@
     "reason": "navigation"
   },
   {
-    "page": "commands.md",
-    "section": "Commands across a typical workflow",
-    "reason": "tutorial"
-  },
-  {
-    "page": "commands.md",
-    "section": "See also",
-    "reason": "navigation"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "When to use agent teams",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Compare with subagents",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Start your first agent team",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Control your agent team",
-    "reason": "container"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Choose a display mode",
-    "reason": "ui"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Talk to teammates directly",
-    "reason": "ui"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "How agent teams work",
-    "reason": "container"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Token usage",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Use case examples",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Run a parallel code review",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Investigate with competing hypotheses",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Best practices",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Give teammates enough context",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Choose an appropriate team size",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Size tasks appropriately",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Wait for teammates to finish",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Start with research and review",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Avoid file conflicts",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Monitor and steer",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Troubleshooting",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Teammates not appearing",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Claude spawns teammates instead of subagents",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Too many permission prompts",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Agents stopping early",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Orphaned tmux sessions",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-teams.md",
-    "section": "Next steps",
-    "reason": "navigation"
-  },
-  {
-    "page": "goal.md",
-    "section": "Compare ways to keep a session running",
-    "reason": "advice"
-  },
-  {
-    "page": "goal.md",
-    "section": "Use /goal",
-    "reason": "container"
-  },
-  {
-    "page": "goal.md",
-    "section": "Write an effective condition",
-    "reason": "advice"
-  },
-  {
-    "page": "goal.md",
-    "section": "Check status",
-    "reason": "ui"
-  },
-  {
-    "page": "goal.md",
-    "section": "How evaluation works",
-    "reason": "container"
-  },
-  {
-    "page": "goal.md",
-    "section": "When a turn fails",
-    "reason": "container"
-  },
-  {
-    "page": "goal.md",
-    "section": "Evaluation model and cost",
-    "reason": "model"
-  },
-  {
-    "page": "goal.md",
-    "section": "See also",
-    "reason": "navigation"
-  },
-  {
-    "page": "scheduled-tasks.md",
-    "section": "Compare scheduling options",
-    "reason": "advice"
-  },
-  {
-    "page": "scheduled-tasks.md",
-    "section": "Run the built-in maintenance prompt",
-    "reason": "builtin"
-  },
-  {
-    "page": "scheduled-tasks.md",
-    "section": "Stop a loop",
-    "reason": "container"
-  },
-  {
-    "page": "scheduled-tasks.md",
-    "section": "Detach without stopping a loop",
-    "reason": "ui"
-  },
-  {
-    "page": "scheduled-tasks.md",
-    "section": "Manage session-scoped scheduled tasks",
-    "reason": "ui"
-  },
-  {
-    "page": "scheduled-tasks.md",
-    "section": "How session-scoped scheduled tasks run",
-    "reason": "container"
-  },
-  {
-    "page": "scheduled-tasks.md",
-    "section": "Jitter",
-    "reason": "container"
-  },
-  {
-    "page": "auto-mode-config.md",
-    "section": "Common boundaries",
-    "reason": "advice"
-  },
-  {
-    "page": "auto-mode-config.md",
-    "section": "Add a human checkpoint",
-    "reason": "tutorial"
-  },
-  {
-    "page": "auto-mode-config.md",
-    "section": "Generate environment entries with /auto-mode-setup",
-    "reason": "container"
-  },
-  {
-    "page": "auto-mode-config.md",
-    "section": "What /auto-mode-setup reads",
-    "reason": "model"
-  },
-  {
-    "page": "auto-mode-config.md",
-    "section": "Review and save the draft",
-    "reason": "ui"
-  },
-  {
-    "page": "auto-mode-config.md",
-    "section": "/auto-mode-setup returns \"Unknown command\"",
-    "reason": "advice"
-  },
-  {
-    "page": "auto-mode-config.md",
-    "section": "Review denials",
-    "reason": "ui"
-  },
-  {
-    "page": "auto-mode-config.md",
-    "section": "Fix a denial with an allow rule, an environment entry, or a retry",
-    "reason": "advice"
-  },
-  {
-    "page": "auto-mode-config.md",
-    "section": "Fix repeated denials",
-    "reason": "advice"
-  },
-  {
-    "page": "auto-mode-config.md",
-    "section": "See also",
-    "reason": "navigation"
+    "page": "tools-reference.md",
+    "section": "AskUserQuestion tool behavior",
+    "reason": "runtime"
   },
   {
     "page": "tools-reference.md",
-    "section": "AskUserQuestion tool behavior",
-    "reason": "container"
+    "section": "Question auto-continue timeout",
+    "reason": "runtime"
   },
   {
     "page": "tools-reference.md",
     "section": "Bash tool behavior",
-    "reason": "container"
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "What persists between commands",
+    "reason": "runtime"
   },
   {
     "page": "tools-reference.md",
     "section": "Timeout and output limits",
-    "reason": "container"
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Output limits",
+    "reason": "runtime"
   },
   {
     "page": "tools-reference.md",
     "section": "Background commands",
-    "reason": "container"
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "When a background command stops",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Time limit for background commands",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Raise the time limit for background commands",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Foreground commands that move to the background",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Memory limit on Linux and WSL",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Edit tool behavior",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Non-UTF-8 files",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "EndConversation tool behavior",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "EnterWorktree tool behavior",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Glob tool behavior",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Grep tool behavior",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "LSP tool behavior",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Monitor tool",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "WebSocket source",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "NotebookEdit tool behavior",
+    "reason": "runtime"
   },
   {
     "page": "tools-reference.md",
     "section": "PowerShell tool",
-    "reason": "container"
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Enable the PowerShell tool",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Exit code 1 from searches and git diff in PowerShell",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Windows encoding and exit codes",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Preview limitations",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Read tool behavior",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Large files",
+    "reason": "runtime"
   },
   {
     "page": "tools-reference.md",
@@ -5108,6 +7498,41 @@
     "page": "tools-reference.md",
     "section": "Sessions without Claude-drafted feedback",
     "reason": "service"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Task tool availability",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Task-tracking tools in subagents and agent teams",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "WebFetch tool behavior",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "WebFetch availability",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "WebSearch tool behavior",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Session search limit",
+    "reason": "runtime"
+  },
+  {
+    "page": "tools-reference.md",
+    "section": "Write tool behavior",
+    "reason": "runtime"
   },
   {
     "page": "tools-reference.md",
@@ -6036,6 +8461,11 @@
   },
   {
     "page": "errors.md",
+    "section": "Output styles are saved to local settings which this session doesn't load",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
     "section": "/recap only runs when you ask for it yourself",
     "reason": "runtime"
   },
@@ -6048,6 +8478,16 @@
     "page": "errors.md",
     "section": "Plugin errors",
     "reason": "container"
+  },
+  {
+    "page": "errors.md",
+    "section": "plugin eval is currently in early access",
+    "reason": "tooling"
+  },
+  {
+    "page": "errors.md",
+    "section": "Skipping connection (recent failure cached; retries automatically in 15 min, or edit the plugin config to retry now)",
+    "reason": "runtime"
   },
   {
     "page": "errors.md",
@@ -6381,7 +8821,22 @@
   },
   {
     "page": "errors.md",
+    "section": "Instruction file not loaded",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
     "section": "Working directory is a network path",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Managed settings block the default model",
+    "reason": "runtime"
+  },
+  {
+    "page": "errors.md",
+    "section": "Managed settings don't allow this API provider",
     "reason": "runtime"
   },
   {
@@ -6433,365 +8888,5 @@
     "page": "errors.md",
     "section": "Report an error",
     "reason": "runtime"
-  },
-  {
-    "page": "agent-sdk/plugins.md",
-    "section": "Loading plugins",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/plugins.md",
-    "section": "Complete example",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-sdk/plugins.md",
-    "section": "Troubleshooting",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/plugins.md",
-    "section": "Plugin not loading",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/plugins.md",
-    "section": "Skills not appearing",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/plugins.md",
-    "section": "See also",
-    "reason": "navigation"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Configure hooks",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Callback functions",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Block the action when a callback fails",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Examples",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Modify tool input",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Add context and block a tool",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Auto-approve specific tools",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Register multiple hooks",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Filter with multi-tool matchers",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Track subagent activity",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Make HTTP requests from hooks",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Forward notifications to Slack",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Fix common issues",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Hook not firing",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Matcher not filtering as expected",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Hook timeout",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Tool blocked unexpectedly",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Modified input not applied",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Session hooks not available in Python",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Subagent permission prompts multiplying",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Recursive hook loops with subagents",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "systemMessage not appearing in output",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/hooks.md",
-    "section": "Related resources",
-    "reason": "navigation"
-  },
-  {
-    "page": "agent-sdk/skills.md",
-    "section": "Use skills with the Agent SDK",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/skills.md",
-    "section": "Commands in Agent SDK sessions",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/skills.md",
-    "section": "Create skills",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/skills.md",
-    "section": "Create and dispatch your first skill",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-sdk/skills.md",
-    "section": "Troubleshooting",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/skills.md",
-    "section": "Skills not found",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/skills.md",
-    "section": "Skill not being used",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/skills.md",
-    "section": "Invalid skill name error",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/skills.md",
-    "section": "Additional troubleshooting",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/skills.md",
-    "section": "Next steps",
-    "reason": "navigation"
-  },
-  {
-    "page": "agent-sdk/skills.md",
-    "section": "Related resources",
-    "reason": "navigation"
-  },
-  {
-    "page": "agent-sdk/subagents.md",
-    "section": "Benefits of using subagents",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/subagents.md",
-    "section": "Create subagents",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/subagents.md",
-    "section": "AgentDefinition configuration",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/subagents.md",
-    "section": "Invoke subagents",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/subagents.md",
-    "section": "Common tool combinations",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/subagents.md",
-    "section": "Run Opus 5 with subagents",
-    "reason": "model"
-  },
-  {
-    "page": "agent-sdk/subagents.md",
-    "section": "Troubleshooting",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/subagents.md",
-    "section": "Claude not delegating to subagents",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/subagents.md",
-    "section": "Filesystem-based agents not loading",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/subagents.md",
-    "section": "Related documentation",
-    "reason": "navigation"
-  },
-  {
-    "page": "agent-sdk/permissions.md",
-    "section": "Permission modes",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/permissions.md",
-    "section": "Mode details",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/permissions.md",
-    "section": "Related resources",
-    "reason": "navigation"
-  },
-  {
-    "page": "agent-sdk/mcp.md",
-    "section": "Quickstart",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-sdk/mcp.md",
-    "section": "Add an MCP server",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/mcp.md",
-    "section": "Allow MCP tools",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/mcp.md",
-    "section": "Transport types",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/mcp.md",
-    "section": "Authentication",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/mcp.md",
-    "section": "Examples",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-sdk/mcp.md",
-    "section": "List issues from a repository",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-sdk/mcp.md",
-    "section": "Query a database",
-    "reason": "tutorial"
-  },
-  {
-    "page": "agent-sdk/mcp.md",
-    "section": "Troubleshooting",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/mcp.md",
-    "section": "Server shows \"failed\" status",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/mcp.md",
-    "section": "Tools not being called",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/mcp.md",
-    "section": "A tool is missing from an SDK MCP server",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/mcp.md",
-    "section": "Connection timeouts",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/mcp.md",
-    "section": "Tool output exceeds maximum allowed tokens",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/mcp.md",
-    "section": "Related resources",
-    "reason": "navigation"
-  },
-  {
-    "page": "agent-sdk/claude-code-features.md",
-    "section": "Project instructions (CLAUDE.md and rules)",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/claude-code-features.md",
-    "section": "Hooks",
-    "reason": "container"
-  },
-  {
-    "page": "agent-sdk/claude-code-features.md",
-    "section": "Choose the right feature",
-    "reason": "advice"
-  },
-  {
-    "page": "agent-sdk/claude-code-features.md",
-    "section": "Related resources",
-    "reason": "navigation"
   }
 ]

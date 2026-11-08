@@ -28,7 +28,7 @@ const disable = (value: unknown) => ({ disableWorkflows: value });
 const enable = (value: unknown) => ({ enableWorkflows: value });
 const envOn = { [WORKFLOWS_ENV]: '1' };
 
-spec('settings.key.disableWorkflows', () => {
+spec(['settings.key.disableWorkflows', 'environment.host.CLAUDE_CODE_DISABLE_WORKFLOWS'], () => {
   test('unset: workflows are on and every surface is available', () => {
     const decision = workflowsDecision(viewOf(), team);
     expect(decision.enabled).toBe(true);

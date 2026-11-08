@@ -6,10 +6,16 @@
  */
 
 /** `<component> path escapes plugin directory: <path>`, with where a symlink really leads. */
-export const pathEscapes = (component: string, path: string, resolvesTo?: string): string =>
+export const pathEscapes = (
+  component: string,
+  path: string,
+  resolvesTo?: string,
+  /** Also outside the marketplace: the form for a plugin's own file in a local marketplace. */
+  withMarketplace = false,
+): string =>
   resolvesTo === undefined
     ? `${component} path escapes plugin directory: ${path}`
-    : `${component} path escapes plugin directory: ${path} — it resolves to ${resolvesTo}, outside the plugin directory`;
+    : `${component} path escapes plugin directory: ${path} — it resolves to ${resolvesTo}, outside the plugin directory${withMarketplace ? ' and its marketplace directory' : ''}`;
 
 /** `<component> path not found: <path>`. */
 export const pathNotFound = (component: string, path: string): string =>

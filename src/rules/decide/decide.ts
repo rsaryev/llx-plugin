@@ -75,6 +75,8 @@ const GATES: readonly Gate[] = [
     hookVetoes(ctx) ? pending({ outcome: 'deny', reason: 'hook' }, 'unenforced') : undefined,
   // "Deny rules block in every mode, including bypassPermissions."
   ({ verdict }) => (verdict === 'deny' ? pending(DENIED, 'unenforced') : undefined),
+  // A redirect target an `Edit` or `Read` deny rule covers: "as if Claude wrote or read that file directly".
+  ({ facts }) => (facts.redirects.denied ? pending(DENIED, 'unenforced') : undefined),
   // "Tools matched by an explicit ask rule" are never auto-approved; dontAsk denies them.
   ({ verdict, strategy }) =>
     verdict === 'ask' ? pending(strategy.prompt('ask-rule'), 'unenforced') : undefined,
@@ -115,6 +117,11 @@ const GATES: readonly Gate[] = [
       'never',
     );
   },
+  // "A rule such as `Bash(git commit *)` allows the command, not the target."
+  ({ facts, strategy }) =>
+    facts.redirects.approval && strategy.checksRedirects
+      ? pending(strategy.prompt('default-prompt'), 'unenforced')
+      : undefined,
   ({ verdict }) =>
     verdict === 'allow' ? pending({ outcome: 'allow', reason: 'allow-rule' }, 'any') : undefined,
   ({ call, ctx, facts, strategy }) =>

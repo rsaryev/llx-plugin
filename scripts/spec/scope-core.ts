@@ -34,6 +34,10 @@ export const CORE_SCOPES: readonly PageScope[] = [
     category: 'agents',
     slug: 'behavior',
     skip: [
+      [
+        /^(API errors in subagents|Subagent output scanning|Run subagents in foreground or background|Which subagents run in the background|Let Claude wait for a subagent|Tools, permissions, and results of background subagents|Concurrent subagent limit|Manage subagent context|What loads at startup|Resume subagents|Auto-compaction|Fork the current conversation|How forks differ from other subagents|Turn fork mode off|Enable persistent memory)$/,
+        'runtime',
+      ],
       ['Quickstart: create your first subagent', 'tutorial'],
       ['Understand automatic delegation', 'advice'],
       ['Choose between subagents and main conversation', 'advice'],

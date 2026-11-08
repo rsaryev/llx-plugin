@@ -25,75 +25,81 @@ const keptWithin = (limit: number) =>
 const keptIn = (result: ReturnType<typeof modelListing>) =>
   result.entries.filter((entry) => entry.description !== undefined).length;
 
-spec('skills.behavior.Skill descriptions are cut short', () => {
-  test('"The budget scales at 1% of the model\'s context window": exactly `floor(window * 0.01 * 4)` characters', () => {
-    for (const contextWindow of [200_000, 123_457]) {
-      const limit = Math.floor(contextWindow * 0.01 * 4);
-      const result = modelListing(MANY, { budget: { contextWindow } });
-      expect(keptIn(result)).toBe(keptWithin(limit));
-      expect(result.chars).toBeLessThanOrEqual(limit);
-      expect(result.chars + (lineCost(true) - lineCost(false))).toBeGreaterThan(limit);
-      expect(result.overBudget).toBe(false);
-    }
-  });
+spec(
+  [
+    'skills.behavior.Skill descriptions are cut short',
+    'environment.host.SLASH_COMMAND_TOOL_CHAR_BUDGET',
+  ],
+  () => {
+    test('"The budget scales at 1% of the model\'s context window": exactly `floor(window * 0.01 * 4)` characters', () => {
+      for (const contextWindow of [200_000, 123_457]) {
+        const limit = Math.floor(contextWindow * 0.01 * 4);
+        const result = modelListing(MANY, { budget: { contextWindow } });
+        expect(keptIn(result)).toBe(keptWithin(limit));
+        expect(result.chars).toBeLessThanOrEqual(limit);
+        expect(result.chars + (lineCost(true) - lineCost(false))).toBeGreaterThan(limit);
+        expect(result.overBudget).toBe(false);
+      }
+    });
 
-  test('`skillListingBudgetFraction` replaces the 1%: exactly `floor(window * fraction * 4)`', () => {
-    for (const fraction of [0.05, 0.5, 1]) {
-      const limit = Math.floor(200_000 * fraction * 4);
-      const result = modelListing(MANY, { budget: { contextWindow: 200_000, fraction } });
-      expect(keptIn(result)).toBe(keptWithin(limit));
-      expect(result.chars).toBeLessThanOrEqual(limit);
-    }
-  });
+    test('`skillListingBudgetFraction` replaces the 1%: exactly `floor(window * fraction * 4)`', () => {
+      for (const fraction of [0.05, 0.5, 1]) {
+        const limit = Math.floor(200_000 * fraction * 4);
+        const result = modelListing(MANY, { budget: { contextWindow: 200_000, fraction } });
+        expect(keptIn(result)).toBe(keptWithin(limit));
+        expect(result.chars).toBeLessThanOrEqual(limit);
+      }
+    });
 
-  test('a fraction that is not greater than 0 and at most 1 falls back to 0.01', () => {
-    const standard = modelListing(MANY, { budget: { contextWindow: 200_000 } });
-    for (const fraction of [0, -0.5, 1.5, 2, Number.NaN, Number.POSITIVE_INFINITY]) {
-      expect(modelListing(MANY, { budget: { contextWindow: 200_000, fraction } })).toEqual(
+    test('a fraction that is not greater than 0 and at most 1 falls back to 0.01', () => {
+      const standard = modelListing(MANY, { budget: { contextWindow: 200_000 } });
+      for (const fraction of [0, -0.5, 1.5, 2, Number.NaN, Number.POSITIVE_INFINITY]) {
+        expect(modelListing(MANY, { budget: { contextWindow: 200_000, fraction } })).toEqual(
+          standard,
+        );
+      }
+      expect(modelListing(MANY, { budget: { contextWindow: 200_000, fraction: 1 } })).not.toEqual(
         standard,
       );
-    }
-    expect(modelListing(MANY, { budget: { contextWindow: 200_000, fraction: 1 } })).not.toEqual(
-      standard,
-    );
-  });
-
-  test('a fixed character count (`SLASH_COMMAND_TOOL_CHAR_BUDGET`) replaces the fraction of the window', () => {
-    const fixed = modelListing(MANY, {
-      budget: { contextWindow: 200_000, fraction: 0.5, chars: 3000 },
     });
-    expect(keptIn(fixed)).toBe(keptWithin(3000));
-    expect(fixed.chars).toBeLessThanOrEqual(3000);
-  });
 
-  test('a character count that is not a positive integer is ignored: the window decides', () => {
-    const byWindow = modelListing(MANY, { budget: { contextWindow: 200_000 } });
-    for (const chars of [0, -5, 1.5, Number.NaN]) {
-      expect(modelListing(MANY, { budget: { contextWindow: 200_000, chars } })).toEqual(byWindow);
-    }
-  });
+    test('a fixed character count (`SLASH_COMMAND_TOOL_CHAR_BUDGET`) replaces the fraction of the window', () => {
+      const fixed = modelListing(MANY, {
+        budget: { contextWindow: 200_000, fraction: 0.5, chars: 3000 },
+      });
+      expect(keptIn(fixed)).toBe(keptWithin(3000));
+      expect(fixed.chars).toBeLessThanOrEqual(3000);
+    });
 
-  test('"with a fallback of 8,000 characters": no budget, or a window that is not a positive integer', () => {
-    expect(FALLBACK_BUDGET_CHARS).toBe(8000);
-    expect(keptWithin(8000)).toBeLessThan(40);
-    const budgets = [
-      undefined,
-      {},
-      { contextWindow: 0 },
-      { contextWindow: Number.NaN },
-      { contextWindow: 1.5 },
-      { fraction: 0.5 },
-    ];
-    for (const budget of budgets) {
-      const result = modelListing(MANY, budget === undefined ? {} : { budget });
-      expect(keptIn(result)).toBe(keptWithin(8000));
-      expect(result.chars).toBeLessThanOrEqual(8000);
-    }
-  });
+    test('a character count that is not a positive integer is ignored: the window decides', () => {
+      const byWindow = modelListing(MANY, { budget: { contextWindow: 200_000 } });
+      for (const chars of [0, -5, 1.5, Number.NaN]) {
+        expect(modelListing(MANY, { budget: { contextWindow: 200_000, chars } })).toEqual(byWindow);
+      }
+    });
 
-  test('a short listing is under the fallback and nothing is dropped', () => {
-    const result = modelListing(MANY.slice(0, 5));
-    expect(result.descriptionsDropped).toEqual([]);
-    expect(keptIn(result)).toBe(5);
-  });
-});
+    test('"with a fallback of 8,000 characters": no budget, or a window that is not a positive integer', () => {
+      expect(FALLBACK_BUDGET_CHARS).toBe(8000);
+      expect(keptWithin(8000)).toBeLessThan(40);
+      const budgets = [
+        undefined,
+        {},
+        { contextWindow: 0 },
+        { contextWindow: Number.NaN },
+        { contextWindow: 1.5 },
+        { fraction: 0.5 },
+      ];
+      for (const budget of budgets) {
+        const result = modelListing(MANY, budget === undefined ? {} : { budget });
+        expect(keptIn(result)).toBe(keptWithin(8000));
+        expect(result.chars).toBeLessThanOrEqual(8000);
+      }
+    });
+
+    test('a short listing is under the fallback and nothing is dropped', () => {
+      const result = modelListing(MANY.slice(0, 5));
+      expect(result.descriptionsDropped).toEqual([]);
+      expect(keptIn(result)).toBe(5);
+    });
+  },
+);

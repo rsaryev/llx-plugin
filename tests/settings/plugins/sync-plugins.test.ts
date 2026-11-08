@@ -21,58 +21,65 @@ const stopped = (moveToTrash: boolean) => ({ download: false, loadSynced: false,
 const off = { syncClaudeAiPlugins: false };
 const on = { syncClaudeAiPlugins: true };
 
-spec('settings.key.syncClaudeAiPlugins', () => {
-  test('unset: sessions signed in with a claude.ai account sync and load their plugins', () => {
-    expect(plain(syncDecision(viewOf()))).toEqual(syncing);
-    expect(plain(syncDecision(viewOf(['user', { enabledPlugins: {} }])))).toEqual(syncing);
-  });
+spec(
+  [
+    'settings.key.syncClaudeAiPlugins',
+    'policy.org.Control matrix.syncClaudeAiPlugins',
+    'policy.security.Enforce plugin controls for your organization',
+  ],
+  () => {
+    test('unset: sessions signed in with a claude.ai account sync and load their plugins', () => {
+      expect(plain(syncDecision(viewOf()))).toEqual(syncing);
+      expect(plain(syncDecision(viewOf(['user', { enabledPlugins: {} }])))).toEqual(syncing);
+    });
 
-  test('true is the same as unset', () => {
-    for (const scope of ['user', 'local', 'managed', 'flag'] as const) {
-      expect(plain(syncDecision(viewOf([scope, on])))).toEqual(syncing);
-    }
-  });
+    test('true is the same as unset', () => {
+      for (const scope of ['user', 'local', 'managed', 'flag'] as const) {
+        expect(plain(syncDecision(viewOf([scope, on])))).toEqual(syncing);
+      }
+    });
 
-  test('false in user or managed settings stops the download, stops loading, and moves the synced plugins to the trash', () => {
-    expect(plain(syncDecision(viewOf(['user', off])))).toEqual(stopped(true));
-    expect(plain(syncDecision(viewOf(['managed', off])))).toEqual(stopped(true));
-  });
+    test('false in user or managed settings stops the download, stops loading, and moves the synced plugins to the trash', () => {
+      expect(plain(syncDecision(viewOf(['user', off])))).toEqual(stopped(true));
+      expect(plain(syncDecision(viewOf(['managed', off])))).toEqual(stopped(true));
+    });
 
-  test('false in local settings or a --settings file stops download and loading but moves nothing', () => {
-    expect(plain(syncDecision(viewOf(['local', off])))).toEqual(stopped(false));
-    expect(plain(syncDecision(viewOf(['flag', off])))).toEqual(stopped(false));
-  });
+    test('false in local settings or a --settings file stops download and loading but moves nothing', () => {
+      expect(plain(syncDecision(viewOf(['local', off])))).toEqual(stopped(false));
+      expect(plain(syncDecision(viewOf(['flag', off])))).toEqual(stopped(false));
+    });
 
-  test('a false in the shared project file is ignored: a repository cannot turn it off for you', () => {
-    expect(plain(syncDecision(viewOf(['project', off])))).toEqual(syncing);
-  });
+    test('a false in the shared project file is ignored: a repository cannot turn it off for you', () => {
+      expect(plain(syncDecision(viewOf(['project', off])))).toEqual(syncing);
+    });
 
-  test('a stricter false from user, local or --settings is honored even when managed settings say true', () => {
-    for (const scope of ['user', 'local', 'flag'] as const) {
-      const decision = syncDecision(viewOf(['managed', on], [scope, off]));
-      expect(decision.download).toBe(false);
-      expect(decision.loadSynced).toBe(false);
-    }
-  });
+    test('a stricter false from user, local or --settings is honored even when managed settings say true', () => {
+      for (const scope of ['user', 'local', 'flag'] as const) {
+        const decision = syncDecision(viewOf(['managed', on], [scope, off]));
+        expect(decision.download).toBe(false);
+        expect(decision.loadSynced).toBe(false);
+      }
+    });
 
-  test('a project false does not count even beside a managed true', () => {
-    expect(plain(syncDecision(viewOf(['managed', on], ['project', off])))).toEqual(syncing);
-  });
+    test('a project false does not count even beside a managed true', () => {
+      expect(plain(syncDecision(viewOf(['managed', on], ['project', off])))).toEqual(syncing);
+    });
 
-  test('a user true does not undo a managed false', () => {
-    expect(plain(syncDecision(viewOf(['managed', off], ['user', on])))).toEqual(stopped(true));
-  });
+    test('a user true does not undo a managed false', () => {
+      expect(plain(syncDecision(viewOf(['managed', off], ['user', on])))).toEqual(stopped(true));
+    });
 
-  test('the trash move follows the files where the docs say it happens, whatever else is false', () => {
-    expect(syncDecision(viewOf(['user', off], ['local', off])).moveToTrash).toBe(true);
-    expect(syncDecision(viewOf(['managed', on], ['user', off])).moveToTrash).toBe(true);
-    expect(syncDecision(viewOf(['managed', on], ['local', off])).moveToTrash).toBe(false);
-  });
+    test('the trash move follows the files where the docs say it happens, whatever else is false', () => {
+      expect(syncDecision(viewOf(['user', off], ['local', off])).moveToTrash).toBe(true);
+      expect(syncDecision(viewOf(['managed', on], ['user', off])).moveToTrash).toBe(true);
+      expect(syncDecision(viewOf(['managed', on], ['local', off])).moveToTrash).toBe(false);
+    });
 
-  test('a parent-supplied key is not read', () => {
-    expect(plain(syncDecision(viewOf(['parent', off])))).toEqual(syncing);
-  });
-});
+    test('a parent-supplied key is not read', () => {
+      expect(plain(syncDecision(viewOf(['parent', off])))).toEqual(syncing);
+    });
+  },
+);
 
 describe('what the docs leave open (spec/judgments.md)', () => {
   test('one false in a file that moves is enough to move, even when a higher file only stops', () => {

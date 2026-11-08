@@ -82,6 +82,7 @@ export type {
 export {
   manualTrustEntry,
   settingsHooksMayRun,
+  untrustedWorkspaceWarning,
   workspaceTrustKey,
   workspaceTrustState,
 } from './workspace-trust.ts';

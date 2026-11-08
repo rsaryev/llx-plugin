@@ -86,7 +86,7 @@ for (const [id, , rule, hit, miss] of FIELDS) {
   });
 }
 
-describe('Write, Glob, Grep and NotebookEdit path rules are accepted but never match', () => {
+spec(["permissions.behavior.Write(path), Glob(path), and Grep(path) rules don't match"], () => {
   test('Grep(docs/**) does not stop Grep from searching docs', () => {
     expect(matches('Grep(docs/**)', 'Grep', { pattern: 'x', path: '/work/app/docs' })).toBe(false);
     expect(matches('Grep(docs/**)', 'Grep', { pattern: 'x', path: '/work/app/docs/a.md' })).toBe(
@@ -139,7 +139,7 @@ describe('Grep and Glob are checked against the path they search', () => {
   });
 });
 
-describe('an Edit allow rule grants read; a Read deny rule blocks Edit and Write', () => {
+spec(['permissions.behavior.What Read and Edit rules cover'], () => {
   const secret = '/work/app/keys/a.pem';
 
   test('Edit(keys/**) as an allow rule also allows Read, Grep and Glob of the path', () => {
@@ -193,7 +193,7 @@ describe('judgments about the rest of the path tools', () => {
   });
 });
 
-describe('network paths always prompt (permissions.md § Network paths)', () => {
+spec(['permissions.behavior.Network paths.macOS and Linux'], () => {
   test('Read, Grep and Glob of a /net path read a network path', () => {
     const net = '/net/fileserver/notes.txt';
     expect(readsNetworkPath(call('Read', { file_path: net }), matchContext.paths)).toBe(true);
@@ -240,42 +240,49 @@ describe('network paths always prompt (permissions.md § Network paths)', () => 
 const cd = (rule: string, target: string, behavior: 'allow' | 'deny' = 'deny') =>
   matchCdRule(parsed(rule, behavior), { resolved: target, spellings: [target] }, matchContext);
 
-describe('Cd(path) rules (permissions.md § Cd)', () => {
-  test('Cd(~/code/*) matches ~/code/app, not ~/code/app/src or ~/code', () => {
-    expect(cd('Cd(~/code/*)', '/home/alice/code/app')).toBe(true);
-    expect(cd('Cd(~/code/*)', '/home/alice/code/app/src')).toBe(false);
-    expect(cd('Cd(~/code/*)', '/home/alice/code')).toBe(false);
-  });
+spec(
+  [
+    'permissions.behavior.Cd.Cd(~/code/*)',
+    'permissions.behavior.Cd.Cd(~/code/**)',
+    'permissions.behavior.Cd.Cd(**/node_modules)',
+  ],
+  () => {
+    test('Cd(~/code/*) matches ~/code/app, not ~/code/app/src or ~/code', () => {
+      expect(cd('Cd(~/code/*)', '/home/alice/code/app')).toBe(true);
+      expect(cd('Cd(~/code/*)', '/home/alice/code/app/src')).toBe(false);
+      expect(cd('Cd(~/code/*)', '/home/alice/code')).toBe(false);
+    });
 
-  test('Cd(~/code/**) matches ~/code and any directory under it', () => {
-    expect(cd('Cd(~/code/**)', '/home/alice/code')).toBe(true);
-    expect(cd('Cd(~/code/**)', '/home/alice/code/a/b/c')).toBe(true);
-    expect(cd('Cd(~/code/**)', '/home/alice/other')).toBe(false);
-    expect(cd('Cd(~/code/**)', '/home/alice/codex')).toBe(false);
-  });
+    test('Cd(~/code/**) matches ~/code and any directory under it', () => {
+      expect(cd('Cd(~/code/**)', '/home/alice/code')).toBe(true);
+      expect(cd('Cd(~/code/**)', '/home/alice/code/a/b/c')).toBe(true);
+      expect(cd('Cd(~/code/**)', '/home/alice/other')).toBe(false);
+      expect(cd('Cd(~/code/**)', '/home/alice/codex')).toBe(false);
+    });
 
-  test('Cd(**/node_modules) matches any node_modules directory under the cwd, not what is inside', () => {
-    expect(cd('Cd(**/node_modules)', '/work/app/node_modules')).toBe(true);
-    expect(cd('Cd(**/node_modules)', '/work/app/pkg/a/node_modules')).toBe(true);
-    expect(cd('Cd(**/node_modules)', '/work/app/node_modules/pkg')).toBe(false);
-    expect(cd('Cd(**/node_modules)', '/work/other/node_modules')).toBe(false);
-  });
+    test('Cd(**/node_modules) matches any node_modules directory under the cwd, not what is inside', () => {
+      expect(cd('Cd(**/node_modules)', '/work/app/node_modules')).toBe(true);
+      expect(cd('Cd(**/node_modules)', '/work/app/pkg/a/node_modules')).toBe(true);
+      expect(cd('Cd(**/node_modules)', '/work/app/node_modules/pkg')).toBe(false);
+      expect(cd('Cd(**/node_modules)', '/work/other/node_modules')).toBe(false);
+    });
 
-  test('the // and / anchors work as for Read and Edit', () => {
-    expect(cd('Cd(//opt/*)', '/opt/tool')).toBe(true);
-    expect(cd('Cd(/pkg/*)', '/work/app/pkg/a')).toBe(true);
-  });
+    test('the // and / anchors work as for Read and Edit', () => {
+      expect(cd('Cd(//opt/*)', '/opt/tool')).toBe(true);
+      expect(cd('Cd(/pkg/*)', '/work/app/pkg/a')).toBe(true);
+    });
 
-  test('a deny rule checks every spelling of the target, an allow rule only the resolved one', () => {
-    const target = { resolved: '/data/real', spellings: ['/work/app/link', '/data/real'] };
-    expect(matchCdRule(parsed('Cd(/link)', 'deny'), target, matchContext)).toBe(true);
-    expect(matchCdRule(parsed('Cd(/link)', 'allow'), target, matchContext)).toBe(false);
-    expect(matchCdRule(parsed('Cd(//data/*)', 'allow'), target, matchContext)).toBe(true);
-  });
+    test('a deny rule checks every spelling of the target, an allow rule only the resolved one', () => {
+      const target = { resolved: '/data/real', spellings: ['/work/app/link', '/data/real'] };
+      expect(matchCdRule(parsed('Cd(/link)', 'deny'), target, matchContext)).toBe(true);
+      expect(matchCdRule(parsed('Cd(/link)', 'allow'), target, matchContext)).toBe(false);
+      expect(matchCdRule(parsed('Cd(//data/*)', 'allow'), target, matchContext)).toBe(true);
+    });
 
-  test('a bare Cd rule has no path to match', () => {
-    expect(
-      matchCdRule(parsed('Cd', 'deny'), { resolved: '/a', spellings: ['/a'] }, matchContext),
-    ).toBe(false);
-  });
-});
+    test('a bare Cd rule has no path to match', () => {
+      expect(
+        matchCdRule(parsed('Cd', 'deny'), { resolved: '/a', spellings: ['/a'] }, matchContext),
+      ).toBe(false);
+    });
+  },
+);

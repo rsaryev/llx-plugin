@@ -65,73 +65,79 @@ const declaring = (headers: Record<string, string>) => ({
   extraKnownMarketplaces: { archive: { source: archiveSource(headers) } },
 });
 
-spec('settings.key.extraKnownMarketplaces', () => {
-  describe('headersHelper', () => {
-    test('is ignored in an --add-dir directory, on a url source and on an inline plugin entry alike; the fixed headers stay', () => {
-      const registrations = plan([['addDir', helped('/opt/bin/mint')]]);
-      const text = JSON.stringify(registrations.map((r) => r.entry.source));
-      expect(text).not.toContain('headersHelper');
-      expect(text).not.toContain('/opt/bin/mint');
-      expect(text.match(/X-Team/g)).toHaveLength(2);
-      expect(registrations.map((r) => r.status)).toEqual(['register', 'register']);
+spec(
+  [
+    'settings.key.extraKnownMarketplaces',
+    'policy.reference.Marketplace source types.Header filter',
+  ],
+  () => {
+    describe('headersHelper', () => {
+      test('is ignored in an --add-dir directory, on a url source and on an inline plugin entry alike; the fixed headers stay', () => {
+        const registrations = plan([['addDir', helped('/opt/bin/mint')]]);
+        const text = JSON.stringify(registrations.map((r) => r.entry.source));
+        expect(text).not.toContain('headersHelper');
+        expect(text).not.toContain('/opt/bin/mint');
+        expect(text.match(/X-Team/g)).toHaveLength(2);
+        expect(registrations.map((r) => r.status)).toEqual(['register', 'register']);
+      });
+
+      test('is kept from user, project, local, --settings and managed files', () => {
+        for (const scope of ['user', 'project', 'local', 'flag', 'managed'] as const) {
+          const registrations = plan([[scope, helped('/opt/bin/mint')]]);
+          expect(
+            JSON.stringify(registrations.map((r) => r.entry.source)).match(/\/opt\/bin\/mint/g),
+          ).toHaveLength(2);
+        }
+      });
+
+      test('a url source whose address does not start with https:// keeps only its headers, in any file', () => {
+        for (const scope of ['user', 'project', 'local', 'flag', 'managed', 'addDir'] as const) {
+          const [insecure] = plan([[scope, urlSource('http://m.example.com/marketplace.json')]]);
+          expect(insecure?.status).toBe('register');
+          expect(insecure?.entry.source).toEqual({
+            source: 'url',
+            url: 'http://m.example.com/marketplace.json',
+            headers: { 'X-Team': 'a' },
+          });
+        }
+        const [secure] = plan([['user', urlSource('https://m.example.com/marketplace.json')]]);
+        expect(secure?.entry.source).toMatchObject({ headersHelper: '/opt/bin/mint' });
+      });
     });
 
-    test('is kept from user, project, local, --settings and managed files', () => {
-      for (const scope of ['user', 'project', 'local', 'flag', 'managed'] as const) {
-        const registrations = plan([[scope, helped('/opt/bin/mint')]]);
-        expect(
-          JSON.stringify(registrations.map((r) => r.entry.source)).match(/\/opt\/bin\/mint/g),
-        ).toHaveLength(2);
-      }
-    });
+    describe('the header filter of an inline plugin entry', () => {
+      const sent = { Host: 'internal', Cookie: 'a=b', 'X-Forwarded-For': '1.2.3.4' };
 
-    test('a url source whose address does not start with https:// keeps only its headers, in any file', () => {
-      for (const scope of ['user', 'project', 'local', 'flag', 'managed', 'addDir'] as const) {
-        const [insecure] = plan([[scope, urlSource('http://m.example.com/marketplace.json')]]);
-        expect(insecure?.status).toBe('register');
-        expect(insecure?.entry.source).toEqual({
-          source: 'url',
-          url: 'http://m.example.com/marketplace.json',
-          headers: { 'X-Team': 'a' },
-        });
-      }
-      const [secure] = plan([['user', urlSource('https://m.example.com/marketplace.json')]]);
-      expect(secure?.entry.source).toMatchObject({ headersHelper: '/opt/bin/mint' });
-    });
-  });
+      test('drops routing and identity names from a project, local or --add-dir file and keeps Authorization', () => {
+        for (const scope of ['project', 'local', 'addDir'] as const) {
+          const registrations = plan([
+            [scope, declaring({ ...sent, Authorization: 'Bearer t', 'X-Team': 'a' })],
+          ]);
+          expect(registrations[0]?.status).toBe('register');
+          expect(registrations[0]?.entry.source).toEqual(
+            archiveSource({ Authorization: 'Bearer t', 'X-Team': 'a' }),
+          );
+        }
+      });
 
-  describe('the header filter of an inline plugin entry', () => {
-    const sent = { Host: 'internal', Cookie: 'a=b', 'X-Forwarded-For': '1.2.3.4' };
-
-    test('drops routing and identity names from a project, local or --add-dir file and keeps Authorization', () => {
-      for (const scope of ['project', 'local', 'addDir'] as const) {
+      test('matches names without regard to case', () => {
         const registrations = plan([
-          [scope, declaring({ ...sent, Authorization: 'Bearer t', 'X-Team': 'a' })],
+          [
+            'project',
+            declaring({ HOST: 'a', cookie: 'b', 'x-forwarded-proto': 'https', Authorization: 't' }),
+          ],
         ]);
-        expect(registrations[0]?.status).toBe('register');
-        expect(registrations[0]?.entry.source).toEqual(
-          archiveSource({ Authorization: 'Bearer t', 'X-Team': 'a' }),
-        );
-      }
-    });
+        expect(registrations[0]?.entry.source).toEqual(archiveSource({ Authorization: 't' }));
+      });
 
-    test('matches names without regard to case', () => {
-      const registrations = plan([
-        [
-          'project',
-          declaring({ HOST: 'a', cookie: 'b', 'x-forwarded-proto': 'https', Authorization: 't' }),
-        ],
-      ]);
-      expect(registrations[0]?.entry.source).toEqual(archiveSource({ Authorization: 't' }));
+      test('is not applied to a user, --settings or managed file', () => {
+        for (const scope of ['user', 'flag', 'managed'] as const) {
+          const headers = { ...sent, Authorization: 'Bearer t' };
+          expect(plan([[scope, declaring(headers)]])[0]?.entry.source).toEqual(
+            archiveSource(headers),
+          );
+        }
+      });
     });
-
-    test('is not applied to a user, --settings or managed file', () => {
-      for (const scope of ['user', 'flag', 'managed'] as const) {
-        const headers = { ...sent, Authorization: 'Bearer t' };
-        expect(plan([[scope, declaring(headers)]])[0]?.entry.source).toEqual(
-          archiveSource(headers),
-        );
-      }
-    });
-  });
-});
+  },
+);

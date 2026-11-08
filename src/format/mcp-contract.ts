@@ -36,6 +36,7 @@ export {
   MCP_TOOL_NAME_LIMIT,
   mcpPromptToolAnswer,
   mcpToolSendCheck,
+  permissionPromptToolNotFound,
   readMcpToolHints,
   requiringInteraction,
   type McpPromptToolAnswer,

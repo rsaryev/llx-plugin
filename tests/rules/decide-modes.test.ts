@@ -66,88 +66,102 @@ spec('permissions.mode.default', () => {
     });
   });
 
-  describe('permissions.md, "Read-only commands": the built-in set runs, other commands ask', () => {
-    for (const command of READ_ONLY_SAMPLES) {
-      test(`${command} runs without a prompt`, () => {
-        expect(bash('default', command)).toEqual(allow('read-only-command'));
+  spec(['permissions.behavior.Read-only commands'], () => {
+    describe('permissions.md, "Read-only commands": the built-in set runs, other commands ask', () => {
+      for (const command of READ_ONLY_SAMPLES) {
+        test(`${command} runs without a prompt`, () => {
+          expect(bash('default', command)).toEqual(allow('read-only-command'));
+        });
+      }
+
+      test('any other command asks', () => {
+        expect(bash('default', 'npm test')).toEqual(ask('default-prompt'));
+        expect(bash('default', 'rm -rf build')).toEqual(ask('default-prompt'));
       });
-    }
 
-    test('any other command asks', () => {
-      expect(bash('default', 'npm test')).toEqual(ask('default-prompt'));
-      expect(bash('default', 'rm -rf build')).toEqual(ask('default-prompt'));
-    });
+      test('unquoted globs run for a command whose every flag is read-only', () => {
+        expect(bash('default', 'ls *.ts')).toEqual(allow('read-only-command'));
+        expect(bash('default', 'wc -l src/*.py')).toEqual(allow('read-only-command'));
+      });
 
-    test('unquoted globs run for a command whose every flag is read-only', () => {
-      expect(bash('default', 'ls *.ts')).toEqual(allow('read-only-command'));
-      expect(bash('default', 'wc -l src/*.py')).toEqual(allow('read-only-command'));
-    });
+      test('find prompts with an unquoted glob or an action that deletes, runs or writes', () => {
+        expect(bash('default', 'find *.ts')).toEqual(ask('default-prompt'));
+        expect(bash('default', 'find . -name x -delete')).toEqual(ask('default-prompt'));
+        expect(bash('default', 'find . -exec rm {} \\;')).toEqual(ask('default-prompt'));
+        expect(bash('default', 'find . -fprint out.txt')).toEqual(ask('default-prompt'));
+      });
 
-    test('find prompts with an unquoted glob or an action that deletes, runs or writes', () => {
-      expect(bash('default', 'find *.ts')).toEqual(ask('default-prompt'));
-      expect(bash('default', 'find . -name x -delete')).toEqual(ask('default-prompt'));
-      expect(bash('default', 'find . -exec rm {} \\;')).toEqual(ask('default-prompt'));
-      expect(bash('default', 'find . -fprint out.txt')).toEqual(ask('default-prompt'));
-    });
+      test('a cd into the working directory or an additional directory is read-only', () => {
+        const match = pathsWith({ additionalDirectories: ['/work/shared'] });
+        expect(bash('default', 'cd packages/api')).toEqual(allow('read-only-command'));
+        expect(bash('default', 'cd /work/shared', { match })).toEqual(allow('read-only-command'));
+        expect(bash('default', 'cd /etc')).toEqual(ask('default-prompt'));
+      });
 
-    test('a cd into the working directory or an additional directory is read-only', () => {
-      const match = pathsWith({ additionalDirectories: ['/work/shared'] });
-      expect(bash('default', 'cd packages/api')).toEqual(allow('read-only-command'));
-      expect(bash('default', 'cd /work/shared', { match })).toEqual(allow('read-only-command'));
-      expect(bash('default', 'cd /etc')).toEqual(ask('default-prompt'));
-    });
+      test('a compound command runs when each part qualifies on its own', () => {
+        expect(bash('default', 'cd packages/api && ls')).toEqual(allow('read-only-command'));
+        expect(bash('default', 'ls && npm test')).toEqual(ask('default-prompt'));
+      });
 
-    test('a compound command runs when each part qualifies on its own', () => {
-      expect(bash('default', 'cd packages/api && ls')).toEqual(allow('read-only-command'));
-      expect(bash('default', 'ls && npm test')).toEqual(ask('default-prompt'));
-    });
+      spec(['permissions.behavior.Read-only commands.cd with git'], () => {
+        test('a cd with git prompts when the cd changes directory', () => {
+          expect(bash('default', 'cd packages/api && git status')).toEqual(ask('default-prompt'));
+          expect(bash('default', 'cd . && git status')).toEqual(allow('read-only-command'));
+        });
+      });
 
-    test('a cd with git prompts when the cd changes directory', () => {
-      expect(bash('default', 'cd packages/api && git status')).toEqual(ask('default-prompt'));
-      expect(bash('default', 'cd . && git status')).toEqual(allow('read-only-command'));
-    });
+      spec(["permissions.behavior.Read-only commands.Commands the analysis can't parse"], () => {
+        test('a command that cannot be parsed, or runs over 10,000 characters, asks', () => {
+          expect(bash('default', 'ls &&')).toEqual(ask('critical-path'));
+          expect(bash('default', `ls ${'a'.repeat(10_000)}`)).toEqual(ask('default-prompt'));
+        });
+      });
 
-    test('a command that cannot be parsed, or runs over 10,000 characters, asks', () => {
-      expect(bash('default', 'ls &&')).toEqual(ask('critical-path'));
-      expect(bash('default', `ls ${'a'.repeat(10_000)}`)).toEqual(ask('default-prompt'));
-    });
+      spec(['permissions.behavior.Read-only commands.Writes to special shell variables'], () => {
+        test('a command that sets a special shell variable prompts even when the rest is read-only', () => {
+          expect(bash('default', 'PATH=/tmp ls')).toEqual(ask('default-prompt'));
+          expect(bash('default', 'IFS=: ls')).toEqual(ask('default-prompt'));
+        });
+      });
 
-    test('a command that sets a special shell variable prompts even when the rest is read-only', () => {
-      expect(bash('default', 'PATH=/tmp ls')).toEqual(ask('default-prompt'));
-      expect(bash('default', 'IFS=: ls')).toEqual(ask('default-prompt'));
-    });
+      test('an ask rule makes a read-only command prompt', () => {
+        const rules = rulesOf(['ask', 'Bash(cat *)']);
+        expect(bash('default', 'cat secrets.txt', { rules })).toEqual(ask('ask-rule'));
+      });
 
-    test('an ask rule makes a read-only command prompt', () => {
-      const rules = rulesOf(['ask', 'Bash(cat *)']);
-      expect(bash('default', 'cat secrets.txt', { rules })).toEqual(ask('ask-rule'));
-    });
-
-    test('a command nested in a substitution is checked too', () => {
-      expect(bash('default', 'echo "$(rm -rf build)"')).toEqual(ask('default-prompt'));
+      test('a command nested in a substitution is checked too', () => {
+        expect(bash('default', 'echo "$(rm -rf build)"')).toEqual(ask('default-prompt'));
+      });
     });
   });
 
-  describe('permissions.md, "Compound commands": every subcommand must be allowed', () => {
-    const rules = rulesOf(['allow', 'Bash(npm test)'], ['allow', 'Bash(npm run *)']);
+  spec(['permissions.behavior.Compound commands'], () => {
+    describe('permissions.md, "Compound commands": every subcommand must be allowed', () => {
+      const rules = rulesOf(['allow', 'Bash(npm test)'], ['allow', 'Bash(npm run *)']);
 
-    test('an allow rule approves the command it matches', () => {
-      expect(bash('default', 'npm test', { rules })).toEqual(allow('allow-rule'));
-    });
+      test('an allow rule approves the command it matches', () => {
+        expect(bash('default', 'npm test', { rules })).toEqual(allow('allow-rule'));
+      });
 
-    test('a read-only part and an allowed part together run', () => {
-      expect(bash('default', 'ls && npm test', { rules })).toEqual(allow('allow-rule'));
-    });
+      test('a read-only part and an allowed part together run', () => {
+        expect(bash('default', 'ls && npm test', { rules })).toEqual(allow('allow-rule'));
+      });
 
-    test('two allow rules each cover their own subcommand', () => {
-      expect(bash('default', 'npm run build && npm test', { rules })).toEqual(allow('allow-rule'));
-    });
+      test('two allow rules each cover their own subcommand', () => {
+        expect(bash('default', 'npm run build && npm test', { rules })).toEqual(
+          allow('allow-rule'),
+        );
+      });
 
-    test('a subcommand no rule covers makes the command ask', () => {
-      expect(bash('default', 'npm test && rm -rf build', { rules })).toEqual(ask('default-prompt'));
-    });
+      test('a subcommand no rule covers makes the command ask', () => {
+        expect(bash('default', 'npm test && rm -rf build', { rules })).toEqual(
+          ask('default-prompt'),
+        );
+      });
 
-    test('a rule that matches the whole text does not approve a command left unparsed', () => {
-      expect(bash('default', 'npm test &&', { rules })).toEqual(ask('critical-path'));
+      test('a rule that matches the whole text does not approve a command left unparsed', () => {
+        expect(bash('default', 'npm test &&', { rules })).toEqual(ask('critical-path'));
+      });
     });
   });
 

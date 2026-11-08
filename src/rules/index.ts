@@ -3,6 +3,7 @@ export { requiresPromptDespitePrefixRule } from './bash/exec-wrappers.ts';
 export { evaluateIf, type IfResult } from './bash/if-eval.ts';
 export { splitCommand, type SplitCommand } from './bash/split.ts';
 export { matchBashPattern } from './bash/wildcard.ts';
+export { wildcardBannerRow } from './bash/wildcard-warning.ts';
 export { matchCdRule, type CdTarget } from './path/cd.ts';
 export { isNetworkPath, readsNetworkPath } from './path/network.ts';
 export { prepareCall, resolveRuleDirectories } from './path/symlink.ts';
@@ -194,3 +195,4 @@ export {
   type BashEditDiffTrust,
   type BashEditFile,
 } from './tools/responses/bash-edit-diff.ts';
+export { interactiveShell, type InteractiveShell } from './tools/shell-selection.ts';

@@ -38,7 +38,7 @@ const off = { disableAllHooks: true };
 const on = { disableAllHooks: false };
 const ids = ['user', 'project', 'local'] as const;
 
-spec('settings.key.disableAllHooks', () => {
+spec(['settings.key.disableAllHooks', 'hooks.behavior.Disable or remove hooks'], () => {
   describe('the value left after settings precedence', () => {
     test('unset: hooks run from every origin', () => {
       const policy = hookPolicyOf([user({})]);

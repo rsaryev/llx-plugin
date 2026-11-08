@@ -12,6 +12,7 @@ import { discoverComponents, type DiscoverOptions } from './discover.ts';
 import type { LoadedPlugin, Plugin } from './plugin-model.ts';
 import { readJson } from './read-json.ts';
 import type { ComponentValues, ReaderContext } from './reader-types.ts';
+import { commandDirectoryDebug } from './command-debug.ts';
 
 export interface LoadPluginInput {
   /** Read access to the plugin folder: its root is the plugin root. */
@@ -189,5 +190,10 @@ export async function loadPlugin(input: LoadPluginInput): Promise<LoadedPlugin> 
     bin: read.values.bin.files,
   };
   const channels = channelIssues(step.manifest, read.values.mcpServers);
-  return { plugin, issues: [...issues, ...discovered.issues, ...read.issues, ...channels] };
+  const debug = await commandDirectoryDebug(context, read.values.commands);
+  return {
+    plugin,
+    issues: [...issues, ...discovered.issues, ...read.issues, ...channels],
+    ...(debug.length > 0 && { debug }),
+  };
 }

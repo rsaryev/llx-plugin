@@ -98,3 +98,5 @@ export {
 
 export { runModToolCall, type ModToolFlow, type ModToolFlowResult } from './tool-flow.ts';
 export { runModPromptSubmit } from './prompt-flow.ts';
+export type { ManagedModData } from './guard-protection.ts';
+export { modApprovalSkipsClassifier, type ModApprovalFacts } from './auto-mode-approval.ts';

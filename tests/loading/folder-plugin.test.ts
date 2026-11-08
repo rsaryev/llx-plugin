@@ -8,6 +8,7 @@
  * folder as a plugin. Folders are in-memory `PluginFiles`.
  */
 import { describe, expect, test } from 'bun:test';
+import { spec } from '../support/spec.ts';
 import { probeFolder, skillsDirPluginEnabled } from '../../src/loading/folder-plugin.ts';
 import { memoryFiles } from '../support/ports.ts';
 import { json, messagesOf } from '../support/plugin-folder.ts';
@@ -117,3 +118,26 @@ describe('whether a skills-directory plugin is on', () => {
     expect(skillsDirPluginEnabled(true, false)).toBe(false);
   });
 });
+
+spec(
+  "manifest.troubleshooting.--plugin-dir at a marketplace root doesn't load the plugins under plugins/",
+  () => {
+    test('a marketplace root is not read through marketplace.json: nothing loads and there is no error', async () => {
+      const found = await probe(
+        {
+          '.claude-plugin/marketplace.json': JSON.stringify({
+            name: 'shop',
+            owner: { name: 'O' },
+            plugins: [{ name: 'p', source: './plugins/p' }],
+          }),
+          'plugins/p/.claude-plugin/plugin.json': manifest(),
+          'plugins/p/skills/review/SKILL.md': 'Review.',
+        },
+        'inline',
+        'my-marketplace',
+      );
+      expect(found.plugin).toBeUndefined();
+      expect(found.issues).toEqual([]);
+    });
+  },
+);

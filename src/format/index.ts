@@ -72,3 +72,4 @@ export {
   type AgentFieldRead,
   type CacheTtl,
 } from './agent-scalars.ts';
+export * from './host-errors.ts';

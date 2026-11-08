@@ -19,101 +19,115 @@ import {
 } from '../../src/rules/index.ts';
 import { call, matchContext, parsed } from '../support/rule-context.ts';
 import { covers } from '../support/target-rules.ts';
+import { spec } from '../support/spec.ts';
 
 const BEHAVIORS = ['allow', 'ask', 'deny'] as const;
 const tool = (name: string) => [name, {}] as const;
 
-describe('the three MCP rule forms (permissions.md § MCP)', () => {
-  test('mcp__<server> matches any tool provided by that server', () => {
-    for (const behavior of BEHAVIORS) {
+spec(
+  [
+    'permissions.behavior.MCP',
+    'permissions.behavior.MCP.mcp__puppeteer',
+    'permissions.behavior.MCP.mcp__puppeteer__*',
+    'permissions.behavior.MCP.mcp__puppeteer__puppeteer_navigate',
+  ],
+  () => {
+    test('mcp__<server> matches any tool provided by that server', () => {
+      for (const behavior of BEHAVIORS) {
+        expect(
+          covers(behavior, 'mcp__puppeteer', ...tool('mcp__puppeteer__puppeteer_navigate')),
+        ).toBe(true);
+        expect(
+          covers(behavior, 'mcp__puppeteer', ...tool('mcp__puppeteer__puppeteer_screenshot')),
+        ).toBe(true);
+      }
+    });
+
+    test('mcp__<server>__* uses wildcard syntax and also matches all tools of the server', () => {
+      for (const behavior of BEHAVIORS) {
+        expect(
+          covers(behavior, 'mcp__puppeteer__*', ...tool('mcp__puppeteer__puppeteer_navigate')),
+        ).toBe(true);
+        expect(covers(behavior, 'mcp__puppeteer__*', ...tool('mcp__puppeteer__other'))).toBe(true);
+      }
+    });
+
+    test('mcp__<server>__<tool> matches that one tool', () => {
+      for (const behavior of BEHAVIORS) {
+        const rule = 'mcp__puppeteer__puppeteer_navigate';
+        expect(covers(behavior, rule, ...tool('mcp__puppeteer__puppeteer_navigate'))).toBe(true);
+        expect(covers(behavior, rule, ...tool('mcp__puppeteer__puppeteer_screenshot'))).toBe(false);
+      }
+    });
+
+    test('a server rule never covers another server, a built-in tool or a longer server name', () => {
+      for (const behavior of BEHAVIORS) {
+        expect(covers(behavior, 'mcp__puppeteer', ...tool('mcp__github__get_issue'))).toBe(false);
+        expect(covers(behavior, 'mcp__puppeteer', ...tool('mcp__puppeteer2__x'))).toBe(false);
+        expect(covers(behavior, 'mcp__puppeteer', ...tool('mcp__puppeteer'))).toBe(true);
+        expect(covers(behavior, 'mcp__puppeteer', ...tool('Bash'))).toBe(false);
+        expect(covers(behavior, 'mcp__puppeteer__*', ...tool('mcp__github__x'))).toBe(false);
+      }
+    });
+
+    test('a glob after the server prefix selects part of its tools (mcp__github__get_*)', () => {
+      expect(covers('allow', 'mcp__github__get_*', ...tool('mcp__github__get_issue'))).toBe(true);
+      expect(covers('allow', 'mcp__github__get_*', ...tool('mcp__github__create_issue'))).toBe(
+        false,
+      );
+    });
+
+    test('mcp__* in a deny rule matches every MCP tool of every server and no built-in', () => {
+      expect(covers('deny', 'mcp__*', ...tool('mcp__a__b'))).toBe(true);
+      expect(covers('deny', 'mcp__*', ...tool('mcp__plugin_x_y__z'))).toBe(true);
+      expect(covers('deny', 'mcp__*', ...tool('Read'))).toBe(false);
+    });
+
+    test('the rule wins by its place in deny, ask, allow order like any other', () => {
+      const rules = [parsed('mcp__github', 'allow'), parsed('mcp__github__delete_repo', 'deny')];
+      const verdict = (name: string) => evaluateRules(rules, call(name, {}), matchContext).behavior;
+      expect(verdict('mcp__github__delete_repo')).toBe('deny');
+      expect(verdict('mcp__github__get_issue')).toBe('allow');
+    });
+  },
+);
+
+spec(
+  ['permissions.behavior.MCP', 'permissions.behavior.MCP.Servers that a plugin provides'],
+  () => {
+    test('characters such as . or spaces become _: my.server is mcp__my_server__*', () => {
+      expect(normalizeMcpServerName('my.server')).toBe('my_server');
+      expect(normalizeMcpServerName('my server')).toBe('my_server');
+      expect(normalizeMcpServerName('a/b:c')).toBe('a_b_c');
+      expect(normalizeMcpServerName('keeps-dash_and_UPPER9')).toBe('keeps-dash_and_UPPER9');
+      expect(mcpToolName('my.server', 'run')).toBe('mcp__my_server__run');
+      expect(covers('allow', 'mcp__my_server__*', ...tool(mcpToolName('my.server', 'run')))).toBe(
+        true,
+      );
+    });
+
+    test('a server from a plugin takes the plugin-scoped form (mcp.md)', () => {
+      expect(pluginMcpServerName('my-plugin', 'database-tools')).toBe(
+        'plugin_my-plugin_database-tools',
+      );
+      expect(mcpToolName(pluginMcpServerName('my-plugin', 'database-tools'), 'query')).toBe(
+        'mcp__plugin_my-plugin_database-tools__query',
+      );
+      expect(pluginMcpServerName('my plugin', 'db.tools')).toBe('plugin_my_plugin_db_tools');
+      const query = 'mcp__plugin_my-plugin_database-tools__query';
+      expect(covers('allow', 'mcp__plugin_my-plugin_database-tools__*', ...tool(query))).toBe(true);
+      expect(covers('deny', 'mcp__plugin_my-plugin_database-tools', ...tool(query))).toBe(true);
+    });
+
+    test('connector tools appear as mcp__claude_ai_<server>__<tool> and match like any other', () => {
       expect(
-        covers(behavior, 'mcp__puppeteer', ...tool('mcp__puppeteer__puppeteer_navigate')),
+        covers('deny', 'mcp__claude_ai_Gmail__*', ...tool('mcp__claude_ai_Gmail__search_threads')),
       ).toBe(true);
-      expect(
-        covers(behavior, 'mcp__puppeteer', ...tool('mcp__puppeteer__puppeteer_screenshot')),
-      ).toBe(true);
-    }
-  });
+    });
+  },
+);
 
-  test('mcp__<server>__* uses wildcard syntax and also matches all tools of the server', () => {
-    for (const behavior of BEHAVIORS) {
-      expect(
-        covers(behavior, 'mcp__puppeteer__*', ...tool('mcp__puppeteer__puppeteer_navigate')),
-      ).toBe(true);
-      expect(covers(behavior, 'mcp__puppeteer__*', ...tool('mcp__puppeteer__other'))).toBe(true);
-    }
-  });
-
-  test('mcp__<server>__<tool> matches that one tool', () => {
-    for (const behavior of BEHAVIORS) {
-      const rule = 'mcp__puppeteer__puppeteer_navigate';
-      expect(covers(behavior, rule, ...tool('mcp__puppeteer__puppeteer_navigate'))).toBe(true);
-      expect(covers(behavior, rule, ...tool('mcp__puppeteer__puppeteer_screenshot'))).toBe(false);
-    }
-  });
-
-  test('a server rule never covers another server, a built-in tool or a longer server name', () => {
-    for (const behavior of BEHAVIORS) {
-      expect(covers(behavior, 'mcp__puppeteer', ...tool('mcp__github__get_issue'))).toBe(false);
-      expect(covers(behavior, 'mcp__puppeteer', ...tool('mcp__puppeteer2__x'))).toBe(false);
-      expect(covers(behavior, 'mcp__puppeteer', ...tool('mcp__puppeteer'))).toBe(true);
-      expect(covers(behavior, 'mcp__puppeteer', ...tool('Bash'))).toBe(false);
-      expect(covers(behavior, 'mcp__puppeteer__*', ...tool('mcp__github__x'))).toBe(false);
-    }
-  });
-
-  test('a glob after the server prefix selects part of its tools (mcp__github__get_*)', () => {
-    expect(covers('allow', 'mcp__github__get_*', ...tool('mcp__github__get_issue'))).toBe(true);
-    expect(covers('allow', 'mcp__github__get_*', ...tool('mcp__github__create_issue'))).toBe(false);
-  });
-
-  test('mcp__* in a deny rule matches every MCP tool of every server and no built-in', () => {
-    expect(covers('deny', 'mcp__*', ...tool('mcp__a__b'))).toBe(true);
-    expect(covers('deny', 'mcp__*', ...tool('mcp__plugin_x_y__z'))).toBe(true);
-    expect(covers('deny', 'mcp__*', ...tool('Read'))).toBe(false);
-  });
-
-  test('the rule wins by its place in deny, ask, allow order like any other', () => {
-    const rules = [parsed('mcp__github', 'allow'), parsed('mcp__github__delete_repo', 'deny')];
-    const verdict = (name: string) => evaluateRules(rules, call(name, {}), matchContext).behavior;
-    expect(verdict('mcp__github__delete_repo')).toBe('deny');
-    expect(verdict('mcp__github__get_issue')).toBe('allow');
-  });
-});
-
-describe('writing the server name (permissions.md § MCP)', () => {
-  test('characters such as . or spaces become _: my.server is mcp__my_server__*', () => {
-    expect(normalizeMcpServerName('my.server')).toBe('my_server');
-    expect(normalizeMcpServerName('my server')).toBe('my_server');
-    expect(normalizeMcpServerName('a/b:c')).toBe('a_b_c');
-    expect(normalizeMcpServerName('keeps-dash_and_UPPER9')).toBe('keeps-dash_and_UPPER9');
-    expect(mcpToolName('my.server', 'run')).toBe('mcp__my_server__run');
-    expect(covers('allow', 'mcp__my_server__*', ...tool(mcpToolName('my.server', 'run')))).toBe(
-      true,
-    );
-  });
-
-  test('a server from a plugin takes the plugin-scoped form (mcp.md)', () => {
-    expect(pluginMcpServerName('my-plugin', 'database-tools')).toBe(
-      'plugin_my-plugin_database-tools',
-    );
-    expect(mcpToolName(pluginMcpServerName('my-plugin', 'database-tools'), 'query')).toBe(
-      'mcp__plugin_my-plugin_database-tools__query',
-    );
-    expect(pluginMcpServerName('my plugin', 'db.tools')).toBe('plugin_my_plugin_db_tools');
-    const query = 'mcp__plugin_my-plugin_database-tools__query';
-    expect(covers('allow', 'mcp__plugin_my-plugin_database-tools__*', ...tool(query))).toBe(true);
-    expect(covers('deny', 'mcp__plugin_my-plugin_database-tools', ...tool(query))).toBe(true);
-  });
-
-  test('connector tools appear as mcp__claude_ai_<server>__<tool> and match like any other', () => {
-    expect(
-      covers('deny', 'mcp__claude_ai_Gmail__*', ...tool('mcp__claude_ai_Gmail__search_threads')),
-    ).toBe(true);
-  });
-});
-
-describe('a server whose name holds __ or ends in _ (permissions.md § MCP)', () => {
+spec(['permissions.behavior.MCP.A <server> that contains __ or ends in _'], () => {
   const v2 = 'mcp__reports__v2__summary';
   const plain = 'mcp__reports__summary';
 

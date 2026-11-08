@@ -4,6 +4,7 @@
  * a stand-in). The engine's default stage is the real one.
  */
 import { describe, expect, test } from 'bun:test';
+import { spec } from '../../support/spec.ts';
 import { createHookEngine, createHookRegistry } from '../../../src/hooks/index.ts';
 import { cmd, fire } from '../../support/hooks-fire.ts';
 import { specific, stage, viaEngine } from '../../support/hooks-output.ts';
@@ -13,93 +14,100 @@ import { fakeEnvironment, locations, scriptedRunner } from '../../support/ports.
 const hookN = (event: Parameters<typeof entry>[0], index: number) =>
   entry(event, { handler: command(`./hook-${index}.sh`) });
 
-describe('a decision read from stdout', () => {
-  test('PreToolUse permissionDecision deny: the call is held back and Claude is told the reason', async () => {
-    const outcome = await viaEngine('PreToolUse', [
-      specific('PreToolUse', {
+spec(
+  [
+    'hooks.behavior.Decision control',
+    'hooks.guide.Structured JSON output',
+    'hooks.guide.Combine results from multiple hooks',
+  ],
+  () => {
+    test('PreToolUse permissionDecision deny: the call is held back and Claude is told the reason', async () => {
+      const outcome = await viaEngine('PreToolUse', [
+        specific('PreToolUse', {
+          permissionDecision: 'deny',
+          permissionDecisionReason: 'Database writes are not allowed',
+        }),
+      ]);
+      expect(outcome.proceed).toBe(false);
+      expect(outcome.effects.permissionDecision).toBe('deny');
+      expect(outcome.block).toMatchObject({
+        via: 'decision',
+        to: 'claude',
+        reason: 'Database writes are not allowed',
+      });
+    });
+
+    test("exit 2 with a JSON deny: the decision's reason replaces the stderr", async () => {
+      const hook = entry('PreToolUse', { handler: cmd() });
+      const stdout = JSON.stringify(
+        specific('PreToolUse', {
+          permissionDecision: 'deny',
+          permissionDecisionReason: 'Policy says no',
+        }),
+      );
+      const { outcome } = await fire(
+        'PreToolUse',
+        [hook],
+        [{ exitCode: 2, stderr: 'raw stderr', stdout }],
+        { output: stage },
+      );
+      expect(outcome.block).toMatchObject({ via: 'exit2', reason: 'Policy says no' });
+    });
+
+    test('an exit-2 hook beats the allow of another: the effects say deny', async () => {
+      const hooks = [hookN('PreToolUse', 0), hookN('PreToolUse', 1)];
+      const allow = JSON.stringify(
+        specific('PreToolUse', { permissionDecision: 'allow', updatedInput: { command: 'ls' } }),
+      );
+      const { outcome } = await fire(
+        'PreToolUse',
+        hooks,
+        [
+          { exitCode: 0, stdout: allow },
+          { exitCode: 2, stderr: 'no rm' },
+        ],
+        {
+          output: stage,
+        },
+      );
+      expect(outcome.proceed).toBe(false);
+      expect(outcome.effects).toEqual({
         permissionDecision: 'deny',
-        permissionDecisionReason: 'Database writes are not allowed',
-      }),
-    ]);
-    expect(outcome.proceed).toBe(false);
-    expect(outcome.effects.permissionDecision).toBe('deny');
-    expect(outcome.block).toMatchObject({
-      via: 'decision',
-      to: 'claude',
-      reason: 'Database writes are not allowed',
+        permissionDecisionReason: 'no rm',
+      });
     });
-  });
 
-  test("exit 2 with a JSON deny: the decision's reason replaces the stderr", async () => {
-    const hook = entry('PreToolUse', { handler: cmd() });
-    const stdout = JSON.stringify(
-      specific('PreToolUse', {
-        permissionDecision: 'deny',
-        permissionDecisionReason: 'Policy says no',
-      }),
-    );
-    const { outcome } = await fire(
-      'PreToolUse',
-      [hook],
-      [{ exitCode: 2, stderr: 'raw stderr', stdout }],
-      { output: stage },
-    );
-    expect(outcome.block).toMatchObject({ via: 'exit2', reason: 'Policy says no' });
-  });
-
-  test('an exit-2 hook beats the allow of another: the effects say deny', async () => {
-    const hooks = [hookN('PreToolUse', 0), hookN('PreToolUse', 1)];
-    const allow = JSON.stringify(
-      specific('PreToolUse', { permissionDecision: 'allow', updatedInput: { command: 'ls' } }),
-    );
-    const { outcome } = await fire(
-      'PreToolUse',
-      hooks,
-      [
-        { exitCode: 0, stdout: allow },
-        { exitCode: 2, stderr: 'no rm' },
-      ],
-      {
-        output: stage,
-      },
-    );
-    expect(outcome.proceed).toBe(false);
-    expect(outcome.effects).toEqual({
-      permissionDecision: 'deny',
-      permissionDecisionReason: 'no rm',
+    test('PermissionRequest allow with updatedInput and updatedPermissions', async () => {
+      const decision = {
+        behavior: 'allow',
+        updatedInput: { command: 'npm run lint' },
+        updatedPermissions: [{ type: 'setMode', mode: 'manual', destination: 'session' }],
+      };
+      const outcome = await viaEngine('PermissionRequest', [
+        specific('PermissionRequest', { decision }),
+      ]);
+      expect(outcome.effects.permissionRequest).toEqual({
+        behavior: 'allow',
+        updatedInput: { command: 'npm run lint' },
+        updatedPermissions: [{ type: 'setMode', mode: 'default', destination: 'session' }],
+      });
     });
-  });
 
-  test('PermissionRequest allow with updatedInput and updatedPermissions', async () => {
-    const decision = {
-      behavior: 'allow',
-      updatedInput: { command: 'npm run lint' },
-      updatedPermissions: [{ type: 'setMode', mode: 'manual', destination: 'session' }],
-    };
-    const outcome = await viaEngine('PermissionRequest', [
-      specific('PermissionRequest', { decision }),
-    ]);
-    expect(outcome.effects.permissionRequest).toEqual({
-      behavior: 'allow',
-      updatedInput: { command: 'npm run lint' },
-      updatedPermissions: [{ type: 'setMode', mode: 'default', destination: 'session' }],
+    test('a PermissionRequest hook that fails with onFailure block denies, with its text as the message', async () => {
+      const hook = entry('PermissionRequest', { handler: cmd({ onFailure: 'block' }) });
+      const { outcome } = await fire(
+        'PermissionRequest',
+        [hook],
+        [{ exitCode: 1, stderr: 'crashed' }],
+        { output: stage },
+      );
+      expect(outcome.effects.permissionRequest).toMatchObject({ behavior: 'deny' });
+      expect(outcome.proceed).toBe(false);
     });
-  });
+  },
+);
 
-  test('a PermissionRequest hook that fails with onFailure block denies, with its text as the message', async () => {
-    const hook = entry('PermissionRequest', { handler: cmd({ onFailure: 'block' }) });
-    const { outcome } = await fire(
-      'PermissionRequest',
-      [hook],
-      [{ exitCode: 1, stderr: 'crashed' }],
-      { output: stage },
-    );
-    expect(outcome.effects.permissionRequest).toMatchObject({ behavior: 'deny' });
-    expect(outcome.proceed).toBe(false);
-  });
-});
-
-describe('what the outcome carries', () => {
+spec(['hooks.guide.Hook output', 'hooks.guide.Combine results from multiple hooks'], () => {
   test('context, system messages and terminal sequences of several hooks, in registry order', async () => {
     const outcome = await viaEngine('PostToolUse', [
       {
@@ -154,6 +162,24 @@ describe('what the outcome carries', () => {
     );
     expect(wrong.effects.updatedToolOutput).toBeUndefined();
     expect(wrong.issues.some((issue) => issue.message.includes('Bash output shape'))).toBe(true);
+  });
+});
+
+spec('hooks.guide.Shell profile output before the JSON', () => {
+  test('output that does not start with { is plain text: the JSON in it is ignored, with no error', async () => {
+    const stdout = 'Shell ready on arm64\n{"decision": "block", "reason": "Not allowed"}';
+    const hook = entry('Stop', { handler: cmd() });
+    const { outcome } = await fire('Stop', [hook], [{ exitCode: 0, stdout }], { output: stage });
+    expect(outcome.block).toBeUndefined();
+    expect(outcome.proceed).toBe(true);
+    expect(outcome.runs[0]?.status).not.toBe('blocking-error');
+  });
+
+  test('the same JSON alone is read', async () => {
+    const stdout = '{"decision": "block", "reason": "Not allowed"}';
+    const hook = entry('Stop', { handler: cmd() });
+    const { outcome } = await fire('Stop', [hook], [{ exitCode: 0, stdout }], { output: stage });
+    expect(outcome.block).toMatchObject({ reason: 'Not allowed' });
   });
 });
 

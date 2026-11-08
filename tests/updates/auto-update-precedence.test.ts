@@ -25,6 +25,8 @@ import { planUpdate } from '../../src/updates/update-targets.ts';
 import { fakeEnvironment } from '../support/ports.ts';
 import { spec } from '../support/spec.ts';
 
+const HOSTING =
+  "marketplace.hosting.Work around what a marketplace can't do.Turn on auto-update for your users";
 const facts = (name: string, rest: Omit<AutoUpdateFacts, 'name'> = {}): AutoUpdateFacts => ({
   name,
   ...rest,
@@ -32,97 +34,107 @@ const facts = (name: string, rest: Omit<AutoUpdateFacts, 'name'> = {}): AutoUpda
 
 const pass = (env: Record<string, string>): boolean => autoUpdatePassAllowed(fakeEnvironment(env));
 
-spec('updates.loading.Which marketplaces and plugins auto-update', () => {
-  test('the extraKnownMarketplaces entry beats known_marketplaces.json, which beats the default', () => {
-    expect(marketplaceAutoUpdate(facts('acme', { settingsEntry: true, recorded: false }))).toBe(
-      true,
-    );
-    expect(
-      marketplaceAutoUpdate(
-        facts('claude-plugins-official', { settingsEntry: false, recorded: true }),
-      ),
-    ).toBe(false);
-    expect(marketplaceAutoUpdate(facts('acme', { recorded: true }))).toBe(true);
-    expect(marketplaceAutoUpdate(facts('claude-plugins-official', { recorded: false }))).toBe(
-      false,
-    );
-    expect(marketplaceAutoUpdate(facts('acme'))).toBe(false);
-  });
-
-  test('the default is on for claude-plugins-official and the other official names', () => {
-    for (const name of [
-      'claude-plugins-official',
-      'claude-code-marketplace',
-      'anthropic-agent-skills',
-      'life-sciences',
-      'claude-for-legal',
-    ]) {
-      expect(marketplaceAutoUpdate(facts(name))).toBe(true);
-    }
-  });
-
-  test('the default is off for knowledge-work-plugins and first-party-plugins, though they are official', () => {
-    expect(marketplaceAutoUpdate(facts('knowledge-work-plugins'))).toBe(false);
-    expect(marketplaceAutoUpdate(facts('first-party-plugins'))).toBe(false);
-  });
-
-  test('the default is off for community and third-party marketplaces', () => {
-    for (const name of ['claude-community', 'healthcare', 'acme-tools']) {
-      expect(marketplaceAutoUpdate(facts(name))).toBe(false);
-    }
-  });
-
-  test('a marketplace added from claude.ai defaults on, and an explicit choice still wins', () => {
-    expect(marketplaceAutoUpdate(facts('team-plugins', { fromClaudeAi: true }))).toBe(true);
-    expect(
-      marketplaceAutoUpdate(facts('team-plugins', { fromClaudeAi: true, recorded: false })),
-    ).toBe(false);
-  });
-
-  test('DISABLE_UPDATES, DISABLE_AUTOUPDATER and CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC turn the whole pass off', () => {
-    expect(pass({})).toBe(true);
-    for (const name of [
-      'DISABLE_UPDATES',
-      'DISABLE_AUTOUPDATER',
-      'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
-    ]) {
-      expect(pass({ [name]: '1' })).toBe(false);
-    }
-  });
-
-  test('FORCE_AUTOUPDATE_PLUGINS=1 keeps the pass on under each of them', () => {
-    for (const name of [
-      'DISABLE_UPDATES',
-      'DISABLE_AUTOUPDATER',
-      'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
-    ]) {
-      expect(pass({ [name]: '1', FORCE_AUTOUPDATE_PLUGINS: '1' })).toBe(true);
-    }
-    expect(pass({ DISABLE_AUTOUPDATER: '1', FORCE_AUTOUPDATE_PLUGINS: '0' })).toBe(false);
-  });
-
-  test('the Enable auto-update toggle is hidden when the pass is off and shown under FORCE_AUTOUPDATE_PLUGINS', () => {
-    const request = { name: 'acme', enable: true };
-    const hidden = toggleDecision({ ...request, env: fakeEnvironment({ DISABLE_UPDATES: '1' }) });
-    expect(hidden).toEqual({ outcome: 'hidden' });
-    const shown = toggleDecision({
-      ...request,
-      env: fakeEnvironment({ DISABLE_UPDATES: '1', FORCE_AUTOUPDATE_PLUGINS: '1' }),
+spec(
+  [
+    'policy.org.Seed containers and CI.Read-only',
+    'updates.loading.Which marketplaces and plugins auto-update',
+    'environment.host.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
+    'environment.host.DISABLE_AUTOUPDATER',
+    'environment.host.DISABLE_UPDATES',
+    'environment.host.FORCE_AUTOUPDATE_PLUGINS',
+  ],
+  () => {
+    test('the extraKnownMarketplaces entry beats known_marketplaces.json, which beats the default', () => {
+      expect(marketplaceAutoUpdate(facts('acme', { settingsEntry: true, recorded: false }))).toBe(
+        true,
+      );
+      expect(
+        marketplaceAutoUpdate(
+          facts('claude-plugins-official', { settingsEntry: false, recorded: true }),
+        ),
+      ).toBe(false);
+      expect(marketplaceAutoUpdate(facts('acme', { recorded: true }))).toBe(true);
+      expect(marketplaceAutoUpdate(facts('claude-plugins-official', { recorded: false }))).toBe(
+        false,
+      );
+      expect(marketplaceAutoUpdate(facts('acme'))).toBe(false);
     });
-    expect(shown).toMatchObject({ outcome: 'write' });
-  });
 
-  test('auto-update skips a plugin whose marketplace entry declares a headersHelper', () => {
-    expect(pluginSkippedByAutoUpdate({ headersHelper: 'get-token.sh' })).toEqual({
-      skipped: true,
-      reason: 'headers-helper',
-      listedInErrorsTab: true,
+    test('the default is on for claude-plugins-official and the other official names', () => {
+      for (const name of [
+        'claude-plugins-official',
+        'claude-code-marketplace',
+        'anthropic-agent-skills',
+        'life-sciences',
+        'claude-for-legal',
+      ]) {
+        expect(marketplaceAutoUpdate(facts(name))).toBe(true);
+      }
     });
-    expect(pluginSkippedByAutoUpdate({})).toEqual({ skipped: false });
-  });
-});
 
-spec('updates.hosting.Turn on auto-update', () => {
+    test('the default is off for knowledge-work-plugins and first-party-plugins, though they are official', () => {
+      expect(marketplaceAutoUpdate(facts('knowledge-work-plugins'))).toBe(false);
+      expect(marketplaceAutoUpdate(facts('first-party-plugins'))).toBe(false);
+    });
+
+    test('the default is off for community and third-party marketplaces', () => {
+      for (const name of ['claude-community', 'healthcare', 'acme-tools']) {
+        expect(marketplaceAutoUpdate(facts(name))).toBe(false);
+      }
+    });
+
+    test('a marketplace added from claude.ai defaults on, and an explicit choice still wins', () => {
+      expect(marketplaceAutoUpdate(facts('team-plugins', { fromClaudeAi: true }))).toBe(true);
+      expect(
+        marketplaceAutoUpdate(facts('team-plugins', { fromClaudeAi: true, recorded: false })),
+      ).toBe(false);
+    });
+
+    test('DISABLE_UPDATES, DISABLE_AUTOUPDATER and CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC turn the whole pass off', () => {
+      expect(pass({})).toBe(true);
+      for (const name of [
+        'DISABLE_UPDATES',
+        'DISABLE_AUTOUPDATER',
+        'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
+      ]) {
+        expect(pass({ [name]: '1' })).toBe(false);
+      }
+    });
+
+    test('FORCE_AUTOUPDATE_PLUGINS=1 keeps the pass on under each of them', () => {
+      for (const name of [
+        'DISABLE_UPDATES',
+        'DISABLE_AUTOUPDATER',
+        'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
+      ]) {
+        expect(pass({ [name]: '1', FORCE_AUTOUPDATE_PLUGINS: '1' })).toBe(true);
+      }
+      expect(pass({ DISABLE_AUTOUPDATER: '1', FORCE_AUTOUPDATE_PLUGINS: '0' })).toBe(false);
+    });
+
+    test('the Enable auto-update toggle is hidden when the pass is off and shown under FORCE_AUTOUPDATE_PLUGINS', () => {
+      const request = { name: 'acme', enable: true };
+      const hidden = toggleDecision({ ...request, env: fakeEnvironment({ DISABLE_UPDATES: '1' }) });
+      expect(hidden).toEqual({ outcome: 'hidden' });
+      const shown = toggleDecision({
+        ...request,
+        env: fakeEnvironment({ DISABLE_UPDATES: '1', FORCE_AUTOUPDATE_PLUGINS: '1' }),
+      });
+      expect(shown).toMatchObject({ outcome: 'write' });
+    });
+
+    test('auto-update skips a plugin whose marketplace entry declares a headersHelper', () => {
+      expect(pluginSkippedByAutoUpdate({ headersHelper: 'get-token.sh' })).toEqual({
+        skipped: true,
+        reason: 'headers-helper',
+        listedInErrorsTab: true,
+      });
+      expect(pluginSkippedByAutoUpdate({})).toEqual({ skipped: false });
+    });
+  },
+);
+
+spec(['updates.hosting.Turn on auto-update', HOSTING], () => {
   test('marketplace.json has no field that turns it on: an autoUpdate in the catalog changes nothing', () => {
     const { marketplace } = readMarketplace({
       name: 'acme-tools',

@@ -122,66 +122,73 @@ spec('environment.component.Monitor commands', () => {
   });
 });
 
-spec('userConfig.shell.Monitor commands', () => {
-  test('a command that references ${user_config.*} does not start, with the errors.md message', async () => {
-    const { resolved, issues } = await resolveMonitor(
-      monitor({ command: './poll.sh ${user_config.region}' }),
-      scopeOf(),
-    );
-    expect(resolved).toBeUndefined();
-    expect(issues).toEqual([
-      { severity: 'error', path: 'monitors.deploy-status.command', message: MESSAGE },
-    ]);
-  });
-
-  test('the check reads the template: it fires with no value configured and for an undeclared key', async () => {
-    const empty = scopeOf({ userConfig: { declared: userConfig.declared, values: {} } });
-    for (const key of ['region', 'api_token', 'never_declared']) {
+spec(
+  [
+    'userConfig.shell.Monitor commands',
+    'monitors.components.Monitors.No user configuration',
+    'cli.errors.Plugin command references user\\_config in a shell command',
+  ],
+  () => {
+    test('a command that references ${user_config.*} does not start, with the errors.md message', async () => {
       const { resolved, issues } = await resolveMonitor(
-        monitor({ command: `./poll.sh \${user_config.${key}}` }),
-        empty,
+        monitor({ command: './poll.sh ${user_config.region}' }),
+        scopeOf(),
       );
       expect(resolved).toBeUndefined();
-      expect(issues.map((found) => found.message)).toEqual([MESSAGE]);
-    }
-  });
-
-  test('the monitor and plugin named in the message are those of the monitor and the scope', async () => {
-    const { issues } = await resolveMonitor(
-      monitor({ name: 'other', command: '${user_config.region}' }),
-      scopeOf({ pluginId: 'deploy-tools' }),
-    );
-    expect(
-      issues[0]?.message.startsWith('Monitor "other" from plugin deploy-tools references'),
-    ).toBe(true);
-  });
-
-  test('a configured value never reaches the command: a hostile value is not substituted into a shell', async () => {
-    const hostile = scopeOf({
-      userConfig: { declared: userConfig.declared, values: { region: '$(touch x); `id`' } },
+      expect(issues).toEqual([
+        { severity: 'error', path: 'monitors.deploy-status.command', message: MESSAGE },
+      ]);
     });
-    const { resolved } = await resolveMonitor(
-      monitor({ command: './poll.sh ${user_config.region}' }),
-      hostile,
-    );
-    expect(resolved).toBeUndefined();
-  });
 
-  test('a command without the reference starts even when options are configured, and gets no CLAUDE_PLUGIN_OPTION_ variable', async () => {
-    const resolved = await resolve(monitor({ command: './poll.sh' }));
-    expect(resolved.command).toBe('./poll.sh');
-    expect(Object.keys(resolved.environment)).toEqual([]);
-  });
+    test('the check reads the template: it fires with no value configured and for an undeclared key', async () => {
+      const empty = scopeOf({ userConfig: { declared: userConfig.declared, values: {} } });
+      for (const key of ['region', 'api_token', 'never_declared']) {
+        const { resolved, issues } = await resolveMonitor(
+          monitor({ command: `./poll.sh \${user_config.${key}}` }),
+          empty,
+        );
+        expect(resolved).toBeUndefined();
+        expect(issues.map((found) => found.message)).toEqual([MESSAGE]);
+      }
+    });
 
-  test('only the command is checked: ${user_config.*} in the description is not an error', async () => {
-    const { resolved, issues } = await resolveMonitor(
-      monitor({ description: 'region ${user_config.region}' }),
-      scopeOf(),
-    );
-    expect(issues).toEqual([]);
-    expect(resolved?.description).toBe('region ${user_config.region}');
-  });
-});
+    test('the monitor and plugin named in the message are those of the monitor and the scope', async () => {
+      const { issues } = await resolveMonitor(
+        monitor({ name: 'other', command: '${user_config.region}' }),
+        scopeOf({ pluginId: 'deploy-tools' }),
+      );
+      expect(
+        issues[0]?.message.startsWith('Monitor "other" from plugin deploy-tools references'),
+      ).toBe(true);
+    });
+
+    test('a configured value never reaches the command: a hostile value is not substituted into a shell', async () => {
+      const hostile = scopeOf({
+        userConfig: { declared: userConfig.declared, values: { region: '$(touch x); `id`' } },
+      });
+      const { resolved } = await resolveMonitor(
+        monitor({ command: './poll.sh ${user_config.region}' }),
+        hostile,
+      );
+      expect(resolved).toBeUndefined();
+    });
+
+    test('a command without the reference starts even when options are configured, and gets no CLAUDE_PLUGIN_OPTION_ variable', async () => {
+      const resolved = await resolve(monitor({ command: './poll.sh' }));
+      expect(resolved.command).toBe('./poll.sh');
+      expect(Object.keys(resolved.environment)).toEqual([]);
+    });
+
+    test('only the command is checked: ${user_config.*} in the description is not an error', async () => {
+      const { resolved, issues } = await resolveMonitor(
+        monitor({ description: 'region ${user_config.region}' }),
+        scopeOf(),
+      );
+      expect(issues).toEqual([]);
+      expect(resolved?.description).toBe('region ${user_config.region}');
+    });
+  },
+);
 
 describe('judgments (spec/judgments.md)', () => {
   test('the message names the plugin as the host identifies it, marketplace included', async () => {

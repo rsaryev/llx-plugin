@@ -1,3 +1,4 @@
+/** Also plugins/mods/api.md § Reach files, processes, and the network. */
 /**
  * `$.plugin`, `$.env`, `$.mcp`, `$.audio` and `$.telemetry`.
  * plugins/mods/reference.md § Mods API methods (`$.plugin`: this plugin's name and directory;
@@ -54,34 +55,41 @@ const env = (vars: Record<string, string>) => ({
   snapshot: () => ({ ...vars }),
 });
 
-spec('mods.api.$.env', () => {
-  test('$.env has get and set; set is read back by get, and an unset variable is undefined', async () => {
-    const h = await apiHarness({ ports: { env: env({ CI: 'true' }) } });
-    expectMethods(h.api.env, MODS_API.env);
-    expect(await h.api.env.get('CI')).toBe('true');
-    expect(await h.api.env.get('NOPE')).toBeUndefined();
-    await h.api.env.set('MODE', 'fast');
-    expect(await h.api.env.get('MODE')).toBe('fast');
-  });
+spec(
+  [
+    'mods.api.$.env',
+    'mods.apiGuide.Reach files, processes, and the network',
+    'mods.apiGuide.Reach files, processes, and the network.$.env',
+  ],
+  () => {
+    test('$.env has get and set; set is read back by get, and an unset variable is undefined', async () => {
+      const h = await apiHarness({ ports: { env: env({ CI: 'true' }) } });
+      expectMethods(h.api.env, MODS_API.env);
+      expect(await h.api.env.get('CI')).toBe('true');
+      expect(await h.api.env.get('NOPE')).toBeUndefined();
+      await h.api.env.set('MODE', 'fast');
+      expect(await h.api.env.get('MODE')).toBe('fast');
+    });
 
-  test('the event holds the name (and the value for set)', async () => {
-    const seen: unknown[] = [];
-    const h = await apiHarness({ ports: { env: env({}) } });
-    await h.mod('spy', 'prepend', [
-      fn('env.get', (_$, e, next) => (seen.push(e), next(e))),
-      fn('env.set', (_$, e, next) => (seen.push(e), next(e))),
-    ]);
-    await h.api.env.set('A', 'b');
-    await h.api.env.get('A');
-    expect(seen).toEqual([{ name: 'A', value: 'b' }, { name: 'A' }]);
-  });
+    test('the event holds the name (and the value for set)', async () => {
+      const seen: unknown[] = [];
+      const h = await apiHarness({ ports: { env: env({}) } });
+      await h.mod('spy', 'prepend', [
+        fn('env.get', (_$, e, next) => (seen.push(e), next(e))),
+        fn('env.set', (_$, e, next) => (seen.push(e), next(e))),
+      ]);
+      await h.api.env.set('A', 'b');
+      await h.api.env.get('A');
+      expect(seen).toEqual([{ name: 'A', value: 'b' }, { name: 'A' }]);
+    });
 
-  test('a name or value that is not a string rejects', async () => {
-    const h = await apiHarness({ ports: { env: env({}) } });
-    expect(await rejection(h.api.env.get(1))).toContain('$.env.get');
-    expect(await rejection(h.api.env.set('A', 1))).toContain('$.env.set');
-  });
-});
+    test('a name or value that is not a string rejects', async () => {
+      const h = await apiHarness({ ports: { env: env({}) } });
+      expect(await rejection(h.api.env.get(1))).toContain('$.env.get');
+      expect(await rejection(h.api.env.set('A', 1))).toContain('$.env.set');
+    });
+  },
+);
 
 const mcp = (connected: boolean, calls: unknown[] = []) => ({
   ensureConnected: () =>
@@ -89,72 +97,81 @@ const mcp = (connected: boolean, calls: unknown[] = []) => ({
   callTool: (call: unknown) => (calls.push(call), Promise.resolve(toolResult('answer'))),
 });
 
-spec('mods.api.$.mcp', () => {
-  test('$.mcp has call and connect', async () => {
-    const h = await apiHarness({ ports: { mcp: mcp(true) } });
-    expectMethods(h.api.mcp, MODS_API.mcp);
-  });
-
-  test('call runs a tool on a connected MCP server and resolves to its result', async () => {
-    const calls: unknown[] = [];
-    const h = await apiHarness({ ports: { mcp: mcp(true, calls) } });
-    expect(await h.api.mcp.call({ server: 'github', tool: 'search', input: { q: 'x' } })).toEqual({
-      isError: false,
-      text: 'answer',
+spec(
+  [
+    'mods.api.$.mcp',
+    'mods.apiGuide.Reach files, processes, and the network',
+    'mods.apiGuide.Reach files, processes, and the network.$.mcp',
+  ],
+  () => {
+    test('$.mcp has call and connect', async () => {
+      const h = await apiHarness({ ports: { mcp: mcp(true) } });
+      expectMethods(h.api.mcp, MODS_API.mcp);
     });
-    expect(calls[0]).toMatchObject({ server: 'github', tool: 'search', input: { q: 'x' } });
-  });
 
-  test('call on a server that is not connected rejects', async () => {
-    const h = await apiHarness({ ports: { mcp: mcp(false) } });
-    expect(await rejection(h.api.mcp.call({ server: 'github', tool: 'search' }))).toContain(
-      'MCP server "github" is not connected',
-    );
-  });
-
-  test('a failure the port reports rejects with its message', async () => {
-    const port = {
-      ...mcp(true),
-      callTool: () => Promise.resolve({ failure: 'timeout', message: 'the tool timed out' }),
-    };
-    const h = await apiHarness({ ports: { mcp: port } });
-    expect(await rejection(h.api.mcp.call({ server: 's', tool: 't' }))).toContain(
-      'the tool timed out',
-    );
-  });
-
-  test('connect connects a server the plugin own manifest lists', async () => {
-    const h = await apiHarness({
-      ports: { mcp: mcp(true) },
-      options: { ownMcpServers: () => ['mine'] },
+    test('call runs a tool on a connected MCP server and resolves to its result', async () => {
+      const calls: unknown[] = [];
+      const h = await apiHarness({ ports: { mcp: mcp(true, calls) } });
+      expect(await h.api.mcp.call({ server: 'github', tool: 'search', input: { q: 'x' } })).toEqual(
+        {
+          isError: false,
+          text: 'answer',
+        },
+      );
+      expect(calls[0]).toMatchObject({ server: 'github', tool: 'search', input: { q: 'x' } });
     });
-    expect(await h.api.mcp.connect('mine')).toEqual({ isConnected: true });
-  });
 
-  test('connect for a server the manifest does not list rejects without asking the host', async () => {
-    let asked = 0;
-    const port = {
-      ...mcp(true),
-      ensureConnected: () => ((asked += 1), Promise.resolve('connected' as const)),
-    };
-    const h = await apiHarness({
-      ports: { mcp: port },
-      options: { ownMcpServers: () => ['mine'] },
+    test('call on a server that is not connected rejects', async () => {
+      const h = await apiHarness({ ports: { mcp: mcp(false) } });
+      expect(await rejection(h.api.mcp.call({ server: 'github', tool: 'search' }))).toContain(
+        'MCP server "github" is not connected',
+      );
     });
-    expect(await rejection(h.api.mcp.connect('github'))).toContain(
-      '"github" is not an MCP server of the plugin my-mod',
-    );
-    expect(asked).toBe(0);
-  });
 
-  test('connect to a server that cannot start resolves with isConnected false', async () => {
-    const h = await apiHarness({
-      ports: { mcp: mcp(false) },
-      options: { ownMcpServers: () => ['mine'] },
+    test('a failure the port reports rejects with its message', async () => {
+      const port = {
+        ...mcp(true),
+        callTool: () => Promise.resolve({ failure: 'timeout', message: 'the tool timed out' }),
+      };
+      const h = await apiHarness({ ports: { mcp: port } });
+      expect(await rejection(h.api.mcp.call({ server: 's', tool: 't' }))).toContain(
+        'the tool timed out',
+      );
     });
-    expect(await h.api.mcp.connect('mine')).toEqual({ isConnected: false });
-  });
-});
+
+    test('connect connects a server the plugin own manifest lists', async () => {
+      const h = await apiHarness({
+        ports: { mcp: mcp(true) },
+        options: { ownMcpServers: () => ['mine'] },
+      });
+      expect(await h.api.mcp.connect('mine')).toEqual({ isConnected: true });
+    });
+
+    test('connect for a server the manifest does not list rejects without asking the host', async () => {
+      let asked = 0;
+      const port = {
+        ...mcp(true),
+        ensureConnected: () => ((asked += 1), Promise.resolve('connected' as const)),
+      };
+      const h = await apiHarness({
+        ports: { mcp: port },
+        options: { ownMcpServers: () => ['mine'] },
+      });
+      expect(await rejection(h.api.mcp.connect('github'))).toContain(
+        '"github" is not an MCP server of the plugin my-mod',
+      );
+      expect(asked).toBe(0);
+    });
+
+    test('connect to a server that cannot start resolves with isConnected false', async () => {
+      const h = await apiHarness({
+        ports: { mcp: mcp(false) },
+        options: { ownMcpServers: () => ['mine'] },
+      });
+      expect(await h.api.mcp.connect('mine')).toEqual({ isConnected: false });
+    });
+  },
+);
 
 spec('mods.api.$.audio', () => {
   test('$.audio has play and speak, which reach the host', async () => {

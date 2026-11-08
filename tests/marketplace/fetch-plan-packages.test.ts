@@ -38,7 +38,7 @@ const refusals = (source: PluginSource, context: FetchPlanContext = posix) => {
   return result.issues;
 };
 
-spec('marketplace.source.npm', () => {
+spec(['marketplace.source.npm', 'marketplace.create.Choose a plugin source.npm'], () => {
   test('a package name with a version, a range or a dist-tag; install scripts and dependencies are off', () => {
     expect(
       plan(npm('@your-org/formatter', { version: '^2.0.0', registry: 'https://npm.example.com' })),

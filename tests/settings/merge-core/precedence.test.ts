@@ -15,22 +15,25 @@ import { layerOf } from '../../support/settings-layers.ts';
 const tips = (scope: 'user' | 'project' | 'local' | 'flag' | 'managed', value: boolean) =>
   layerOf(scope, { spinnerTipsEnabled: value });
 
-spec('settingsMerge.settings.Settings precedence.User settings', () => {
-  describe('user settings are the lowest of the four levels', () => {
-    test('a key only the user file sets applies in every project', () => {
-      const view = createGeneralView([tips('user', false)]);
-      expect(view.get('spinnerTipsEnabled')).toBe(false);
-    });
+spec(
+  ['settingsMerge.settings.Settings precedence.User settings', 'cli.debug.Check resolved settings'],
+  () => {
+    describe('user settings are the lowest of the four levels', () => {
+      test('a key only the user file sets applies in every project', () => {
+        const view = createGeneralView([tips('user', false)]);
+        expect(view.get('spinnerTipsEnabled')).toBe(false);
+      });
 
-    test('every other level sets the key above it', () => {
-      for (const above of ['project', 'local', 'flag', 'managed'] as const) {
-        const view = createGeneralView([tips('user', false), tips(above, true)]);
-        expect(view.get('spinnerTipsEnabled')).toBe(true);
-        expect(view.winner('spinnerTipsEnabled')?.scope).toBe(above);
-      }
+      test('every other level sets the key above it', () => {
+        for (const above of ['project', 'local', 'flag', 'managed'] as const) {
+          const view = createGeneralView([tips('user', false), tips(above, true)]);
+          expect(view.get('spinnerTipsEnabled')).toBe(true);
+          expect(view.winner('spinnerTipsEnabled')?.scope).toBe(above);
+        }
+      });
     });
-  });
-});
+  },
+);
 
 spec('settingsMerge.settings.Settings precedence.Shared project settings', () => {
   describe('shared project settings override user settings and give way to local', () => {

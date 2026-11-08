@@ -138,7 +138,7 @@ spec('agents.behavior.Choose the subagent scope.Managed settings', () => {
   });
 });
 
-spec('agents.behavior.Built-in subagents', () => {
+spec(['agents.behavior.Built-in subagents', 'cli.errors.subagent\\_type is required'], () => {
   test.each(['managed', 'project', 'user'] as const)(
     'a %s subagent named Explore overrides the built-in and keeps its own model',
     (source) => {

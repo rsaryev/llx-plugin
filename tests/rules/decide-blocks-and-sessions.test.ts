@@ -116,61 +116,77 @@ for (const mode of PERMISSION_MODES) {
 }
 
 spec('permissions.mode.bypassPermissions', () => {
-  describe('"What the write block refuses and what stays writable"', () => {
-    test('plan files, a background session`s tmp directory and the auto memory`s Markdown stay writable', () => {
-      expect(run('/home/alice/.claude/plans/p.md')).toEqual(allow('mode-bypass'));
-      expect(run('/home/alice/.claude/jobs/abc/tmp/x.txt')).toEqual(allow('mode-bypass'));
-      expect(run('/home/alice/.claude/projects/app/memory/notes.md')).toEqual(allow('mode-bypass'));
-    });
+  spec(
+    ['permissions.behavior.Block file-tool reads and writes outside the working directories'],
+    () => {
+      spec(['permissions.reference.What the write block refuses and what stays writable'], () => {
+        describe('"What the write block refuses and what stays writable"', () => {
+          test('plan files, a background session`s tmp directory and the auto memory`s Markdown stay writable', () => {
+            expect(run('/home/alice/.claude/plans/p.md')).toEqual(allow('mode-bypass'));
+            expect(run('/home/alice/.claude/jobs/abc/tmp/x.txt')).toEqual(allow('mode-bypass'));
+            expect(run('/home/alice/.claude/projects/app/memory/notes.md')).toEqual(
+              allow('mode-bypass'),
+            );
+          });
 
-    test('the scratchpad the host names stays writable', () => {
-      expect(run('/tmp/scratch/a.txt', { sessionDirectories: ['/tmp/scratch'] })).toEqual(
-        allow('mode-bypass'),
-      );
-      expect(run('/tmp/other/a.txt', { sessionDirectories: ['/tmp/scratch'] })).toEqual(
-        deny('outside-working-directory'),
-      );
-    });
+          test('the scratchpad the host names stays writable', () => {
+            expect(run('/tmp/scratch/a.txt', { sessionDirectories: ['/tmp/scratch'] })).toEqual(
+              allow('mode-bypass'),
+            );
+            expect(run('/tmp/other/a.txt', { sessionDirectories: ['/tmp/scratch'] })).toEqual(
+              deny('outside-working-directory'),
+            );
+          });
 
-    test('other files outside the working directories are refused, memory data included', () => {
-      expect(run('/home/alice/notes.txt')).toEqual(deny('outside-working-directory'));
-      expect(run('/home/alice/.claude/projects/app/memory/data.json')).toEqual(
-        deny('outside-working-directory'),
-      );
-      expect(run('/home/alice/.claude/settings.json')).toEqual(deny('settings-file'));
-    });
-  });
+          test('other files outside the working directories are refused, memory data included', () => {
+            expect(run('/home/alice/notes.txt')).toEqual(deny('outside-working-directory'));
+            expect(run('/home/alice/.claude/projects/app/memory/data.json')).toEqual(
+              deny('outside-working-directory'),
+            );
+            expect(run('/home/alice/.claude/settings.json')).toEqual(deny('settings-file'));
+          });
+        });
+      });
+    },
+  );
 
-  describe('"Files Claude Code itself needs stay readable" under blockReadsOutsideWorkingDirectories', () => {
-    test('skills, plugins, rules, agents, commands and CLAUDE.md under ~/.claude', () => {
-      for (const path of [
-        '/home/alice/.claude/skills/x/SKILL.md',
-        '/home/alice/.claude/plugins/p/plugin.json',
-        '/home/alice/.claude/rules/r.md',
-        '/home/alice/.claude/agents/a.md',
-        '/home/alice/.claude/commands/c.md',
-        '/home/alice/.claude/CLAUDE.md',
-      ]) {
-        expect(read(path)).toEqual(allow('mode-bypass'));
-      }
-    });
+  spec(
+    ['permissions.behavior.Block file-tool reads and writes outside the working directories'],
+    () => {
+      describe('"Files Claude Code itself needs stay readable" under blockReadsOutsideWorkingDirectories', () => {
+        test('skills, plugins, rules, agents, commands and CLAUDE.md under ~/.claude', () => {
+          for (const path of [
+            '/home/alice/.claude/skills/x/SKILL.md',
+            '/home/alice/.claude/plugins/p/plugin.json',
+            '/home/alice/.claude/rules/r.md',
+            '/home/alice/.claude/agents/a.md',
+            '/home/alice/.claude/commands/c.md',
+            '/home/alice/.claude/CLAUDE.md',
+          ]) {
+            expect(read(path)).toEqual(allow('mode-bypass'));
+          }
+        });
 
-    test('other files there and elsewhere are refused', () => {
-      expect(read('/home/alice/.claude/history.jsonl')).toEqual(deny('outside-working-directory'));
-      expect(read('/etc/hosts')).toEqual(deny('outside-working-directory'));
-    });
+        test('other files there and elsewhere are refused', () => {
+          expect(read('/home/alice/.claude/history.jsonl')).toEqual(
+            deny('outside-working-directory'),
+          );
+          expect(read('/etc/hosts')).toEqual(deny('outside-working-directory'));
+        });
 
-    test('a symlink that leads out of the working directory is judged by where it leads', () => {
-      const call: PreparedCall = {
-        toolName: 'Read',
-        input: { file_path: '/work/app/link' },
-        resolvedPaths: ['/etc/hosts'],
-      };
-      expect(decide(call, baseContext('bypassPermissions', READS))).toEqual(
-        deny('outside-working-directory'),
-      );
-    });
-  });
+        test('a symlink that leads out of the working directory is judged by where it leads', () => {
+          const call: PreparedCall = {
+            toolName: 'Read',
+            input: { file_path: '/work/app/link' },
+            resolvedPaths: ['/etc/hosts'],
+          };
+          expect(decide(call, baseContext('bypassPermissions', READS))).toEqual(
+            deny('outside-working-directory'),
+          );
+        });
+      });
+    },
+  );
 
   describe('"Protected files" and "Protected directories": `dev-mods` and CLAUDE_CONFIG_DIR', () => {
     test('~/.claude/dev-mods and the same folder of CLAUDE_CONFIG_DIR are protected', () => {

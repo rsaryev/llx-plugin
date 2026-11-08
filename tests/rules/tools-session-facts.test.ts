@@ -76,42 +76,45 @@ describe('cli-reference.md § --restricted: removes the tools that run commands 
   });
 });
 
-spec('tools.tool.PowerShell', () => {
-  describe('tools-reference.md § Bash deny rules also turn off the PowerShell tool', () => {
-    const tools = ['Bash', 'PowerShell', 'Read'];
-    test('a bare or scoped Bash deny rule turns PowerShell off on Windows with Git Bash', () => {
-      expect(availableTools(tools, gitBash([['Bash(git push *)', 'deny']]))).toEqual([
-        'Bash',
-        'Read',
-      ]);
-      expect(availableTools(tools, gitBash([['Bash', 'deny']]))).toEqual(['Read']);
-    });
-
-    test('without Git Bash, on posix, or with no Bash deny rule it stays', () => {
-      expect(availableTools(tools, session([['Bash(git push *)', 'deny']]))).toEqual(tools);
-      const posixDeny = session([['Bash(git push *)', 'deny']], {
-        platform: 'posix',
-        gitBash: true,
+spec(
+  ['tools.tool.PowerShell', 'tools.behavior.Bash deny rules also turn off the PowerShell tool'],
+  () => {
+    describe('tools-reference.md § Bash deny rules also turn off the PowerShell tool', () => {
+      const tools = ['Bash', 'PowerShell', 'Read'];
+      test('a bare or scoped Bash deny rule turns PowerShell off on Windows with Git Bash', () => {
+        expect(availableTools(tools, gitBash([['Bash(git push *)', 'deny']]))).toEqual([
+          'Bash',
+          'Read',
+        ]);
+        expect(availableTools(tools, gitBash([['Bash', 'deny']]))).toEqual(['Read']);
       });
-      expect(availableTools(tools, posixDeny)).toContain('PowerShell');
-      expect(availableTools(tools, gitBash([['Read', 'deny']]))).toContain('PowerShell');
-      expect(availableTools(tools, gitBash([['Bash(git push *)', 'allow']]))).toEqual(tools);
-    });
 
-    test('CLAUDE_CODE_USE_POWERSHELL_TOOL=1 keeps it', () => {
-      const optIn = gitBash([['Bash(git push *)', 'deny']], { powerShellOptIn: true });
-      expect(availableTools(tools, optIn)).toEqual(tools);
-    });
+      test('without Git Bash, on posix, or with no Bash deny rule it stays', () => {
+        expect(availableTools(tools, session([['Bash(git push *)', 'deny']]))).toEqual(tools);
+        const posixDeny = session([['Bash(git push *)', 'deny']], {
+          platform: 'posix',
+          gitBash: true,
+        });
+        expect(availableTools(tools, posixDeny)).toContain('PowerShell');
+        expect(availableTools(tools, gitBash([['Read', 'deny']]))).toContain('PowerShell');
+        expect(availableTools(tools, gitBash([['Bash(git push *)', 'allow']]))).toEqual(tools);
+      });
 
-    test('a scoped PowerShell rule keeps it', () => {
-      const scoped = gitBash([
-        ['Bash(git push *)', 'deny'],
-        ['PowerShell(git push *)', 'deny'],
-      ]);
-      expect(availableTools(tools, scoped)).toEqual(tools);
+      test('CLAUDE_CODE_USE_POWERSHELL_TOOL=1 keeps it', () => {
+        const optIn = gitBash([['Bash(git push *)', 'deny']], { powerShellOptIn: true });
+        expect(availableTools(tools, optIn)).toEqual(tools);
+      });
+
+      test('a scoped PowerShell rule keeps it', () => {
+        const scoped = gitBash([
+          ['Bash(git push *)', 'deny'],
+          ['PowerShell(git push *)', 'deny'],
+        ]);
+        expect(availableTools(tools, scoped)).toEqual(tools);
+      });
     });
-  });
-});
+  },
+);
 
 spec(['tools.tool.EnterWorktree', 'tools.tool.ExitWorktree'], () => {
   describe('tools-reference.md § tools table, ExitWorktree; § EnterWorktree tool behavior: removed once permissions.blockWritesOutsideWorkingDirectories is on', () => {

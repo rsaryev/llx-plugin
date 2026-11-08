@@ -12,47 +12,55 @@ import { cmd, fire } from '../support/hooks-fire.ts';
 import type { RunnerReply } from '../support/ports.ts';
 import { spec } from '../support/spec.ts';
 
-spec('hooks.exit2.PreToolUse', () => {
-  test('a hook that exits 2 stops the tool call and Claude is told why', async () => {
-    const hook = entry('PreToolUse', { matcher: 'Bash', handler: cmd() });
-    const { outcome } = await fire(
-      'PreToolUse',
-      [hook],
-      [{ exitCode: 2, stderr: 'Blocked: rm commands are not allowed' }],
-    );
-    expect(outcome.proceed).toBe(false);
-    expect(outcome.block).toMatchObject({
-      via: 'exit2',
-      by: hook.id,
-      reason: 'Blocked: rm commands are not allowed',
-      message: 'PreToolUse:Bash hook error: [./guard.sh]: Blocked: rm commands are not allowed',
+spec(
+  [
+    'hooks.exit2.PreToolUse',
+    'hooks.behavior.Hook lifecycle',
+    'hooks.behavior.How a hook resolves',
+    'hooks.guide.How hooks work',
+  ],
+  () => {
+    test('a hook that exits 2 stops the tool call and Claude is told why', async () => {
+      const hook = entry('PreToolUse', { matcher: 'Bash', handler: cmd() });
+      const { outcome } = await fire(
+        'PreToolUse',
+        [hook],
+        [{ exitCode: 2, stderr: 'Blocked: rm commands are not allowed' }],
+      );
+      expect(outcome.proceed).toBe(false);
+      expect(outcome.block).toMatchObject({
+        via: 'exit2',
+        by: hook.id,
+        reason: 'Blocked: rm commands are not allowed',
+        message: 'PreToolUse:Bash hook error: [./guard.sh]: Blocked: rm commands are not allowed',
+      });
     });
-  });
 
-  test('exit 0 with no output has no decision: the tool call goes ahead', async () => {
-    const hook = entry('PreToolUse', { matcher: 'Bash', handler: cmd() });
-    const { outcome } = await fire('PreToolUse', [hook], [{ exitCode: 0 }]);
-    expect(outcome.proceed).toBe(true);
-    expect(outcome.block).toBeUndefined();
-  });
+    test('exit 0 with no output has no decision: the tool call goes ahead', async () => {
+      const hook = entry('PreToolUse', { matcher: 'Bash', handler: cmd() });
+      const { outcome } = await fire('PreToolUse', [hook], [{ exitCode: 0 }]);
+      expect(outcome.proceed).toBe(true);
+      expect(outcome.block).toBeUndefined();
+    });
 
-  // The output stage is a stub here (`fakeOutput`, tests/support/hooks-verdict.ts), and the stub
-  // defines `by`: it reports a top-level `decision: 'block'` as the merged block of that hook.
-  // PreToolUse's real decision field is `hookSpecificOutput.permissionDecision`, which
-  // tests/hooks/output/dispatch.test.ts runs through the real stage. What this proves is only the
-  // engine's side: the merged block of the same hook replaces the stderr (tests/hooks/assemble.test.ts
-  // covers a block of another hook).
-  test("a hook that exits 2 with a JSON decision: the decision's reason replaces the stderr", async () => {
-    const hook = entry('PreToolUse', { handler: cmd() });
-    const json = JSON.stringify({ decision: 'block', reason: 'Policy says no' });
-    const { outcome } = await fire(
-      'PreToolUse',
-      [hook],
-      [{ exitCode: 2, stderr: 'raw stderr', stdout: json }],
-    );
-    expect(outcome.block).toMatchObject({ via: 'exit2', reason: 'Policy says no' });
-  });
-});
+    // The output stage is a stub here (`fakeOutput`, tests/support/hooks-verdict.ts), and the stub
+    // defines `by`: it reports a top-level `decision: 'block'` as the merged block of that hook.
+    // PreToolUse's real decision field is `hookSpecificOutput.permissionDecision`, which
+    // tests/hooks/output/dispatch.test.ts runs through the real stage. What this proves is only the
+    // engine's side: the merged block of the same hook replaces the stderr (tests/hooks/assemble.test.ts
+    // covers a block of another hook).
+    test("a hook that exits 2 with a JSON decision: the decision's reason replaces the stderr", async () => {
+      const hook = entry('PreToolUse', { handler: cmd() });
+      const json = JSON.stringify({ decision: 'block', reason: 'Policy says no' });
+      const { outcome } = await fire(
+        'PreToolUse',
+        [hook],
+        [{ exitCode: 2, stderr: 'raw stderr', stdout: json }],
+      );
+      expect(outcome.block).toMatchObject({ via: 'exit2', reason: 'Policy says no' });
+    });
+  },
+);
 
 spec('hooks.exit2.PermissionRequest', () => {
   test('exit 2 is not honored: the permission flow proceeds unchanged', async () => {

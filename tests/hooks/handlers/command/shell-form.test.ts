@@ -24,89 +24,98 @@ async function run(
   return { result, calls: runner.calls };
 }
 
-spec('hooks.handler.command.shell', () => {
-  test('defaults to bash', async () => {
-    const { calls } = await run(settingsCommand({ command: 'echo hi' }));
-    expect(calls[0]?.spec).toEqual({ form: 'shell', command: 'echo hi', shell: 'bash' });
-  });
-
-  test('"powershell" runs the command through PowerShell', async () => {
-    const { calls } = await run(
-      settingsCommand({ command: "Write-Host 'File written'", shell: 'powershell' }),
-    );
-    expect(calls[0]?.spec).toEqual({
-      form: 'shell',
-      command: "Write-Host 'File written'",
-      shell: 'powershell',
+spec(
+  [
+    'hooks.handler.command.shell',
+    'tools.behavior.Shell selection in settings, hooks, and skills."shell": "powershell"',
+  ],
+  () => {
+    test('defaults to bash', async () => {
+      const { calls } = await run(settingsCommand({ command: 'echo hi' }));
+      expect(calls[0]?.spec).toEqual({ form: 'shell', command: 'echo hi', shell: 'bash' });
     });
-  });
 
-  test('"bash" is chosen explicitly even where the host default is PowerShell', async () => {
-    const { calls } = await run(settingsCommand({ command: 'echo hi', shell: 'bash' }), {
-      defaultShell: 'powershell',
-    });
-    expect(calls[0]?.spec).toEqual({ form: 'shell', command: 'echo hi', shell: 'bash' });
-  });
-
-  test('is ignored when args is set: exec form has no shell', async () => {
-    const { calls } = await run(
-      settingsCommand({ command: 'tool', args: ['a'], shell: 'powershell' }),
-    );
-    expect(calls[0]?.spec).toEqual({ form: 'exec', command: 'tool', args: ['a'] });
-  });
-
-  describe('PowerShell placeholders', () => {
-    const powershell = { shell: 'powershell' } as const;
-
-    test('the three placeholders become ${env:NAME}, left for PowerShell to resolve', async () => {
+    test('"powershell" runs the command through PowerShell', async () => {
       const { calls } = await run(
-        pluginCommand({
-          ...powershell,
-          command: 'Write-Host "${CLAUDE_PROJECT_DIR} ${CLAUDE_PLUGIN_ROOT} ${CLAUDE_PLUGIN_DATA}"',
-        }),
+        settingsCommand({ command: "Write-Host 'File written'", shell: 'powershell' }),
       );
       expect(calls[0]?.spec).toEqual({
         form: 'shell',
+        command: "Write-Host 'File written'",
         shell: 'powershell',
-        command:
-          'Write-Host "${env:CLAUDE_PROJECT_DIR} ${env:CLAUDE_PLUGIN_ROOT} ${env:CLAUDE_PLUGIN_DATA}"',
       });
     });
 
-    test('a settings hook is rewritten the same way', async () => {
+    test('"bash" is chosen explicitly even where the host default is PowerShell', async () => {
+      const { calls } = await run(settingsCommand({ command: 'echo hi', shell: 'bash' }), {
+        defaultShell: 'powershell',
+      });
+      expect(calls[0]?.spec).toEqual({ form: 'shell', command: 'echo hi', shell: 'bash' });
+    });
+
+    test('is ignored when args is set: exec form has no shell', async () => {
       const { calls } = await run(
-        settingsCommand({
-          ...powershell,
-          command: '& "${CLAUDE_PROJECT_DIR}\\.claude\\hooks\\check.ps1"',
-        }),
+        settingsCommand({ command: 'tool', args: ['a'], shell: 'powershell' }),
       );
-      expect(calls[0]?.spec.command).toBe(
-        '& "${env:CLAUDE_PROJECT_DIR}\\.claude\\hooks\\check.ps1"',
-      );
+      expect(calls[0]?.spec).toEqual({ form: 'exec', command: 'tool', args: ['a'] });
     });
 
-    test('the $env: spelling is left as written and does not warn', async () => {
-      const command = '& "$env:CLAUDE_PROJECT_DIR\\.claude\\hooks\\check.ps1"';
-      const { calls, result } = await run(settingsCommand({ ...powershell, command }));
-      expect(calls[0]?.spec.command).toBe(command);
-      expect(result.issues).toEqual([]);
-    });
+    describe('PowerShell placeholders', () => {
+      const powershell = { shell: 'powershell' } as const;
 
-    test('the bare $CLAUDE_PROJECT_DIR spelling is not rewritten and warns', async () => {
-      const command = '& "$CLAUDE_PROJECT_DIR\\.claude\\hooks\\check.ps1"';
-      const { calls, result } = await run(settingsCommand({ ...powershell, command }));
-      expect(calls[0]?.spec.command).toBe(command);
-      expect(result.issues).toHaveLength(1);
-      expect(result.issues[0]?.severity).toBe('warning');
-      expect(result.issues[0]?.message).toContain('CLAUDE_PROJECT_DIR');
-    });
+      test('the three placeholders become ${env:NAME}, left for PowerShell to resolve', async () => {
+        const { calls } = await run(
+          pluginCommand({
+            ...powershell,
+            command:
+              'Write-Host "${CLAUDE_PROJECT_DIR} ${CLAUDE_PLUGIN_ROOT} ${CLAUDE_PLUGIN_DATA}"',
+          }),
+        );
+        expect(calls[0]?.spec).toEqual({
+          form: 'shell',
+          shell: 'powershell',
+          command:
+            'Write-Host "${env:CLAUDE_PROJECT_DIR} ${env:CLAUDE_PLUGIN_ROOT} ${env:CLAUDE_PLUGIN_DATA}"',
+        });
+      });
 
-    test('the bare spelling is no problem for bash', async () => {
-      const { result } = await run(settingsCommand({ command: '"$CLAUDE_PROJECT_DIR"/check.sh' }));
-      expect(result.issues).toEqual([]);
+      test('a settings hook is rewritten the same way', async () => {
+        const { calls } = await run(
+          settingsCommand({
+            ...powershell,
+            command: '& "${CLAUDE_PROJECT_DIR}\\.claude\\hooks\\check.ps1"',
+          }),
+        );
+        expect(calls[0]?.spec.command).toBe(
+          '& "${env:CLAUDE_PROJECT_DIR}\\.claude\\hooks\\check.ps1"',
+        );
+      });
+
+      test('the $env: spelling is left as written and does not warn', async () => {
+        const command = '& "$env:CLAUDE_PROJECT_DIR\\.claude\\hooks\\check.ps1"';
+        const { calls, result } = await run(settingsCommand({ ...powershell, command }));
+        expect(calls[0]?.spec.command).toBe(command);
+        expect(result.issues).toEqual([]);
+      });
+
+      test('the bare $CLAUDE_PROJECT_DIR spelling is not rewritten and warns', async () => {
+        const command = '& "$CLAUDE_PROJECT_DIR\\.claude\\hooks\\check.ps1"';
+        const { calls, result } = await run(settingsCommand({ ...powershell, command }));
+        expect(calls[0]?.spec.command).toBe(command);
+        expect(result.issues).toHaveLength(1);
+        expect(result.issues[0]?.severity).toBe('warning');
+        expect(result.issues[0]?.message).toContain('CLAUDE_PROJECT_DIR');
+      });
+
+      test('the bare spelling is no problem for bash', async () => {
+        const { result } = await run(
+          settingsCommand({ command: '"$CLAUDE_PROJECT_DIR"/check.sh' }),
+        );
+        expect(result.issues).toEqual([]);
+      });
     });
-  });
-});
+  },
+);
 
 describe('judgment: the shell of a hook with no shell field', () => {
   test('is the host default: finding Git Bash is the host, so the kit takes its word', async () => {

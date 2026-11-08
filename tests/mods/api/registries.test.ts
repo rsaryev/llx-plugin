@@ -19,7 +19,7 @@ import { apiHarness, expectMethods } from '../../support/mods-api.ts';
 import { rejection } from '../../support/rejection.ts';
 import { spec } from '../../support/spec.ts';
 
-spec('mods.api.$.command', () => {
+spec(['mods.api.$.command', 'mods.apiGuide.Add a command'], () => {
   test('$.command has register, run and list', async () => {
     const { api } = await apiHarness();
     expectMethods(api.command, MODS_API.command);
@@ -87,7 +87,7 @@ spec('mods.api.$.command', () => {
   });
 });
 
-spec('mods.api.$.tool', () => {
+spec(['mods.api.$.tool', 'mods.apiGuide.Add a tool'], () => {
   test('$.tool has register, call, check and list', async () => {
     const { api } = await apiHarness();
     expectMethods(api.tool, MODS_API.tool);

@@ -4,10 +4,12 @@
  * turn as well. ... set `once: true` on it" to remove it after its first successful run) and § Limits
  * on skill hooks (each source of skills registers at most 1,024 hooks and 16,384 matcher characters;
  * a skill past the limit "registers none of its hooks"). The skill's hooks join the session's registry
- * when the host expands the skill; integration tests of the host, outside `spec()`.
+ * when the host expands the skill; integration tests of the host, outside `spec()` except the
+ * ids the two `spec(...)` blocks below name.
  */
 import { describe, expect, test } from 'bun:test';
 import { hostOf, loaded, SESSION, signal } from '../support/host.ts';
+import { spec } from '../support/spec.ts';
 
 const json = (value: unknown): string => JSON.stringify(value);
 
@@ -50,62 +52,65 @@ const expand = (
   name: string,
 ) => session.expandSkill(name, { signal: signal() });
 
-describe('a skill hook registers when the skill is invoked', () => {
-  test('before the skill is invoked nothing runs, afterwards its hook runs for a matching call', async () => {
-    const { host, runner } = await guarded();
-    const session = host.openSession(SESSION);
-    await session.dispatch('PreToolUse', bash, { signal: signal() });
-    expect(runner.calls).toHaveLength(0);
-    expect((await expand(session, 'guarded:secure')).ok).toBe(true);
-    await session.dispatch('PreToolUse', bash, { signal: signal() });
-    expect(runner.calls).toHaveLength(1);
-    expect(runner.calls[0]?.spec).toMatchObject({ command: './scripts/check.sh' });
-  });
-
-  test('it keeps running for the rest of the session, on every later turn', async () => {
-    const { host, runner } = await guarded();
-    const session = host.openSession(SESSION);
-    await expand(session, 'guarded:secure');
-    for (let turn = 0; turn < 3; turn += 1) {
+spec(
+  ['hooks.behavior.Hook locations.Skill frontmatter', 'hooks.behavior.Hooks in skills and agents'],
+  () => {
+    test('before the skill is invoked nothing runs, afterwards its hook runs for a matching call', async () => {
+      const { host, runner } = await guarded();
+      const session = host.openSession(SESSION);
       await session.dispatch('PreToolUse', bash, { signal: signal() });
-    }
-    expect(runner.calls).toHaveLength(3);
-  });
-
-  test("the hook's own matcher still applies: a Read call does not run a Bash hook", async () => {
-    const { host, runner } = await guarded();
-    const session = host.openSession(SESSION);
-    await expand(session, 'guarded:secure');
-    await session.dispatch('PreToolUse', read, { signal: signal() });
-    expect(runner.calls).toHaveLength(0);
-  });
-
-  test('another session of the host does not have it', async () => {
-    const { host, runner } = await guarded();
-    await expand(host.openSession(SESSION), 'guarded:secure');
-    await host.openSession({ ...SESSION, sessionId: 'sess-2' }).dispatch('PreToolUse', bash, {
-      signal: signal(),
+      expect(runner.calls).toHaveLength(0);
+      expect((await expand(session, 'guarded:secure')).ok).toBe(true);
+      await session.dispatch('PreToolUse', bash, { signal: signal() });
+      expect(runner.calls).toHaveLength(1);
+      expect(runner.calls[0]?.spec).toMatchObject({ command: './scripts/check.sh' });
     });
-    expect(runner.calls).toHaveLength(0);
-  });
 
-  test('invoking the skill again replaces its hooks: one run per call, not two', async () => {
-    const { host, runner } = await guarded();
-    const session = host.openSession(SESSION);
-    await expand(session, 'guarded:secure');
-    await expand(session, 'guarded:secure');
-    await session.dispatch('PreToolUse', bash, { signal: signal() });
-    expect(runner.calls).toHaveLength(1);
-  });
+    test('it keeps running for the rest of the session, on every later turn', async () => {
+      const { host, runner } = await guarded();
+      const session = host.openSession(SESSION);
+      await expand(session, 'guarded:secure');
+      for (let turn = 0; turn < 3; turn += 1) {
+        await session.dispatch('PreToolUse', bash, { signal: signal() });
+      }
+      expect(runner.calls).toHaveLength(3);
+    });
 
-  test('a skill without hooks registers nothing and expands as before', async () => {
-    const { host, runner } = await hostOf({ runs: [{}] });
-    const session = host.openSession(SESSION);
-    expect((await expand(session, 'formatter:review')).ok).toBe(true);
-    await session.dispatch('PreToolUse', bash, { signal: signal() });
-    expect(runner.calls).toHaveLength(0);
-  });
-});
+    test("the hook's own matcher still applies: a Read call does not run a Bash hook", async () => {
+      const { host, runner } = await guarded();
+      const session = host.openSession(SESSION);
+      await expand(session, 'guarded:secure');
+      await session.dispatch('PreToolUse', read, { signal: signal() });
+      expect(runner.calls).toHaveLength(0);
+    });
+
+    test('another session of the host does not have it', async () => {
+      const { host, runner } = await guarded();
+      await expand(host.openSession(SESSION), 'guarded:secure');
+      await host.openSession({ ...SESSION, sessionId: 'sess-2' }).dispatch('PreToolUse', bash, {
+        signal: signal(),
+      });
+      expect(runner.calls).toHaveLength(0);
+    });
+
+    test('invoking the skill again replaces its hooks: one run per call, not two', async () => {
+      const { host, runner } = await guarded();
+      const session = host.openSession(SESSION);
+      await expand(session, 'guarded:secure');
+      await expand(session, 'guarded:secure');
+      await session.dispatch('PreToolUse', bash, { signal: signal() });
+      expect(runner.calls).toHaveLength(1);
+    });
+
+    test('a skill without hooks registers nothing and expands as before', async () => {
+      const { host, runner } = await hostOf({ runs: [{}] });
+      const session = host.openSession(SESSION);
+      expect((await expand(session, 'formatter:review')).ok).toBe(true);
+      await session.dispatch('PreToolUse', bash, { signal: signal() });
+      expect(runner.calls).toHaveLength(0);
+    });
+  },
+);
 
 describe('once: true', () => {
   test('a skill hook that ran successfully is removed: it runs for the first call only', async () => {
@@ -118,7 +123,7 @@ describe('once: true', () => {
   });
 });
 
-describe('the limits on skill hooks', () => {
+spec('hooks.behavior.Limits on skill hooks', () => {
   const many = (count: number): string =>
     [
       '  PreToolUse:',

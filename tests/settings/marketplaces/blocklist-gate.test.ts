@@ -16,7 +16,7 @@ import {
 } from '../../support/marketplace-sources.ts';
 import { spec } from '../../support/spec.ts';
 
-spec('settings.key.blockedMarketplaces', () => {
+spec(['settings.key.blockedMarketplaces', 'policy.org.Control matrix.blockedMarketplaces'], () => {
   describe('the blocklist as a gate', () => {
     test('unset: no marketplace is blocked', () => {
       expect(managed({}).check(github('untrusted/plugins'))).toEqual({ allowed: true });

@@ -1,3 +1,4 @@
+/** Also plugins/mods/api.md § Reach files, processes, and the network. */
 /**
  * `$.settings.read` and the `settings.read` event.
  * plugins/mods/api.md § Read all settings, one source, or one key (the four calls and what each
@@ -30,51 +31,60 @@ const merged = (layers: readonly SettingsLayer[]) =>
 
 const settings = (layers = LAYERS) => ({ layers: () => Promise.resolve(layers), merged });
 
-spec('mods.api.$.settings', () => {
-  test('$.settings has read', async () => {
-    const { api } = await apiHarness({ ports: { settings: settings() } });
-    expectMethods(api.settings, MODS_API.settings);
-  });
-
-  test('read() resolves to the settings of all sources merged into one object', async () => {
-    const { api } = await apiHarness({ ports: { settings: settings() } });
-    expect(await api.settings.read()).toEqual({
-      spinnerTipsEnabled: true,
-      model: 'sonnet',
-      disableAllHooks: false,
+spec(
+  [
+    'mods.api.$.settings',
+    'mods.apiGuide.Reach files, processes, and the network',
+    'mods.apiGuide.Reach files, processes, and the network.$.settings',
+    'mods.apiGuide.Read all settings, one source, or one key.$.settings.read()',
+    "mods.apiGuide.Read all settings, one source, or one key.$.settings.read({ source: 'policy' })",
+  ],
+  () => {
+    test('$.settings has read', async () => {
+      const { api } = await apiHarness({ ports: { settings: settings() } });
+      expectMethods(api.settings, MODS_API.settings);
     });
-  });
 
-  test('read({ source }) resolves to that source alone, or {} when it holds no settings', async () => {
-    const { api } = await apiHarness({ ports: { settings: settings() } });
-    expect(await api.settings.read({ source: 'policy' })).toEqual({ disableAllHooks: false });
-    expect(await api.settings.read({ source: 'flag' })).toEqual({});
-  });
+    test('read() resolves to the settings of all sources merged into one object', async () => {
+      const { api } = await apiHarness({ ports: { settings: settings() } });
+      expect(await api.settings.read()).toEqual({
+        spinnerTipsEnabled: true,
+        model: 'sonnet',
+        disableAllHooks: false,
+      });
+    });
 
-  test('read({ key }) resolves to that key in the merged settings, or undefined when it is not set', async () => {
-    const { api } = await apiHarness({ ports: { settings: settings() } });
-    expect(await api.settings.read({ key: 'model' })).toBe('sonnet');
-    expect(await api.settings.read({ key: 'outputStyle' })).toBeUndefined();
-  });
+    test('read({ source }) resolves to that source alone, or {} when it holds no settings', async () => {
+      const { api } = await apiHarness({ ports: { settings: settings() } });
+      expect(await api.settings.read({ source: 'policy' })).toEqual({ disableAllHooks: false });
+      expect(await api.settings.read({ source: 'flag' })).toEqual({});
+    });
 
-  test('read({ key, source }) resolves to that key in that one source', async () => {
-    const { api } = await apiHarness({ ports: { settings: settings() } });
-    expect(await api.settings.read({ key: 'model', source: 'user' })).toBe('haiku');
-    expect(
-      await api.settings.read({ key: 'spinnerTipsEnabled', source: 'project' }),
-    ).toBeUndefined();
-  });
+    test('read({ key }) resolves to that key in the merged settings, or undefined when it is not set', async () => {
+      const { api } = await apiHarness({ ports: { settings: settings() } });
+      expect(await api.settings.read({ key: 'model' })).toBe('sonnet');
+      expect(await api.settings.read({ key: 'outputStyle' })).toBeUndefined();
+    });
 
-  test('a source that is not one of the five rejects; plugin is a layer name only', async () => {
-    const { api } = await apiHarness({ ports: { settings: settings() } });
-    expect(await rejection(api.settings.read({ source: 'plugin' }))).toContain(
-      '"plugin" is not a settings source',
-    );
-    expect(await rejection(api.settings.read({ source: 'nowhere' }))).toContain(
-      'is not a settings source',
-    );
-  });
-});
+    test('read({ key, source }) resolves to that key in that one source', async () => {
+      const { api } = await apiHarness({ ports: { settings: settings() } });
+      expect(await api.settings.read({ key: 'model', source: 'user' })).toBe('haiku');
+      expect(
+        await api.settings.read({ key: 'spinnerTipsEnabled', source: 'project' }),
+      ).toBeUndefined();
+    });
+
+    test('a source that is not one of the five rejects; plugin is a layer name only', async () => {
+      const { api } = await apiHarness({ ports: { settings: settings() } });
+      expect(await rejection(api.settings.read({ source: 'plugin' }))).toContain(
+        '"plugin" is not a settings source',
+      );
+      expect(await rejection(api.settings.read({ source: 'nowhere' }))).toContain(
+        'is not a settings source',
+      );
+    });
+  },
+);
 
 const readEngine = async (
   answer: ((e: Record<string, unknown>) => unknown) | undefined,

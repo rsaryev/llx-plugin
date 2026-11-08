@@ -11,6 +11,8 @@ spec(
   [
     'mods.events.Approve or refuse a tool call before the user is asked.When tool.check fires',
     'mods.events.Where settings hooks run in the order',
+    'policy.mods.Know which controls still apply.Managed hooks run first',
+    'policy.mods.Know which controls still apply.Settings hooks keep working',
   ],
   () => {
     test('managed and ordinary hooks surround tool.call; tool.check finishes before review or prompt', async () => {

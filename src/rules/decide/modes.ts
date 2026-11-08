@@ -37,6 +37,8 @@ export interface ModeStrategy {
   modMayApprove(facts: CallFacts, ctx: DecideContext): boolean;
   /** Whether a PreToolUse hook's allow can skip the prompt for this call. */
   hookMayAllow(facts: CallFacts, ctx: DecideContext): boolean;
+  /** Whether a redirect target outside what the rules and directories cover prompts (`bypassPermissions` checks none). */
+  readonly checksRedirects: boolean;
   /** The rules in force in this mode. */
   rules(rules: readonly PermissionRule[], ctx: DecideContext): readonly PermissionRule[];
 }
@@ -51,6 +53,7 @@ const PROMPTING: ModeStrategy = {
   baseline: () => ask('default-prompt'),
   modMayApprove: () => true,
   hookMayAllow: () => true,
+  checksRedirects: true,
   rules: (rules) => rules,
 };
 
@@ -146,6 +149,7 @@ export const MODES: { readonly [M in PermissionMode]: ModeStrategy } = {
       ctx.criticalPathPromptOff === true ? allow('mode-bypass') : ask('critical-path'),
     networkRead: () => allow('mode-bypass'),
     baseline: () => allow('mode-bypass'),
+    checksRedirects: false,
     // "Allow rules have no effect in `bypassPermissions`": everything runs without them.
     rules: (rules) => rules.filter((rule) => !isAllowRule(rule)),
   },

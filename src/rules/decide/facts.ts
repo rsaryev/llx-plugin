@@ -5,6 +5,7 @@ import { blockPaths, readBlocked, writeBlockReason } from './block-exceptions.ts
 import type { DecideContext } from './context.ts';
 import { cannotRuleOutRemoval, removesCriticalPath } from './critical-removal.ts';
 import { powershellVerdict } from './powershell-edits.ts';
+import { NO_REDIRECTS, redirectFacts, type RedirectFacts } from './redirects.ts';
 import { isProtectedPath, isSymlinkTargetOnly } from './protected-paths.ts';
 import { inScope, toolPath } from './scope.ts';
 import { shellVerdict, UNREAD, type ShellVerdict } from './shell-commands.ts';
@@ -49,6 +50,8 @@ export interface CallFacts {
   readonly readBlockPrompt: boolean;
   /** The command, split, for a shell call. */
   readonly parts: ShellVerdict;
+  /** What the redirect targets of a Bash command ask of the check. */
+  readonly redirects: RedirectFacts;
   /** A tool no rule, hook or mode stops (`EndConversation`). */
   readonly exempt: boolean;
   /** A Bash command that asks to run outside the sandbox (`dangerouslyDisableSandbox: true`). */
@@ -74,6 +77,7 @@ const NONE: CallFacts = {
   blockedBy: undefined,
   readBlockPrompt: false,
   parts: UNREAD,
+  redirects: NO_REDIRECTS,
   exempt: false,
   unsandboxed: false,
   handback: false,
@@ -156,15 +160,17 @@ const bashFacts: Builder = (call, ctx) => {
   const command = commandOf(call.input);
   if (command === undefined) return { shell: true };
   const parts = shellVerdict(command, ctx.match.paths, ctx.protectedPaths, call.resolvedPaths);
+  const redirects = redirectFacts(command, ctx);
   return {
     shell: true,
+    redirects,
     unsandboxed: asksOutsideSandbox(call.input),
     parts,
     readOnly: parts.readOnly,
     readReason: 'read-only-command',
     shellEdits: parts.editsInScope,
-    protectedWrite: parts.writesProtected,
-    protectedViaLink: parts.writesProtectedViaLink,
+    protectedWrite: parts.writesProtected || redirects.protectedWrite,
+    protectedViaLink: parts.writesProtectedViaLink && !redirects.protectedWrite,
     readBlockPrompt: promptsUnderReadBlock(command, parts, call, ctx),
     criticalRemoval: removesCriticalPath(command, ctx.match.paths) || cannotRuleOutRemoval(command),
   };

@@ -15,27 +15,30 @@ const ENV_NESTED = '/work/app/packages/api/.env';
 const ENV_PARENT = '/work/.env';
 const ENV_OTHER_PROJECT = '/work/other/.env';
 
-spec('permissions.rule.Read(./.env)', () => {
-  test('matches reading the .env file in the current directory', () => {
-    expect(denies('Read(./.env)', ENV_HERE)).toBe(true);
-    expect(asks('Read(./.env)', ENV_HERE)).toBe(true);
-    expect(allows('Read(./.env)', ENV_HERE)).toBe(true);
-  });
+spec(
+  ['permissions.rule.Read(./.env)', 'permissions.reference.Permission rule syntax.Read(./.env)'],
+  () => {
+    test('matches reading the .env file in the current directory', () => {
+      expect(denies('Read(./.env)', ENV_HERE)).toBe(true);
+      expect(asks('Read(./.env)', ENV_HERE)).toBe(true);
+      expect(allows('Read(./.env)', ENV_HERE)).toBe(true);
+    });
 
-  test('is anchored under the current directory: a parent, another project, another file', () => {
-    for (const path of [ENV_PARENT, ENV_OTHER_PROJECT, '/work/app/.env.local', '/work/app/env']) {
-      expect([path, denies('Read(./.env)', path)]).toEqual([path, false]);
-    }
-  });
-
-  test('is not the .env of a directory below the current one, in any rule type', () => {
-    for (const path of [ENV_NESTED, '/work/app/pkg/.env']) {
-      for (const check of [allows, asks, denies]) {
-        expect([path, check('Read(./.env)', path)]).toEqual([path, false]);
+    test('is anchored under the current directory: a parent, another project, another file', () => {
+      for (const path of [ENV_PARENT, ENV_OTHER_PROJECT, '/work/app/.env.local', '/work/app/env']) {
+        expect([path, denies('Read(./.env)', path)]).toEqual([path, false]);
       }
-    }
-  });
-});
+    });
+
+    test('is not the .env of a directory below the current one, in any rule type', () => {
+      for (const path of [ENV_NESTED, '/work/app/pkg/.env']) {
+        for (const check of [allows, asks, denies]) {
+          expect([path, check('Read(./.env)', path)]).toEqual([path, false]);
+        }
+      }
+    });
+  },
+);
 
 spec('permissions.rule.Read(.env)', () => {
   test('blocks any .env at or under the current directory', () => {

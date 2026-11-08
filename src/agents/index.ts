@@ -96,8 +96,10 @@ export {
   type SkillCatalog,
   type SkillSkipReason,
 } from './preload-skills.ts';
+export { preloadAgentSkills, type PreloadedSkills } from './preloaded-content.ts';
 export {
   afterHandbackDenial,
   HANDBACK_DENIALS_TOLD,
   type HandbackAfterDenial,
 } from './handback-denial.ts';
+export { permissionSubagentPromptSurface, type SubagentPromptSurface } from './prompt-surface.ts';

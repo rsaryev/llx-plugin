@@ -26,19 +26,25 @@ const T = 'install.troubleshooting';
 const refused = (pkg: string) =>
   planPluginFetch({ kind: 'npm', package: pkg }, { platform: 'posix' }).issues[0]?.message;
 
-spec(`${T}.Plugin archive integrity check failed`, () => {
-  test('the whole message, with the url, both digests and what to do', () => {
-    expect(
-      archiveIntegrityMessage(
-        'https://artifacts.example.com/claude-plugins/my-plugin.zip',
-        '6bfa50e3d2e00c052b46abe51fff89346ac803e45771f76dcf6df1ab74cca5e1',
-        'ac52220c0914ef8ca6a602e4a7362f88d30fb021110f72a6d15b68c3fe7df2b7',
-      ),
-    ).toBe(
-      'Plugin archive integrity check failed for https://artifacts.example.com/claude-plugins/my-plugin.zip: expected sha256 6bfa50e3d2e00c052b46abe51fff89346ac803e45771f76dcf6df1ab74cca5e1, got ac52220c0914ef8ca6a602e4a7362f88d30fb021110f72a6d15b68c3fe7df2b7. The archive was not installed. Verify the sha256 in the marketplace entry, or that the URL serves the intended file.',
-    );
-  });
-});
+spec(
+  [
+    `${T}.Plugin archive integrity check failed`,
+    'cli.errors.Plugin archive integrity check failed',
+  ],
+  () => {
+    test('the whole message, with the url, both digests and what to do', () => {
+      expect(
+        archiveIntegrityMessage(
+          'https://artifacts.example.com/claude-plugins/my-plugin.zip',
+          '6bfa50e3d2e00c052b46abe51fff89346ac803e45771f76dcf6df1ab74cca5e1',
+          'ac52220c0914ef8ca6a602e4a7362f88d30fb021110f72a6d15b68c3fe7df2b7',
+        ),
+      ).toBe(
+        'Plugin archive integrity check failed for https://artifacts.example.com/claude-plugins/my-plugin.zip: expected sha256 6bfa50e3d2e00c052b46abe51fff89346ac803e45771f76dcf6df1ab74cca5e1, got ac52220c0914ef8ca6a602e4a7362f88d30fb021110f72a6d15b68c3fe7df2b7. The archive was not installed. Verify the sha256 in the marketplace entry, or that the URL serves the intended file.',
+      );
+    });
+  },
+);
 
 spec(`${T}.An npm plugin source must name a registry package`, () => {
   test('github:acme/formatter is refused before anything is fetched, with the docs message whole', () => {

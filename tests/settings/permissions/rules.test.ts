@@ -172,47 +172,55 @@ spec('permissions.setting.permissions.deny', () => {
   });
 });
 
-spec('permissions.setting.permissions.additionalDirectories', () => {
-  test('lists directories outside the one the session started in', () => {
-    const policy = permissionsOf([
-      ['user', { permissions: { additionalDirectories: ['../docs/'] } }],
-    ]);
-    expect(policy.additionalDirectories).toEqual([
-      { path: '../docs/', scope: 'user', repositoryOnly: false },
-    ]);
-  });
+spec(
+  [
+    'permissions.setting.permissions.additionalDirectories',
+    'permissions.behavior.Working directories.Persistent configuration',
+  ],
+  () => {
+    test('lists directories outside the one the session started in', () => {
+      const policy = permissionsOf([
+        ['user', { permissions: { additionalDirectories: ['../docs/'] } }],
+      ]);
+      expect(policy.additionalDirectories).toEqual([
+        { path: '../docs/', scope: 'user', repositoryOnly: false },
+      ]);
+    });
 
-  test('entries of the files unite, each once', () => {
-    const policy = permissionsOf([
-      ['managed', { permissions: { additionalDirectories: ['/srv/shared', '/data'] } }],
-      ['user', { permissions: { additionalDirectories: ['/data', '/notes'] } }],
-    ]);
-    expect(policy.additionalDirectories.map((entry) => entry.path)).toEqual([
-      '/srv/shared',
-      '/data',
-      '/notes',
-    ]);
-  });
+    test('entries of the files unite, each once', () => {
+      const policy = permissionsOf([
+        ['managed', { permissions: { additionalDirectories: ['/srv/shared', '/data'] } }],
+        ['user', { permissions: { additionalDirectories: ['/data', '/notes'] } }],
+      ]);
+      expect(policy.additionalDirectories.map((entry) => entry.path)).toEqual([
+        '/srv/shared',
+        '/data',
+        '/notes',
+      ]);
+    });
 
-  test("a project file's entries wait for the trust dialog, like allow rules", () => {
-    const project = { permissions: { additionalDirectories: ['/shared'] } };
-    expect(
-      permissionsOf([['project', project]], { isFolderTrusted: () => false }).additionalDirectories,
-    ).toEqual([]);
-    expect(
-      permissionsOf([['project', project]], { isFolderTrusted: () => true }).additionalDirectories,
-    ).toEqual([{ path: '/shared', scope: 'project', repositoryOnly: true }]);
-  });
+    test("a project file's entries wait for the trust dialog, like allow rules", () => {
+      const project = { permissions: { additionalDirectories: ['/shared'] } };
+      expect(
+        permissionsOf([['project', project]], { isFolderTrusted: () => false })
+          .additionalDirectories,
+      ).toEqual([]);
+      expect(
+        permissionsOf([['project', project]], { isFolderTrusted: () => true })
+          .additionalDirectories,
+      ).toEqual([{ path: '/shared', scope: 'project', repositoryOnly: true }]);
+    });
 
-  test('a list of the settings key is no --add-dir: it carries no configuration (only file access)', () => {
-    // permissions.md: directories in `permissions.additionalDirectories` "grant file access only".
-    const policy = permissionsOf([['user', { permissions: { additionalDirectories: ['/x'] } }]]);
-    expect(policy.additionalDirectories).toHaveLength(1);
-    expect(
-      plain(layerOf('addDir', { permissions: { additionalDirectories: ['/x'] } }).settings),
-    ).toEqual({});
-  });
-});
+    test('a list of the settings key is no --add-dir: it carries no configuration (only file access)', () => {
+      // permissions.md: directories in `permissions.additionalDirectories` "grant file access only".
+      const policy = permissionsOf([['user', { permissions: { additionalDirectories: ['/x'] } }]]);
+      expect(policy.additionalDirectories).toHaveLength(1);
+      expect(
+        plain(layerOf('addDir', { permissions: { additionalDirectories: ['/x'] } }).settings),
+      ).toEqual({});
+    });
+  },
+);
 
 describe('a list that cannot be read in managed settings', () => {
   test('withholds allow and additionalDirectories, and the report names each grant and the list', () => {

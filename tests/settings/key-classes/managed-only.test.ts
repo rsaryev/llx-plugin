@@ -78,7 +78,7 @@ for (const [key, value] of KEYS) {
   });
 }
 
-spec(`${ID}.forceRemoteSettingsRefresh`, () => {
+spec([`${ID}.forceRemoteSettingsRefresh`, 'policy.server.Managed-only settings'], () => {
   test('a true from any admin source counts, even one that is not the highest-priority source', () => {
     expect(
       compose({ remote: { model: 'a' }, file: { forceRemoteSettingsRefresh: true } })

@@ -39,7 +39,7 @@ const BACKGROUND_KEEPS = [
   'Artifact',
 ] as const;
 
-spec('agents.frontmatter.tools', () => {
+spec(['agents.frontmatter.tools', 'tools.behavior.Agent tool behavior.Fork'], () => {
   describe('background subagents keep a smaller built-in tool set', () => {
     test('a background subagent keeps exactly the listed built-in tools and every MCP tool', () => {
       const tools = names({}, background());

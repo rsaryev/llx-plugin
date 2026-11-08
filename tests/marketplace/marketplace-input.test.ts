@@ -43,10 +43,10 @@ describe('GitHub shorthand', () => {
   });
 
   spec('marketplace.sourceField.repo', () => {
-    test('owner/* is rejected as not a valid owner/repo shorthand', () => {
+    test('owner/* is rejected as not a valid GitHub owner/repo shorthand', () => {
       const found = issueOf('your-org/*');
       expect(found.severity).toBe('error');
-      expect(found.message).toContain('not a valid owner/repo shorthand');
+      expect(found.message).toContain('not a valid GitHub owner/repo shorthand');
     });
   });
 
@@ -58,7 +58,7 @@ describe('GitHub shorthand', () => {
 
   test('a bare host such as gitlab.example.com/team/plugins fails as an invalid shorthand and says what to do', () => {
     const found = issueOf('gitlab.example.com/team/plugins');
-    expect(found.message).toContain('not a valid owner/repo shorthand');
+    expect(found.message).toContain('not a valid GitHub owner/repo shorthand');
     expect(found.message).toContain('https://');
     expect(found.message).toContain('local path');
   });

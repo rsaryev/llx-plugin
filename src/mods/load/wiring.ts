@@ -24,15 +24,20 @@ import { pluginOptions, type ModsPolicyInput } from './policy-input.ts';
 import { tagRefusals, withRegisterRules, type RefusalBook } from './register-call.ts';
 import { forgettingChain, skipReports, type SkipReports } from './skip-reports.ts';
 import { withUnanswered } from './unanswered.ts';
-import { GUARD_ID, GUARD_NAME } from '../../protocol/mods-settings.ts';
+import { GUARD_NAME } from '../../protocol/mods-settings.ts';
 import { MOD_LIMITS } from '../../protocol/mods-limits.ts';
+import {
+  createGuardProtection,
+  type GuardProtection,
+  type ManagedModData,
+} from './guard-protection.ts';
 
 /** Who owns a toast Claude Code raises itself (judgment: the docs name no owner; no mod's name fits). */
 // A slash cannot occur in a mod name, so this UI owner cannot collide with a plugin.
 const ENGINE_TOAST_OWNER = '/engine';
 
 /** What the host is given (see `ModsHostOptions`, which adds nothing to it). */
-export interface Wires {
+export interface Wires extends ManagedModData {
   readonly ports: ModHostPorts;
   readonly iface: ModInterface;
   readonly runtime: ModRuntime;
@@ -73,6 +78,7 @@ export interface Wired {
   ): Promise<LoadedMod>;
   /** Registers the built-in guard as the first `prepend` mod and says it is loaded. */
   registerGuard(): Promise<LoadedMod>;
+  readonly guardNotes: GuardProtection['notes'];
 }
 
 /** The settings of a plugin: the user's `pluginConfigs` entry, with the managed one over it (judgment: the docs do not say which wins). */
@@ -83,12 +89,13 @@ const savedOptions = (policy: ModsPolicyInput) => (id: string) => {
 };
 
 /** The chain of the mods runtime, over the ports the host gave: the skipped-hook lines it reports go through `reports`. */
-function chainOf(given: Wires, reports: SkipReports): ModChain {
+function chainOf(given: Wires, reports: SkipReports, protection: GuardProtection): ModChain {
   const rules = withRegisterRules(withUiRules(withApiRules(createEventRules())));
   const chain = forgettingChain(
     createModChain({
       clock: given.ports.clock,
       rules,
+      admit: protection.admit,
       ...(given.matcherEngine ? { matcherEngine: given.matcherEngine } : {}),
       ...(given.matcherMs === undefined ? {} : { matcherMs: given.matcherMs }),
     }),
@@ -133,11 +140,36 @@ const guardHooksOf = (given: Wires, ledger: ApprovalLedger, book: RefusalBook) =
   }).map((hook) => tagRefusals(hook, GUARD_NAME, book));
 
 /** The chain, the interface and the API of the mods runtime, wired over the ports the host gave. */
+async function nativeMod(
+  env: LoaderEnv,
+  name: string,
+  tier: RegisterTier,
+  hooks: readonly RegisteredHook[],
+): Promise<LoadedMod> {
+  const handle = await env.createApi({ name, tier });
+  env.chain.register({ name, api: handle.api, isBuiltin: true }, tier, hooks);
+  return {
+    id: `${name}@builtin`,
+    name,
+    tier,
+    isBuiltin: true,
+    hooks: [],
+    uses: { events: [], calls: [], envReads: [], envWrites: [], stateReads: [], stateWrites: [] },
+    unload: once(() => {
+      env.chain.unregister(name);
+      handle.dispose();
+      forgetMod(env, name);
+      return Promise.resolve();
+    }),
+  };
+}
+
 export function wire(given: Wires): Wired {
   const { ports, policy, debug, signal } = given;
   const reports = skipReports(debug, given.report);
   const { report } = reports;
-  const chain = chainOf(given, reports);
+  const protection = createGuardProtection(given);
+  const chain = chainOf(given, reports, protection);
   const calls = given.unanswered ? withUnanswered(chain, given.unanswered) : chain;
   const state = createStateStore();
   const ui = createModsUi({
@@ -177,28 +209,8 @@ export function wire(given: Wires): Wired {
     ledger,
     onLoaded: (name) => ui.loadMod(name),
   };
-  async function registerNative(
-    name: string,
-    tier: RegisterTier,
-    hooks: readonly RegisteredHook[],
-  ): Promise<LoadedMod> {
-    const handle = await createApi({ name, tier });
-    chain.register({ name, api: handle.api }, tier, hooks);
-    return {
-      id: `${name}@builtin`,
-      name,
-      tier,
-      isBuiltin: true,
-      hooks: [],
-      uses: { events: [], calls: [], envReads: [], envWrites: [], stateReads: [], stateWrites: [] },
-      unload: once(() => {
-        chain.unregister(name);
-        handle.dispose();
-        forgetMod(env, name);
-        return Promise.resolve();
-      }),
-    };
-  }
+  const registerNative: Wired['registerNative'] = (name, tier, hooks) =>
+    nativeMod(env, name, tier, hooks);
   return {
     gate,
     state,
@@ -207,9 +219,10 @@ export function wire(given: Wires): Wired {
     registries,
     env,
     registerNative,
+    guardNotes: (mod) => protection.notes(mod),
     registerGuard: async () => {
       const hooks = guardHooksOf(given, ledger, book);
-      return { ...(await registerNative(GUARD_NAME, 'prepend', hooks)), id: GUARD_ID };
+      return protection.bind(await registerNative(GUARD_NAME, 'prepend', hooks));
     },
   };
 }

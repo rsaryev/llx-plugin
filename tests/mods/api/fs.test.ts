@@ -1,3 +1,4 @@
+/** Also plugins/mods/api.md § Reach files, processes, and the network. */
 /**
  * `$.fs`: read, write, list, exists, stat and ancestors, and the 4 MiB limit of one file.
  * plugins/mods/reference.md § Mods API methods (`$.fs`), § Limits ("`$.fs.read` and `$.fs.write`:
@@ -33,85 +34,98 @@ const fsPort = (writes: [string, string][] = []) => ({
     Promise.resolve(path === '/work/a/b' ? ['/work/a', '/work', '/'] : []),
 });
 
-spec('mods.api.$.fs', () => {
-  test('$.fs has the six methods of the reference', async () => {
-    const { api } = await apiHarness({ ports: { fs: fsPort() } });
-    expectMethods(api.fs, MODS_API.fs);
-  });
-
-  test('a relative path resolves against the session working directory; the event path is absolute', async () => {
-    const seen: unknown[] = [];
-    const h = await apiHarness({ ports: { fs: fsPort() } });
-    await h.mod('watch', 'prepend', [fn('fs.read', (_$, e, next) => (seen.push(e), next(e)))]);
-    expect(await h.api.fs.read('notes.md')).toBe('# Notes');
-    expect(seen).toEqual([{ path: '/work/notes.md' }]);
-  });
-
-  test('an absolute path is used as it is', async () => {
-    const h = await apiHarness({ ports: { fs: fsPort() } });
-    expect(await h.api.fs.read('/work/notes.md')).toBe('# Notes');
-  });
-
-  test('the working directory of the subagent whose event the hook handles wins over the session', async () => {
-    files.set('/agent/notes.md', 'agent notes');
-    const h = await apiHarness({
-      ports: { fs: fsPort() },
-      options: { eventCwd: () => '/agent' },
+spec(
+  [
+    'mods.api.$.fs',
+    'mods.apiGuide.Reach files, processes, and the network',
+    'mods.apiGuide.Reach files, processes, and the network.$.fs',
+    'mods.apiGuide.Reach files, processes, and the network.$.fs.list',
+    'mods.apiGuide.Reach files, processes, and the network.Paths',
+  ],
+  () => {
+    test('$.fs has the six methods of the reference', async () => {
+      const { api } = await apiHarness({ ports: { fs: fsPort() } });
+      expectMethods(api.fs, MODS_API.fs);
     });
-    expect(await h.api.fs.read('notes.md')).toBe('agent notes');
-  });
 
-  test('a hook on fs.read answers with { value }, as the docs stub does', async () => {
-    const h = await apiHarness({ ports: { fs: fsPort() } });
-    await h.mod('stub', 'prepend', [
-      fn('fs.read', (_$, e) => ({ value: String(e.path).endsWith('notes.md') ? '# Stub' : '' })),
-    ]);
-    expect(await h.api.fs.read('notes.md')).toBe('# Stub');
-  });
+    test('a relative path resolves against the session working directory; the event path is absolute', async () => {
+      const seen: unknown[] = [];
+      const h = await apiHarness({ ports: { fs: fsPort() } });
+      await h.mod('watch', 'prepend', [fn('fs.read', (_$, e, next) => (seen.push(e), next(e)))]);
+      expect(await h.api.fs.read('notes.md')).toBe('# Notes');
+      expect(seen).toEqual([{ path: '/work/notes.md' }]);
+    });
 
-  test('write replaces the text; exists and stat answer for one path', async () => {
-    const writes: [string, string][] = [];
-    const h = await apiHarness({ ports: { fs: fsPort(writes) } });
-    await h.api.fs.write('out.txt', 'hello');
-    expect(writes).toEqual([['/work/out.txt', 'hello']]);
-    expect(await h.api.fs.exists('notes.md')).toBe(true);
-    expect(await h.api.fs.exists('missing.md')).toBe(false);
-    expect(await h.api.fs.stat('notes.md')).toEqual({ kind: 'file', size: 7, isLink: false });
-    expect(await h.api.fs.stat('missing.md')).toBeUndefined();
-  });
+    test('an absolute path is used as it is', async () => {
+      const h = await apiHarness({ ports: { fs: fsPort() } });
+      expect(await h.api.fs.read('/work/notes.md')).toBe('# Notes');
+    });
 
-  test('list returns the directory entries as { name, kind, size, isLink }', async () => {
-    const h = await apiHarness({ ports: { fs: fsPort() } });
-    expect(await h.api.fs.list('/work')).toEqual([
-      { name: 'notes.md', kind: 'file', size: 7, isLink: false },
-    ]);
-  });
+    test('the working directory of the subagent whose event the hook handles wins over the session', async () => {
+      files.set('/agent/notes.md', 'agent notes');
+      const h = await apiHarness({
+        ports: { fs: fsPort() },
+        options: { eventCwd: () => '/agent' },
+      });
+      expect(await h.api.fs.read('notes.md')).toBe('agent notes');
+    });
 
-  test('list and stat carry exactly the documented fields: nothing else the host puts on an entry reaches the mod', async () => {
-    const extra = { children: ['a'], mode: 0o644 };
-    const fs = {
-      ...fsPort(),
-      list: () =>
-        Promise.resolve([{ name: 'src', kind: 'directory', size: 0, isLink: false, ...extra }]),
-      stat: () => Promise.resolve({ kind: 'directory', size: 0, isLink: false, ...extra }),
-    };
-    const h = await apiHarness({ ports: { fs } });
-    expect(await h.api.fs.list('/work')).toEqual([
-      { name: 'src', kind: 'directory', size: 0, isLink: false },
-    ]);
-    expect(await h.api.fs.stat('/work/src')).toEqual({ kind: 'directory', size: 0, isLink: false });
-  });
+    test('a hook on fs.read answers with { value }, as the docs stub does', async () => {
+      const h = await apiHarness({ ports: { fs: fsPort() } });
+      await h.mod('stub', 'prepend', [
+        fn('fs.read', (_$, e) => ({ value: String(e.path).endsWith('notes.md') ? '# Stub' : '' })),
+      ]);
+      expect(await h.api.fs.read('notes.md')).toBe('# Stub');
+    });
 
-  test('ancestors returns what the host knows above the path', async () => {
-    const h = await apiHarness({ ports: { fs: fsPort() } });
-    expect(await h.api.fs.ancestors('a/b')).toEqual(['/work/a', '/work', '/']);
-  });
+    test('write replaces the text; exists and stat answer for one path', async () => {
+      const writes: [string, string][] = [];
+      const h = await apiHarness({ ports: { fs: fsPort(writes) } });
+      await h.api.fs.write('out.txt', 'hello');
+      expect(writes).toEqual([['/work/out.txt', 'hello']]);
+      expect(await h.api.fs.exists('notes.md')).toBe(true);
+      expect(await h.api.fs.exists('missing.md')).toBe(false);
+      expect(await h.api.fs.stat('notes.md')).toEqual({ kind: 'file', size: 7, isLink: false });
+      expect(await h.api.fs.stat('missing.md')).toBeUndefined();
+    });
 
-  test('a path that is not a string rejects', async () => {
-    const h = await apiHarness({ ports: { fs: fsPort() } });
-    expect(await rejection(h.api.fs.read(5))).toContain('$.fs.read');
-  });
-});
+    test('list returns the directory entries as { name, kind, size, isLink }', async () => {
+      const h = await apiHarness({ ports: { fs: fsPort() } });
+      expect(await h.api.fs.list('/work')).toEqual([
+        { name: 'notes.md', kind: 'file', size: 7, isLink: false },
+      ]);
+    });
+
+    test('list and stat carry exactly the documented fields: nothing else the host puts on an entry reaches the mod', async () => {
+      const extra = { children: ['a'], mode: 0o644 };
+      const fs = {
+        ...fsPort(),
+        list: () =>
+          Promise.resolve([{ name: 'src', kind: 'directory', size: 0, isLink: false, ...extra }]),
+        stat: () => Promise.resolve({ kind: 'directory', size: 0, isLink: false, ...extra }),
+      };
+      const h = await apiHarness({ ports: { fs } });
+      expect(await h.api.fs.list('/work')).toEqual([
+        { name: 'src', kind: 'directory', size: 0, isLink: false },
+      ]);
+      expect(await h.api.fs.stat('/work/src')).toEqual({
+        kind: 'directory',
+        size: 0,
+        isLink: false,
+      });
+    });
+
+    test('ancestors returns what the host knows above the path', async () => {
+      const h = await apiHarness({ ports: { fs: fsPort() } });
+      expect(await h.api.fs.ancestors('a/b')).toEqual(['/work/a', '/work', '/']);
+    });
+
+    test('a path that is not a string rejects', async () => {
+      const h = await apiHarness({ ports: { fs: fsPort() } });
+      expect(await rejection(h.api.fs.read(5))).toContain('$.fs.read');
+    });
+  },
+);
 
 const big = (bytes: number) => ({
   read: () => Promise.resolve({ text: 'x', bytes }),

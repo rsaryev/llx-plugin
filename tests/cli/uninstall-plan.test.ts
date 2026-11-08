@@ -24,34 +24,37 @@ import {
 } from '../support/uninstall.ts';
 import { spec } from '../support/spec.ts';
 
-spec('cli.plugin.plugin uninstall.-s, --scope <scope>', () => {
-  test('the scope the plugin is removed from is the flag value', () => {
-    expect(removing(start({ scope: 'local' }, world([ID, { scope: 'local' }]))).scope).toBe(
-      'local',
-    );
-  });
-
-  test('without --scope it uninstalls from user', () => {
-    const graph = world([ID, { scope: 'user' }]);
-    expect(removing(unscoped(graph)).scope).toBe('user');
-  });
-
-  test('a plugin installed at project only is not uninstalled from the default user scope', () => {
-    const found = unscoped(world([ID, { scope: 'project' }]));
-    if (found.kind !== 'done') throw new Error('expected a refusal');
-    const out = renderCommand(found.output, { json: false });
-    expect(out.exitCode).toBe(1);
-    expect(out.stderr[0]).toStartWith(`Failed to uninstall plugin "${ID}":`);
-    expect(out.stderr[0]).toContain('is not installed at scope user');
-  });
-
-  test('a scope outside user, project and local is a usage error', () => {
-    expect(start({ scope: 'managed' })).toMatchObject({
-      kind: 'done',
-      output: { kind: 'usage-error' },
+spec(
+  ['cli.plugin.plugin uninstall.-s, --scope <scope>', 'cli.errors.Plugin was not uninstalled'],
+  () => {
+    test('the scope the plugin is removed from is the flag value', () => {
+      expect(removing(start({ scope: 'local' }, world([ID, { scope: 'local' }]))).scope).toBe(
+        'local',
+      );
     });
-  });
-});
+
+    test('without --scope it uninstalls from user', () => {
+      const graph = world([ID, { scope: 'user' }]);
+      expect(removing(unscoped(graph)).scope).toBe('user');
+    });
+
+    test('a plugin installed at project only is not uninstalled from the default user scope', () => {
+      const found = unscoped(world([ID, { scope: 'project' }]));
+      if (found.kind !== 'done') throw new Error('expected a refusal');
+      const out = renderCommand(found.output, { json: false });
+      expect(out.exitCode).toBe(1);
+      expect(out.stderr[0]).toStartWith(`Failed to uninstall plugin "${ID}":`);
+      expect(out.stderr[0]).toContain('is not installed at scope user');
+    });
+
+    test('a scope outside user, project and local is a usage error', () => {
+      expect(start({ scope: 'managed' })).toMatchObject({
+        kind: 'done',
+        output: { kind: 'usage-error' },
+      });
+    });
+  },
+);
 
 describe('plugin uninstall: the command', () => {
   test('prints Successfully uninstalled plugin: <name> (scope: <scope>) and exits 0', () => {

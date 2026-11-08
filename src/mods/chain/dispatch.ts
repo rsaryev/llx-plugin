@@ -8,6 +8,7 @@ import type {
   DispatchOptions,
   EventOf,
   EventRules,
+  HookAccess,
   ModChain,
   ResultOf,
 } from '../types.ts';
@@ -29,6 +30,7 @@ export interface ModChainOptions {
   readonly matcherEngine?: MatcherEngine;
   /** How long the engine has to test one pattern against one value, in milliseconds (default `MATCHER_MS`). */
   readonly matcherMs?: number;
+  readonly admit?: (access: HookAccess) => boolean;
 }
 
 /* oxlint-disable typescript/no-unsafe-type-assertion -- the chain carries `unknown`; the events part of mods fixes what each event answers */
@@ -54,7 +56,11 @@ export function createModChain(options: ModChainOptions): ModChain {
     const frozen = deepFreeze(input);
     const ctx: Context = {
       name,
-      options: opts,
+      options: {
+        ...opts,
+        origin: deepFreeze({ ...opts.origin }),
+        ...(opts.caller === undefined ? {} : { caller: deepFreeze({ ...opts.caller }) }),
+      },
       clock: options.clock,
       chain: registry
         .chainFor(name, opts.caller)
@@ -62,6 +68,7 @@ export function createModChain(options: ModChainOptions): ModChain {
       input: frozen,
       rules,
       matcherMs: options.matcherMs ?? MATCHER_MS,
+      ...(options.admit === undefined ? {} : { admit: options.admit }),
       ...(groupMs === undefined
         ? {}
         : {

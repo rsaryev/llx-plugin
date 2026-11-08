@@ -35,7 +35,7 @@ const post = async (
   return { request: http.requests[0], result };
 };
 
-spec('hooks.handler.http.url', () => {
+spec(['hooks.handler.http.url', 'hooks.guide.HTTP hooks'], () => {
   test('POSTs the hook input JSON to the url with Content-Type application/json', async () => {
     const { request } = await post({ url: 'http://localhost:8080/hooks/pre-tool-use' });
     expect(request?.method).toBe('POST');

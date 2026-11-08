@@ -191,36 +191,42 @@ spec('install.develop.Load a plugin from a URL', () => {
   });
 });
 
-spec('install.develop.Load plugins from an environment variable', () => {
-  test('CLAUDE_CODE_PLUGIN_DIRS lists absolute paths, separated by : (or ; on Windows)', () => {
-    expect(parsePluginDirs('/a/one:/b/two', 'posix')).toEqual(['/a/one', '/b/two']);
-    expect(parsePluginDirs('C:\\one;D:\\two', 'windows')).toEqual(['C:\\one', 'D:\\two']);
-  });
-
-  test('each path loads as a --plugin-dir path does, in addition to the flags', () => {
-    const input = policy({
-      env: { CLAUDE_CODE_PLUGIN_DIRS: '/a/one:/b/two' },
-      flags: { pluginDirs: ['./flag-plugin'] },
+spec(
+  [
+    'install.develop.Load plugins from an environment variable',
+    'environment.host.CLAUDE_CODE_PLUGIN_DIRS',
+  ],
+  () => {
+    test('CLAUDE_CODE_PLUGIN_DIRS lists absolute paths, separated by : (or ; on Windows)', () => {
+      expect(parsePluginDirs('/a/one:/b/two', 'posix')).toEqual(['/a/one', '/b/two']);
+      expect(parsePluginDirs('C:\\one;D:\\two', 'windows')).toEqual(['C:\\one', 'D:\\two']);
     });
-    expect(pluginDirsOf(input)).toEqual(['./flag-plugin', '/a/one', '/b/two']);
-  });
 
-  test('user settings env can set it; project and local settings cannot', () => {
-    const user = policy({ user: { env: { CLAUDE_CODE_PLUGIN_DIRS: '/from/user' } } });
-    expect(pluginDirsOf(user)).toEqual(['/from/user']);
-    expect(MOD_SETTINGS.CLAUDE_CODE_PLUGIN_DIRS.homes).toEqual(['environment', 'user-env']);
-  });
-
-  test('managed settings can turn off --plugin-dir and the variable', () => {
-    const off = policy({
-      managed: { disableSideloadFlags: true },
-      env: { CLAUDE_CODE_PLUGIN_DIRS: '/a/one' },
-      flags: { pluginDirs: ['./x'] },
+    test('each path loads as a --plugin-dir path does, in addition to the flags', () => {
+      const input = policy({
+        env: { CLAUDE_CODE_PLUGIN_DIRS: '/a/one:/b/two' },
+        flags: { pluginDirs: ['./flag-plugin'] },
+      });
+      expect(pluginDirsOf(input)).toEqual(['./flag-plugin', '/a/one', '/b/two']);
     });
-    expect(pluginDirsOf(off)).toEqual([]);
-    expect(sideloadRefusal(off)).toContain('--plugin-dir is disabled by your organization');
-  });
-});
+
+    test('user settings env can set it; project and local settings cannot', () => {
+      const user = policy({ user: { env: { CLAUDE_CODE_PLUGIN_DIRS: '/from/user' } } });
+      expect(pluginDirsOf(user)).toEqual(['/from/user']);
+      expect(MOD_SETTINGS.CLAUDE_CODE_PLUGIN_DIRS.homes).toEqual(['environment', 'user-env']);
+    });
+
+    test('managed settings can turn off --plugin-dir and the variable', () => {
+      const off = policy({
+        managed: { disableSideloadFlags: true },
+        env: { CLAUDE_CODE_PLUGIN_DIRS: '/a/one' },
+        flags: { pluginDirs: ['./x'] },
+      });
+      expect(pluginDirsOf(off)).toEqual([]);
+      expect(sideloadRefusal(off)).toContain('--plugin-dir is disabled by your organization');
+    });
+  },
+);
 
 spec('install.develop.Stop loading the plugin', () => {
   test('delete its directory, or run claude plugin disable my-tool@skills-dir', () => {

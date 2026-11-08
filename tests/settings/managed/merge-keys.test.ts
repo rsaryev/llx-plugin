@@ -100,20 +100,26 @@ spec(`${COMPOSE}.Locks`, () => {
   });
 });
 
-spec(`${COMPOSE}.Restriction allowlists`, () => {
-  test('allowedProviders is taken whole from the highest source that sets it, else from the next down', () => {
-    const both = compose({
-      plist: { ...MERGE, allowedProviders: ['anthropic'] },
-      file: { allowedProviders: ['bedrock', 'vertex'] },
+spec(
+  [
+    `${COMPOSE}.Restriction allowlists`,
+    'policy.server.Per-key exceptions across managed sources.allowedProviders',
+  ],
+  () => {
+    test('allowedProviders is taken whole from the highest source that sets it, else from the next down', () => {
+      const both = compose({
+        plist: { ...MERGE, allowedProviders: ['anthropic'] },
+        file: { allowedProviders: ['bedrock', 'vertex'] },
+      });
+      expect(both.layer.settings.allowedProviders).toEqual(['anthropic']);
+      const below = compose({
+        plist: { ...MERGE, model: 'a' },
+        file: { allowedProviders: ['bedrock', 'vertex'] },
+      });
+      expect(below.layer.settings.allowedProviders).toEqual(['bedrock', 'vertex']);
     });
-    expect(both.layer.settings.allowedProviders).toEqual(['anthropic']);
-    const below = compose({
-      plist: { ...MERGE, model: 'a' },
-      file: { allowedProviders: ['bedrock', 'vertex'] },
-    });
-    expect(below.layer.settings.allowedProviders).toEqual(['bedrock', 'vertex']);
-  });
-});
+  },
+);
 
 const pair = (name: string) => ({
   accessKeyIdVar: `${name}_ID`,

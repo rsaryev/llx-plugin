@@ -43,74 +43,79 @@ const joinedRules = (rule: string, input: unknown) =>
     tool_input: input,
   });
 
-spec('hooks.handler.common.if', () => {
-  test('`Bash(rm *)` runs for `rm -rf /tmp/build` and not for `npm test`', () => {
-    for (const event of TOOL_EVENTS) {
-      expect(runsFor(event, 'Bash(rm *)', 'Bash', { command: 'rm -rf /tmp/build' })).toBe(true);
-      expect(runsFor(event, 'Bash(rm *)', 'Bash', { command: 'npm test' })).toBe(false);
-    }
-  });
+spec(
+  ['hooks.handler.common.if', 'hooks.guide.Filter by tool name and arguments with the if field'],
+  () => {
+    test('`Bash(rm *)` runs for `rm -rf /tmp/build` and not for `npm test`', () => {
+      for (const event of TOOL_EVENTS) {
+        expect(runsFor(event, 'Bash(rm *)', 'Bash', { command: 'rm -rf /tmp/build' })).toBe(true);
+        expect(runsFor(event, 'Bash(rm *)', 'Bash', { command: 'npm test' })).toBe(false);
+      }
+    });
 
-  test('`Bash(git *)` runs when any subcommand matches', () => {
-    expect(runsFor('PreToolUse', 'Bash(git *)', 'Bash', { command: 'npm test && git push' })).toBe(
-      true,
-    );
-  });
+    test('`Bash(git *)` runs when any subcommand matches', () => {
+      expect(
+        runsFor('PreToolUse', 'Bash(git *)', 'Bash', { command: 'npm test && git push' }),
+      ).toBe(true);
+    });
 
-  test('`Edit(*.ts)` runs only for TypeScript files', () => {
-    expect(runsFor('PostToolUse', 'Edit(*.ts)', 'Edit', { file_path: '/work/app/a.ts' })).toBe(
-      true,
-    );
-    expect(runsFor('PostToolUse', 'Edit(*.ts)', 'Edit', { file_path: '/work/app/a.md' })).toBe(
-      false,
-    );
-  });
+    test('`Edit(*.ts)` runs only for TypeScript files', () => {
+      expect(runsFor('PostToolUse', 'Edit(*.ts)', 'Edit', { file_path: '/work/app/a.ts' })).toBe(
+        true,
+      );
+      expect(runsFor('PostToolUse', 'Edit(*.ts)', 'Edit', { file_path: '/work/app/a.md' })).toBe(
+        false,
+      );
+    });
 
-  test('`Edit(src/**)` matches only the `src` directory in the working directory, not a nested one', () => {
-    expect(editRuns('Edit(src/**)', '/work/app/src/a.ts')).toBe(true);
-    expect(editRuns('Edit(src/**)', '/work/app/src/deep/a.ts')).toBe(true);
-    expect(editRuns('Edit(src/**)', '/work/app/lib/src/a.ts')).toBe(false);
-  });
+    test('`Edit(src/**)` matches only the `src` directory in the working directory, not a nested one', () => {
+      expect(editRuns('Edit(src/**)', '/work/app/src/a.ts')).toBe(true);
+      expect(editRuns('Edit(src/**)', '/work/app/src/deep/a.ts')).toBe(true);
+      expect(editRuns('Edit(src/**)', '/work/app/lib/src/a.ts')).toBe(false);
+    });
 
-  test('`Edit(**/src/**)` matches a directory named `src` at any depth', () => {
-    expect(editRuns('Edit(**/src/**)', '/work/app/src/a.ts')).toBe(true);
-    expect(editRuns('Edit(**/src/**)', '/work/app/lib/src/a.ts')).toBe(true);
-    expect(editRuns('Edit(**/src/**)', '/work/app/lib/other/a.ts')).toBe(false);
-  });
+    test('`Edit(**/src/**)` matches a directory named `src` at any depth', () => {
+      expect(editRuns('Edit(**/src/**)', '/work/app/src/a.ts')).toBe(true);
+      expect(editRuns('Edit(**/src/**)', '/work/app/lib/src/a.ts')).toBe(true);
+      expect(editRuns('Edit(**/src/**)', '/work/app/lib/other/a.ts')).toBe(false);
+    });
 
-  test('a rule for another tool does not run for this call', () => {
-    expect(runsFor('PreToolUse', 'Edit(*.ts)', 'Bash', { command: 'rm -rf /tmp/build' })).toBe(
-      false,
-    );
-  });
+    test('a rule for another tool does not run for this call', () => {
+      expect(runsFor('PreToolUse', 'Edit(*.ts)', 'Bash', { command: 'rm -rf /tmp/build' })).toBe(
+        false,
+      );
+    });
 
-  test('without `if`, every handler of the matched group runs', () => {
-    const handlers = [
-      entry('PreToolUse', { handler: command('./a.sh') }),
-      entry('PreToolUse', { handler: command('./b.sh') }),
-    ];
-    expect(select(handlers, 'PreToolUse', FACTS.PreToolUse).selected).toEqual(handlers);
-  });
+    test('without `if`, every handler of the matched group runs', () => {
+      const handlers = [
+        entry('PreToolUse', { handler: command('./a.sh') }),
+        entry('PreToolUse', { handler: command('./b.sh') }),
+      ];
+      expect(select(handlers, 'PreToolUse', FACTS.PreToolUse).selected).toEqual(handlers);
+    });
 
-  test('on every event but the five tool events, a hook with `if` set never runs', () => {
-    for (const event of HOOK_EVENTS.filter((each) => !TOOL_EVENTS.some((tool) => tool === each))) {
-      const registered = entry(event, { handler: withIf('Bash(rm *)') });
-      expect(select([registered], event, FACTS[event]).selected).toEqual([]);
-    }
-  });
+    test('on every event but the five tool events, a hook with `if` set never runs', () => {
+      for (const event of HOOK_EVENTS.filter(
+        (each) => !TOOL_EVENTS.some((tool) => tool === each),
+      )) {
+        const registered = entry(event, { handler: withIf('Bash(rm *)') });
+        expect(select([registered], event, FACTS[event]).selected).toEqual([]);
+      }
+    });
 
-  test('even an `if` that names a tool (Bash) does not run on a non-tool event', () => {
-    const registered = entry('UserPromptSubmit', { handler: withIf('Bash') });
-    expect(select([registered], 'UserPromptSubmit', FACTS.UserPromptSubmit).selected).toEqual([]);
-  });
+    test('even an `if` that names a tool (Bash) does not run on a non-tool event', () => {
+      const registered = entry('UserPromptSubmit', { handler: withIf('Bash') });
+      expect(select([registered], 'UserPromptSubmit', FACTS.UserPromptSubmit).selected).toEqual([]);
+    });
 
-  test('when the commands cannot be determined the hook runs regardless of the pattern', () => {
-    expect(runsFor('PreToolUse', 'Bash(git push *)', 'Bash', { command: 'echo $(date)' })).toBe(
-      true,
-    );
-    expect(runsFor('PreToolUse', 'Bash(rm *)', 'Bash', { command: 'echo $(date)' })).toBe(false);
-  });
-});
+    test('when the commands cannot be determined the hook runs regardless of the pattern', () => {
+      expect(runsFor('PreToolUse', 'Bash(git push *)', 'Bash', { command: 'echo $(date)' })).toBe(
+        true,
+      );
+      expect(runsFor('PreToolUse', 'Bash(rm *)', 'Bash', { command: 'echo $(date)' })).toBe(false);
+    });
+  },
+);
 
 describe('judgment: `if` holds exactly one rule', () => {
   test('`&&` and `||` do not combine rules: the text is one rule that matches nothing, and a warning says so', () => {

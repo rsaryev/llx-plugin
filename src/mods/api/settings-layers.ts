@@ -1,5 +1,12 @@
 import { toJsonValue, type JsonObject } from '../../foundation/index.ts';
-import { orderedLayers, type PolicyLayer, type PolicyScope } from '../../settings/index.ts';
+import {
+  orderedLayers,
+  readSettingsLayer,
+  type PolicyLayer,
+  type PolicyScope,
+} from '../../settings/index.ts';
+import { createGeneralView } from '../../settings/general/index.ts';
+import { readPluginSettings } from '../../format/plugin-settings.ts';
 import type { ModSettingsReader, SettingsLayer } from './ports.ts';
 
 /**
@@ -55,14 +62,59 @@ export function settingsLayersForMods(
   return [...fromPlugins, ...fromSources];
 }
 
+interface DecodedLayer {
+  readonly policy?: PolicyLayer;
+  readonly defaults?: JsonObject;
+}
+
+const fromPolicy =
+  (scope: PolicyScope) =>
+  (settings: JsonObject): DecodedLayer => ({
+    policy: readSettingsLayer(scope, settings).layer,
+  });
+
+const DECODERS = {
+  plugin: (settings: JsonObject): DecodedLayer => ({
+    defaults: objectOf(readPluginSettings(settings, 'plugin settings').settings),
+  }),
+  user: fromPolicy('user'),
+  project: fromPolicy('project'),
+  local: fromPolicy('local'),
+  flag: fromPolicy('flag'),
+  policy: fromPolicy('managed'),
+};
+const isLayerSource = (source: string): source is keyof typeof DECODERS =>
+  Object.hasOwn(DECODERS, source);
+
+/** The same key-specific merge and managed exceptions as the host's settings, not a shallow merge. */
+export function mergeModSettingsLayers(
+  layers: readonly SettingsLayer[],
+  floors: readonly PolicyLayer[] = [],
+): JsonObject {
+  const decoded = layers.flatMap((layer) =>
+    isLayerSource(layer.source) ? [DECODERS[layer.source](layer.settings)] : [],
+  );
+  const defaults = decoded.reduce<JsonObject>(
+    (value, layer) => ({ ...value, ...layer.defaults }),
+    {},
+  );
+  const policies = decoded.flatMap((layer) => (layer.policy ? [layer.policy] : []));
+  const view = createGeneralView([...policies, ...floors]);
+  return { ...defaults, ...objectOf(view.merged()) };
+}
+
+/** A repaired-away managed value must not lose its fail-closed floor when converted to JSON layers. */
+const floorsOf = (layers: readonly PolicyLayer[]): readonly PolicyLayer[] =>
+  layers.flatMap((layer) => (layer.invalid?.length ? [{ ...layer, settings: {} }] : []));
+
 /** Builds the reader used by both engine and mod reads from the settings layers the kit owns. */
 export function createModSettingsReader(input: {
   readonly layers: () => readonly PolicyLayer[];
   readonly plugins?: () => readonly unknown[];
-  readonly merged: ModSettingsReader['merged'];
+  readonly merged?: ModSettingsReader['merged'];
 }): ModSettingsReader {
   return {
     layers: () => Promise.resolve(settingsLayersForMods(input.layers(), input.plugins?.() ?? [])),
-    merged: input.merged,
+    merged: input.merged ?? ((layers) => mergeModSettingsLayers(layers, floorsOf(input.layers()))),
   };
 }

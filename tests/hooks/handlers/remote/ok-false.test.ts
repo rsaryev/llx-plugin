@@ -16,6 +16,7 @@ import {
 } from '../../../../src/hooks/handlers/remote/ok-false.ts';
 import type { ModelRun } from '../../../../src/hooks/handlers/remote/types.ts';
 import { HOOK_EVENTS } from '../../../../src/protocol/hook-events.ts';
+import { spec } from '../../../support/spec.ts';
 
 const no: ModelRun = { kind: 'model', ok: false, reason: 'tests fail' };
 const impossible: ModelRun = { ...no, impossible: true };
@@ -70,18 +71,20 @@ describe('Stop and SubagentStop', () => {
   });
 });
 
-describe('PreToolUse', () => {
-  test('the tool call is denied and by default the turn ends with a warning line', () => {
-    expect(prompt('PreToolUse', no)).toEqual(block('user-warning', true, true));
-    expect(prompt('PreToolUse', no, false)).toEqual(block('user-warning', true, true));
-  });
+spec(['hooks.behavior.Prompt hook configuration.continueOnBlock'], () => {
+  describe('PreToolUse', () => {
+    test('the tool call is denied and by default the turn ends with a warning line', () => {
+      expect(prompt('PreToolUse', no)).toEqual(block('user-warning', true, true));
+      expect(prompt('PreToolUse', no, false)).toEqual(block('user-warning', true, true));
+    });
 
-  test('continueOnBlock returns the reason to Claude as the tool error so it can adjust', () => {
-    expect(prompt('PreToolUse', no, true)).toEqual(block('claude-tool-error', false, true));
-  });
+    test('continueOnBlock returns the reason to Claude as the tool error so it can adjust', () => {
+      expect(prompt('PreToolUse', no, true)).toEqual(block('claude-tool-error', false, true));
+    });
 
-  test('an agent hook acts as if continueOnBlock were set', () => {
-    expect(agent('PreToolUse', no)).toEqual(block('claude-tool-error', false, true));
+    test('an agent hook acts as if continueOnBlock were set', () => {
+      expect(agent('PreToolUse', no)).toEqual(block('claude-tool-error', false, true));
+    });
   });
 });
 

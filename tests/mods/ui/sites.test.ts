@@ -26,6 +26,22 @@ import { spec } from '../../support/spec.ts';
 
 type Row = (typeof MODS_REFERENCE.renderSites)[number];
 
+const PROSE_SITES: Partial<Record<RenderSite, string>> = {
+  AskUserQuestion: 'mods.interface.Change what Claude Code already draws.AskUserQuestion',
+  AssistantMessage: 'mods.interface.Change what Claude Code already draws.AssistantMessage',
+  CommandOutput: 'mods.interface.Change what Claude Code already draws.CommandOutput',
+  InfoNotice: 'mods.interface.Change what Claude Code already draws.InfoNotice',
+  PromptHint: 'mods.interface.Change what Claude Code already draws.PromptHint',
+  SessionMode: 'mods.interface.Change what Claude Code already draws.SessionMode',
+  Spinner: 'mods.interface.Change what Claude Code already draws.Spinner',
+  ToolGroup: 'mods.interface.Change what Claude Code already draws.ToolGroup',
+  ToolProgress: 'mods.interface.Change what Claude Code already draws.ToolProgress',
+  ToolResult: 'mods.interface.Change what Claude Code already draws.ToolResult',
+  ToolUse: 'mods.interface.Change what Claude Code already draws.ToolUse',
+  TurnDuration: 'mods.interface.Change what Claude Code already draws.TurnDuration',
+  UserMessage: 'mods.interface.Change what Claude Code already draws.UserMessage',
+};
+
 const rows = (): readonly Row[] => MODS_REFERENCE.renderSites;
 
 const siteRow = (site: RenderSite): Row => {
@@ -40,7 +56,8 @@ test('the sites the kit holds are the sites of the reference table, 15 in all', 
 });
 
 for (const site of RENDER_SITE_NAMES) {
-  spec(`mods.site.${site}`, () => {
+  const prose = PROSE_SITES[site];
+  spec([`mods.site.${site}`, ...(prose ? [prose] : [])], () => {
     test('the table holds the site as the reference does: its props, its request id and the apps that raise it', () => {
       const row = siteRow(site);
       expect<readonly string[]>([...RENDER_SITES[site].props]).toEqual(row.props);

@@ -17,7 +17,7 @@ import {
 import { errorsOf } from '../../support/marketplace-fixtures.ts';
 import { spec } from '../../support/spec.ts';
 
-spec('marketplace.entry.name', () => {
+spec(['marketplace.entry.name'], () => {
   test('a name is letters, digits, ".", "_" and "-", starting with a letter or digit', () => {
     for (const name of ['my-plugin', 'Plugin_1.0', '9lives', 'a']) {
       expect(readOne(rawEntry({ name })).issues).toEqual([]);

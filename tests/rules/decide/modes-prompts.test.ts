@@ -70,14 +70,22 @@ spec('permissions.modes.Allow only pre-approved tools with dontAsk mode', () => 
     ).toEqual(deny('organization-ask'));
   });
 
-  test('an allow rule or a PreToolUse hook cannot approve a critical-path removal or a read from a network path', () => {
-    const rules = rulesOf(['allow', 'Bash'], ['allow', 'Read']);
-    const hook = { decision: 'allow' as const };
-    expect(bash('dontAsk', 'rm -rf ~', { rules, hook })).toEqual(deny('critical-path'));
-    expect(onPath('dontAsk', 'Read', '/net/fileserver/notes.txt', { rules, hook })).toEqual(
-      deny('network-path'),
-    );
-  });
+  spec(
+    [
+      'permissions.behavior.Network paths.Allow rules',
+      'permissions.behavior.Network paths.PreToolUse hooks',
+    ],
+    () => {
+      test('an allow rule or a PreToolUse hook cannot approve a critical-path removal or a read from a network path', () => {
+        const rules = rulesOf(['allow', 'Bash'], ['allow', 'Read']);
+        const hook = { decision: 'allow' as const };
+        expect(bash('dontAsk', 'rm -rf ~', { rules, hook })).toEqual(deny('critical-path'));
+        expect(onPath('dontAsk', 'Read', '/net/fileserver/notes.txt', { rules, hook })).toEqual(
+          deny('network-path'),
+        );
+      });
+    },
+  );
 
   test('a deny rule still denies', () => {
     expect(

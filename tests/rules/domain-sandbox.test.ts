@@ -19,7 +19,7 @@ const artifactRead = call('Artifact', { action: 'read', url: ARTIFACT_URL });
 const verdict = (rule: string, behavior: 'ask' | 'deny' | 'allow', target = artifactRead) =>
   evaluateRules([parsed(rule, behavior)], target, matchContext).behavior;
 
-spec('permissions.rule.WebFetch', () => {
+spec(['permissions.rule.WebFetch', 'permissions.behavior.Allow or deny every fetch'], () => {
   const urls = ['https://example.com/', 'https://a.b.test/x', 'http://localhost:3000/'];
 
   test('a bare rule and the domain:* rule both cover every URL, for allow, ask and deny', () => {

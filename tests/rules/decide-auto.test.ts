@@ -152,12 +152,20 @@ spec('permissions.mode.auto', () => {
       ).toEqual(ask('requires-user-interaction'));
     });
 
-    test('a read from a network path prompts even when an allow rule matches and the classifier is not asked', () => {
-      const rules = rulesOf(['allow', 'Read']);
-      expect(onPath('auto', 'Read', '/net/fileserver/notes.txt', { ...AUTO, rules })).toEqual(
-        ask('network-path'),
-      );
-    });
+    spec(
+      [
+        'permissions.behavior.Network paths.Auto mode',
+        'permissions.behavior.Network paths.Allow rules',
+      ],
+      () => {
+        test('a read from a network path prompts even when an allow rule matches and the classifier is not asked', () => {
+          const rules = rulesOf(['allow', 'Read']);
+          expect(onPath('auto', 'Read', '/net/fileserver/notes.txt', { ...AUTO, rules })).toEqual(
+            ask('network-path'),
+          );
+        });
+      },
+    );
   });
 
   describe('on entering auto mode, broad allow rules that grant arbitrary code execution are dropped', () => {

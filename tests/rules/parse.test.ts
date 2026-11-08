@@ -43,7 +43,7 @@ function coversEveryUse(toolName: string, inputs: readonly unknown[], others: re
   });
 }
 
-spec('permissions.rule.Bash', () => {
+spec(['permissions.rule.Bash', 'permissions.reference.Permission rule syntax.Bash'], () => {
   const commands = [
     { command: 'ls' },
     { command: 'npm run build && npm test' },
@@ -165,7 +165,7 @@ describe('rule grammar: Tool or Tool(specifier)', () => {
   });
 });
 
-describe('malformed rules (errors.md § Malformed Tool(content) rule)', () => {
+spec('cli.errors.Malformed Tool(content) rule', () => {
   const MALFORMED =
     'Malformed Tool(content) rule. Rules take the form Tool or Tool(content) and must end at the closing ")"; parentheses inside the content are literal';
 

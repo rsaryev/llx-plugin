@@ -205,42 +205,49 @@ spec('mods.element.Button', () => {
   });
 });
 
-spec('mods.element.Input', () => {
-  test('an Input takes key, label, placeholder, value, submitLabel, rows, onSubmit, onInput and autoFocus', () => {
-    const props = {
-      key: 'new-note',
-      label: 'Note',
-      placeholder: 'Type',
-      value: '',
-      submitLabel: 'add',
-      rows: 2,
-      onSubmit: () => undefined,
-      onInput: () => undefined,
-      autoFocus: true,
-    };
-    expect(problemOf(node('Input', props))).toBeUndefined();
-  });
-
-  test('an Input needs a non-empty string key: none, empty or 3 gives "<Input> needs a key"', () => {
-    for (const given of [{}, { key: '' }, { key: 3 }]) {
-      expect(problemOf(node('Input', given))).toBe('a tree Pane refuses: <Input> needs a key');
-    }
-  });
-
-  test('two Inputs with one key give "Input "size" is drawn twice; each takes its own key"', () => {
-    const tree = node('Box', {
-      children: [node('Input', { key: 'size' }), node('Input', { key: 'size' })],
+spec(
+  [
+    'mods.element.Input',
+    'mods.troubleshoot.needs a key, is drawn twice, or key each once',
+    'mods.interface.Which controls need a key',
+  ],
+  () => {
+    test('an Input takes key, label, placeholder, value, submitLabel, rows, onSubmit, onInput and autoFocus', () => {
+      const props = {
+        key: 'new-note',
+        label: 'Note',
+        placeholder: 'Type',
+        value: '',
+        submitLabel: 'add',
+        rows: 2,
+        onSubmit: () => undefined,
+        onInput: () => undefined,
+        autoFocus: true,
+      };
+      expect(problemOf(node('Input', props))).toBeUndefined();
     });
-    expect(problemOf(tree)).toBe(
-      'a tree Pane refuses: Input "size" is drawn twice; each takes its own key',
-    );
-  });
 
-  test('the VS Code extension ignores autoFocus and rows on an Input', () => {
-    const input = node('Input', { key: 'i', label: 'L', rows: 3, autoFocus: true });
-    expect(drawnProps('vscode', input)).toEqual({ key: 'i', label: 'L' });
-  });
-});
+    test('an Input needs a non-empty string key: none, empty or 3 gives "<Input> needs a key"', () => {
+      for (const given of [{}, { key: '' }, { key: 3 }]) {
+        expect(problemOf(node('Input', given))).toBe('a tree Pane refuses: <Input> needs a key');
+      }
+    });
+
+    test('two Inputs with one key give "Input "size" is drawn twice; each takes its own key"', () => {
+      const tree = node('Box', {
+        children: [node('Input', { key: 'size' }), node('Input', { key: 'size' })],
+      });
+      expect(problemOf(tree)).toBe(
+        'a tree Pane refuses: Input "size" is drawn twice; each takes its own key',
+      );
+    });
+
+    test('the VS Code extension ignores autoFocus and rows on an Input', () => {
+      const input = node('Input', { key: 'i', label: 'L', rows: 3, autoFocus: true });
+      expect(drawnProps('vscode', input)).toEqual({ key: 'i', label: 'L' });
+    });
+  },
+);
 
 spec('mods.element.Select', () => {
   test('a Select takes key, label, options, value, onSelect and autoFocus, with options of at least one choice and unique values', () => {

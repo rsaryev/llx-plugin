@@ -76,7 +76,7 @@ spec('cli.plugin.plugin marketplace add', () => {
       json: false,
     });
     expect(rendered.exitCode).toBe(1);
-    expect(rendered.stderr[0]).toContain('not a valid owner/repo shorthand');
+    expect(rendered.stderr[0]).toContain('not a valid GitHub owner/repo shorthand');
     expect(rendered.stderr[0]).toContain('https://');
     expect(rendered.stderr[0]).toContain('local path');
   });
@@ -102,34 +102,40 @@ spec('cli.plugin.plugin marketplace add', () => {
   });
 });
 
-spec('cli.plugin.plugin marketplace add.--scope <scope>', () => {
-  test('defaults to user', () => {
-    const start = started({ source: 'acme/tools' });
-    expect(start.scope).toBe('user');
-    expect(concluded({ source: 'acme/tools' }, fetched('t')).declare?.scope).toBe('user');
-  });
+spec(
+  [
+    'cli.plugin.plugin marketplace add.--scope <scope>',
+    'marketplace.hosting.Register the marketplace for everyone in a repository',
+  ],
+  () => {
+    test('defaults to user', () => {
+      const start = started({ source: 'acme/tools' });
+      expect(start.scope).toBe('user');
+      expect(concluded({ source: 'acme/tools' }, fetched('t')).declare?.scope).toBe('user');
+    });
 
-  test('names the settings file the marketplace is declared in: user, project or local', () => {
-    for (const scope of ['user', 'project', 'local'] as const) {
-      const done = concluded({ source: 'acme/tools', scope }, fetched('t'));
-      expect(done.declare?.scope).toBe(scope);
-      expect(stdoutOf(done.output)).toEqual([
-        `Successfully added marketplace: t (declared in ${scope} settings)`,
-      ]);
-    }
-  });
+    test('names the settings file the marketplace is declared in: user, project or local', () => {
+      for (const scope of ['user', 'project', 'local'] as const) {
+        const done = concluded({ source: 'acme/tools', scope }, fetched('t'));
+        expect(done.declare?.scope).toBe(scope);
+        expect(stdoutOf(done.output)).toEqual([
+          `Successfully added marketplace: t (declared in ${scope} settings)`,
+        ]);
+      }
+    });
 
-  test('another value is a usage error: no result line, exit 1, the reason on stderr, even with --json', () => {
-    for (const json of [false, true]) {
-      const output = finished({ source: 'acme/tools', scope: 'managed', json });
-      expect(output.kind).toBe('usage-error');
-      const rendered = renderCommand(output, { json });
-      expect(rendered.stdout).toEqual([]);
-      expect(rendered.exitCode).toBe(1);
-      expect(rendered.stderr[0]).toContain('managed');
-    }
-  });
-});
+    test('another value is a usage error: no result line, exit 1, the reason on stderr, even with --json', () => {
+      for (const json of [false, true]) {
+        const output = finished({ source: 'acme/tools', scope: 'managed', json });
+        expect(output.kind).toBe('usage-error');
+        const rendered = renderCommand(output, { json });
+        expect(rendered.stdout).toEqual([]);
+        expect(rendered.exitCode).toBe(1);
+        expect(rendered.stderr[0]).toContain('managed');
+      }
+    });
+  },
+);
 
 spec('cli.plugin.plugin marketplace add.--claudeai', () => {
   test('reads the argument as the name of a marketplace hosted on claude.ai, not as a source', () => {

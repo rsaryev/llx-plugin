@@ -76,3 +76,21 @@ export function manualTrustEntry(key: string): {
 } {
   return { file: '~/.claude.json', path: ['projects', key, 'hasTrustDialogAccepted'], value: true };
 }
+
+/**
+ * The warning for project allow rules or additional directories a folder that is not trusted
+ * cannot supply (errors.md, "Workspace has not been trusted"). `count` and `file` say how many
+ * entries of which settings file were skipped, `setting` is `permissions.allow` or
+ * `permissions.additionalDirectories`, `key` is the `projects` key of the folder and `claudeJson`
+ * the path of `~/.claude.json` as the host shows it.
+ */
+export function untrustedWorkspaceWarning(input: {
+  readonly count: number;
+  readonly setting: 'permissions.allow' | 'permissions.additionalDirectories';
+  readonly file: string;
+  readonly key: string;
+  readonly claudeJson: string;
+}): string {
+  const noun = input.count === 1 ? 'entry' : 'entries';
+  return `Ignoring ${input.count} ${input.setting} ${noun} from ${input.file}: this workspace has not been trusted. Run Claude Code interactively here once and accept the trust dialog, or set projects["${input.key}"].hasTrustDialogAccepted: true in ${input.claudeJson}.`;
+}

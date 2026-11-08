@@ -12,42 +12,45 @@ import { loaded, rawEntry, readOne, slotAt } from '../../support/marketplace-ent
 import { errorsOf } from '../../support/marketplace-fixtures.ts';
 import { spec } from '../../support/spec.ts';
 
-spec('marketplace.entry.dependencies', () => {
-  test('each item is "name", "name@marketplace" or an object with name, marketplace and version', () => {
-    const dependencies = [
-      'audit-logger',
-      'audit-logger@your-shared-marketplace',
-      { name: 'secrets-vault', marketplace: 'your-shared-marketplace', version: '~2.1.0' },
-      { name: 'bare' },
-    ];
-    expect(loaded(rawEntry({ dependencies })).dependencies).toEqual(dependencies);
-  });
+spec(
+  ['marketplace.entry.dependencies', 'marketplace.hosting.Depend on and recommend other plugins'],
+  () => {
+    test('each item is "name", "name@marketplace" or an object with name, marketplace and version', () => {
+      const dependencies = [
+        'audit-logger',
+        'audit-logger@your-shared-marketplace',
+        { name: 'secrets-vault', marketplace: 'your-shared-marketplace', version: '~2.1.0' },
+        { name: 'bare' },
+      ];
+      expect(loaded(rawEntry({ dependencies })).dependencies).toEqual(dependencies);
+    });
 
-  test('an object without a name, or a value that is not an array, drops the entry', () => {
-    for (const dependencies of [[{ marketplace: 'm' }], 'audit-logger', [3], [{ name: '' }]]) {
-      const { entry, issues } = readOne(rawEntry({ dependencies }));
-      expect(entry).toBeUndefined();
-      expect(
-        errorsOf(issues).every((found) => found.path.startsWith('plugins[0].dependencies')),
-      ).toBe(true);
-      expect(errorsOf(issues)).not.toEqual([]);
-    }
-  });
+    test('an object without a name, or a value that is not an array, drops the entry', () => {
+      for (const dependencies of [[{ marketplace: 'm' }], 'audit-logger', [3], [{ name: '' }]]) {
+        const { entry, issues } = readOne(rawEntry({ dependencies }));
+        expect(entry).toBeUndefined();
+        expect(
+          errorsOf(issues).every((found) => found.path.startsWith('plugins[0].dependencies')),
+        ).toBe(true);
+        expect(errorsOf(issues)).not.toEqual([]);
+      }
+    });
 
-  test('the version and the marketplace of an object item must be strings', () => {
-    for (const item of [
-      { name: 'x', version: 2 },
-      { name: 'x', marketplace: 5 },
-    ]) {
-      const { entry, issues } = readOne(rawEntry({ dependencies: [item] }));
-      expect(entry).toBeUndefined();
-      expect(errorsOf(issues)).not.toEqual([]);
-      expect(
-        errorsOf(issues).every((found) => found.path.startsWith('plugins[0].dependencies')),
-      ).toBe(true);
-    }
-  });
-});
+    test('the version and the marketplace of an object item must be strings', () => {
+      for (const item of [
+        { name: 'x', version: 2 },
+        { name: 'x', marketplace: 5 },
+      ]) {
+        const { entry, issues } = readOne(rawEntry({ dependencies: [item] }));
+        expect(entry).toBeUndefined();
+        expect(errorsOf(issues)).not.toEqual([]);
+        expect(
+          errorsOf(issues).every((found) => found.path.startsWith('plugins[0].dependencies')),
+        ).toBe(true);
+      }
+    });
+  },
+);
 
 spec('marketplace.entry.metadata', () => {
   test('a free-form object of any nested content passes and is carried verbatim', () => {

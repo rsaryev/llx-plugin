@@ -159,13 +159,19 @@ spec(`install.troubleshooting.Marketplace "<name>" is added but ignored`, () => 
   });
 });
 
-spec(`install.troubleshooting.Marketplace "<name>" is registered from an untrusted source`, () => {
-  test('the full message names the reserved name and the fix, verbatim', () => {
-    expect(untrustedSourceMessage('claude-community')).toBe(
-      `Marketplace "claude-community" is registered from an untrusted source: The name 'claude-community' is reserved for official Anthropic marketplaces. Only repositories from 'github.com/anthropics/' can use this name. To fix it, remove the marketplace and re-add it from the official source.`,
-    );
-  });
-});
+spec(
+  [
+    `install.troubleshooting.Marketplace "<name>" is registered from an untrusted source`,
+    'cli.errors.Marketplace is registered from an untrusted source',
+  ],
+  () => {
+    test('the full message names the reserved name and the fix, verbatim', () => {
+      expect(untrustedSourceMessage('claude-community')).toBe(
+        `Marketplace "claude-community" is registered from an untrusted source: The name 'claude-community' is reserved for official Anthropic marketplaces. Only repositories from 'github.com/anthropics/' can use this name. To fix it, remove the marketplace and re-add it from the official source.`,
+      );
+    });
+  },
+);
 
 spec(`install.troubleshooting.Marketplace "<name>" is registered from an untrusted source`, () => {
   const reserved = 'claude-community';

@@ -67,164 +67,185 @@ spec('mods.setting.CLAUDE_CODE_PLUGIN_DIR_WATCH', () => {
   });
 });
 
-spec(['mods.setting.prependPlugins', 'mods.setting.appendPlugins'], () => {
-  const guardRow = (ids: string[]) => ids;
+spec(
+  [
+    'mods.setting.prependPlugins',
+    "policy.mods.Install your organization's mods and set the order",
+    "policy.mods.Install your organization's mods and set the order.enabledPlugins",
+    "policy.mods.Install your organization's mods and set the order.extraKnownMarketplaces",
+    "policy.mods.Allow only your organization's mods.Your mod",
+    'mods.setting.appendPlugins',
+    "policy.mods.Install your organization's mods and set the order.appendPlugins",
+    "policy.mods.Install your organization's mods and set the order.prependPlugins",
+    "policy.mods.Install your organization's mods and set the order.Repositories can't set them",
+    "policy.mods.Install your organization's mods and set the order.The list replaces the default",
+    "policy.mods.Install your organization's mods and set the order.The same line with tier user",
+    "policy.mods.Install your organization's mods and set the order.Your own ids must count as yours",
+  ],
+  () => {
+    const guardRow = (ids: string[]) => ids;
 
-  test('mods in prependPlugins run before every mod a user installs, those in appendPlugins after, in the listed order', () => {
-    const settings = {
-      prependPlugins: guardRow(['acme-b@acme-tools', 'acme-a@acme-tools', 'sec-default@builtin']),
-      appendPlugins: guardRow(['acme-z@acme-tools', 'acme-y@acme-tools']),
-    };
-    const order = orderMods(managed(settings), [
-      installed('user-mod'),
-      organizations('acme-y'),
-      organizations('acme-a'),
-      organizations('acme-z'),
-      organizations('acme-b'),
-    ]);
-    expect(names(order)).toEqual([
-      'acme-b:prepend',
-      'acme-a:prepend',
-      'cc-plugin-sec-default:prepend',
-      'user-mod:user',
-      'acme-z:append',
-      'acme-y:append',
-    ]);
-  });
+    test('mods in prependPlugins run before every mod a user installs, those in appendPlugins after, in the listed order', () => {
+      const settings = {
+        prependPlugins: guardRow(['acme-b@acme-tools', 'acme-a@acme-tools', 'sec-default@builtin']),
+        appendPlugins: guardRow(['acme-z@acme-tools', 'acme-y@acme-tools']),
+      };
+      const order = orderMods(managed(settings), [
+        installed('user-mod'),
+        organizations('acme-y'),
+        organizations('acme-a'),
+        organizations('acme-z'),
+        organizations('acme-b'),
+      ]);
+      expect(names(order)).toEqual([
+        'acme-b:prepend',
+        'acme-a:prepend',
+        'cc-plugin-sec-default:prepend',
+        'user-mod:user',
+        'acme-z:append',
+        'acme-y:append',
+      ]);
+    });
 
-  test('a list in managed settings replaces the default: the guard loads only where the list names it, at that place', () => {
-    const plugins = [organizations('acme-guard'), installed('user-mod')];
-    const without = orderMods(managed({ prependPlugins: ['acme-guard@acme-tools'] }), plugins);
-    expect(names(without)).toEqual(['acme-guard:prepend', 'user-mod:user']);
-    const empty = orderMods(managed({ prependPlugins: [] }), plugins);
-    expect(names(empty)).toEqual(['acme-guard:prepend', 'user-mod:user']);
-    const named = orderMods(
-      managed({ prependPlugins: ['sec-default@builtin', 'acme-guard@acme-tools'] }),
-      plugins,
-    );
-    expect(names(named)).toEqual([
-      'cc-plugin-sec-default:prepend',
-      'acme-guard:prepend',
-      'user-mod:user',
-    ]);
-    const unset = orderMods(managed(), plugins);
-    expect(names(unset)).toEqual([
-      'cc-plugin-sec-default:prepend',
-      'acme-guard:prepend',
-      'user-mod:user',
-    ]);
-  });
+    test('a list in managed settings replaces the default: the guard loads only where the list names it, at that place', () => {
+      const plugins = [organizations('acme-guard'), installed('user-mod')];
+      const without = orderMods(managed({ prependPlugins: ['acme-guard@acme-tools'] }), plugins);
+      expect(names(without)).toEqual(['acme-guard:prepend', 'user-mod:user']);
+      const empty = orderMods(managed({ prependPlugins: [] }), plugins);
+      expect(names(empty)).toEqual(['acme-guard:prepend', 'user-mod:user']);
+      const named = orderMods(
+        managed({ prependPlugins: ['sec-default@builtin', 'acme-guard@acme-tools'] }),
+        plugins,
+      );
+      expect(names(named)).toEqual([
+        'cc-plugin-sec-default:prepend',
+        'acme-guard:prepend',
+        'user-mod:user',
+      ]);
+      const unset = orderMods(managed(), plugins);
+      expect(names(unset)).toEqual([
+        'cc-plugin-sec-default:prepend',
+        'acme-guard:prepend',
+        'user-mod:user',
+      ]);
+    });
 
-  test("an id whose plugin does not count as the organization's is skipped, with the documented debug line, and runs as a user mod", () => {
-    const order = orderMods(
-      managed({ prependPlugins: ['stranger@market', 'sec-default@builtin'] }),
-      [installed('stranger')],
-    );
-    expect(names(order)).toEqual(['cc-plugin-sec-default:prepend', 'stranger:user']);
-    expect(order.notes).toEqual([
-      'prependPlugins names stranger@market, which is not an enabled managed plugin with a hooks module; skipped',
-    ]);
-  });
+    test("an id whose plugin does not count as the organization's is skipped, with the documented debug line, and runs as a user mod", () => {
+      const order = orderMods(
+        managed({ prependPlugins: ['stranger@market', 'sec-default@builtin'] }),
+        [installed('stranger')],
+      );
+      expect(names(order)).toEqual(['cc-plugin-sec-default:prepend', 'stranger:user']);
+      expect(order.notes).toEqual([
+        'prependPlugins names stranger@market, which is not an enabled managed plugin with a hooks module; skipped',
+      ]);
+    });
 
-  test("a mod that counts as the organization's runs before the users' even when it is listed nowhere", () => {
-    const order = orderMods(managed(), [installed('user-mod'), organizations('acme-guard')]);
-    expect(names(order)).toEqual([
-      'cc-plugin-sec-default:prepend',
-      'acme-guard:prepend',
-      'user-mod:user',
-    ]);
-  });
+    test("a mod that counts as the organization's runs before the users' even when it is listed nowhere", () => {
+      const order = orderMods(managed(), [installed('user-mod'), organizations('acme-guard')]);
+      expect(names(order)).toEqual([
+        'cc-plugin-sec-default:prepend',
+        'acme-guard:prepend',
+        'user-mod:user',
+      ]);
+    });
 
-  test("a plugin copied into the cache, or not enabled in managed settings, counts as a user's", () => {
-    const copied = {
-      ...organizations('acme-guard'),
-      managed: { isEnabled: true, isLoadedInPlace: false, marketplaceDirectory: '/opt/acme' },
-    };
-    const relative = {
-      ...organizations('acme-two'),
-      managed: { isEnabled: true, isLoadedInPlace: true, marketplaceDirectory: 'plugins' },
-    };
-    const disabled = {
-      ...organizations('acme-three'),
-      managed: { isEnabled: false, isLoadedInPlace: true, marketplaceDirectory: '/opt/acme' },
-    };
-    expect(decideModLoad(managed(), copied).tier).toBe('user');
-    expect(decideModLoad(managed(), relative).tier).toBe('user');
-    expect(decideModLoad(managed(), disabled).tier).toBe('user');
-  });
+    test("a plugin copied into the cache, or not enabled in managed settings, counts as a user's", () => {
+      const copied = {
+        ...organizations('acme-guard'),
+        managed: { isEnabled: true, isLoadedInPlace: false, marketplaceDirectory: '/opt/acme' },
+      };
+      const relative = {
+        ...organizations('acme-two'),
+        managed: { isEnabled: true, isLoadedInPlace: true, marketplaceDirectory: 'plugins' },
+      };
+      const disabled = {
+        ...organizations('acme-three'),
+        managed: { isEnabled: false, isLoadedInPlace: true, marketplaceDirectory: '/opt/acme' },
+      };
+      expect(decideModLoad(managed(), copied).tier).toBe('user');
+      expect(decideModLoad(managed(), relative).tier).toBe('user');
+      expect(decideModLoad(managed(), disabled).tier).toBe('user');
+    });
 
-  test('a user may list their own mods only on a machine with no managed settings and no Team or Enterprise login', () => {
-    const lists = { prependPlugins: ['b@market'], appendPlugins: ['a@market'] };
-    const plugins = [installed('a'), installed('c'), installed('b')];
-    const alone = orderMods(policy({ user: lists }), plugins);
-    expect(names(alone)).toEqual(['b:prepend', 'c:user', 'a:append']);
-    const oauth = orderMods(policy({ user: lists, credential: 'oauth-token' }), plugins);
-    expect(names(oauth)).toEqual(['b:prepend', 'c:user', 'a:append']);
-    for (const guarded of [
-      policy({ user: lists, managed: {} }),
-      policy({ user: lists, credential: 'team-or-enterprise-login' }),
-    ]) {
-      const order = orderMods(guarded, plugins);
-      // the list neither adds nor removes the built-in guard, and orders nothing
-      expect(names(order)).toEqual(['cc-plugin-sec-default:prepend', 'a:user', 'c:user', 'b:user']);
-    }
-  });
+    test('a user may list their own mods only on a machine with no managed settings and no Team or Enterprise login', () => {
+      const lists = { prependPlugins: ['b@market'], appendPlugins: ['a@market'] };
+      const plugins = [installed('a'), installed('c'), installed('b')];
+      const alone = orderMods(policy({ user: lists }), plugins);
+      expect(names(alone)).toEqual(['b:prepend', 'c:user', 'a:append']);
+      const oauth = orderMods(policy({ user: lists, credential: 'oauth-token' }), plugins);
+      expect(names(oauth)).toEqual(['b:prepend', 'c:user', 'a:append']);
+      for (const guarded of [
+        policy({ user: lists, managed: {} }),
+        policy({ user: lists, credential: 'team-or-enterprise-login' }),
+      ]) {
+        const order = orderMods(guarded, plugins);
+        // the list neither adds nor removes the built-in guard, and orders nothing
+        expect(names(order)).toEqual([
+          'cc-plugin-sec-default:prepend',
+          'a:user',
+          'c:user',
+          'b:user',
+        ]);
+      }
+    });
 
-  test('a repository cannot set them: lists in project or local settings, handed over with the rest, change no order', () => {
-    const repository = {
-      ...policy(),
-      project: { prependPlugins: ['b@market'] },
-      local: { appendPlugins: ['a@market'] },
-    };
-    const order = orderMods(repository, [installed('a'), installed('b')]);
-    expect(names(order)).toEqual(['a:user', 'b:user']);
-    expect(order.notes).toEqual([]);
-  });
+    test('a repository cannot set them: lists in project or local settings, handed over with the rest, change no order', () => {
+      const repository = {
+        ...policy(),
+        project: { prependPlugins: ['b@market'] },
+        local: { appendPlugins: ['a@market'] },
+      };
+      const order = orderMods(repository, [installed('a'), installed('b')]);
+      expect(names(order)).toEqual(['a:user', 'b:user']);
+      expect(order.notes).toEqual([]);
+    });
 
-  test('an id listed in both keys is prepended: it runs in the prepend tier, in the prepend order, with no note', () => {
-    const order = orderMods(
-      managed({
-        prependPlugins: ['sec-default@builtin', 'acme-both@acme-tools'],
-        appendPlugins: ['acme-both@acme-tools', 'acme-z@acme-tools'],
-      }),
-      [organizations('acme-z'), organizations('acme-both'), installed('user-mod')],
-    );
-    expect(names(order)).toEqual([
-      'cc-plugin-sec-default:prepend',
-      'acme-both:prepend',
-      'user-mod:user',
-      'acme-z:append',
-    ]);
-    expect(order.notes).toEqual([]);
-    expect(
-      decideModLoad(
+    test('an id listed in both keys is prepended: it runs in the prepend tier, in the prepend order, with no note', () => {
+      const order = orderMods(
         managed({
-          prependPlugins: ['acme-both@acme-tools'],
-          appendPlugins: ['acme-both@acme-tools'],
+          prependPlugins: ['sec-default@builtin', 'acme-both@acme-tools'],
+          appendPlugins: ['acme-both@acme-tools', 'acme-z@acme-tools'],
         }),
-        organizations('acme-both'),
-      ).tier,
-    ).toBe('prepend');
-  });
+        [organizations('acme-z'), organizations('acme-both'), installed('user-mod')],
+      );
+      expect(names(order)).toEqual([
+        'cc-plugin-sec-default:prepend',
+        'acme-both:prepend',
+        'user-mod:user',
+        'acme-z:append',
+      ]);
+      expect(order.notes).toEqual([]);
+      expect(
+        decideModLoad(
+          managed({
+            prependPlugins: ['acme-both@acme-tools'],
+            appendPlugins: ['acme-both@acme-tools'],
+          }),
+          organizations('acme-both'),
+        ).tier,
+      ).toBe('prepend');
+    });
 
-  test('among the mods a user installs, a mod runs before the mods it lists under dependencies (events.md)', () => {
-    const dependent = { ...installed('base'), dependencies: [] };
-    const top = { ...installed('top'), dependencies: ['base'] };
-    expect(names(orderMods(policy(), [dependent, top]))).toEqual(['top:user', 'base:user']);
-  });
+    test('among the mods a user installs, a mod runs before the mods it lists under dependencies (events.md)', () => {
+      const dependent = { ...installed('base'), dependencies: [] };
+      const top = { ...installed('top'), dependencies: ['base'] };
+      expect(names(orderMods(policy(), [dependent, top]))).toEqual(['top:user', 'base:user']);
+    });
 
-  test("the built-in mods run last, after the user's and appended mods", () => {
-    const order = orderMods(managed(), [
-      { ...installed('agents-md'), isBuiltin: true, id: 'agents-md@builtin' },
-      installed('user-mod'),
-    ]);
-    expect(names(order)).toEqual([
-      'cc-plugin-sec-default:prepend',
-      'user-mod:user',
-      'agents-md:builtin',
-    ]);
-  });
-});
+    test("the built-in mods run last, after the user's and appended mods", () => {
+      const order = orderMods(managed(), [
+        { ...installed('agents-md'), isBuiltin: true, id: 'agents-md@builtin' },
+        installed('user-mod'),
+      ]);
+      expect(names(order)).toEqual([
+        'cc-plugin-sec-default:prepend',
+        'user-mod:user',
+        'agents-md:builtin',
+      ]);
+    });
+  },
+);
 
 test('judgment: the variable is trimmed, empty pieces and repeats dropped, relative paths kept, flags first, the process environment before `env` of settings', () => {
   const both = policy({

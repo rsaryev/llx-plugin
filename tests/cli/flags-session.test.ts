@@ -148,7 +148,7 @@ describe('--add-dir', () => {
     planOf({ '--add-dir': ['../apps'], '--setting-sources': sources }, { directories: dirs })
       .addDirLoads;
 
-  spec('cli.flag.--add-dir', () => {
+  spec(['cli.flag.--add-dir', 'permissions.behavior.Working directories.During startup'], () => {
     test('adds each path as a working directory, in the order given', () => {
       expect(add(['../apps', '../lib']).additionalDirectories).toEqual(['../apps', '../lib']);
     });

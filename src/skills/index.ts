@@ -164,4 +164,5 @@ export {
   type ShadowedEntry,
   type YieldedName,
 } from './scan/resolve.ts';
+export { outputStyleSystem } from './output-style-system.ts';
 export { isStrictlyBelow } from './scan/names.ts';

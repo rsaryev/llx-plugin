@@ -25,148 +25,156 @@ const manifestOf = (rest: Record<string, unknown> = {}): PluginManifest => ({
 const CONFLICT =
   'Plugin my-plugin has conflicting manifests: both plugin.json and marketplace entry specify components';
 
-spec('marketplace.entry.strict', () => {
-  describe('plugin.json absent: the entry is the manifest, whatever strict says', () => {
-    const components = {
-      commands: ['./cmds/'],
-      agents: ['./agents/a.md'],
-      skills: ['./skills/'],
-      outputStyles: ['./styles/'],
-      themes: ['./themes/'],
-      hooks: { PostToolUse: [{ matcher: 'Write', hooks: [] }] },
-    };
-
-    test('every component field of the entry applies, with strict true or false', () => {
-      for (const strict of [true, false]) {
-        const result = merge({ strict, ...components });
-        expect(result.issues).toEqual([]);
-        expect(result.manifest).toEqual({ name: 'my-plugin', ...components });
-      }
-    });
-
-    test('mcpServers, lspServers, userConfig and channels apply too', () => {
-      const extra = {
-        mcpServers: { db: { command: 'db-mcp' } },
-        lspServers: { ts: { command: 'tsserver' } },
-        userConfig: {
-          api_token: { type: 'string', title: 'Token', description: 'API token', sensitive: true },
-        },
-        channels: [{ server: 'db' }],
-      } satisfies Partial<PluginManifest>;
-      const result = merge({ ...extra });
-      expect(result.manifest).toEqual({ name: 'my-plugin', ...extra });
-    });
-  });
-
-  describe('plugin.json present and strict true (the default): the entry completes it', () => {
-    test("commands, agents, skills, outputStyles and themes are appended to the manifest's", () => {
-      const result = merge(
-        {
-          commands: ['./more-cmds/'],
-          agents: './agents/b.md',
-          skills: ['./extra-skills/'],
-          outputStyles: ['./terse/'],
-          themes: './night/',
-        },
-        manifestOf({
-          commands: './cmds/',
-          agents: ['./agents/a.md'],
-          skills: './skills/',
-          outputStyles: ['./styles/'],
-          themes: ['./themes/'],
-        }),
-      );
-      expect(result.issues).toEqual([]);
-      expect(result.manifest).toEqual({
-        name: 'my-plugin',
-        commands: ['./cmds/', './more-cmds/'],
-        agents: ['./agents/a.md', './agents/b.md'],
-        skills: ['./skills/', './extra-skills/'],
-        outputStyles: ['./styles/', './terse/'],
-        themes: ['./themes/', './night/'],
-      });
-    });
-
-    test('a field only the entry declares is added; a field only the manifest declares stays', () => {
-      const result = merge({ skills: ['./s/'] }, manifestOf({ agents: ['./agents/a.md'] }));
-      expect(result.manifest).toEqual({
-        name: 'my-plugin',
+spec(
+  ['marketplace.entry.strict', 'manifest.troubleshooting.Plugin <name> has conflicting manifests'],
+  () => {
+    describe('plugin.json absent: the entry is the manifest, whatever strict says', () => {
+      const components = {
+        commands: ['./cmds/'],
         agents: ['./agents/a.md'],
-        skills: ['./s/'],
-      });
-    });
-
-    test("hooks: the entry's matchers for an event replace the manifest's for that event; other events keep theirs", () => {
-      const fromManifest = {
-        PreToolUse: [{ matcher: 'Bash', hooks: [] }],
-        PostToolUse: [{ matcher: 'Edit', hooks: [] }],
+        skills: ['./skills/'],
+        outputStyles: ['./styles/'],
+        themes: ['./themes/'],
+        hooks: { PostToolUse: [{ matcher: 'Write', hooks: [] }] },
       };
-      const fromEntry = { PreToolUse: [{ matcher: 'Write', hooks: [] }], Stop: [{ hooks: [] }] };
-      const result = merge({ hooks: fromEntry }, manifestOf({ hooks: fromManifest }));
-      expect(result.issues).toEqual([]);
-      expect(result.manifest?.hooks).toEqual({
-        PreToolUse: fromEntry.PreToolUse,
-        PostToolUse: fromManifest.PostToolUse,
-        Stop: fromEntry.Stop,
+
+      test('every component field of the entry applies, with strict true or false', () => {
+        for (const strict of [true, false]) {
+          const result = merge({ strict, ...components });
+          expect(result.issues).toEqual([]);
+          expect(result.manifest).toEqual({ name: 'my-plugin', ...components });
+        }
       });
-      expect([...result.replacedHookEvents].toSorted()).toEqual(['PreToolUse', 'Stop']);
+
+      test('mcpServers, lspServers, userConfig and channels apply too', () => {
+        const extra = {
+          mcpServers: { db: { command: 'db-mcp' } },
+          lspServers: { ts: { command: 'tsserver' } },
+          userConfig: {
+            api_token: {
+              type: 'string',
+              title: 'Token',
+              description: 'API token',
+              sensitive: true,
+            },
+          },
+          channels: [{ server: 'db' }],
+        } satisfies Partial<PluginManifest>;
+        const result = merge({ ...extra });
+        expect(result.manifest).toEqual({ name: 'my-plugin', ...extra });
+      });
     });
 
-    test('an entry with no component fields leaves the manifest as it is', () => {
-      const manifest = manifestOf({ commands: ['./cmds/'], hooks: { Stop: [] } });
-      const result = merge({}, manifest);
-      expect(result.manifest).toEqual(manifest);
-      expect(result.replacedHookEvents).toEqual([]);
-    });
-  });
+    describe('plugin.json present and strict true (the default): the entry completes it', () => {
+      test("commands, agents, skills, outputStyles and themes are appended to the manifest's", () => {
+        const result = merge(
+          {
+            commands: ['./more-cmds/'],
+            agents: './agents/b.md',
+            skills: ['./extra-skills/'],
+            outputStyles: ['./terse/'],
+            themes: './night/',
+          },
+          manifestOf({
+            commands: './cmds/',
+            agents: ['./agents/a.md'],
+            skills: './skills/',
+            outputStyles: ['./styles/'],
+            themes: ['./themes/'],
+          }),
+        );
+        expect(result.issues).toEqual([]);
+        expect(result.manifest).toEqual({
+          name: 'my-plugin',
+          commands: ['./cmds/', './more-cmds/'],
+          agents: ['./agents/a.md', './agents/b.md'],
+          skills: ['./skills/', './extra-skills/'],
+          outputStyles: ['./styles/', './terse/'],
+          themes: ['./themes/', './night/'],
+        });
+      });
 
-  describe('plugin.json present and strict false', () => {
-    test('an entry with no component field leaves plugin.json as the manifest', () => {
-      const manifest = manifestOf({ commands: ['./cmds/'] });
-      const result = merge({ strict: false }, manifest);
-      expect(result.issues).toEqual([]);
-      expect(result.manifest).toEqual(manifest);
+      test('a field only the entry declares is added; a field only the manifest declares stays', () => {
+        const result = merge({ skills: ['./s/'] }, manifestOf({ agents: ['./agents/a.md'] }));
+        expect(result.manifest).toEqual({
+          name: 'my-plugin',
+          agents: ['./agents/a.md'],
+          skills: ['./s/'],
+        });
+      });
+
+      test("hooks: the entry's matchers for an event replace the manifest's for that event; other events keep theirs", () => {
+        const fromManifest = {
+          PreToolUse: [{ matcher: 'Bash', hooks: [] }],
+          PostToolUse: [{ matcher: 'Edit', hooks: [] }],
+        };
+        const fromEntry = { PreToolUse: [{ matcher: 'Write', hooks: [] }], Stop: [{ hooks: [] }] };
+        const result = merge({ hooks: fromEntry }, manifestOf({ hooks: fromManifest }));
+        expect(result.issues).toEqual([]);
+        expect(result.manifest?.hooks).toEqual({
+          PreToolUse: fromEntry.PreToolUse,
+          PostToolUse: fromManifest.PostToolUse,
+          Stop: fromEntry.Stop,
+        });
+        expect([...result.replacedHookEvents].toSorted()).toEqual(['PreToolUse', 'Stop']);
+      });
+
+      test('an entry with no component fields leaves the manifest as it is', () => {
+        const manifest = manifestOf({ commands: ['./cmds/'], hooks: { Stop: [] } });
+        const result = merge({}, manifest);
+        expect(result.manifest).toEqual(manifest);
+        expect(result.replacedHookEvents).toEqual([]);
+      });
     });
 
-    test('any of the six component fields is a conflict: the plugin fails to load, with the documented message', () => {
-      const declared: Record<string, unknown>[] = [
-        { commands: ['./c/'] },
-        { agents: ['./a.md'] },
-        { skills: ['./s/'] },
-        { hooks: { Stop: [] } },
-        { outputStyles: ['./o/'] },
-        { themes: ['./t/'] },
-      ];
-      for (const fields of declared) {
-        const result = merge({ strict: false, ...fields }, manifestOf());
-        expect(result.manifest).toBeUndefined();
-        expect(result.issues).toEqual([{ severity: 'error', path: 'plugin', message: CONFLICT }]);
-      }
+    describe('plugin.json present and strict false', () => {
+      test('an entry with no component field leaves plugin.json as the manifest', () => {
+        const manifest = manifestOf({ commands: ['./cmds/'] });
+        const result = merge({ strict: false }, manifest);
+        expect(result.issues).toEqual([]);
+        expect(result.manifest).toEqual(manifest);
+      });
+
+      test('any of the six component fields is a conflict: the plugin fails to load, with the documented message', () => {
+        const declared: Record<string, unknown>[] = [
+          { commands: ['./c/'] },
+          { agents: ['./a.md'] },
+          { skills: ['./s/'] },
+          { hooks: { Stop: [] } },
+          { outputStyles: ['./o/'] },
+          { themes: ['./t/'] },
+        ];
+        for (const fields of declared) {
+          const result = merge({ strict: false, ...fields }, manifestOf());
+          expect(result.manifest).toBeUndefined();
+          expect(result.issues).toEqual([{ severity: 'error', path: 'plugin', message: CONFLICT }]);
+        }
+      });
+
+      test('entry mcpServers, lspServers, userConfig and channels are not component conflicts', () => {
+        const result = merge({ strict: false, mcpServers: { db: { command: 'x' } } }, manifestOf());
+        expect(result.manifest).toEqual(manifestOf());
+        expect(result.issues).toEqual([]);
+      });
+
+      test('the same entry with strict true is not a conflict: the components are appended', () => {
+        const result = merge({ strict: true, commands: ['./c/'] }, manifestOf());
+        expect(result.issues).toEqual([]);
+        expect(result.manifest?.commands).toEqual(['./c/']);
+      });
     });
 
-    test('entry mcpServers, lspServers, userConfig and channels are not component conflicts', () => {
-      const result = merge({ strict: false, mcpServers: { db: { command: 'x' } } }, manifestOf());
-      expect(result.manifest).toEqual(manifestOf());
-      expect(result.issues).toEqual([]);
+    test('the conflict names the plugin by its entry name', () => {
+      const result = mergeEntryWithManifest(
+        entryOf({ name: 'deploy-kit', strict: false, skills: ['./s/'] }),
+        manifestOf({ name: 'deploy-tools' }),
+      );
+      expect(result.issues[0]?.message).toBe(
+        'Plugin deploy-kit has conflicting manifests: both plugin.json and marketplace entry specify components',
+      );
     });
-
-    test('the same entry with strict true is not a conflict: the components are appended', () => {
-      const result = merge({ strict: true, commands: ['./c/'] }, manifestOf());
-      expect(result.issues).toEqual([]);
-      expect(result.manifest?.commands).toEqual(['./c/']);
-    });
-  });
-
-  test('the conflict names the plugin by its entry name', () => {
-    const result = mergeEntryWithManifest(
-      entryOf({ name: 'deploy-kit', strict: false, skills: ['./s/'] }),
-      manifestOf({ name: 'deploy-tools' }),
-    );
-    expect(result.issues[0]?.message).toBe(
-      'Plugin deploy-kit has conflicting manifests: both plugin.json and marketplace entry specify components',
-    );
-  });
-});
+  },
+);
 
 spec('marketplace.entry.strict', () => {
   describe('fields an entry sets but plugin.json outranks', () => {
@@ -186,7 +194,7 @@ spec('marketplace.entry.strict', () => {
   });
 });
 
-spec('marketplace.entry.strict', () => {
+spec(['marketplace.entry.strict', 'marketplace.rule.Hooks in an entry'], () => {
   describe('hooks in an entry', () => {
     test('a file path or an array is accepted by validation and never runs: the load reports "not yet supported in a marketplace entry"', () => {
       for (const hooks of ['./hooks/extra.json', ['./hooks/extra.json'], [{ Stop: [] }]]) {

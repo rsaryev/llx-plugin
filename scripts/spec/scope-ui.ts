@@ -50,6 +50,7 @@ export const UI_SCOPES: readonly PageScope[] = [
     slug: 'behavior',
     skip: [
       [/^(Built-in output styles|Default|Proactive|Concise|Explanatory|Learning)$/, 'builtin'],
+      ['Change your output style', 'ui'],
       ['Choose between an output style and other features', 'advice'],
       NAVIGATION,
     ],

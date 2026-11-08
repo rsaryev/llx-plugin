@@ -2,12 +2,13 @@ import { z } from 'zod';
 import type { ModsNamespaceApi } from '../types.ts';
 import { call, isRecord, parse, type Deps } from '../api/call.ts';
 import { defaultElementTable, type ElementTable } from './elements/table.ts';
-import { RENDER_SITE_NAMES, SURFACES } from '../../protocol/mods-ui-names.ts';
+import { RENDER_SITE_NAMES, SURFACES, type Surface } from '../../protocol/mods-ui-names.ts';
 import { parseOpen } from './panes/open.ts';
 import type { PaneRegistry } from './panes/registry.ts';
 import type { ModInterface } from './ports.ts';
 import type { Invalidator } from './redraw/invalidate.ts';
 import type { ElementTables } from './tables.ts';
+import { clipVscodeStatus, clipVscodeToast } from './keyboard/vscode.ts';
 import { parseToast, type ToastBoard } from './toast.ts';
 
 /** What `$.ui` reaches: the interface a host draws, and what the kit keeps for it. */
@@ -30,6 +31,10 @@ const ASK_TOOL = 'AskUserQuestion';
 export const statusLine = (plugin: string, text: string): string => `⚠ ${plugin}: ${text}`;
 /** `● my-mod: build finished`. */
 export const logLine = (plugin: string, text: string): string => `● ${plugin}: ${text}`;
+
+/** The VS Code panel cuts a status line (interface.md, "Text limits"); the other apps draw it whole. */
+const shownStatus = (surface: Surface, line: string): string =>
+  surface === 'vscode' ? clipVscodeStatus(line) : line;
 
 const asRecord = (value: unknown): Readonly<Record<string, unknown>> =>
   isRecord(value) ? value : {};
@@ -79,7 +84,9 @@ function toast(deps: Deps, parts: UiParts, event: unknown): void {
     return;
   }
   deps.debug(`$.ui.toast (${deps.plugin}): ${parsed.toast.text}`);
-  parts.toasts.show(deps.plugin, parsed.toast);
+  const clipped =
+    parts.iface.surface() === 'vscode' ? clipVscodeToast(parsed.toast.text) : parsed.toast.text;
+  parts.toasts.show(deps.plugin, { ...parsed.toast, text: clipped });
 }
 
 /** The first two members of `$.ui` that touch panes: `open`, `close`, `panes`. */
@@ -141,7 +148,12 @@ function showMembers(deps: Deps, parts: UiParts) {
     status: async (...args: readonly unknown[]) =>
       call(deps, 'ui.status', text('$.ui.status', args[0]), (e) =>
         Promise.resolve(
-          iface.status(statusLine(deps.plugin, parse('$.ui.status', textEvent, e).text)),
+          iface.status(
+            shownStatus(
+              iface.surface(),
+              statusLine(deps.plugin, parse('$.ui.status', textEvent, e).text),
+            ),
+          ),
         ),
       ),
     log: async (...args: readonly unknown[]) =>

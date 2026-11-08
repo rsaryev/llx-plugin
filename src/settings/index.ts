@@ -63,3 +63,4 @@ export {
   type SettingsLocations,
   type SettingsLocationsInput,
 } from './locations.ts';
+export * from './host-switches.ts';

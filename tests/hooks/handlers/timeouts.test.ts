@@ -69,7 +69,7 @@ const rewake = (timeout?: number) =>
 const sessionEnd = (timeout?: number, source = settingsSource) =>
   handlerOf('SessionEnd', 'command', timeout, { source });
 
-spec('hooks.handler.common.timeout', () => {
+spec(['hooks.handler.common.timeout', 'hooks.behavior.Prompt hook configuration.timeout'], () => {
   describe('defaults', () => {
     const DEFAULTS: readonly (readonly [HookHandlerType, number])[] = [
       ['command', 600_000],

@@ -133,3 +133,5 @@ export {
   type StartupFetchFacts,
   type Surface,
 } from './applicability.ts';
+export { approvalItems, type ApprovalItem, type ApprovalKind } from './approval.ts';
+export * from './limits.ts';

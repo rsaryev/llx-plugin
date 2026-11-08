@@ -4,6 +4,26 @@
 
 ### Added
 
+- Reach 100% of the in-scope requirements (2713 of 2713): host switches (`CLAUDE_CODE_*` variables,
+  telemetry opt-out), channel contract and permission relay, shell redirection checks, marketplace
+  add failures, name conflicts, relevance hints and telemetry names, `plugin list`/`details`/`validate`
+  builders, mods keyboard and VS Code rules, managed-settings limits, seed registry and the managed
+  approval-dialog list. Judgments are recorded in `spec/judgments.md`.
+- Enforce managed hook protection in the chain before user matchers/callbacks, retain original
+  metadata across trusted rewrites, and expose the documented per-mod guarded-hook notes.
+  Built-in and organization tiers keep access. Add lifecycle and readonly-origin regressions.
+- Supply the canonical, fail-closed settings merge by default to the mods settings bridge.
+  Add full-artifact agent skill preloads, output-style system-prompt parts, LSP process preflight
+  plans and debug-only empty-command-directory diagnostics.
+- Audit the owner-approved plugin-host scope separately from native Claude Code UI, services,
+  scheduling/model runtime and SDK-client behavior; publish every filtered table row in the
+  generated exclusion log and regression-test that new plugin sections stay in scope.
+- Plugin release-tag planning and completion reporting, including validation, version agreement,
+  force, dry-run, annotated messages, remote selection and local-tag preservation after a failed push.
+- Interactive user-config dialog plans, the published default plugin trust warning, and monitor
+  release gating and shutdown decisions. Add spec proofs for saved configuration, trust refusals,
+  manifest prose and documented validator diagnostics without changing the requirement registry.
+
 - Repository plugins and workspace trust: `decideRepositoryPlugin` (the folder itself must be trusted;
   a parent's trust and `-p` never suffice; `~/.claude/skills/` is exempt; the primary directory, a
   worktree's main checkout and a managed block), `loadRepositoryPlugin` and its component limits (MCP

@@ -57,72 +57,78 @@ function editable(
   };
 }
 
-spec('mods.command.claude --plugin-dir <directory>', () => {
-  const register = (on: unknown): void => void on;
+spec(
+  ['mods.command.claude --plugin-dir <directory>', 'environment.host.CLAUDE_CODE_PLUGIN_DIR_WATCH'],
+  () => {
+    const register = (on: unknown): void => void on;
 
-  test('loads a plugin directory for one session: the flag names are loaded, repeating the flag loads several', async () => {
-    const flags = policy({ flags: { pluginDirs: ['./first-mod', './second-mod'] } });
-    const { host } = session({ 'first-mod': register, 'second-mod': register }, { policy: flags });
-    expect(host.pluginDirs()).toEqual(['./first-mod', './second-mod']);
-    const report = await host.load([
-      modPlugin(inline('first-mod'), register),
-      modPlugin(inline('second-mod'), register),
-    ]);
-    expect(report.loaded.map((mod) => mod.id)).toEqual(['first-mod@inline', 'second-mod@inline']);
-  });
+    test('loads a plugin directory for one session: the flag names are loaded, repeating the flag loads several', async () => {
+      const flags = policy({ flags: { pluginDirs: ['./first-mod', './second-mod'] } });
+      const { host } = session(
+        { 'first-mod': register, 'second-mod': register },
+        { policy: flags },
+      );
+      expect(host.pluginDirs()).toEqual(['./first-mod', './second-mod']);
+      const report = await host.load([
+        modPlugin(inline('first-mod'), register),
+        modPlugin(inline('second-mod'), register),
+      ]);
+      expect(report.loaded.map((mod) => mod.id)).toEqual(['first-mod@inline', 'second-mod@inline']);
+    });
 
-  test('reloads its hooks module when you save: register runs again, the new hooks answer, and session.start fires for it again', async () => {
-    const mod = editable();
-    await mod.host.load([mod.plugin]);
-    expect(await mod.fire()).toEqual({ result: 'v1' });
-    mod.state.version = 'v2';
-    const outcome = await mod.host.reloadMod('first-mod');
-    expect(outcome?.line).toBe('first-mod: reloaded; hooks: session.start,tool.call');
-    expect(await mod.fire()).toEqual({ result: 'v2' });
-    expect(mod.starts).toEqual(['v1', 'v2']);
-    expect(mod.host.active().map((loaded) => loaded.name)).toEqual(['first-mod']);
-    expect(mod.debug).toContain(outcome?.line ?? '');
-  });
+    test('reloads its hooks module when you save: register runs again, the new hooks answer, and session.start fires for it again', async () => {
+      const mod = editable();
+      await mod.host.load([mod.plugin]);
+      expect(await mod.fire()).toEqual({ result: 'v1' });
+      mod.state.version = 'v2';
+      const outcome = await mod.host.reloadMod('first-mod');
+      expect(outcome?.line).toBe('first-mod: reloaded; hooks: session.start,tool.call');
+      expect(await mod.fire()).toEqual({ result: 'v2' });
+      expect(mod.starts).toEqual(['v1', 'v2']);
+      expect(mod.host.active().map((loaded) => loaded.name)).toEqual(['first-mod']);
+      expect(mod.debug).toContain(outcome?.line ?? '');
+    });
 
-  test('a save that breaks the module keeps the version loaded before and says `reload failed, the previous version stays loaded:`', async () => {
-    const mod = editable();
-    await mod.host.load([mod.plugin]);
-    mod.state.version = 'v2';
-    mod.state.source = 'export function register(on) { ';
-    const outcome = await mod.host.reloadMod('first-mod');
-    expect(outcome?.line).toMatch(
-      /^first-mod: reload failed, the previous version stays loaded: hooks module did not load: /,
-    );
-    expect(await mod.fire()).toEqual({ result: 'v1' });
-    expect(mod.starts).toEqual(['v1']);
-    expect(mod.host.active().map((loaded) => loaded.name)).toEqual(['first-mod']);
-  });
+    test('a save that breaks the module keeps the version loaded before and says `reload failed, the previous version stays loaded:`', async () => {
+      const mod = editable();
+      await mod.host.load([mod.plugin]);
+      mod.state.version = 'v2';
+      mod.state.source = 'export function register(on) { ';
+      const outcome = await mod.host.reloadMod('first-mod');
+      expect(outcome?.line).toMatch(
+        /^first-mod: reload failed, the previous version stays loaded: hooks module did not load: /,
+      );
+      expect(await mod.fire()).toEqual({ result: 'v1' });
+      expect(mod.starts).toEqual(['v1']);
+      expect(mod.host.active().map((loaded) => loaded.name)).toEqual(['first-mod']);
+    });
 
-  test('a module that parses but throws when it runs keeps the previous version too', async () => {
-    const mod = editable();
-    await mod.host.load([mod.plugin]);
-    mod.state.version = 'v2';
-    mod.state.breaksOnce = true;
-    const outcome = await mod.host.reloadMod('first-mod');
-    expect(outcome?.line).toContain('reload failed, the previous version stays loaded:');
-    expect(outcome?.line).toContain('the module threw while it loaded');
-    expect(await mod.fire()).toEqual({ result: 'v2' });
-  });
+    test('a module that parses but throws when it runs keeps the previous version too', async () => {
+      const mod = editable();
+      await mod.host.load([mod.plugin]);
+      mod.state.version = 'v2';
+      mod.state.breaksOnce = true;
+      const outcome = await mod.host.reloadMod('first-mod');
+      expect(outcome?.line).toContain('reload failed, the previous version stays loaded:');
+      expect(outcome?.line).toContain('the module threw while it loaded');
+      expect(await mod.fire()).toEqual({ result: 'v2' });
+    });
 
-  test('a mod the host does not know is not reloaded', async () => {
-    const mod = editable();
-    await mod.host.load([mod.plugin]);
-    expect(await mod.host.reloadMod('other-mod')).toBeUndefined();
-  });
+    test('a mod the host does not know is not reloaded', async () => {
+      const mod = editable();
+      await mod.host.load([mod.plugin]);
+      expect(await mod.host.reloadMod('other-mod')).toBeUndefined();
+    });
 
-  test('an interactive session watches a plugin directory; a non-interactive one only with CLAUDE_CODE_PLUGIN_DIR_WATCH=1', () => {
-    const flags = { pluginDirs: ['./first-mod'] };
-    expect(session({}, { policy: policy({ flags }) }).host.watchesPluginDirs(true)).toBe(true);
-    expect(session({}, { policy: policy({ flags }) }).host.watchesPluginDirs(false)).toBe(false);
-    const watched = policy({ flags, env: { CLAUDE_CODE_PLUGIN_DIR_WATCH: '1' } });
-    expect(session({}, { policy: watched }).host.watchesPluginDirs(false)).toBe(true);
-  });
-});
+    test('an interactive session watches a plugin directory; a non-interactive one only with CLAUDE_CODE_PLUGIN_DIR_WATCH=1', () => {
+      const flags = { pluginDirs: ['./first-mod'] };
+      expect(session({}, { policy: policy({ flags }) }).host.watchesPluginDirs(true)).toBe(true);
+      expect(session({}, { policy: policy({ flags }) }).host.watchesPluginDirs(false)).toBe(false);
+      const watched = policy({ flags, env: { CLAUDE_CODE_PLUGIN_DIR_WATCH: '1' } });
+      expect(session({}, { policy: watched }).host.watchesPluginDirs(false)).toBe(true);
+    });
+  },
+);
 
 /** What the session does when a file of a mod is saved: it reloads the mods of the directories it watches. */
 const onSave = async (mod: ReturnType<typeof editable>, name: string): Promise<void> => {

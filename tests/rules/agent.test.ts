@@ -29,85 +29,95 @@ const BEHAVIORS = ['allow', 'ask', 'deny'] as const;
 const verdict = (rules: ReturnType<typeof parsed>[], input: AgentInput) =>
   evaluateRules(rules, call('Agent', input), matchContext).behavior;
 
-spec('tools.tool.Agent', () => {
-  test('Agent(Explore) matches the Explore subagent and no other', () => {
-    for (const behavior of BEHAVIORS) {
-      expect(covers(behavior, 'Agent(Explore)', 'Agent', agent({ subagent_type: 'Explore' }))).toBe(
-        true,
-      );
-      expect(covers(behavior, 'Agent(Explore)', 'Agent', agent({ subagent_type: 'Plan' }))).toBe(
+spec(
+  [
+    'tools.tool.Agent',
+    'permissions.behavior.Agent (subagents).Agent(Explore)',
+    'permissions.behavior.Agent (subagents).Agent(Plan)',
+    'permissions.behavior.Agent (subagents).Agent(my-custom-agent)',
+  ],
+  () => {
+    test('Agent(Explore) matches the Explore subagent and no other', () => {
+      for (const behavior of BEHAVIORS) {
+        expect(
+          covers(behavior, 'Agent(Explore)', 'Agent', agent({ subagent_type: 'Explore' })),
+        ).toBe(true);
+        expect(covers(behavior, 'Agent(Explore)', 'Agent', agent({ subagent_type: 'Plan' }))).toBe(
+          false,
+        );
+        expect(
+          covers(behavior, 'Agent(Explore)', 'Agent', agent({ subagent_type: 'general-purpose' })),
+        ).toBe(false);
+      }
+    });
+
+    test('Agent(Plan) matches the Plan subagent', () => {
+      expect(covers('deny', 'Agent(Plan)', 'Agent', agent({ subagent_type: 'Plan' }))).toBe(true);
+      expect(covers('deny', 'Agent(Plan)', 'Agent', agent({ subagent_type: 'Explore' }))).toBe(
         false,
       );
-      expect(
-        covers(behavior, 'Agent(Explore)', 'Agent', agent({ subagent_type: 'general-purpose' })),
-      ).toBe(false);
-    }
-  });
-
-  test('Agent(Plan) matches the Plan subagent', () => {
-    expect(covers('deny', 'Agent(Plan)', 'Agent', agent({ subagent_type: 'Plan' }))).toBe(true);
-    expect(covers('deny', 'Agent(Plan)', 'Agent', agent({ subagent_type: 'Explore' }))).toBe(false);
-  });
-
-  test('Agent(my-custom-agent) matches a custom subagent named my-custom-agent', () => {
-    expect(
-      covers(
-        'deny',
-        'Agent(my-custom-agent)',
-        'Agent',
-        agent({ subagent_type: 'my-custom-agent' }),
-      ),
-    ).toBe(true);
-    expect(
-      covers('deny', 'Agent(my-custom-agent)', 'Agent', agent({ subagent_type: 'my-custom' })),
-    ).toBe(false);
-    expect(
-      covers(
-        'deny',
-        'Agent(my-custom-agent)',
-        'Agent',
-        agent({ subagent_type: 'my-custom-agent-2' }),
-      ),
-    ).toBe(false);
-  });
-
-  test('the documented deny list disables both subagents and leaves the rest', () => {
-    const rules = [parsed('Agent(Explore)'), parsed('Agent(my-custom-agent)')];
-    expect(verdict(rules, agent({ subagent_type: 'Explore' }))).toBe('deny');
-    expect(verdict(rules, agent({ subagent_type: 'my-custom-agent' }))).toBe('deny');
-    expect(verdict(rules, agent({ subagent_type: 'Plan' }))).toBe(undefined);
-  });
-
-  test('a bare Agent rule covers every subagent', () => {
-    expect(covers('deny', 'Agent', 'Agent', agent({ subagent_type: 'Plan' }))).toBe(true);
-    expect(covers('deny', 'Agent', 'Agent', agent())).toBe(true);
-  });
-
-  test('an Agent rule never covers another tool, even one with the same field', () => {
-    expect(
-      covers('deny', 'Agent(Explore)', 'Bash', { command: 'ls', subagent_type: 'Explore' }),
-    ).toBe(false);
-  });
-
-  test('it is the same rule on the command line: --disallowedTools "Agent(Explore)"', () => {
-    const { rule, issues } = parseRule('Agent(Explore)', {
-      behavior: 'deny',
-      source: { kind: 'cli' },
     });
-    expect(issues).toEqual([]);
-    expect(rule?.specifier).toEqual({ form: 'text', pattern: 'Explore' });
-    const cliRules = rule === undefined ? [] : [rule];
-    expect(verdict(cliRules, agent({ subagent_type: 'Explore' }))).toBe('deny');
-    expect(verdict(cliRules, agent({ subagent_type: 'Plan' }))).toBe(undefined);
-  });
 
-  test('Agent(fork) in permissions.deny stops forks and leaves the other subagents', () => {
-    const rules = [parsed('Agent(fork)')];
-    expect(verdict(rules, agent({ subagent_type: 'fork' }))).toBe('deny');
-    expect(verdict(rules, agent({ subagent_type: 'Explore' }))).toBe(undefined);
-    expect(verdict(rules, agent({ subagent_type: 'forked' }))).toBe(undefined);
-  });
-});
+    test('Agent(my-custom-agent) matches a custom subagent named my-custom-agent', () => {
+      expect(
+        covers(
+          'deny',
+          'Agent(my-custom-agent)',
+          'Agent',
+          agent({ subagent_type: 'my-custom-agent' }),
+        ),
+      ).toBe(true);
+      expect(
+        covers('deny', 'Agent(my-custom-agent)', 'Agent', agent({ subagent_type: 'my-custom' })),
+      ).toBe(false);
+      expect(
+        covers(
+          'deny',
+          'Agent(my-custom-agent)',
+          'Agent',
+          agent({ subagent_type: 'my-custom-agent-2' }),
+        ),
+      ).toBe(false);
+    });
+
+    test('the documented deny list disables both subagents and leaves the rest', () => {
+      const rules = [parsed('Agent(Explore)'), parsed('Agent(my-custom-agent)')];
+      expect(verdict(rules, agent({ subagent_type: 'Explore' }))).toBe('deny');
+      expect(verdict(rules, agent({ subagent_type: 'my-custom-agent' }))).toBe('deny');
+      expect(verdict(rules, agent({ subagent_type: 'Plan' }))).toBe(undefined);
+    });
+
+    test('a bare Agent rule covers every subagent', () => {
+      expect(covers('deny', 'Agent', 'Agent', agent({ subagent_type: 'Plan' }))).toBe(true);
+      expect(covers('deny', 'Agent', 'Agent', agent())).toBe(true);
+    });
+
+    test('an Agent rule never covers another tool, even one with the same field', () => {
+      expect(
+        covers('deny', 'Agent(Explore)', 'Bash', { command: 'ls', subagent_type: 'Explore' }),
+      ).toBe(false);
+    });
+
+    test('it is the same rule on the command line: --disallowedTools "Agent(Explore)"', () => {
+      const { rule, issues } = parseRule('Agent(Explore)', {
+        behavior: 'deny',
+        source: { kind: 'cli' },
+      });
+      expect(issues).toEqual([]);
+      expect(rule?.specifier).toEqual({ form: 'text', pattern: 'Explore' });
+      const cliRules = rule === undefined ? [] : [rule];
+      expect(verdict(cliRules, agent({ subagent_type: 'Explore' }))).toBe('deny');
+      expect(verdict(cliRules, agent({ subagent_type: 'Plan' }))).toBe(undefined);
+    });
+
+    test('Agent(fork) in permissions.deny stops forks and leaves the other subagents', () => {
+      const rules = [parsed('Agent(fork)')];
+      expect(verdict(rules, agent({ subagent_type: 'fork' }))).toBe('deny');
+      expect(verdict(rules, agent({ subagent_type: 'Explore' }))).toBe(undefined);
+      expect(verdict(rules, agent({ subagent_type: 'forked' }))).toBe(undefined);
+    });
+  },
+);
 
 spec('tools.input.Agent.subagent_type', () => {
   test('the name rule reads subagent_type', () => {

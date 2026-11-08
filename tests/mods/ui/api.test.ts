@@ -44,171 +44,185 @@ const stub = (answer: (question: string) => string | undefined) =>
       : { result: { answers: { [question]: given } } };
   });
 
-spec('mods.api.$.ui', () => {
-  test('$.ui has exactly the methods of the reference table', async () => {
-    const { h } = await setup();
-    expectMethods(h.api.ui, MODS_API.ui);
-    expect(Object.keys(h.api.ui)).toHaveLength(16);
-  });
+spec(
+  [
+    'mods.api.$.ui',
+    'mods.apiGuide.Show something without starting a turn.$.ui.status(text)',
+    'mods.apiGuide.Show something without starting a turn.$.ui.log(text)',
+    'mods.apiGuide.Show something without starting a turn.$.ui.notify(text)',
+    'mods.apiGuide.Show something without starting a turn.refused',
+  ],
+  () => {
+    test('$.ui has exactly the methods of the reference table', async () => {
+      const { h } = await setup();
+      expectMethods(h.api.ui, MODS_API.ui);
+      expect(Object.keys(h.api.ui)).toHaveLength(16);
+    });
 
-  test('$.ui.status puts one line under the prompt that starts with the warning sign and the mod`s name', async () => {
-    const { h, called } = await setup({}, 'my-mod');
-    await h.api.ui.status('checks: 3 passing');
-    expect(called('status')[0]?.args).toEqual(['⚠ my-mod: checks: 3 passing']);
-  });
+    test('$.ui.status puts one line under the prompt that starts with the warning sign and the mod`s name', async () => {
+      const { h, called } = await setup({}, 'my-mod');
+      await h.api.ui.status('checks: 3 passing');
+      expect(called('status')[0]?.args).toEqual(['⚠ my-mod: checks: 3 passing']);
+    });
 
-  test('$.ui.log adds a dim transcript line that starts with the bullet and the mod`s name', async () => {
-    const { h, called } = await setup({}, 'my-mod');
-    await h.api.ui.log('build finished');
-    expect(called('log')[0]?.args).toEqual(['● my-mod: build finished']);
-  });
+    test('$.ui.log adds a dim transcript line that starts with the bullet and the mod`s name', async () => {
+      const { h, called } = await setup({}, 'my-mod');
+      await h.api.ui.log('build finished');
+      expect(called('log')[0]?.args).toEqual(['● my-mod: build finished']);
+    });
 
-  test('$.ui.notify uses the mod`s name as its title unless a non-empty { title } is passed, shown as given', async () => {
-    const { h, called } = await setup({}, 'my-mod');
-    await h.api.ui.notify('Turn finished');
-    await h.api.ui.notify('Turn finished', { title: 'Custom Title ' });
-    await h.api.ui.notify('Turn finished', { title: '' });
-    expect(called('notify').map((c) => c.args[0])).toEqual([
-      { text: 'Turn finished', title: 'my-mod' },
-      { text: 'Turn finished', title: 'Custom Title ' },
-      { text: 'Turn finished', title: 'my-mod' },
-    ]);
-  });
+    test('$.ui.notify uses the mod`s name as its title unless a non-empty { title } is passed, shown as given', async () => {
+      const { h, called } = await setup({}, 'my-mod');
+      await h.api.ui.notify('Turn finished');
+      await h.api.ui.notify('Turn finished', { title: 'Custom Title ' });
+      await h.api.ui.notify('Turn finished', { title: '' });
+      expect(called('notify').map((c) => c.args[0])).toEqual([
+        { text: 'Turn finished', title: 'my-mod' },
+        { text: 'Turn finished', title: 'Custom Title ' },
+        { text: 'Turn finished', title: 'my-mod' },
+      ]);
+    });
 
-  test('$.ui.notify is refused when another mod`s hook answered in Claude Code`s place without sending, and rejects on { deny }', async () => {
-    const { h, called } = await setup();
-    await h.mod('quiet', 'prepend', [
-      fn('ui.notify', (_$, e, next) =>
-        e.text === 'secret'
-          ? { deny: 'no' }
-          : e.text === 'mine'
-            ? { value: { isSent: true, channel: 'x' } }
-            : next(e),
-      ),
-    ]);
-    expect(await h.api.ui.notify('mine')).toEqual({ isSent: false, reason: 'refused' });
-    expect(called('notify')).toHaveLength(0);
-    expect(await rejection(h.api.ui.notify('secret'))).toContain('no');
-    expect(await rejection(h.api.ui.notify(3))).toContain('$.ui.notify');
-  });
-
-  describe('$.ui.ask', () => {
-    test('the question reaches mods as a tool.call of AskUserQuestion with the question and the options, and the answer is read from result.answers', async () => {
+    test('$.ui.notify is refused when another mod`s hook answered in Claude Code`s place without sending, and rejects on { deny }', async () => {
       const { h, called } = await setup();
-      const seen: unknown[] = [];
-      await h.mod('stub', 'prepend', [
-        fn(
-          'tool.call',
-          (_$, e) => (seen.push(e), { result: { answers: { 'Run this command? ls': 'Run it' } } }),
+      await h.mod('quiet', 'prepend', [
+        fn('ui.notify', (_$, e, next) =>
+          e.text === 'secret'
+            ? { deny: 'no' }
+            : e.text === 'mine'
+              ? { value: { isSent: true, channel: 'x' } }
+              : next(e),
         ),
       ]);
-      expect(await h.api.ui.ask('Run this command? ls', ['Run it', 'Refuse'])).toBe('Run it');
-      expect(seen).toMatchObject([
-        {
-          tool: 'AskUserQuestion',
-          questions: [
-            {
-              question: 'Run this command? ls',
-              options: [{ label: 'Run it' }, { label: 'Refuse' }],
-            },
-          ],
-        },
-      ]);
-      expect(called('ask')).toHaveLength(0);
+      expect(await h.api.ui.notify('mine')).toEqual({ isSent: false, reason: 'refused' });
+      expect(called('notify')).toHaveLength(0);
+      expect(await rejection(h.api.ui.notify('secret'))).toContain('no');
+      expect(await rejection(h.api.ui.notify(3))).toContain('$.ui.notify');
     });
 
-    test('a typed answer comes back as the typed text', async () => {
-      const { h } = await setup();
-      await h.mod('stub', 'prepend', [stub(() => 'something else')]);
-      expect(await h.api.ui.ask('Run it?', ['Run it', 'Refuse'])).toBe('something else');
+    describe('$.ui.ask', () => {
+      test('the question reaches mods as a tool.call of AskUserQuestion with the question and the options, and the answer is read from result.answers', async () => {
+        const { h, called } = await setup();
+        const seen: unknown[] = [];
+        await h.mod('stub', 'prepend', [
+          fn(
+            'tool.call',
+            (_$, e) => (
+              seen.push(e),
+              { result: { answers: { 'Run this command? ls': 'Run it' } } }
+            ),
+          ),
+        ]);
+        expect(await h.api.ui.ask('Run this command? ls', ['Run it', 'Refuse'])).toBe('Run it');
+        expect(seen).toMatchObject([
+          {
+            tool: 'AskUserQuestion',
+            questions: [
+              {
+                question: 'Run this command? ls',
+                options: [{ label: 'Run it' }, { label: 'Refuse' }],
+              },
+            ],
+          },
+        ]);
+        expect(called('ask')).toHaveLength(0);
+      });
+
+      test('a typed answer comes back as the typed text', async () => {
+        const { h } = await setup();
+        await h.mod('stub', 'prepend', [stub(() => 'something else')]);
+        expect(await h.api.ui.ask('Run it?', ['Run it', 'Refuse'])).toBe('something else');
+      });
+
+      test('with no hook answering, the dialog of the host is asked with the question and the options', async () => {
+        const { h, called } = await setup();
+        await h.api.ui.ask('Which?', ['a', 'b']);
+        expect(called('ask')[0]?.args).toEqual([{ question: 'Which?', options: ['a', 'b'] }]);
+      });
+
+      test('it rejects when the question is dismissed or Chat about this is picked: the host rejects, or no answer comes back', async () => {
+        const dismissed = await setup({ ask: () => Promise.reject(new Error('dismissed')) });
+        expect(await rejection(dismissed.h.api.ui.ask('q', ['a']))).toBe('dismissed');
+        const chat = await setup();
+        await chat.h.mod('stub', 'prepend', [stub(() => undefined)]);
+        expect(await rejection(chat.h.api.ui.ask('q', ['a']))).toContain('$.ui.ask');
+      });
+
+      test('a call that is not a question is passed on by a stub that checks e.tool', async () => {
+        const { h } = await setup();
+        await h.mod('stub', 'prepend', [stub(() => 'x')]);
+        expect(await rejection(h.api.ui.ask(3, []))).toContain('$.ui.ask');
+      });
     });
 
-    test('with no hook answering, the dialog of the host is asked with the question and the options', async () => {
+    test('$.ui.copy, $.ui.selection, $.ui.notice, $.ui.blit, $.ui.focus and $.ui.scroll reach the host with what the hooks left', async () => {
       const { h, called } = await setup();
-      await h.api.ui.ask('Which?', ['a', 'b']);
-      expect(called('ask')[0]?.args).toEqual([{ question: 'Which?', options: ['a', 'b'] }]);
+      await h.api.ui.copy('text');
+      await h.api.ui.selection();
+      await h.api.ui.blit({ requestId: 'heat', key: 'grid', columns: 3, rows: 2, cells: 'AAAA' });
+      await h.api.ui.focus({ id: 'hello-tabs' });
+      await h.api.ui.scroll({ id: 'hello-tabs', offset: 4 });
+      await h.api.ui.notice({ text: 'n' });
+      expect(called('copy')[0]?.args).toEqual(['text']);
+      expect(called('selection')).toHaveLength(1);
+      expect(called('blit')[0]?.args).toEqual([
+        { requestId: 'heat', key: 'grid', columns: 3, rows: 2, cells: 'AAAA' },
+      ]);
+      expect(called('focus')[0]?.args).toEqual([{ id: 'hello-tabs' }]);
+      expect(called('scroll')[0]?.args).toEqual([{ id: 'hello-tabs', offset: 4 }]);
+      expect(called('notice')[0]?.args).toEqual([{ text: 'n' }]);
     });
 
-    test('it rejects when the question is dismissed or Chat about this is picked: the host rejects, or no answer comes back', async () => {
-      const dismissed = await setup({ ask: () => Promise.reject(new Error('dismissed')) });
-      expect(await rejection(dismissed.h.api.ui.ask('q', ['a']))).toBe('dismissed');
-      const chat = await setup();
-      await chat.h.mod('stub', 'prepend', [stub(() => undefined)]);
-      expect(await rejection(chat.h.api.ui.ask('q', ['a']))).toContain('$.ui.ask');
+    test('each call is an event named ns.method: a hook before the mod sees it, can rewrite it with next, or refuse it with { deny }', async () => {
+      const { h, called } = await setup();
+      const seen: unknown[] = [];
+      await h.mod('spy', 'prepend', [
+        fn(
+          'ui.status',
+          (_$, e, next) => (seen.push(['status', e]), next({ ...e, text: 'rewritten' })),
+        ),
+        fn('ui.log', (_$, e) => (seen.push(['log', e]), { deny: 'logs are off' })),
+        fn('ui.copy', (_$, e, next) => (seen.push(['copy', e]), next(e))),
+      ]);
+      await h.api.ui.status('original');
+      expect(await rejection(h.api.ui.log('x'))).toContain('logs are off');
+      await h.api.ui.copy('c');
+      expect(seen).toEqual([
+        ['status', { text: 'original' }],
+        ['log', { text: 'x' }],
+        ['copy', { text: 'c' }],
+      ]);
+      expect(called('status')[0]?.args).toEqual(['⚠ my-mod: rewritten']);
+      expect(called('log')).toHaveLength(0);
     });
 
-    test('a call that is not a question is passed on by a stub that checks e.tool', async () => {
+    test('$.ui.panes lists the panes that are open', async () => {
       const { h } = await setup();
-      await h.mod('stub', 'prepend', [stub(() => 'x')]);
-      expect(await rejection(h.api.ui.ask(3, []))).toContain('$.ui.ask');
+      await h.api.ui.open({ id: 'one', title: 'One' });
+      await h.api.ui.open({ id: 'two' });
+      expect(await h.api.ui.panes()).toEqual([
+        { id: 'one', title: 'One', isPlaced: true },
+        { id: 'two', title: undefined, isPlaced: true },
+      ]);
+      await h.api.ui.close({ id: 'one' });
+      expect(await h.api.ui.panes()).toEqual([{ id: 'two', title: undefined, isPlaced: true }]);
     });
-  });
 
-  test('$.ui.copy, $.ui.selection, $.ui.notice, $.ui.blit, $.ui.focus and $.ui.scroll reach the host with what the hooks left', async () => {
-    const { h, called } = await setup();
-    await h.api.ui.copy('text');
-    await h.api.ui.selection();
-    await h.api.ui.blit({ requestId: 'heat', key: 'grid', columns: 3, rows: 2, cells: 'AAAA' });
-    await h.api.ui.focus({ id: 'hello-tabs' });
-    await h.api.ui.scroll({ id: 'hello-tabs', offset: 4 });
-    await h.api.ui.notice({ text: 'n' });
-    expect(called('copy')[0]?.args).toEqual(['text']);
-    expect(called('selection')).toHaveLength(1);
-    expect(called('blit')[0]?.args).toEqual([
-      { requestId: 'heat', key: 'grid', columns: 3, rows: 2, cells: 'AAAA' },
-    ]);
-    expect(called('focus')[0]?.args).toEqual([{ id: 'hello-tabs' }]);
-    expect(called('scroll')[0]?.args).toEqual([{ id: 'hello-tabs', offset: 4 }]);
-    expect(called('notice')[0]?.args).toEqual([{ text: 'n' }]);
-  });
+    test('$.ui.invalidate takes ui.render, and nothing else', async () => {
+      const { h, called } = await setup();
+      await h.api.ui.invalidate('ui.render');
+      expect(called('redraw')).toHaveLength(1);
+      expect(await rejection(h.api.ui.invalidate('ui.other'))).toBe(
+        "$.ui.invalidate: takes 'ui.render'",
+      );
+    });
 
-  test('each call is an event named ns.method: a hook before the mod sees it, can rewrite it with next, or refuse it with { deny }', async () => {
-    const { h, called } = await setup();
-    const seen: unknown[] = [];
-    await h.mod('spy', 'prepend', [
-      fn(
-        'ui.status',
-        (_$, e, next) => (seen.push(['status', e]), next({ ...e, text: 'rewritten' })),
-      ),
-      fn('ui.log', (_$, e) => (seen.push(['log', e]), { deny: 'logs are off' })),
-      fn('ui.copy', (_$, e, next) => (seen.push(['copy', e]), next(e))),
-    ]);
-    await h.api.ui.status('original');
-    expect(await rejection(h.api.ui.log('x'))).toContain('logs are off');
-    await h.api.ui.copy('c');
-    expect(seen).toEqual([
-      ['status', { text: 'original' }],
-      ['log', { text: 'x' }],
-      ['copy', { text: 'c' }],
-    ]);
-    expect(called('status')[0]?.args).toEqual(['⚠ my-mod: rewritten']);
-    expect(called('log')).toHaveLength(0);
-  });
-
-  test('$.ui.panes lists the panes that are open', async () => {
-    const { h } = await setup();
-    await h.api.ui.open({ id: 'one', title: 'One' });
-    await h.api.ui.open({ id: 'two' });
-    expect(await h.api.ui.panes()).toEqual([
-      { id: 'one', title: 'One', isPlaced: true },
-      { id: 'two', title: undefined, isPlaced: true },
-    ]);
-    await h.api.ui.close({ id: 'one' });
-    expect(await h.api.ui.panes()).toEqual([{ id: 'two', title: undefined, isPlaced: true }]);
-  });
-
-  test('$.ui.invalidate takes ui.render, and nothing else', async () => {
-    const { h, called } = await setup();
-    await h.api.ui.invalidate('ui.render');
-    expect(called('redraw')).toHaveLength(1);
-    expect(await rejection(h.api.ui.invalidate('ui.other'))).toBe(
-      "$.ui.invalidate: takes 'ui.render'",
-    );
-  });
-
-  test('$.ui.resolve(e) needs the event of a ui.render hook', async () => {
-    const { h } = await setup();
-    expect(() => h.api.ui.resolve({})).toThrow('$.ui.resolve: takes the event of a ui.render hook');
-    expect(() => h.api.ui.resolve({ component: 'Nope', surface: 'terminal' })).toThrow();
-  });
-});
+    test('$.ui.resolve(e) needs the event of a ui.render hook', async () => {
+      const { h } = await setup();
+      expect(() => h.api.ui.resolve({})).toThrow(
+        '$.ui.resolve: takes the event of a ui.render hook',
+      );
+      expect(() => h.api.ui.resolve({ component: 'Nope', surface: 'terminal' })).toThrow();
+    });
+  },
+);

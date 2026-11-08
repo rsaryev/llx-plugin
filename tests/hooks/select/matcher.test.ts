@@ -51,7 +51,7 @@ const selects = (event: HookEvent, matcher: string): boolean => {
 
 for (const event of HOOK_EVENTS) {
   const field = FILTERED[event];
-  spec(`hooks.matcher.${event}`, () => {
+  spec([`hooks.matcher.${event}`, 'hooks.guide.Filter hooks with matchers'], () => {
     if (field === undefined) {
       test('has no matcher support: a matcher is silently ignored and the hook always fires', () => {
         expect(selects(event, 'something-that-matches-nothing')).toBe(true);

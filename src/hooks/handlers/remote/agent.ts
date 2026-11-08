@@ -20,6 +20,12 @@ export function runAgent(
   if (models === undefined) return Promise.resolve(withoutPort(entry, 'agent', 'ModelRunner'));
   return runModelHook(entry, context, {
     impossible: false,
-    call: (request) => models.runAgent({ ...request, tools: AGENT_HOOK_TOOLS }),
+    call: (request) =>
+      models.runAgent({
+        ...request,
+        tools: AGENT_HOOK_TOOLS,
+        readOnly: true,
+        maxTurns: 50,
+      }),
   });
 }

@@ -169,15 +169,28 @@ spec('mods.troubleshoot.No installed plugin loads at all', () => {
   });
 });
 
-spec('mods.troubleshoot.No mod loads in a directory you opened for the first time', () => {
-  test('before the trust prompt is answered no mod loads; once it is accepted the same mods load', async () => {
-    const plugins = [modPlugin(installed('a'), register), modPlugin(inline('b'), register)];
-    const before = session({ a: register, b: register }, { policy: policy({ isTrusted: false }) });
-    expect((await before.host.load(plugins)).loaded).toEqual([]);
-    const accepted = session({ a: register, b: register }, { policy: policy({ isTrusted: true }) });
-    expect((await accepted.host.load(plugins)).loaded.map((mod) => mod.name)).toEqual(['a', 'b']);
-  });
-});
+spec(
+  [
+    'mods.troubleshoot.No mod loads in a directory you opened for the first time',
+    'policy.mods.Know which controls still apply.Trust prompts come first',
+    'policy.mods.Know which controls still apply',
+  ],
+  () => {
+    test('before the trust prompt is answered no mod loads; once it is accepted the same mods load', async () => {
+      const plugins = [modPlugin(installed('a'), register), modPlugin(inline('b'), register)];
+      const before = session(
+        { a: register, b: register },
+        { policy: policy({ isTrusted: false }) },
+      );
+      expect((await before.host.load(plugins)).loaded).toEqual([]);
+      const accepted = session(
+        { a: register, b: register },
+        { policy: policy({ isTrusted: true }) },
+      );
+      expect((await accepted.host.load(plugins)).loaded.map((mod) => mod.name)).toEqual(['a', 'b']);
+    });
+  },
+);
 
 spec(`mods.troubleshoot.The mods active line doesn't name the mod`, () => {
   test('a refused module is not on the line, and the debug log has the `hooks module ... not loaded:` line with the reason', async () => {

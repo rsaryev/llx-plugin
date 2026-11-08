@@ -25,53 +25,63 @@ import { spec } from '../../support/spec.ts';
 const problemOf = (tree: unknown, surface: 'terminal' | 'desktop' | 'vscode' = 'terminal') =>
   treeProblem('Pane', surface, tree);
 
-spec('mods.element.Link', () => {
-  test('a Link takes href and label, and needs an href', () => {
-    expect(problemOf(node('Link', { href: 'https://example.com', label: 'Docs' }))).toBeUndefined();
-    expect(problemOf(node('Link', { label: 'Docs' }))).toBe(
-      'a tree Pane refuses: Link needs an href',
-    );
-  });
+spec(
+  [
+    'mods.element.Link',
+    'mods.interface.Link in the Desktop app and VS Code.No @',
+    'mods.interface.Link in the Desktop app and VS Code.Scheme and host',
+    'mods.interface.Link in the Desktop app and VS Code.Spelling',
+  ],
+  () => {
+    test('a Link takes href and label, and needs an href', () => {
+      expect(
+        problemOf(node('Link', { href: 'https://example.com', label: 'Docs' })),
+      ).toBeUndefined();
+      expect(problemOf(node('Link', { label: 'Docs' }))).toBe(
+        'a tree Pane refuses: Link needs an href',
+      );
+    });
 
-  test('in the terminal every href draws as a link', () => {
-    expect(drawsAsLink('terminal', 'ftp://x y@z')).toBe(true);
-  });
+    test('in the terminal every href draws as a link', () => {
+      expect(drawsAsLink('terminal', 'ftp://x y@z')).toBe(true);
+    });
 
-  test('in the Desktop app and VS Code an https URL or http://localhost one that is spelled as new URL(href).href draws as a link', () => {
-    for (const surface of ['desktop', 'vscode'] as const) {
-      expect(drawsAsLink(surface, 'https://example.com/path?q=1')).toBe(true);
-      expect(drawsAsLink(surface, 'http://localhost:3000/a')).toBe(true);
-      // a missing `/` after the host is allowed
-      expect(drawsAsLink(surface, 'https://example.com')).toBe(true);
-      expect(drawsAsLink(surface, 'http://localhost:3000')).toBe(true);
-      expect(drawsAsLink(surface, 'https://example.com?q=1')).toBe(true);
-      expect(drawsAsLink(surface, 'https://example.com#a')).toBe(true);
-      expect(drawsAsLink(surface, 'http://localhost:3000?q=1#a')).toBe(true);
-      expect(drawsAsLink(surface, 'https://example.com/a%40b')).toBe(true);
-    }
-  });
-
-  test('otherwise it draws as plain text: other schemes or hosts, an @, an uppercase host, a space, :443', () => {
-    for (const surface of ['desktop', 'vscode'] as const) {
-      for (const href of [
-        'http://example.com',
-        'ftp://example.com',
-        'http://127.0.0.1:3000',
-        'https://user@example.com/',
-        'https://example.com/a@b',
-        'https://Example.com/',
-        'https://example.com/a b',
-        'https://example.com:443/',
-        'https://example.com:443?q=1',
-        'https://Example.com?q=1',
-        'https://example.com?q=a b',
-        'not a url',
-      ]) {
-        expect(drawsAsLink(surface, href)).toBe(false);
+    test('in the Desktop app and VS Code an https URL or http://localhost one that is spelled as new URL(href).href draws as a link', () => {
+      for (const surface of ['desktop', 'vscode'] as const) {
+        expect(drawsAsLink(surface, 'https://example.com/path?q=1')).toBe(true);
+        expect(drawsAsLink(surface, 'http://localhost:3000/a')).toBe(true);
+        // a missing `/` after the host is allowed
+        expect(drawsAsLink(surface, 'https://example.com')).toBe(true);
+        expect(drawsAsLink(surface, 'http://localhost:3000')).toBe(true);
+        expect(drawsAsLink(surface, 'https://example.com?q=1')).toBe(true);
+        expect(drawsAsLink(surface, 'https://example.com#a')).toBe(true);
+        expect(drawsAsLink(surface, 'http://localhost:3000?q=1#a')).toBe(true);
+        expect(drawsAsLink(surface, 'https://example.com/a%40b')).toBe(true);
       }
-    }
-  });
-});
+    });
+
+    test('otherwise it draws as plain text: other schemes or hosts, an @, an uppercase host, a space, :443', () => {
+      for (const surface of ['desktop', 'vscode'] as const) {
+        for (const href of [
+          'http://example.com',
+          'ftp://example.com',
+          'http://127.0.0.1:3000',
+          'https://user@example.com/',
+          'https://example.com/a@b',
+          'https://Example.com/',
+          'https://example.com/a b',
+          'https://example.com:443/',
+          'https://example.com:443?q=1',
+          'https://Example.com?q=1',
+          'https://example.com?q=a b',
+          'not a url',
+        ]) {
+          expect(drawsAsLink(surface, href)).toBe(false);
+        }
+      }
+    });
+  },
+);
 
 spec('mods.element.Code', () => {
   test('a Code takes source, language, path, startLine, format and wrap', () => {
@@ -151,7 +161,7 @@ spec('mods.element.Svg', () => {
   });
 });
 
-spec('mods.element.Client', () => {
+spec(['mods.element.Client', 'mods.interface.When a Client fails'], () => {
   test('a Client is drawn by the terminal and the Desktop app, not VS Code, and takes module, key, props, width, height and flexGrow', () => {
     const client = node('Client', {
       module: 'client/x.js',
@@ -184,7 +194,7 @@ spec('mods.element.Client', () => {
   });
 });
 
-spec('mods.element.Raster', () => {
+spec(['mods.element.Raster', 'mods.interface.Draw a grid of colored cells'], () => {
   test('a Raster is drawn by the terminal only and takes key, columns up to 512, rows up to 256 and cells', () => {
     const raster = (columns: number, rows: number) =>
       node('Raster', { key: 'grid', columns, rows, cells: 'AAAA' });

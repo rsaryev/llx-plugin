@@ -87,44 +87,54 @@ spec(`${WHERE}.Claude Tag sessions`, () => {
   });
 });
 
-spec(`${WHERE}.Cowork sessions`, () => {
-  test('Cowork never fetches server-managed settings, wherever it runs', () => {
-    for (const place of ['coworkOnMachine', 'coworkFullVm', 'coworkRemote'] as const) {
-      expect(reachOfPlace(place, facts(true)).remote).toBe(false);
-    }
-  });
-
-  test('on the user machine it reads the MDM policy and the managed file of that device', () => {
-    expect(reachOfPlace('coworkOnMachine', facts(true))).toEqual({
-      remote: false,
-      mdm: true,
-      file: 'all',
+spec(
+  [
+    `${WHERE}.Cowork sessions`,
+    'policy.org.Restrict what users can install.The claude.ai admin console',
+  ],
+  () => {
+    test('Cowork never fetches server-managed settings, wherever it runs', () => {
+      for (const place of ['coworkOnMachine', 'coworkFullVm', 'coworkRemote'] as const) {
+        expect(reachOfPlace(place, facts(true)).remote).toBe(false);
+      }
     });
-  });
 
-  test('in a full VM sandbox and in remote sessions no device policy is present', () => {
-    expect(reachOfPlace('coworkFullVm', facts(false))).toEqual({
-      remote: false,
-      mdm: false,
-      file: 'none',
+    test('on the user machine it reads the MDM policy and the managed file of that device', () => {
+      expect(reachOfPlace('coworkOnMachine', facts(true))).toEqual({
+        remote: false,
+        mdm: true,
+        file: 'all',
+      });
     });
-    expect(reachOfPlace('coworkRemote', facts(false))).toEqual({
-      remote: false,
-      mdm: false,
-      file: 'none',
+
+    test('in a full VM sandbox and in remote sessions no device policy is present', () => {
+      expect(reachOfPlace('coworkFullVm', facts(false))).toEqual({
+        remote: false,
+        mdm: false,
+        file: 'none',
+      });
+      expect(reachOfPlace('coworkRemote', facts(false))).toEqual({
+        remote: false,
+        mdm: false,
+        file: 'none',
+      });
     });
-  });
 
-  test('wherever it runs claude.ai applies the console strictKnownMarketplaces and blockedMarketplaces itself', () => {
-    const places: Place[] = ['coworkOnMachine', 'coworkFullVm', 'coworkRemote'];
-    expect(places.map(claudeAiAppliesMarketplaceLists)).toEqual([true, true, true]);
-    expect(claudeAiAppliesMarketplaceLists('machine')).toBe(false);
-  });
+    test('wherever it runs claude.ai applies the console strictKnownMarketplaces and blockedMarketplaces itself', () => {
+      const places: Place[] = ['coworkOnMachine', 'coworkFullVm', 'coworkRemote'];
+      expect(places.map(claudeAiAppliesMarketplaceLists)).toEqual([true, true, true]);
+      expect(claudeAiAppliesMarketplaceLists('machine')).toBe(false);
+    });
 
-  test('a developer machine reads every source', () => {
-    expect(reachOfPlace('machine', facts(true))).toEqual({ remote: true, mdm: true, file: 'all' });
-  });
-});
+    test('a developer machine reads every source', () => {
+      expect(reachOfPlace('machine', facts(true))).toEqual({
+        remote: true,
+        mdm: true,
+        file: 'all',
+      });
+    });
+  },
+);
 
 spec(`${WHERE}.Running sessions`, () => {
   test('most changes reach a running session on the delivery schedule without a restart', () => {

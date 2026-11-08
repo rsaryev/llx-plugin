@@ -172,35 +172,38 @@ spec('mods.limit.Elements and text children in one tree', () => {
   });
 });
 
-spec('mods.limit.Nesting depth of one tree', () => {
-  test('a tree nests 32 levels below the root element, and 33 is not drawn', () => {
-    expect(measureTree(nested(32)).depth).toBe(32);
-    expect(sizeProblem(nested(32))).toBeUndefined();
-    expect(measureTree(nested(33)).depth).toBe(33);
-    expect(sizeProblem(nested(33))).toBe('deeper than 32; nothing was drawn');
-  });
+spec(
+  ['mods.limit.Nesting depth of one tree', 'mods.troubleshoot.A ui.render line says refused'],
+  () => {
+    test('a tree nests 32 levels below the root element, and 33 is not drawn', () => {
+      expect(measureTree(nested(32)).depth).toBe(32);
+      expect(sizeProblem(nested(32))).toBeUndefined();
+      expect(measureTree(nested(33)).depth).toBe(33);
+      expect(sizeProblem(nested(33))).toBe('deeper than 32; nothing was drawn');
+    });
 
-  test('the refusal line of several mods whose bands nest too deep is the documented one', () => {
-    expect(foldRender('AbovePrompt', 'terminal', nested(33), { mods: 2 })).toEqual({
-      refused: 'deeper than 32; nothing was drawn',
-      line: 'hooks: ui.render (AbovePrompt) refused: deeper than 32; nothing was drawn',
+    test('the refusal line of several mods whose bands nest too deep is the documented one', () => {
+      expect(foldRender('AbovePrompt', 'terminal', nested(33), { mods: 2 })).toEqual({
+        refused: 'deeper than 32; nothing was drawn',
+        line: 'hooks: ui.render (AbovePrompt) refused: deeper than 32; nothing was drawn',
+      });
+      expect(foldRender('AbovePrompt', 'terminal', nested(33))).toMatchObject({
+        line: 'ui.render (AbovePrompt) refused: deeper than 32; nothing was drawn',
+      });
     });
-    expect(foldRender('AbovePrompt', 'terminal', nested(33))).toMatchObject({
-      line: 'ui.render (AbovePrompt) refused: deeper than 32; nothing was drawn',
-    });
-  });
 
-  test('a ui.render hook may return a tree nested past 28,000 levels: the tree is refused as a drawing, the hook does not fail', async () => {
-    const deep = nested(30_000);
-    const h = uiChain();
-    h.mod('my-mod', 'user', [fn('ui.render', () => deep)]);
-    const settled = await h.fire('ui.render', renderOf('Pane'), {
-      core: () => Promise.resolve('engine'),
+    test('a ui.render hook may return a tree nested past 28,000 levels: the tree is refused as a drawing, the hook does not fail', async () => {
+      const deep = nested(30_000);
+      const h = uiChain();
+      h.mod('my-mod', 'user', [fn('ui.render', () => deep)]);
+      const settled = await h.fire('ui.render', renderOf('Pane'), {
+        core: () => Promise.resolve('engine'),
+      });
+      expect(settled).toBe(deep);
+      expect(h.reports).toEqual([]);
+      expect(foldRender('Pane', 'terminal', settled)).toMatchObject({
+        refused: 'deeper than 32; nothing was drawn',
+      });
     });
-    expect(settled).toBe(deep);
-    expect(h.reports).toEqual([]);
-    expect(foldRender('Pane', 'terminal', settled)).toMatchObject({
-      refused: 'deeper than 32; nothing was drawn',
-    });
-  });
-});
+  },
+);

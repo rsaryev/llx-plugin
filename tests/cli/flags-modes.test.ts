@@ -79,77 +79,84 @@ spec('cli.flag.--bare', () => {
   });
 });
 
-spec('cli.flag.--safe-mode', () => {
-  test('skips every customization the docs list', () => {
-    expect(sorted(planOf({ '--safe-mode': true }).skipped)).toEqual(
-      sorted([
-        'claude-md',
-        'skills',
-        'installed-plugins',
+spec(
+  [
+    'cli.flag.--safe-mode',
+    'cli.debug.Test against a clean configuration',
+    'cli.debug.Test against a clean configuration.CLAUDE.md',
+  ],
+  () => {
+    test('skips every customization the docs list', () => {
+      expect(sorted(planOf({ '--safe-mode': true }).skipped)).toEqual(
+        sorted([
+          'claude-md',
+          'skills',
+          'installed-plugins',
+          'hooks',
+          'mcp-servers',
+          'commands',
+          'agents',
+          'output-styles',
+          'workflows',
+          'themes',
+          'keybindings',
+          'status-line',
+          'file-suggestion',
+          'lsp-servers',
+          'auto-memory',
+        ]),
+      );
+    });
+
+    test('sets CLAUDE_CODE_SAFE_MODE to 1', () => {
+      expect(planOf({ '--safe-mode': true }).env).toEqual({ CLAUDE_CODE_SAFE_MODE: '1' });
+    });
+
+    test('authentication, model selection, built-in tools and permissions are untouched', () => {
+      const plan = planOf({ '--safe-mode': true, '--permission-mode': 'plan' });
+      expect(plan.tools).toBeUndefined();
+      expect(plan.permissionMode).toBe('plan');
+      expect(plan.restricted).toBe(false);
+      expect(plan.settingScopes).toBeUndefined();
+    });
+
+    test('skips more than --bare does: output styles, workflows, themes and keybindings load under bare', () => {
+      const bare = planOf({ '--bare': true }).skipped;
+      const safe = planOf({ '--safe-mode': true }).skipped;
+      expect(safe.length).toBeGreaterThan(bare.length);
+      for (const kind of bare) expect(safe).toContain(kind);
+      expect(bare).not.toContain('output-styles');
+      expect(safe).toContain('output-styles');
+    });
+
+    test('managed policy still applies to hooks, status line and file-suggestion commands', () => {
+      for (const kind of ['hooks', 'status-line', 'file-suggestion'] as const) {
+        expect(managedPolicyUnderSafeMode(kind)).toBe(true);
+      }
+    });
+
+    test('managed plugins, skills, CLAUDE.md and MCP servers do not load', () => {
+      for (const kind of ['installed-plugins', 'skills', 'claude-md', 'mcp-servers'] as const) {
+        expect(managedPolicyUnderSafeMode(kind)).toBe(false);
+      }
+    });
+
+    test('the docs say nothing of the managed layer of the other kinds', () => {
+      const named = new Set<Customization>([
         'hooks',
-        'mcp-servers',
-        'commands',
-        'agents',
-        'output-styles',
-        'workflows',
-        'themes',
-        'keybindings',
         'status-line',
         'file-suggestion',
-        'lsp-servers',
-        'auto-memory',
-      ]),
-    );
-  });
-
-  test('sets CLAUDE_CODE_SAFE_MODE to 1', () => {
-    expect(planOf({ '--safe-mode': true }).env).toEqual({ CLAUDE_CODE_SAFE_MODE: '1' });
-  });
-
-  test('authentication, model selection, built-in tools and permissions are untouched', () => {
-    const plan = planOf({ '--safe-mode': true, '--permission-mode': 'plan' });
-    expect(plan.tools).toBeUndefined();
-    expect(plan.permissionMode).toBe('plan');
-    expect(plan.restricted).toBe(false);
-    expect(plan.settingScopes).toBeUndefined();
-  });
-
-  test('skips more than --bare does: output styles, workflows, themes and keybindings load under bare', () => {
-    const bare = planOf({ '--bare': true }).skipped;
-    const safe = planOf({ '--safe-mode': true }).skipped;
-    expect(safe.length).toBeGreaterThan(bare.length);
-    for (const kind of bare) expect(safe).toContain(kind);
-    expect(bare).not.toContain('output-styles');
-    expect(safe).toContain('output-styles');
-  });
-
-  test('managed policy still applies to hooks, status line and file-suggestion commands', () => {
-    for (const kind of ['hooks', 'status-line', 'file-suggestion'] as const) {
-      expect(managedPolicyUnderSafeMode(kind)).toBe(true);
-    }
-  });
-
-  test('managed plugins, skills, CLAUDE.md and MCP servers do not load', () => {
-    for (const kind of ['installed-plugins', 'skills', 'claude-md', 'mcp-servers'] as const) {
-      expect(managedPolicyUnderSafeMode(kind)).toBe(false);
-    }
-  });
-
-  test('the docs say nothing of the managed layer of the other kinds', () => {
-    const named = new Set<Customization>([
-      'hooks',
-      'status-line',
-      'file-suggestion',
-      'installed-plugins',
-      'skills',
-      'claude-md',
-      'mcp-servers',
-    ]);
-    for (const kind of CUSTOMIZATIONS.filter((one) => !named.has(one))) {
-      expect(managedPolicyUnderSafeMode(kind)).toBeUndefined();
-    }
-  });
-});
+        'installed-plugins',
+        'skills',
+        'claude-md',
+        'mcp-servers',
+      ]);
+      for (const kind of CUSTOMIZATIONS.filter((one) => !named.has(one))) {
+        expect(managedPolicyUnderSafeMode(kind)).toBeUndefined();
+      }
+    });
+  },
+);
 
 spec('cli.flag.--disable-slash-commands', () => {
   test('disables all skills and commands, and nothing else', () => {

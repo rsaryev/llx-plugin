@@ -20,7 +20,7 @@ import { spec } from '../../support/spec.ts';
 
 const PATH = '/usr/local/bin/claude-policy';
 
-spec('policy.key.policyHelper', () => {
+spec(['policy.key.policyHelper', 'policy.server.Current limitations'], () => {
   test('the object takes path, timeoutMs and refreshIntervalMs', () => {
     const read = readPolicyHelper({ path: PATH, timeoutMs: 5000, refreshIntervalMs: 300_000 });
     expect(read).toEqual({ helper: { path: PATH, timeoutMs: 5000, refreshIntervalMs: 300_000 } });

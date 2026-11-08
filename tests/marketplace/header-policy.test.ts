@@ -12,95 +12,115 @@ import { spec } from '../support/spec.ts';
 
 const helper = './mint.sh';
 
-spec('marketplace.sourceField.headersHelper', () => {
-  test('a url source on an https:// marketplace URL runs its command from user settings without asking', () => {
-    expect(helperAllowed(sourceLayer({ headersHelper: helper }), setting())).toEqual({
-      allowed: true,
-    });
-  });
-
-  test('a marketplace URL that does not start with https:// never runs the command', () => {
-    const layer = sourceLayer({ url: 'http://plugins.example.com/marketplace.json' });
-    const verdict = helperAllowed({ ...layer, headersHelper: helper }, setting());
-    expect(verdict).toMatchObject({ allowed: false, reason: 'not-https', effect: 'skip-helper' });
-  });
-
-  test('a --settings file and a managed settings file run it without asking', () => {
-    for (const origin of ['cli-settings', 'managed'] as const) {
-      expect(helperAllowed(sourceLayer({ headersHelper: helper }, origin), setting())).toEqual({
-        allowed: true,
-      });
-    }
-  });
-
-  test('project settings run it only after the folder is trusted', () => {
-    const layer = sourceLayer({ headersHelper: helper }, 'project');
-    expect(helperAllowed(layer, setting())).toMatchObject({
-      allowed: false,
-      reason: 'folder-not-trusted',
-      effect: 'skip-helper',
-    });
-    expect(helperAllowed(layer, setting({ folderTrusted: true }))).toEqual({ allowed: true });
-  });
-
-  test('server-managed settings run it only after the user approves them', () => {
-    const layer = sourceLayer({ headersHelper: helper }, 'server-managed');
-    expect(helperAllowed(layer, setting())).toMatchObject({
-      allowed: false,
-      reason: 'settings-not-approved',
-    });
-    expect(helperAllowed(layer, setting({ settingsApproved: true }))).toEqual({ allowed: true });
-  });
-
-  test('an --add-dir directory never runs it, even when the folder is trusted', () => {
-    const layer = sourceLayer({ headersHelper: helper }, 'add-dir');
-    expect(helperAllowed(layer, setting({ folderTrusted: true, settingsApproved: true }))).toEqual({
-      allowed: false,
-      reason: 'ignored-add-dir',
-      effect: 'skip-helper',
-      message: expect.stringContaining('--add-dir'),
-    });
-  });
-});
-
-describe('managed policy blocks', () => {
-  const layer = sourceLayer({ headersHelper: helper });
-
-  spec(['marketplace.sourceField.headersHelper', 'marketplace.entry.headersHelper'], () => {
-    test('disableCommandPluginSources true blocks the command', () => {
-      expect(helperAllowed(layer, setting({ disableCommandPluginSources: true }))).toMatchObject({
-        allowed: false,
-        reason: 'blocked-by-policy',
-        effect: 'skip-helper',
-      });
-    });
-
-    test('allowManagedHooksOnly blocks it too unless disableCommandPluginSources is explicitly false', () => {
-      const blocked = setting({ allowManagedHooksOnly: true });
-      expect(helperAllowed(layer, blocked)).toMatchObject({ reason: 'blocked-by-policy' });
-      expect(helperAllowed(layer, { ...blocked, disableCommandPluginSources: false })).toEqual({
-        allowed: true,
-      });
-      expect(helperAllowed(layer, setting({ allowManagedHooksOnly: false }))).toEqual({
+spec(
+  [
+    'marketplace.sourceField.headersHelper',
+    "marketplace.hosting.When a marketplace url source's command runs.--settings",
+    "marketplace.hosting.When a marketplace url source's command runs..claude/settings.json",
+    "marketplace.hosting.When a marketplace url source's command runs.Server-managed settings",
+  ],
+  () => {
+    test('a url source on an https:// marketplace URL runs its command from user settings without asking', () => {
+      expect(helperAllowed(sourceLayer({ headersHelper: helper }), setting())).toEqual({
         allowed: true,
       });
     });
 
-    test('under either block the command still runs for a marketplace that managed settings declare', () => {
-      for (const policy of [
-        { disableCommandPluginSources: true },
-        { allowManagedHooksOnly: true },
-      ]) {
-        expect(helperAllowed(layer, setting({ ...policy, managedMarketplace: true }))).toEqual({
-          allowed: true,
-        });
-        const entry = layerOfEntry({ headersHelper: helper });
-        expect(helperAllowed(entry, setting({ ...policy, managedMarketplace: true }))).toEqual({
+    test('a marketplace URL that does not start with https:// never runs the command', () => {
+      const layer = sourceLayer({ url: 'http://plugins.example.com/marketplace.json' });
+      const verdict = helperAllowed({ ...layer, headersHelper: helper }, setting());
+      expect(verdict).toMatchObject({ allowed: false, reason: 'not-https', effect: 'skip-helper' });
+    });
+
+    test('a --settings file and a managed settings file run it without asking', () => {
+      for (const origin of ['cli-settings', 'managed'] as const) {
+        expect(helperAllowed(sourceLayer({ headersHelper: helper }, origin), setting())).toEqual({
           allowed: true,
         });
       }
     });
-  });
+
+    test('project settings run it only after the folder is trusted', () => {
+      const layer = sourceLayer({ headersHelper: helper }, 'project');
+      expect(helperAllowed(layer, setting())).toMatchObject({
+        allowed: false,
+        reason: 'folder-not-trusted',
+        effect: 'skip-helper',
+      });
+      expect(helperAllowed(layer, setting({ folderTrusted: true }))).toEqual({ allowed: true });
+    });
+
+    test('server-managed settings run it only after the user approves them', () => {
+      const layer = sourceLayer({ headersHelper: helper }, 'server-managed');
+      expect(helperAllowed(layer, setting())).toMatchObject({
+        allowed: false,
+        reason: 'settings-not-approved',
+      });
+      expect(helperAllowed(layer, setting({ settingsApproved: true }))).toEqual({ allowed: true });
+    });
+
+    test('an --add-dir directory never runs it, even when the folder is trusted', () => {
+      const layer = sourceLayer({ headersHelper: helper }, 'add-dir');
+      expect(
+        helperAllowed(layer, setting({ folderTrusted: true, settingsApproved: true })),
+      ).toEqual({
+        allowed: false,
+        reason: 'ignored-add-dir',
+        effect: 'skip-helper',
+        message: expect.stringContaining('--add-dir'),
+      });
+    });
+  },
+);
+
+describe('managed policy blocks', () => {
+  const layer = sourceLayer({ headersHelper: helper });
+
+  spec(
+    [
+      'marketplace.sourceField.headersHelper',
+      'marketplace.entry.headersHelper',
+      'marketplace.hosting.When Claude Code skips a headersHelper command or drops its output.Managed settings block the command',
+      'marketplace.hosting.Installs and updates that refuse a command instead of asking',
+      'marketplace.hosting.How users accept a headersHelper command.Terminal session',
+      'marketplace.hosting.How users accept a headersHelper command.VS Code extension',
+    ],
+    () => {
+      test('disableCommandPluginSources true blocks the command', () => {
+        expect(helperAllowed(layer, setting({ disableCommandPluginSources: true }))).toMatchObject({
+          allowed: false,
+          reason: 'blocked-by-policy',
+          effect: 'skip-helper',
+        });
+      });
+
+      test('allowManagedHooksOnly blocks it too unless disableCommandPluginSources is explicitly false', () => {
+        const blocked = setting({ allowManagedHooksOnly: true });
+        expect(helperAllowed(layer, blocked)).toMatchObject({ reason: 'blocked-by-policy' });
+        expect(helperAllowed(layer, { ...blocked, disableCommandPluginSources: false })).toEqual({
+          allowed: true,
+        });
+        expect(helperAllowed(layer, setting({ allowManagedHooksOnly: false }))).toEqual({
+          allowed: true,
+        });
+      });
+
+      test('under either block the command still runs for a marketplace that managed settings declare', () => {
+        for (const policy of [
+          { disableCommandPluginSources: true },
+          { allowManagedHooksOnly: true },
+        ]) {
+          expect(helperAllowed(layer, setting({ ...policy, managedMarketplace: true }))).toEqual({
+            allowed: true,
+          });
+          const entry = layerOfEntry({ headersHelper: helper });
+          expect(helperAllowed(entry, setting({ ...policy, managedMarketplace: true }))).toEqual({
+            allowed: true,
+          });
+        }
+      });
+    },
+  );
 });
 
 spec('marketplace.entry.headersHelper', () => {

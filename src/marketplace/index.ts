@@ -207,3 +207,6 @@ export {
   type ChannelManifestVersions,
   type ChannelManifests,
 } from './release-channels.ts';
+export { applySeeds, type RegistryEntry, type Seed, type SeededEntry } from './seed-registry.ts';
+export * from './install-guidance.ts';
+export * from './telemetry-names.ts';

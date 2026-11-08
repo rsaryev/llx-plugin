@@ -16,121 +16,131 @@ import { spec } from '../support/spec.ts';
 
 const BEHAVIORS = ['allow', 'ask', 'deny'] as const;
 
-spec('permissions.rule.WebFetch(domain:example.com)', () => {
-  test('matches requests to example.com, whatever the scheme, port, path and query', () => {
-    for (const url of [
-      'https://example.com',
-      'https://example.com/',
-      'http://example.com/a/b?q=1#top',
-      'https://example.com:8443/docs',
-    ]) {
-      for (const behavior of BEHAVIORS) {
-        expect([
-          url,
-          behavior,
-          fetchCovered('WebFetch(domain:example.com)', url, behavior),
-        ]).toEqual([url, behavior, true]);
+spec(
+  [
+    'permissions.rule.WebFetch(domain:example.com)',
+    'permissions.reference.Permission rule syntax.WebFetch(domain:example.com)',
+  ],
+  () => {
+    test('matches requests to example.com, whatever the scheme, port, path and query', () => {
+      for (const url of [
+        'https://example.com',
+        'https://example.com/',
+        'http://example.com/a/b?q=1#top',
+        'https://example.com:8443/docs',
+      ]) {
+        for (const behavior of BEHAVIORS) {
+          expect([
+            url,
+            behavior,
+            fetchCovered('WebFetch(domain:example.com)', url, behavior),
+          ]).toEqual([url, behavior, true]);
+        }
       }
-    }
-  });
+    });
 
-  test('does not cover subdomains: example.com only', () => {
-    for (const url of ['https://api.example.com', 'https://a.b.example.com/x']) {
-      expect([url, fetchCovered('WebFetch(domain:example.com)', url)]).toEqual([url, false]);
-    }
-  });
+    test('does not cover subdomains: example.com only', () => {
+      for (const url of ['https://api.example.com', 'https://a.b.example.com/x']) {
+        expect([url, fetchCovered('WebFetch(domain:example.com)', url)]).toEqual([url, false]);
+      }
+    });
 
-  test('matches the hostname of the URL, not text elsewhere in it', () => {
-    for (const url of [
-      'https://example.com.evil.com/',
-      'https://evil.com/example.com',
-      'https://evil.com/?u=https://example.com',
-      'https://example.com@evil.com/',
-      'https://notexample.com',
-    ]) {
-      expect([url, fetchCovered('WebFetch(domain:example.com)', url)]).toEqual([url, false]);
-    }
-    expect(fetchCovered('WebFetch(domain:example.com)', 'https://evil.com@example.com/')).toBe(
-      true,
-    );
-  });
+    test('matches the hostname of the URL, not text elsewhere in it', () => {
+      for (const url of [
+        'https://example.com.evil.com/',
+        'https://evil.com/example.com',
+        'https://evil.com/?u=https://example.com',
+        'https://example.com@evil.com/',
+        'https://notexample.com',
+      ]) {
+        expect([url, fetchCovered('WebFetch(domain:example.com)', url)]).toEqual([url, false]);
+      }
+      expect(fetchCovered('WebFetch(domain:example.com)', 'https://evil.com@example.com/')).toBe(
+        true,
+      );
+    });
 
-  test('is case-insensitive in the rule and in the hostname', () => {
-    expect(fetchCovered('WebFetch(domain:Example.COM)', 'https://example.com/')).toBe(true);
-    expect(fetchCovered('WebFetch(domain:example.com)', 'https://EXAMPLE.com/')).toBe(true);
-    expect(fetchCovered('WebFetch(domain:*.Example.com)', 'https://API.example.COM/')).toBe(true);
-  });
+    test('is case-insensitive in the rule and in the hostname', () => {
+      expect(fetchCovered('WebFetch(domain:Example.COM)', 'https://example.com/')).toBe(true);
+      expect(fetchCovered('WebFetch(domain:example.com)', 'https://EXAMPLE.com/')).toBe(true);
+      expect(fetchCovered('WebFetch(domain:*.Example.com)', 'https://API.example.COM/')).toBe(true);
+    });
 
-  test('strips a trailing dot from the rule and from the hostname', () => {
-    expect(fetchCovered('WebFetch(domain:example.com.)', 'https://example.com/')).toBe(true);
-    expect(fetchCovered('WebFetch(domain:example.com)', 'https://example.com./')).toBe(true);
-    expect(fetchCovered('WebFetch(domain:example.com.)', 'https://example.com./')).toBe(true);
-    expect(fetchCovered('WebFetch(domain:*.example.com.)', 'https://api.example.com/')).toBe(true);
-  });
+    test('strips a trailing dot from the rule and from the hostname', () => {
+      expect(fetchCovered('WebFetch(domain:example.com.)', 'https://example.com/')).toBe(true);
+      expect(fetchCovered('WebFetch(domain:example.com)', 'https://example.com./')).toBe(true);
+      expect(fetchCovered('WebFetch(domain:example.com.)', 'https://example.com./')).toBe(true);
+      expect(fetchCovered('WebFetch(domain:*.example.com.)', 'https://api.example.com/')).toBe(
+        true,
+      );
+    });
 
-  test('a leading *. covers any subdomain at any depth, not the domain itself', () => {
-    const rule = 'WebFetch(domain:*.example.com)';
-    for (const url of [
-      'https://api.example.com',
-      'https://a.b.example.com',
-      'https://a.b.c.example.com/x',
-    ]) {
-      expect([url, fetchCovered(rule, url)]).toEqual([url, true]);
-    }
-    for (const url of [
-      'https://example.com',
-      'https://notexample.com',
-      'https://example.com.evil.com',
-    ]) {
-      expect([url, fetchCovered(rule, url)]).toEqual([url, false]);
-    }
-  });
+    test('a leading *. covers any subdomain at any depth, not the domain itself', () => {
+      const rule = 'WebFetch(domain:*.example.com)';
+      for (const url of [
+        'https://api.example.com',
+        'https://a.b.example.com',
+        'https://a.b.c.example.com/x',
+      ]) {
+        expect([url, fetchCovered(rule, url)]).toEqual([url, true]);
+      }
+      for (const url of [
+        'https://example.com',
+        'https://notexample.com',
+        'https://example.com.evil.com',
+      ]) {
+        expect([url, fetchCovered(rule, url)]).toEqual([url, false]);
+      }
+    });
 
-  test('a bare * covers every domain', () => {
-    for (const url of [
-      'https://example.com',
-      'https://a.b.c.d/',
-      'http://localhost:3000',
-      'http://[::1]/',
-    ]) {
-      expect([url, fetchCovered('WebFetch(domain:*)', url)]).toEqual([url, true]);
-    }
-  });
+    test('a bare * covers every domain', () => {
+      for (const url of [
+        'https://example.com',
+        'https://a.b.c.d/',
+        'http://localhost:3000',
+        'http://[::1]/',
+      ]) {
+        expect([url, fetchCovered('WebFetch(domain:*)', url)]).toEqual([url, true]);
+      }
+    });
 
-  test('a * in any other position stands for the text between two dots only', () => {
-    const rule = 'WebFetch(domain:example.*)';
-    expect(fetchCovered(rule, 'https://example.org')).toBe(true);
-    expect(fetchCovered(rule, 'https://example.com/path')).toBe(true);
-    expect(fetchCovered(rule, 'https://example.evil.com')).toBe(false);
-    expect(fetchCovered(rule, 'https://sub.example.org')).toBe(false);
-    expect(fetchCovered(rule, 'https://example')).toBe(false);
+    test('a * in any other position stands for the text between two dots only', () => {
+      const rule = 'WebFetch(domain:example.*)';
+      expect(fetchCovered(rule, 'https://example.org')).toBe(true);
+      expect(fetchCovered(rule, 'https://example.com/path')).toBe(true);
+      expect(fetchCovered(rule, 'https://example.evil.com')).toBe(false);
+      expect(fetchCovered(rule, 'https://sub.example.org')).toBe(false);
+      expect(fetchCovered(rule, 'https://example')).toBe(false);
 
-    expect(fetchCovered('WebFetch(domain:api.*.example.com)', 'https://api.eu.example.com')).toBe(
-      true,
-    );
-    expect(fetchCovered('WebFetch(domain:api.*.example.com)', 'https://api.a.b.example.com')).toBe(
-      false,
-    );
-    expect(fetchCovered('WebFetch(domain:docs-*.example.com)', 'https://docs-v2.example.com')).toBe(
-      true,
-    );
-    expect(fetchCovered('WebFetch(domain:docs-*.example.com)', 'https://other.example.com')).toBe(
-      false,
-    );
-    expect(fetchCovered('WebFetch(domain:*.example.*)', 'https://a.b.example.org')).toBe(true);
-    expect(fetchCovered('WebFetch(domain:*.example.*)', 'https://a.example.evil.org')).toBe(false);
-  });
+      expect(fetchCovered('WebFetch(domain:api.*.example.com)', 'https://api.eu.example.com')).toBe(
+        true,
+      );
+      expect(
+        fetchCovered('WebFetch(domain:api.*.example.com)', 'https://api.a.b.example.com'),
+      ).toBe(false);
+      expect(
+        fetchCovered('WebFetch(domain:docs-*.example.com)', 'https://docs-v2.example.com'),
+      ).toBe(true);
+      expect(fetchCovered('WebFetch(domain:docs-*.example.com)', 'https://other.example.com')).toBe(
+        false,
+      );
+      expect(fetchCovered('WebFetch(domain:*.example.*)', 'https://a.b.example.org')).toBe(true);
+      expect(fetchCovered('WebFetch(domain:*.example.*)', 'https://a.example.evil.org')).toBe(
+        false,
+      );
+    });
 
-  test('matchDomainPattern is the same rule over a pattern and a URL', () => {
-    expect(matchDomainPattern('*.example.com', 'https://a.b.example.com/x')).toBe(true);
-    expect(matchDomainPattern('example.*', 'https://example.evil.com')).toBe(false);
-  });
+    test('matchDomainPattern is the same rule over a pattern and a URL', () => {
+      expect(matchDomainPattern('*.example.com', 'https://a.b.example.com/x')).toBe(true);
+      expect(matchDomainPattern('example.*', 'https://example.evil.com')).toBe(false);
+    });
 
-  test('whitespace around the pattern is not part of it', () => {
-    expect(fetchCovered('WebFetch(domain: example.com )', 'https://example.com/')).toBe(true);
-    expect(fetchCovered('WebFetch( domain : example.com)', 'https://example.com/')).toBe(true);
-  });
-});
+    test('whitespace around the pattern is not part of it', () => {
+      expect(fetchCovered('WebFetch(domain: example.com )', 'https://example.com/')).toBe(true);
+      expect(fetchCovered('WebFetch( domain : example.com)', 'https://example.com/')).toBe(true);
+    });
+  },
+);
 
 spec('tools.input.WebFetch.url', () => {
   test('the rule is read against the hostname of the call url', () => {

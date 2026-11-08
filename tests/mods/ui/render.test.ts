@@ -4,14 +4,12 @@
  * yours draw there. To keep theirs, put the result of `await next(e)` among the children of a
  * `Box`"), § Change what Claude Code already draws ("Change a detail", "Replace the drawing", "Leave
  * it alone", `{ type: 'engine', ref }`, the question dialog), § Build a tree from elements;
- * plugins/mods/reference.md § Interface (`ui.render`, `ui.resolve`), § Render sites;
- * plugins/mods/troubleshoot.md § Another mod's band shows and yours doesn't, § A pane or band is
- * empty. The kit folds what the hooks settled on into what is drawn; it paints nothing.
+ * plugins/mods/reference.md § Interface, § Render sites; plugins/mods/troubleshoot.md § Another mod's
+ * band shows and yours doesn't, § A pane or band is empty. The kit folds the result; it paints nothing.
  */
 import { expect, test } from 'bun:test';
 import { foldRender, isElementNode, isEngineRef, withUiRules } from '../../../src/mods/ui/index.ts';
 import { fn } from '../../support/mods-chain.ts';
-
 import { apiHarness } from '../../support/mods-api.ts';
 import {
   fakeInterface,
@@ -24,6 +22,8 @@ import {
 } from '../../support/mods-ui.ts';
 import { spec } from '../../support/spec.ts';
 
+const BAND = "mods.troubleshoot.Another mod's band shows and yours doesn't";
+const EMPTY = "mods.troubleshoot.A pane or band is empty or shows Claude Code's usual content";
 const engine = (e: unknown) => Promise.resolve({ type: 'engine', ref: e });
 
 spec(['mods.event.ui.render', 'mods.site.Spinner'], () => {
@@ -103,7 +103,7 @@ spec(['mods.event.ui.render', 'mods.site.Spinner'], () => {
   });
 });
 
-spec('mods.event.ui.render', () => {
+spec(['mods.event.ui.render', BAND, EMPTY], () => {
   test('a tree that does not validate fails the hook: the line is the documented one and the next handler runs in its place', async () => {
     const h = uiChain();
     h.mod('first-mod', 'user', [

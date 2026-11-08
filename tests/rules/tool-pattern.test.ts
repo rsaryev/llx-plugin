@@ -5,15 +5,16 @@
  * anything". No requirement id covers this section, so none of it is under spec(); it is the
  * documented behaviour `Bash`, `Read` and `WebFetch` rules and the MCP rules are built on.
  */
-import { describe, expect, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { PERMISSION_BEHAVIORS } from '../../src/protocol/permission-modes.ts';
 import { matchRule, parseRule } from '../../src/rules/index.ts';
 import { call, matchContext, parsed } from '../support/rule-context.ts';
+import { spec } from '../support/spec.ts';
 
 const covers = (pattern: string, toolName: string, behavior: 'deny' | 'ask' = 'deny') =>
   matchRule(parsed(pattern, behavior), call(toolName, {}), matchContext);
 
-describe('a glob in the tool-name position of a deny or ask rule', () => {
+spec(['permissions.behavior.Tool name wildcards'], () => {
   test('"*" matches every tool', () => {
     for (const tool of ['Bash', 'Read', 'mcp__github__get_issue', 'Stop Task']) {
       expect(covers('*', tool)).toBe(true);
@@ -54,7 +55,7 @@ describe('a glob in the tool-name position of a deny or ask rule', () => {
   });
 });
 
-describe('a glob in the tool-name position of an allow rule', () => {
+spec(['permissions.behavior.Tool name wildcards'], () => {
   const skipped = ['*', 'B*', 'mcp__*', 'mcp__*__get_issue', 'mcp__git*__x', 'mcp__github*'];
 
   test('unanchored globs are skipped and approve nothing', () => {

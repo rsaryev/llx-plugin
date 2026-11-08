@@ -37,51 +37,60 @@ const run = async (
 
 const TYPES: readonly Kind[] = ['prompt', 'agent'];
 
-spec(['hooks.handler.prompt.prompt'], () => {
-  test('the docs example: $ARGUMENTS becomes the hook input JSON', () => {
-    expect(
-      composePrompt(
-        'Evaluate if Claude should stop: $ARGUMENTS. Check if all tasks are complete.',
-        INPUT,
-      ),
-    ).toBe(`Evaluate if Claude should stop: ${INPUT}. Check if all tasks are complete.`);
-  });
-
-  test('every $ARGUMENTS is replaced', () => {
-    expect(composePrompt('a $ARGUMENTS b $ARGUMENTS', '{}')).toBe('a {} b {}');
-  });
-
-  test('a backslash escapes: \\$1.00 renders as $1.00', () => {
-    expect(composePrompt('Spend at most \\$1.00. $ARGUMENTS', '{}')).toBe(
-      'Spend at most $1.00. {}',
-    );
-  });
-
-  test('an escaped \\$ARGUMENTS is literal text, not the placeholder, so the input is appended', () => {
-    expect(composePrompt('Write \\$ARGUMENTS literally', '{"a":1}')).toBe(
-      'Write $ARGUMENTS literally\n\n{"a":1}',
-    );
-  });
-
-  test('without $ARGUMENTS the input JSON is appended to the prompt', () => {
-    const prompt = 'Block any Bash command that reads `.env` files';
-    expect(composePrompt(prompt, INPUT)).toBe(`${prompt}\n\n${INPUT}`);
-  });
-
-  test('the input is inserted as it is: a $ARGUMENTS or \\$ inside it is not read again', () => {
-    const tricky = '{"cmd":"echo $ARGUMENTS \\\\$HOME"}';
-    expect(composePrompt('check $ARGUMENTS', tricky)).toBe(`check ${tricky}`);
-  });
-
-  for (const type of TYPES) {
-    test(`a ${type} hook sends the composed prompt to the model, which also gets the response schema`, async () => {
-      const { call } = await run(type, { prompt: 'Is it done? $ARGUMENTS' });
-      expect(call?.prompt.startsWith(`Is it done? ${INPUT}\n\n`)).toBe(true);
-      expect(call?.prompt).toContain('"ok"');
-      expect(call?.prompt).toContain('"reason"');
+spec(
+  [
+    'hooks.handler.prompt.prompt',
+    'hooks.behavior.Prompt hook configuration.prompt',
+    'hooks.behavior.Prompt hook configuration.type',
+    'hooks.behavior.Prompt-based hooks',
+    'hooks.guide.Prompt-based hooks',
+  ],
+  () => {
+    test('the docs example: $ARGUMENTS becomes the hook input JSON', () => {
+      expect(
+        composePrompt(
+          'Evaluate if Claude should stop: $ARGUMENTS. Check if all tasks are complete.',
+          INPUT,
+        ),
+      ).toBe(`Evaluate if Claude should stop: ${INPUT}. Check if all tasks are complete.`);
     });
-  }
-});
+
+    test('every $ARGUMENTS is replaced', () => {
+      expect(composePrompt('a $ARGUMENTS b $ARGUMENTS', '{}')).toBe('a {} b {}');
+    });
+
+    test('a backslash escapes: \\$1.00 renders as $1.00', () => {
+      expect(composePrompt('Spend at most \\$1.00. $ARGUMENTS', '{}')).toBe(
+        'Spend at most $1.00. {}',
+      );
+    });
+
+    test('an escaped \\$ARGUMENTS is literal text, not the placeholder, so the input is appended', () => {
+      expect(composePrompt('Write \\$ARGUMENTS literally', '{"a":1}')).toBe(
+        'Write $ARGUMENTS literally\n\n{"a":1}',
+      );
+    });
+
+    test('without $ARGUMENTS the input JSON is appended to the prompt', () => {
+      const prompt = 'Block any Bash command that reads `.env` files';
+      expect(composePrompt(prompt, INPUT)).toBe(`${prompt}\n\n${INPUT}`);
+    });
+
+    test('the input is inserted as it is: a $ARGUMENTS or \\$ inside it is not read again', () => {
+      const tricky = '{"cmd":"echo $ARGUMENTS \\\\$HOME"}';
+      expect(composePrompt('check $ARGUMENTS', tricky)).toBe(`check ${tricky}`);
+    });
+
+    for (const type of TYPES) {
+      test(`a ${type} hook sends the composed prompt to the model, which also gets the response schema`, async () => {
+        const { call } = await run(type, { prompt: 'Is it done? $ARGUMENTS' });
+        expect(call?.prompt.startsWith(`Is it done? ${INPUT}\n\n`)).toBe(true);
+        expect(call?.prompt).toContain('"ok"');
+        expect(call?.prompt).toContain('"reason"');
+      });
+    }
+  },
+);
 
 spec(['hooks.handler.prompt.model'], () => {
   for (const type of TYPES) {

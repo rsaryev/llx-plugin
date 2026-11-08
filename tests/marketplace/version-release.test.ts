@@ -32,7 +32,7 @@ const versionAt = (commit: string, manifestVersion?: string, entryVersion?: stri
 
 const messages = (issues: readonly PluginIssue[]): string[] => issues.map((i) => i.message);
 
-spec('updates.hosting.Release a new version', () => {
+spec(['updates.hosting.Release a new version', 'manifest.rule.version'], () => {
   describe('users get a new copy only when the computed version differs', () => {
     test('changing the plugin version releases it', () => {
       const installed = versionAt(FIRST, '1.0.0');

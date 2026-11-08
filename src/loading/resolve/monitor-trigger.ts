@@ -16,7 +16,31 @@ export type MonitorEvent =
 /** Whether the host runs a person's session; plugin monitors start only in an interactive one. */
 export interface MonitorMode {
   readonly interactive: boolean;
+  /** False on third-party providers or when telemetry/nonessential traffic disables flag fetching. */
+  readonly featureFlagsAvailable?: boolean;
+  /** The host release, when it needs decisions for a release other than the tracked one. */
+  readonly version?: string;
 }
+
+/** components.md § Monitors: flag-free monitors require v2.1.310. */
+function versionAllowsMonitors(mode: MonitorMode): boolean {
+  if (mode.featureFlagsAvailable !== false) return true;
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(mode.version ?? '');
+  // Judgment: an unparseable host release cannot establish the required minimum.
+  if (match === null) return false;
+  const current = match.slice(1).map(Number);
+  const minimum = [2, 1, 310];
+  const firstDifference = minimum.findIndex((part, index) => current[index] !== part);
+  return firstDifference < 0 || (current[firstDifference] ?? 0) > (minimum[firstDifference] ?? 0);
+}
+
+/** Already running monitors survive disabling a plugin; only session end stops them. */
+export const monitorsToStop = (
+  started: ReadonlySet<string>,
+  event: 'plugin-disabled' | 'session-ended',
+): readonly string[] => (STOP_RUNNING[event] ? [...started] : []);
+
+const STOP_RUNNING = { 'plugin-disabled': false, 'session-ended': true } as const;
 
 type EventKind = MonitorEvent['kind'];
 type TriggerKind = MonitorTrigger['kind'];
@@ -60,7 +84,7 @@ export function monitorsToStart(
   started: ReadonlySet<string>,
   mode: MonitorMode,
 ): Monitor[] {
-  if (!mode.interactive) return [];
+  if (!mode.interactive || !versionAllowsMonitors(mode)) return [];
   return monitors.filter(
     (monitor) => !started.has(monitor.name) && STARTS[monitor.when.kind](monitor.when, event),
   );

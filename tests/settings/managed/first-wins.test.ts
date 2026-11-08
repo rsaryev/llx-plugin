@@ -11,7 +11,7 @@ import { spec } from '../../support/spec.ts';
 const COMBINES = 'settingsMerge.managed.How Claude Code combines managed sources';
 const CROSS = 'settingsMerge.managed.Keys read from every admin source';
 
-spec(`${COMBINES}."first-wins", the default`, () => {
+spec([`${COMBINES}."first-wins", the default`, 'policy.server.Settings precedence'], () => {
   const held = {
     remote: { model: 'sonnet', permissions: { allow: ['Bash(remote)'] } },
     file: { model: 'opus', cleanupPeriodDays: 7, permissions: { allow: ['Bash(file)'] } },
@@ -223,36 +223,42 @@ spec(`${CROSS}.deniedMcpServers`, () => {
   });
 });
 
-spec(`${CROSS}.env`, () => {
-  const remote = { env: { A: 'remote', DISABLE_TELEMETRY: '1' } };
-  const file = { env: { A: 'file', B: 'file' } };
+spec(
+  [`${CROSS}.env`, 'policy.server.Per-key exceptions across managed sources.The env block'],
+  () => {
+    const remote = { env: { A: 'remote', DISABLE_TELEMETRY: '1' } };
+    const file = { env: { A: 'file', B: 'file' } };
 
-  test('each variable comes from the highest-priority source that defines it, lower sources filling the rest', () => {
-    expect(policyOf({ remote, file }).env).toEqual({
-      A: 'remote',
-      DISABLE_TELEMETRY: '1',
-      B: 'file',
+    test('each variable comes from the highest-priority source that defines it, lower sources filling the rest', () => {
+      expect(policyOf({ remote, file }).env).toEqual({
+        A: 'remote',
+        DISABLE_TELEMETRY: '1',
+        B: 'file',
+      });
     });
-  });
 
-  test('a source that is not selected still supplies variables the selected one leaves unset', () => {
-    const settings = policyOf({ remote: { model: 'a' }, file });
-    expect(settings.env).toEqual({ A: 'file', B: 'file' });
-  });
-
-  test('the user-writable HKCU registry is not part of it', () => {
-    expect(policyOf({ file, hkcu: { env: { C: 'hkcu' } } }).env).toEqual({ A: 'file', B: 'file' });
-  });
-
-  test('the same holds under merge', () => {
-    const merging = { managedSourcesBehavior: 'merge' };
-    expect(policyOf({ remote: { ...remote, ...merging }, file }).env).toEqual({
-      A: 'remote',
-      DISABLE_TELEMETRY: '1',
-      B: 'file',
+    test('a source that is not selected still supplies variables the selected one leaves unset', () => {
+      const settings = policyOf({ remote: { model: 'a' }, file });
+      expect(settings.env).toEqual({ A: 'file', B: 'file' });
     });
-  });
-});
+
+    test('the user-writable HKCU registry is not part of it', () => {
+      expect(policyOf({ file, hkcu: { env: { C: 'hkcu' } } }).env).toEqual({
+        A: 'file',
+        B: 'file',
+      });
+    });
+
+    test('the same holds under merge', () => {
+      const merging = { managedSourcesBehavior: 'merge' };
+      expect(policyOf({ remote: { ...remote, ...merging }, file }).env).toEqual({
+        A: 'remote',
+        DISABLE_TELEMETRY: '1',
+        B: 'file',
+      });
+    });
+  },
+);
 
 describe('what is read from the documents the host hands over', () => {
   test('composeManaged accepts documents in any order and ranks them itself', () => {

@@ -18,7 +18,7 @@ import {
 import { locations } from '../support/ports.ts';
 import { spec } from '../support/spec.ts';
 
-spec('layout.Executables', () => {
+spec(['layout.Executables', 'layout.components.Executables'], () => {
   test('a plugin with bin/ puts its absolute bin directory on the path; one without puts none', () => {
     const where = locations({ plugins: '/plugins' });
     expect(binPathEntries({ hasBin: true }, 'tools@market', where)).toEqual([

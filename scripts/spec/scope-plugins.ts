@@ -47,7 +47,11 @@ export const PLUGIN_SCOPES: readonly PageScope[] = [
         heading: /^(Distribute through organization settings|Roll out to a whole company)$/,
       },
     ],
-    skip: [NAVIGATION],
+    skip: [
+      ['Distribute through organization settings', 'service'],
+      ['Roll out to a whole company', 'advice'],
+      NAVIGATION,
+    ],
   },
   {
     page: 'plugins/manifest-reference.md',
@@ -92,7 +96,11 @@ export const PLUGIN_SCOPES: readonly PageScope[] = [
           /^(\/reload-plugins|Reload summary|Reloads that change MCP tools|Sessions without an interactive terminal|Flags that load a plugin for one session)$/,
       },
     ],
-    skip: [['/plugin in a session', 'ui'], [/^plugin eval( init)?$/, 'tooling'], NAVIGATION],
+    skip: [
+      ['/plugin in a session', 'ui'],
+      [/^plugin (?:eval(?: init)?|init|test)$/, 'tooling'],
+      NAVIGATION,
+    ],
   },
   {
     page: 'plugins/install.md',

@@ -15,7 +15,7 @@ export interface PluginSettingsPolicy {
   config(id: string): PluginConfig;
   modOrder(orgMods: ReadonlySet<string>): ModOrderResult;
   syncClaudeAiPlugins(): SyncDecision;
-  trustWarning(standard: string): string;
+  trustWarning(standard?: string): string;
   suggestionMarketplaces(registered: RegisteredMarketplaces): readonly string[];
 }
 

@@ -75,7 +75,7 @@ spec(`${DROPPED}.HKLM registry value`, () => {
 const detail = (label?: string) =>
   composeManaged([readAdminDocument('file', FAILED, label)]).issues[0]?.message.split('\n')[4];
 
-spec(DROPPED, () => {
+spec([DROPPED, 'cli.errors.Unable to read managed policy settings'], () => {
   test('a source that cannot be read, with no policy elsewhere, exits with the three lines and a Detail line', () => {
     const composed = composeManaged([readAdminDocument('hklm', FAILED, HKLM)]);
     expect(composed.fatal).toBe(true);

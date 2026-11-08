@@ -21,3 +21,9 @@ export {
   type RegistrationStatus,
   type RegistryContext,
 } from './registry.ts';
+export {
+  commandSourceDisabledMessage,
+  pluginBlockedMessage,
+  skillsDirectoryBlockedMessage,
+  type PluginBlock,
+} from './refusal-messages.ts';

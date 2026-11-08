@@ -32,101 +32,107 @@ const deployKit = (range: string) =>
     manifest: [{ name: 'secrets-vault', version: range }],
   });
 
-spec('dependencies.guide.How a constraint resolves against tags', () => {
-  const tags = tagsOf('secrets-vault', '2.0.5', '2.1.0', '2.1.3', '2.2.0', '3.0.0');
+spec(
+  [
+    'dependencies.guide.How a constraint resolves against tags',
+    'install.troubleshooting.Dependency errors.... has no git tag satisfying <range>',
+  ],
+  () => {
+    const tags = tagsOf('secrets-vault', '2.0.5', '2.1.0', '2.1.3', '2.2.0', '3.0.0');
 
-  test('~2.1.0 installs the dependency from the highest secrets-vault--v tag that satisfies it', () => {
-    const plan = planFor(
-      'deploy-kit@your-marketplace',
-      facts([deployKit('~2.1.0'), vault({ tags })]),
-    );
-    expect(stepOf(plan, VAULT)?.resolution).toEqual({
-      via: 'tag',
-      tag: 'secrets-vault--v2.1.3',
-      version: '2.1.3',
+    test('~2.1.0 installs the dependency from the highest secrets-vault--v tag that satisfies it', () => {
+      const plan = planFor(
+        'deploy-kit@your-marketplace',
+        facts([deployKit('~2.1.0'), vault({ tags })]),
+      );
+      expect(stepOf(plan, VAULT)?.resolution).toEqual({
+        via: 'tag',
+        tag: 'secrets-vault--v2.1.3',
+        version: '2.1.3',
+      });
     });
-  });
 
-  test('a plugin with its own repository and no tag in range fails the install with `has no git tag satisfying`', () => {
-    const plan = planFor(
-      'deploy-kit@your-marketplace',
-      facts([deployKit('~4.0.0'), vault({ tags })]),
-    );
-    expect(plan.ok).toBe(false);
-    expect(plan.steps).toEqual([]);
-    expect(plan.issues[0]?.message).toContain(
-      'Dependency "secrets-vault@your-marketplace" has no git tag satisfying',
-    );
-  });
+    test('a plugin with its own repository and no tag in range fails the install with `has no git tag satisfying`', () => {
+      const plan = planFor(
+        'deploy-kit@your-marketplace',
+        facts([deployKit('~4.0.0'), vault({ tags })]),
+      );
+      expect(plan.ok).toBe(false);
+      expect(plan.steps).toEqual([]);
+      expect(plan.issues[0]?.message).toContain(
+        'Dependency "secrets-vault@your-marketplace" has no git tag satisfying',
+      );
+    });
 
-  test('a relative path with no tag in range installs the marketplace current copy, outside the range it stays disabled with the Requires message', () => {
-    const plan = planFor(
-      'deploy-kit@your-marketplace',
-      facts([
-        deployKit('~2.1.0'),
-        vault({
-          source: relativeSource('plugins/secrets-vault'),
-          tags: [],
-          currentCopyVersion: '3.0.0',
-        }),
-      ]),
-    );
-    const step = stepOf(plan, VAULT);
-    expect(plan.ok).toBe(true);
-    expect(step?.resolution).toEqual({ via: 'current-copy', version: '3.0.0' });
-    expect(step?.loadIssues.map((one) => one.message)).toEqual([
-      'Requires "secrets-vault@your-marketplace" ~2.1.0, installed 3.0.0',
-    ]);
-    expect(step?.loadIssues[0]?.errorType).toBe('dependency-version-unsatisfied');
-  });
-
-  test('a relative path whose marketplace repository has a tag in range installs that tag', () => {
-    const plan = planFor(
-      'deploy-kit@your-marketplace',
-      facts([
-        deployKit('~2.1.0'),
-        vault({
-          source: relativeSource('plugins/secrets-vault'),
-          tags,
-          currentCopyVersion: '3.0.0',
-        }),
-      ]),
-    );
-    expect(stepOf(plan, VAULT)?.resolution?.tag).toBe('secrets-vault--v2.1.3');
-    expect(stepOf(plan, VAULT)?.loadIssues).toEqual([]);
-  });
-
-  test('a marketplace folder that is a git repository resolves against its tags; one that is not installs its current contents', () => {
-    const entry = (folderTags: readonly string[]) =>
-      facts([
-        deployKit('~2.1.0'),
-        vault({
-          source: relativeSource('plugins/secrets-vault'),
-          tags: folderTags,
-          currentCopyVersion: '2.2.0',
-        }),
+    test('a relative path with no tag in range installs the marketplace current copy, outside the range it stays disabled with the Requires message', () => {
+      const plan = planFor(
+        'deploy-kit@your-marketplace',
+        facts([
+          deployKit('~2.1.0'),
+          vault({
+            source: relativeSource('plugins/secrets-vault'),
+            tags: [],
+            currentCopyVersion: '3.0.0',
+          }),
+        ]),
+      );
+      const step = stepOf(plan, VAULT);
+      expect(plan.ok).toBe(true);
+      expect(step?.resolution).toEqual({ via: 'current-copy', version: '3.0.0' });
+      expect(step?.loadIssues.map((one) => one.message)).toEqual([
+        'Requires "secrets-vault@your-marketplace" ~2.1.0, installed 3.0.0',
       ]);
-    expect(
-      stepOf(planFor('deploy-kit@your-marketplace', entry(tags)), VAULT)?.resolution?.via,
-    ).toBe('tag');
-    const plain = stepOf(planFor('deploy-kit@your-marketplace', entry([])), VAULT);
-    expect(plain?.resolution).toEqual({ via: 'current-copy', version: '2.2.0' });
-  });
+      expect(step?.loadIssues[0]?.errorType).toBe('dependency-version-unsatisfied');
+    });
 
-  test('a range does not match a pre-release tag unless it opts in', () => {
-    const beta = tagsOf('secrets-vault', '2.0.0-beta.1');
-    const plain = planFor(
-      'deploy-kit@your-marketplace',
-      facts([deployKit('^2.0.0'), vault({ tags: beta })]),
-    );
-    expect(plain.ok).toBe(false);
-    const optIn = planFor(
-      'deploy-kit@your-marketplace',
-      facts([deployKit('^2.0.0-0'), vault({ tags: beta })]),
-    );
-    expect(stepOf(optIn, VAULT)?.resolution?.version).toBe('2.0.0-beta.1');
-  });
-});
+    test('a relative path whose marketplace repository has a tag in range installs that tag', () => {
+      const plan = planFor(
+        'deploy-kit@your-marketplace',
+        facts([
+          deployKit('~2.1.0'),
+          vault({
+            source: relativeSource('plugins/secrets-vault'),
+            tags,
+            currentCopyVersion: '3.0.0',
+          }),
+        ]),
+      );
+      expect(stepOf(plan, VAULT)?.resolution?.tag).toBe('secrets-vault--v2.1.3');
+      expect(stepOf(plan, VAULT)?.loadIssues).toEqual([]);
+    });
+
+    test('a marketplace folder that is a git repository resolves against its tags; one that is not installs its current contents', () => {
+      const entry = (folderTags: readonly string[]) =>
+        facts([
+          deployKit('~2.1.0'),
+          vault({
+            source: relativeSource('plugins/secrets-vault'),
+            tags: folderTags,
+            currentCopyVersion: '2.2.0',
+          }),
+        ]);
+      expect(
+        stepOf(planFor('deploy-kit@your-marketplace', entry(tags)), VAULT)?.resolution?.via,
+      ).toBe('tag');
+      const plain = stepOf(planFor('deploy-kit@your-marketplace', entry([])), VAULT);
+      expect(plain?.resolution).toEqual({ via: 'current-copy', version: '2.2.0' });
+    });
+
+    test('a range does not match a pre-release tag unless it opts in', () => {
+      const beta = tagsOf('secrets-vault', '2.0.0-beta.1');
+      const plain = planFor(
+        'deploy-kit@your-marketplace',
+        facts([deployKit('^2.0.0'), vault({ tags: beta })]),
+      );
+      expect(plain.ok).toBe(false);
+      const optIn = planFor(
+        'deploy-kit@your-marketplace',
+        facts([deployKit('^2.0.0-0'), vault({ tags: beta })]),
+      );
+      expect(stepOf(optIn, VAULT)?.resolution?.version).toBe('2.0.0-beta.1');
+    });
+  },
+);
 
 spec('dependencies.guide.Confirm the resolved version', () => {
   const COMMIT = '8713c5b11005d1f1e2a3b4c5d6e7f8091a2b3c4d';

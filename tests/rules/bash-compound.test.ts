@@ -11,13 +11,14 @@
  * No requirement id covers this section, so none of it is under spec(). Where the docs name no
  * algorithm (quotes, redirects, here-documents) the choice is a row in spec/judgments.md.
  */
-import { describe, expect, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { splitCommand } from '../../src/rules/bash/split.ts';
 import { allows, asks, denies } from '../support/bash-rules.ts';
+import { spec } from '../support/spec.ts';
 
 const SEPARATORS = ['&&', '||', ';', '|', '|&', '&', '\n'];
 
-describe('the recognized separators split a command into subcommands', () => {
+spec(['permissions.behavior.Compound commands'], () => {
   test.each(SEPARATORS)('%j separates two subcommands', (separator) => {
     expect(splitCommand(`safe-cmd a ${separator} other-cmd b`)).toEqual({
       subcommands: ['safe-cmd a', 'other-cmd b'],
@@ -56,7 +57,7 @@ describe('the recognized separators split a command into subcommands', () => {
   });
 });
 
-describe('deny and ask rules apply when any subcommand matches', () => {
+spec(['permissions.behavior.Compound commands'], () => {
   test('the documented examples: cd /tmp && git clean -f, and echo "$(git clean -f)"', () => {
     for (const rule of [denies, asks]) {
       expect(rule('Bash(git clean *)', 'cd /tmp && git clean -f')).toBe(true);
@@ -100,7 +101,7 @@ describe('deny and ask rules apply when any subcommand matches', () => {
   });
 });
 
-describe('a command with nothing after && or || is unparseable', () => {
+spec(['permissions.behavior.Compound commands'], () => {
   test.each(['npm test &&', 'npm test ||', 'npm test && ', 'npm test &&\n'])(
     '%j is not split for an allow rule',
     (command) => {

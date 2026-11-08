@@ -32,15 +32,21 @@ spec('permissions.rule.Bash(npm run build)', () => {
   });
 });
 
-spec('permissions.rule.Bash(npm run *)', () => {
-  test('matches the script, its options and the bare command, not another npm command', () => {
-    row(
-      'Bash(npm run *)',
-      ['npm run build', 'npm run test --watch', 'npm run'],
-      ['npm install', 'npm runs', 'npmrun build'],
-    );
-  });
-});
+spec(
+  [
+    'permissions.rule.Bash(npm run *)',
+    'permissions.reference.Permission rule syntax.Bash(npm run *)',
+  ],
+  () => {
+    test('matches the script, its options and the bare command, not another npm command', () => {
+      row(
+        'Bash(npm run *)',
+        ['npm run build', 'npm run test --watch', 'npm run'],
+        ['npm install', 'npm runs', 'npmrun build'],
+      );
+    });
+  },
+);
 
 spec('permissions.rule.Bash(git log * main)', () => {
   test('the * stands for any text between git log and main, and the words around it are required', () => {

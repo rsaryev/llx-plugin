@@ -142,6 +142,16 @@ export interface RegisteredHook {
 export interface ModPluginInfo {
   readonly name: string;
   readonly api: ModsApi;
+  /** Native modules remain trusted even when the host places them in the user tier. */
+  readonly isBuiltin?: boolean;
+}
+
+/** Admission uses the original frozen input, not a previous hook's rewrite. */
+export interface HookAccess {
+  readonly event: string;
+  readonly tier: ModTier;
+  readonly isBuiltin: boolean;
+  readonly input: unknown;
 }
 
 /**

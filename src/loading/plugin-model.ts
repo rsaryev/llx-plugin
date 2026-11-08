@@ -83,4 +83,6 @@ export interface LoadedPlugin {
   /** `undefined` when the plugin does not load: a manifest that fails, or no name to load it under. */
   readonly plugin: Plugin | undefined;
   readonly issues: readonly PluginIssue[];
+  /** Debug-only load notices: never shown as validation findings in the Plugin Errors tab. */
+  readonly debug?: readonly string[];
 }

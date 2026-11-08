@@ -21,91 +21,105 @@ describe('the read and write blocks', () => {
   const blocked = block('blockReadsOutsideWorkingDirectories', true);
   const paths = { ...matchContext.paths, additionalDirectories: ['/work/cli'] };
 
-  spec('permissions.setting.permissions.blockReadsOutsideWorkingDirectories', () => {
-    test('true in any file turns the read block on, in every file a repository can set it', () => {
-      for (const scope of ['managed', 'flag', 'local', 'project', 'user'] as const) {
-        const policy = permissionsOf([[scope, block('blockReadsOutsideWorkingDirectories', true)]]);
+  spec(
+    [
+      'permissions.setting.permissions.blockReadsOutsideWorkingDirectories',
+      'permissions.behavior.Block file-tool reads and writes outside the working directories',
+    ],
+    () => {
+      test('true in any file turns the read block on, in every file a repository can set it', () => {
+        for (const scope of ['managed', 'flag', 'local', 'project', 'user'] as const) {
+          const policy = permissionsOf([
+            [scope, block('blockReadsOutsideWorkingDirectories', true)],
+          ]);
+          expect(policy.blockReadsOutsideWorkingDirectories).toBe(true);
+        }
+      });
+
+      test("false is the same as unset: another file's true still applies, even over a managed false", () => {
+        const policy = permissionsOf([
+          ['managed', block('blockReadsOutsideWorkingDirectories', false)],
+          ['project', block('blockReadsOutsideWorkingDirectories', true)],
+        ]);
         expect(policy.blockReadsOutsideWorkingDirectories).toBe(true);
-      }
-    });
+        expect(
+          permissionsOf([['user', block('blockReadsOutsideWorkingDirectories', false)]])
+            .blockReadsOutsideWorkingDirectories,
+        ).toBe(false);
+        expect(permissionsOf([]).blockReadsOutsideWorkingDirectories).toBe(false);
+      });
 
-    test("false is the same as unset: another file's true still applies, even over a managed false", () => {
-      const policy = permissionsOf([
-        ['managed', block('blockReadsOutsideWorkingDirectories', false)],
-        ['project', block('blockReadsOutsideWorkingDirectories', true)],
-      ]);
-      expect(policy.blockReadsOutsideWorkingDirectories).toBe(true);
-      expect(
-        permissionsOf([['user', block('blockReadsOutsideWorkingDirectories', false)]])
-          .blockReadsOutsideWorkingDirectories,
-      ).toBe(false);
-      expect(permissionsOf([]).blockReadsOutsideWorkingDirectories).toBe(false);
-    });
+      test('reaches the session context that decides file reads', () => {
+        const policy = permissionsOf([
+          ['project', block('blockReadsOutsideWorkingDirectories', true)],
+        ]);
+        expect(sessionOf(policy).context.blockReadsOutsideWorkingDirectories).toBe(true);
+      });
 
-    test('reaches the session context that decides file reads', () => {
-      const policy = permissionsOf([
-        ['project', block('blockReadsOutsideWorkingDirectories', true)],
-      ]);
-      expect(sessionOf(policy).context.blockReadsOutsideWorkingDirectories).toBe(true);
-    });
-
-    test('directories added with --add-dir or in user or managed settings count as working directories; those only repository settings add do not', () => {
-      const read = (path: string, policy = repository) =>
-        decide(call('Read', { file_path: path }), sessionOf(policy, terminal(), { paths }).context);
-      const repository = permissionsOf([
-        ['project', { permissions: { additionalDirectories: ['/work/repo-only', '/work/both'] } }],
-        [
-          'user',
-          {
-            permissions: {
-              additionalDirectories: ['/work/both', '/work/user'],
-              blockReadsOutsideWorkingDirectories: true,
+      test('directories added with --add-dir or in user or managed settings count as working directories; those only repository settings add do not', () => {
+        const read = (path: string, policy = repository) =>
+          decide(
+            call('Read', { file_path: path }),
+            sessionOf(policy, terminal(), { paths }).context,
+          );
+        const repository = permissionsOf([
+          [
+            'project',
+            { permissions: { additionalDirectories: ['/work/repo-only', '/work/both'] } },
+          ],
+          [
+            'user',
+            {
+              permissions: {
+                additionalDirectories: ['/work/both', '/work/user'],
+                blockReadsOutsideWorkingDirectories: true,
+              },
             },
-          },
-        ],
-      ]);
-      expect(read('/work/repo-only/a.ts')).toEqual(deny('outside-working-directory'));
-      expect(read('/work/both/a.ts').outcome).toBe('allow');
-      expect(read('/work/user/a.ts').outcome).toBe('allow');
-      expect(read('/work/cli/a.ts').outcome).toBe('allow');
-      expect(read('/work/elsewhere/a.ts')).toEqual(deny('outside-working-directory'));
-    });
-
-    test('a tracked .claude/settings.local.json is repository settings too; an untracked one is yours', () => {
-      const local = permissionsOf(
-        [
-          ['local', { permissions: { additionalDirectories: ['/work/mine'] } }],
-          ['user', blocked],
-        ],
-        { localSettingsTracked: false },
-      );
-      const tracked = permissionsOf(
-        [
-          ['local', { permissions: { additionalDirectories: ['/work/mine'] } }],
-          ['user', blocked],
-        ],
-        { localSettingsTracked: true, isFolderTrusted: () => true },
-      );
-      const run = (policy: typeof local) =>
-        decide(call('Read', { file_path: '/work/mine/a.ts' }), sessionOf(policy).context);
-      expect(run(local).outcome).toBe('allow');
-      expect(run(tracked)).toEqual(deny('outside-working-directory'));
-    });
-
-    test('unreadable in managed settings it reads as true; a quoted Boolean reads as that Boolean with a notice', () => {
-      expect(
-        layerOf('managed', block('blockReadsOutsideWorkingDirectories', 'maybe')).settings
-          .permissions,
-      ).toEqual({
-        blockReadsOutsideWorkingDirectories: true,
+          ],
+        ]);
+        expect(read('/work/repo-only/a.ts')).toEqual(deny('outside-working-directory'));
+        expect(read('/work/both/a.ts').outcome).toBe('allow');
+        expect(read('/work/user/a.ts').outcome).toBe('allow');
+        expect(read('/work/cli/a.ts').outcome).toBe('allow');
+        expect(read('/work/elsewhere/a.ts')).toEqual(deny('outside-working-directory'));
       });
-      const quoted = block('blockReadsOutsideWorkingDirectories', 'false');
-      expect(layerOf('managed', quoted).settings.permissions).toEqual({
-        blockReadsOutsideWorkingDirectories: false,
+
+      test('a tracked .claude/settings.local.json is repository settings too; an untracked one is yours', () => {
+        const local = permissionsOf(
+          [
+            ['local', { permissions: { additionalDirectories: ['/work/mine'] } }],
+            ['user', blocked],
+          ],
+          { localSettingsTracked: false },
+        );
+        const tracked = permissionsOf(
+          [
+            ['local', { permissions: { additionalDirectories: ['/work/mine'] } }],
+            ['user', blocked],
+          ],
+          { localSettingsTracked: true, isFolderTrusted: () => true },
+        );
+        const run = (policy: typeof local) =>
+          decide(call('Read', { file_path: '/work/mine/a.ts' }), sessionOf(policy).context);
+        expect(run(local).outcome).toBe('allow');
+        expect(run(tracked)).toEqual(deny('outside-working-directory'));
       });
-      expect(issuesOf('managed', quoted)[0]?.message).toContain('drop the quotes');
-    });
-  });
+
+      test('unreadable in managed settings it reads as true; a quoted Boolean reads as that Boolean with a notice', () => {
+        expect(
+          layerOf('managed', block('blockReadsOutsideWorkingDirectories', 'maybe')).settings
+            .permissions,
+        ).toEqual({
+          blockReadsOutsideWorkingDirectories: true,
+        });
+        const quoted = block('blockReadsOutsideWorkingDirectories', 'false');
+        expect(layerOf('managed', quoted).settings.permissions).toEqual({
+          blockReadsOutsideWorkingDirectories: false,
+        });
+        expect(issuesOf('managed', quoted)[0]?.message).toContain('drop the quotes');
+      });
+    },
+  );
 
   spec('permissions.setting.permissions.blockWritesOutsideWorkingDirectories', () => {
     test('true in any file turns the write block on', () => {

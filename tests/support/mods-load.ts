@@ -122,8 +122,12 @@ export function session(
 }
 
 /** A plugin for `host.load`: the candidate and the folder of a mod whose module is `register`. */
-export function modPlugin(candidate: ModCandidate, register: RegisterFunction): ModPlugin {
-  return { candidate, files: modFolder(candidate.name, register) };
+export function modPlugin(
+  candidate: ModCandidate,
+  register: RegisterFunction,
+  extra: Record<string, string> = {},
+): ModPlugin {
+  return { candidate, files: modFolder(candidate.name, register, extra) };
 }
 
 /** The `on` of a test's `register`: a name, an optional filter and a hook, all loosely typed. */

@@ -51,7 +51,7 @@ for (const name of ELEMENT_NAMES) {
   const row = MODS_REFERENCE.elements.find((candidate) => candidate.name === name);
   const drawn = row?.surfaces ?? [];
   const refused = SURFACES.filter((surface) => !drawn.includes(surface));
-  spec(ELEMENT_IDS[name], () => {
+  spec([ELEMENT_IDS[name], `mods.interface.Build a tree from elements.${name}`], () => {
     test(`the row of ${name} gives the apps that draw it, and the kit routes it to those`, () => {
       expect(row).toBeDefined();
       expect([...ELEMENT_SURFACES[name]]).toEqual(drawn);
@@ -211,7 +211,7 @@ spec('mods.element.Box', () => {
   });
 });
 
-spec('mods.element.Text', () => {
+spec(['mods.element.Text', 'mods.reference.Replace bold with weight'], () => {
   test('a Text takes the props of the table', () => {
     const props = {
       color: 'red',

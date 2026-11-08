@@ -141,3 +141,13 @@ export function mcpPromptToolAnswer(
     ? { behavior: 'deny', message: PROMPT_TOOL_REFUSAL }
     : answer;
 }
+
+/**
+ * The error of a run whose `--permission-prompt-tool` is not among the connected MCP tools when the
+ * first permission decision is needed (errors.md, "MCP permission prompt tool not found"). The run
+ * exits with code 1; `available` names the connected MCP tools, and none reads `none`.
+ */
+export function permissionPromptToolNotFound(tool: string, available: readonly string[]): string {
+  const list = available.length === 0 ? 'none' : available.join(', ');
+  return `Error: MCP tool ${tool} (passed via --permission-prompt-tool) not found. Available MCP tools: ${list}`;
+}

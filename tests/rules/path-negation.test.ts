@@ -8,10 +8,11 @@
  * gitignore pattern still guards that exact path. An allow rule with an unusable pattern doesn't
  * approve anything." No requirement id covers these, so none of it is under spec().
  */
-import { describe, expect, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { evaluateRules, type PermissionRule, type RuleSource } from '../../src/rules/index.ts';
 import { call, matchContext, parsed } from '../support/rule-context.ts';
 import { inputFor } from '../support/path-rules.ts';
+import { spec } from '../support/spec.ts';
 
 const PROJECT: RuleSource = { kind: 'project' };
 
@@ -25,7 +26,7 @@ function verdict(
   return evaluateRules(list, call('Read', inputFor('Read', path)), matchContext).behavior;
 }
 
-describe('a `!` pattern carves paths out of the rules listed before it (same source)', () => {
+spec(['permissions.behavior.Special characters and ! negation'], () => {
   const rules = [['Read(*.env)'], ['Read(!sample.env)']] as const;
 
   test('Read(*.env) then Read(!sample.env) blocks every .env file except sample.env', () => {
@@ -62,7 +63,7 @@ describe('a `!` pattern carves paths out of the rules listed before it (same sou
   });
 });
 
-describe('the carve-out reaches only rules from the same source', () => {
+spec(['permissions.behavior.Special characters and ! negation'], () => {
   test('a project ! rule does not cancel a managed deny', () => {
     const rules = [
       ['Read(./.env)', { kind: 'managed' }],
@@ -106,7 +107,7 @@ describe('the carve-out reaches only rules from the same source', () => {
   });
 });
 
-describe('the two limits of a carve-out', () => {
+spec(['permissions.behavior.Special characters and ! negation'], () => {
   test('a ! pattern is read relative to the cwd, so it cannot reach a ~/ rule', () => {
     const rules = [['Read(~/notes/**)'], ['Read(!~/notes/public/**)']] as const;
     expect(verdict(rules, '/home/alice/notes/public/a.md')).toBe('deny');
@@ -132,7 +133,7 @@ describe('the two limits of a carve-out', () => {
   });
 });
 
-describe('a pattern that is not usable as a gitignore pattern', () => {
+spec(['permissions.behavior.Special characters and ! negation'], () => {
   test('a deny or ask rule still guards that exact path', () => {
     expect(verdict([['Read(#notes.txt)']], '/work/app/#notes.txt')).toBe('deny');
     expect(verdict([['Read(#notes.txt)']], '/work/app/other.txt')).toBeUndefined();
@@ -176,7 +177,7 @@ describe('a pattern that is not usable as a gitignore pattern', () => {
   });
 });
 
-describe('parentheses in a path need no escape', () => {
+spec(['permissions.behavior.Special characters and ! negation'], () => {
   test('Edit(./Finance (2024)/**) matches the Finance (2024) folder as spelled', () => {
     const list = [parsed('Edit(./Finance (2024)/**)', 'allow')];
     const edit = (path: string) =>

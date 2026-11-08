@@ -18,83 +18,89 @@ import { spec } from '../../support/spec.ts';
 const lockedBy = (value: unknown): readonly string[] =>
   PLUGIN_ONLY_SURFACES.filter((surface) => readSurfaceLocks(value).locked.has(surface));
 
-spec('settings.key.strictPluginOnlyCustomization', () => {
-  describe('the value', () => {
-    test('true locks all four kinds of customization', () => {
-      expect(lockedBy(true)).toEqual(['skills', 'agents', 'hooks', 'mcp']);
+spec(
+  [
+    'settings.key.strictPluginOnlyCustomization',
+    'policy.org.Control matrix.strictPluginOnlyCustomization',
+  ],
+  () => {
+    describe('the value', () => {
+      test('true locks all four kinds of customization', () => {
+        expect(lockedBy(true)).toEqual(['skills', 'agents', 'hooks', 'mcp']);
+      });
+
+      test('an array locks the kinds it names: the docs example locks skills and hooks only', () => {
+        expect(lockedBy(['skills', 'hooks'])).toEqual(['skills', 'hooks']);
+      });
+
+      test('unset locks nothing', () => {
+        expect(lockedBy(undefined)).toEqual([]);
+        expect(customizationOf([]).locked.size).toBe(0);
+      });
+
+      test('an empty array names no kind, so it locks nothing', () => {
+        expect(lockedBy([])).toEqual([]);
+      });
+
+      test('a surface name this version does not recognize locks nothing and is counted', () => {
+        const read = readSurfaceLocks(['skills', 'slashCommands', 'mpc']);
+        expect([...read.locked]).toEqual(['skills']);
+        expect(read.unknownNames).toBe(2);
+        expect(readSurfaceLocks(['skills', 'hooks']).unknownNames).toBe(0);
+      });
+
+      test('an entry that is not even a string is a name no surface has: counted, locks nothing', () => {
+        const read = readSurfaceLocks(['agents', 7, null, { hooks: true }]);
+        expect([...read.locked]).toEqual(['agents']);
+        expect(read.unknownNames).toBe(3);
+      });
+
+      test('a value that is neither a boolean nor an array is treated as true: all four locked', () => {
+        for (const value of ['skills', 'true', 1, { skills: true }]) {
+          expect(lockedBy(value)).toEqual(['skills', 'agents', 'hooks', 'mcp']);
+        }
+      });
     });
 
-    test('an array locks the kinds it names: the docs example locks skills and hooks only', () => {
-      expect(lockedBy(['skills', 'hooks'])).toEqual(['skills', 'hooks']);
+    describe('where it is read from', () => {
+      test('managed settings lock; the same key in user, project, local or --settings files locks nothing', () => {
+        expect(customizationOf(locking(['mcp'])).locked).toEqual(new Set(['mcp']));
+        for (const scope of ['user', 'project', 'local', 'flag'] as const) {
+          const policy = customizationOf([[scope, { strictPluginOnlyCustomization: true }]]);
+          expect(policy.locked.size).toBe(0);
+        }
+      });
+
+      test('a user file cannot lift a managed lock, whatever it says', () => {
+        const policy = customizationOf([
+          ...locking(['hooks']),
+          ['user', { strictPluginOnlyCustomization: false }],
+          ['local', { strictPluginOnlyCustomization: [] }],
+        ]);
+        expect(policy.locked).toEqual(new Set(['hooks']));
+      });
+
+      test('an unreadable managed value repairs to true when the file is read', () => {
+        expect(customizationOf(locking('everything')).locked.size).toBe(4);
+      });
+
+      test('the policy counts the names it ignored, for the status note', () => {
+        expect(customizationOf(locking(['skills', 'plugins'])).unknownSurfaceNames).toBe(1);
+      });
     });
 
-    test('unset locks nothing', () => {
-      expect(lockedBy(undefined)).toEqual([]);
-      expect(customizationOf([]).locked.size).toBe(0);
-    });
+    describe('parent settings (the SDK managedSettings option)', () => {
+      const parentLock = [['parent', { strictPluginOnlyCustomization: ['agents'] }]] as const;
 
-    test('an empty array names no kind, so it locks nothing', () => {
-      expect(lockedBy([])).toEqual([]);
-    });
+      test('a host without an administrator can lock through managedSettings', () => {
+        expect(customizationOf(parentLock).locked).toEqual(new Set(['agents']));
+      });
 
-    test('a surface name this version does not recognize locks nothing and is counted', () => {
-      const read = readSurfaceLocks(['skills', 'slashCommands', 'mpc']);
-      expect([...read.locked]).toEqual(['skills']);
-      expect(read.unknownNames).toBe(2);
-      expect(readSurfaceLocks(['skills', 'hooks']).unknownNames).toBe(0);
+      test('where an administrator deploys managed settings the parent is ignored unless they opt in', () => {
+        expect(customizationOf(parentLock, { hasManagedSettings: true }).locked.size).toBe(0);
+        const merged = customizationOf(parentLock, { hasManagedSettings: true, parentMerge: true });
+        expect(merged.locked).toEqual(new Set(['agents']));
+      });
     });
-
-    test('an entry that is not even a string is a name no surface has: counted, locks nothing', () => {
-      const read = readSurfaceLocks(['agents', 7, null, { hooks: true }]);
-      expect([...read.locked]).toEqual(['agents']);
-      expect(read.unknownNames).toBe(3);
-    });
-
-    test('a value that is neither a boolean nor an array is treated as true: all four locked', () => {
-      for (const value of ['skills', 'true', 1, { skills: true }]) {
-        expect(lockedBy(value)).toEqual(['skills', 'agents', 'hooks', 'mcp']);
-      }
-    });
-  });
-
-  describe('where it is read from', () => {
-    test('managed settings lock; the same key in user, project, local or --settings files locks nothing', () => {
-      expect(customizationOf(locking(['mcp'])).locked).toEqual(new Set(['mcp']));
-      for (const scope of ['user', 'project', 'local', 'flag'] as const) {
-        const policy = customizationOf([[scope, { strictPluginOnlyCustomization: true }]]);
-        expect(policy.locked.size).toBe(0);
-      }
-    });
-
-    test('a user file cannot lift a managed lock, whatever it says', () => {
-      const policy = customizationOf([
-        ...locking(['hooks']),
-        ['user', { strictPluginOnlyCustomization: false }],
-        ['local', { strictPluginOnlyCustomization: [] }],
-      ]);
-      expect(policy.locked).toEqual(new Set(['hooks']));
-    });
-
-    test('an unreadable managed value repairs to true when the file is read', () => {
-      expect(customizationOf(locking('everything')).locked.size).toBe(4);
-    });
-
-    test('the policy counts the names it ignored, for the status note', () => {
-      expect(customizationOf(locking(['skills', 'plugins'])).unknownSurfaceNames).toBe(1);
-    });
-  });
-
-  describe('parent settings (the SDK managedSettings option)', () => {
-    const parentLock = [['parent', { strictPluginOnlyCustomization: ['agents'] }]] as const;
-
-    test('a host without an administrator can lock through managedSettings', () => {
-      expect(customizationOf(parentLock).locked).toEqual(new Set(['agents']));
-    });
-
-    test('where an administrator deploys managed settings the parent is ignored unless they opt in', () => {
-      expect(customizationOf(parentLock, { hasManagedSettings: true }).locked.size).toBe(0);
-      const merged = customizationOf(parentLock, { hasManagedSettings: true, parentMerge: true });
-      expect(merged.locked).toEqual(new Set(['agents']));
-    });
-  });
-});
+  },
+);

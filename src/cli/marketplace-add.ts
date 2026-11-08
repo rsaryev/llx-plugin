@@ -4,6 +4,8 @@ import {
   type RegisteredMarketplace,
 } from '../format/marketplace/marketplace-names.ts';
 import type { MarketplaceSource } from '../format/marketplace/types.ts';
+import { declaredSourceRefusal } from '../marketplace/declared-source.ts';
+import { idPartRefusal } from '../marketplace/add-failures.ts';
 import { installClosure, type InstallPlan } from '../marketplace/dependency-install-plan.ts';
 import type { GraphFacts } from '../marketplace/dependency-graph.ts';
 import {
@@ -114,6 +116,8 @@ export interface AddFetched {
   readonly registered: readonly RegisteredMarketplace[];
   /** The plugin graph with this marketplace's catalog read; absent when the host has no installed plugins to check. */
   readonly graph?: GraphFacts;
+  /** The source a user or managed `extraKnownMarketplaces` entry lists for this name; absent when none does. */
+  readonly declared?: MarketplaceSource;
 }
 
 export interface AddConclusion {
@@ -153,6 +157,8 @@ export function nameRefusal(
   found: Pick<AddFetched, 'name' | 'registered'>,
   source: MarketplaceSource | undefined,
 ): string | undefined {
+  const grammar = idPartRefusal(found.name);
+  if (grammar !== undefined) return grammar;
   const issues = [
     ...validationNameIssues(found.name),
     ...loadNameIssues(
@@ -168,7 +174,13 @@ function concludeFetch(
   start: Extract<AddStart, { kind: 'fetch' }>,
   found: AddFetched,
 ): AddConclusion {
-  const refusal = nameRefusal(found, start.source);
+  const refusal =
+    nameRefusal(found, start.source) ??
+    declaredSourceRefusal({
+      name: found.name,
+      given: start.source,
+      ...(found.declared === undefined ? {} : { declared: found.declared }),
+    });
   if (refusal !== undefined) {
     return {
       output: marketplaceFailure('marketplace-add', found.name, refusal, 'invalid_name'),

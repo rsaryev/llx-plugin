@@ -229,50 +229,56 @@ spec('skills.behavior.Permission checks on injected commands', () => {
   });
 });
 
-spec('skills.behavior.When no shell command was run', () => {
-  test('a raw control character other than tab or newline refuses the command, shown as the replacement mark', async () => {
-    const { result, runner, asked } = await run(['build.sh --target\u0001dist'], []);
-    const message = failure(result);
-    expect(
-      message.startsWith(
-        'No shell command in /pr-summary was run, because the Bash tool does not accept one of them: ',
-      ),
-    ).toBe(true);
-    expect(message).toContain(
-      'command contains control characters that would be hidden in the approval dialog',
-    );
-    expect(message.endsWith('\nbuild.sh --target�dist')).toBe(true);
-    expect(runner.calls).toHaveLength(0);
-    expect(asked).toHaveLength(0);
-  });
+spec(
+  [
+    'skills.behavior.When no shell command was run',
+    'cli.errors.No shell command in a skill or command was run',
+  ],
+  () => {
+    test('a raw control character other than tab or newline refuses the command, shown as the replacement mark', async () => {
+      const { result, runner, asked } = await run(['build.sh --target\u0001dist'], []);
+      const message = failure(result);
+      expect(
+        message.startsWith(
+          'No shell command in /pr-summary was run, because the Bash tool does not accept one of them: ',
+        ),
+      ).toBe(true);
+      expect(message).toContain(
+        'command contains control characters that would be hidden in the approval dialog',
+      );
+      expect(message.endsWith('\nbuild.sh --target�dist')).toBe(true);
+      expect(runner.calls).toHaveLength(0);
+      expect(asked).toHaveLength(0);
+    });
 
-  test('judgment: CRLF line endings of a skill file are not refused, and the shell gets plain newlines', async () => {
-    const { result, runner } = await run(['node --version\r\ngit status'], [{ stdout: 'ok' }]);
-    expect(result.ok).toBe(true);
-    expect(runner.calls[0]?.spec).toMatchObject({ command: 'node --version\ngit status' });
-    const { result: lone } = await run(['a\rb'], []);
-    expect(failure(lone)).toContain('a\uFFFDb');
-  });
+    test('judgment: CRLF line endings of a skill file are not refused, and the shell gets plain newlines', async () => {
+      const { result, runner } = await run(['node --version\r\ngit status'], [{ stdout: 'ok' }]);
+      expect(result.ok).toBe(true);
+      expect(runner.calls[0]?.spec).toMatchObject({ command: 'node --version\ngit status' });
+      const { result: lone } = await run(['a\rb'], []);
+      expect(failure(lone)).toContain('a\uFFFDb');
+    });
 
-  test('judgment: the permission check sees the same normalised command the shell runs', async () => {
-    const { asked, runner } = await run(['node --version\r\ngit status'], [{}]);
-    expect(asked[0]?.command).toBe('node --version\ngit status');
-    expect(asked[0]?.command).toBe(
-      runner.calls[0]?.spec.form === 'shell' ? runner.calls[0].spec.command : undefined,
-    );
-  });
+    test('judgment: the permission check sees the same normalised command the shell runs', async () => {
+      const { asked, runner } = await run(['node --version\r\ngit status'], [{}]);
+      expect(asked[0]?.command).toBe('node --version\ngit status');
+      expect(asked[0]?.command).toBe(
+        runner.calls[0]?.spec.form === 'shell' ? runner.calls[0].spec.command : undefined,
+      );
+    });
 
-  test('a tab and a newline are fine', async () => {
-    const { result } = await run(['printf a\tb\nprintf c'], [{ stdout: 'ac' }]);
-    expect(result.ok).toBe(true);
-  });
+    test('a tab and a newline are fine', async () => {
+      const { result } = await run(['printf a\tb\nprintf c'], [{ stdout: 'ac' }]);
+      expect(result.ok).toBe(true);
+    });
 
-  test('"PowerShell tool: also U+FEFF or U+180E"', async () => {
-    for (const char of ['﻿', '᠎']) {
-      const { result } = await run([`Get-Date${char}`], [], { context: { shell: 'powershell' } });
-      expect(failure(result)).toContain('the PowerShell tool does not accept one of them');
-    }
-    const { result } = await run(['echo ﻿'], [{}]);
-    expect(result.ok).toBe(true);
-  });
-});
+    test('"PowerShell tool: also U+FEFF or U+180E"', async () => {
+      for (const char of ['﻿', '᠎']) {
+        const { result } = await run([`Get-Date${char}`], [], { context: { shell: 'powershell' } });
+        expect(failure(result)).toContain('the PowerShell tool does not accept one of them');
+      }
+      const { result } = await run(['echo ﻿'], [{}]);
+      expect(result.ok).toBe(true);
+    });
+  },
+);

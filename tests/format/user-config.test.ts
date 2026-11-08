@@ -79,7 +79,7 @@ const tone: Record<string, unknown> = {
   default: 'neutral',
 };
 
-spec('userConfig.field.options', () => {
+spec(['userConfig.field.options', 'userConfig.rule.Limit a field to fixed options'], () => {
   test('the tone example (a string field with options and a default from them) loads and is kept', () => {
     expect(withOption(tone).manifest?.userConfig?.api_token).toMatchObject(tone);
   });

@@ -40,3 +40,20 @@ export { createRedrawGate, REDRAW_RATES, type RedrawGate, type RedrawRate } from
 export { createInvalidator, type Invalidator } from './redraw/invalidate.ts';
 export { createToastBoard, parseToast, TOAST_TIMEOUT_PROBLEM, type ToastBoard } from './toast.ts';
 export { createElementTables, resolveTables, type ElementTables } from './tables.ts';
+export { handleKey, type KeyContext, type KeyResult, type KeyState } from './keyboard/keys.ts';
+export { NAMED_KEYS, type KeyEffect, type NamedKey } from './keyboard/effects.ts';
+export { grantsFocus, clickFocuses, initialFocus, type FocusGrantInput } from './keyboard/focus.ts';
+export { createBandState, collapsedRow, COLLAPSE_MARK, type BandState } from './keyboard/band.ts';
+export { maxPaneColumns, paneColumns, resizedColumns } from './keyboard/pane-size.ts';
+export {
+  VSCODE_LABELS,
+  clipVscodeStatus,
+  clipVscodeToast,
+  isStatusStackVisible,
+  propsReachSite,
+  suggestionRefusedBy,
+  vscodePanePlacement,
+  type PanePlacement,
+} from './keyboard/vscode.ts';
+export { drawFaultLine } from './sites/draw-fault.ts';
+export { redrawsUnasked, type RedrawCause } from './redraw/unasked.ts';

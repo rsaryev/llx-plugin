@@ -130,7 +130,7 @@ spec('hooks.behavior.Configure an async hook', () => {
   });
 });
 
-spec('hooks.behavior.How async hooks execute', () => {
+spec(['hooks.behavior.How async hooks execute', 'hooks.behavior.Limitations'], () => {
   test('the hook receives the same JSON input via stdin as a synchronous hook', async () => {
     const { runner } = await dispatch();
     const sync = pendingRunner();

@@ -1,5 +1,6 @@
 /** The wording `claude plugin validate` 2.1.319 gives a plugin name (docs/SPEC.md, "Sources of truth"). */
 import { describe, expect, test } from 'bun:test';
+import { spec } from '../../support/spec.ts';
 import { nameReservedIssues, nameValidationIssues } from '../../../src/format/names.ts';
 
 const messages = (name: string, skipReserved = false, context: 'manifest' | 'entry' = 'manifest') =>
@@ -8,16 +9,21 @@ const messages = (name: string, skipReserved = false, context: 'manifest' | 'ent
 const SYNC =
   'Claude.ai marketplace sync requires kebab-case (lowercase letters, digits, and hyphens only, e.g., "my-plugin").';
 
-describe('not kebab-case: the advice depends on how badly the name breaks', () => {
-  test('a name Claude Code still installs', () => {
-    expect(messages('MyPlugin')).toEqual([
-      [
-        'warning',
-        `Plugin name "MyPlugin" is not kebab-case. Claude Code accepts it, but the ${SYNC}`,
-      ],
-    ]);
-  });
+spec(
+  'marketplace.troubleshooting.Marketplace validation errors.Plugin name "<name>" is not kebab-case',
+  () => {
+    test('a name Claude Code still installs is a warning', () => {
+      expect(messages('MyPlugin')).toEqual([
+        [
+          'warning',
+          `Plugin name "MyPlugin" is not kebab-case. Claude Code accepts it, but the ${SYNC}`,
+        ],
+      ]);
+    });
+  },
+);
 
+describe('not kebab-case: the advice depends on how badly the name breaks', () => {
   test('a name it cannot install from a marketplace', () => {
     expect(messages('my_plugin_é')[0]?.[1]).toContain(
       'Claude Code cannot install it from a marketplace',

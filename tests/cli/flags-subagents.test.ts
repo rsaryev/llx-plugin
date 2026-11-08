@@ -7,7 +7,8 @@
  * be empty, a name must not start with `-`, `color` and `experimental` are ignored) and errors.md §
  * Invalid `--agents` configuration, § Conflict between a system-prompt flag and its file form (the
  * messages and the order of the checks; `--safe-mode` ignores `--agents` entirely). The effect of a
- * flag whose requirement is missing is outside `spec(...)` and in spec/judgments.md.
+ * flag whose requirement is missing is outside `spec(...)`. Native prompt/stream flags are
+ * regression tests of optional host helpers, not plugin-host compatibility (spec/scope-audit.md).
  */
 import { describe, expect, test } from 'bun:test';
 import { file, planOf, printFacts } from '../support/session-flags.ts';
@@ -39,7 +40,7 @@ const run = (value: string, extra = {}) => planOf({ '--agents': value }, extra);
 const message = (value: string, extra = {}): string => run(value, extra).refusals[0] ?? '';
 
 describe('--agents', () => {
-  spec('cli.flag.--agents', () => {
+  spec(['cli.flag.--agents', 'cli.errors.Invalid --agents configuration'], () => {
     test('defines subagents from inline JSON keyed by name', () => {
       const plan = run(REVIEWER);
       expect(plan.refusals).toEqual([]);
@@ -157,7 +158,7 @@ describe('--agents', () => {
 });
 
 describe('--append-subagent-system-prompt', () => {
-  spec('cli.flag.--append-subagent-system-prompt', () => {
+  describe('native-runtime helper, outside the plugin-host contract', () => {
     test('with -p appends the text to every subagent system prompt', () => {
       const plan = planOf(
         { '--append-subagent-system-prompt': 'Cite file paths in every answer' },
@@ -189,7 +190,7 @@ describe('--append-subagent-system-prompt', () => {
 });
 
 describe('--append-subagent-system-prompt-file', () => {
-  spec('cli.flag.--append-subagent-system-prompt-file', () => {
+  describe('native-runtime helper, outside the plugin-host contract', () => {
     test('with -p loads the text of the file and appends it to subagent system prompts', () => {
       const plan = planOf(
         { '--append-subagent-system-prompt-file': './subagent-rules.txt' },
@@ -228,7 +229,7 @@ describe('--append-subagent-system-prompt-file', () => {
 });
 
 describe('--forward-subagent-text', () => {
-  spec('cli.flag.--forward-subagent-text', () => {
+  describe('native-runtime helper, outside the plugin-host contract', () => {
     test('with --print and --output-format stream-json subagent text and thinking blocks are forwarded', () => {
       const plan = planOf(
         { '--forward-subagent-text': true },

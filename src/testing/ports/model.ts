@@ -8,8 +8,9 @@ import type {
 
 export type ModelReply = ModelAnswer | PortFailure;
 
-/** One recorded call: `tools` is present for `runAgent`, absent for `evaluate`. */
-export type ModelCall = ModelRequest & { readonly tools?: AgentRequest['tools'] };
+/** The agent verifier's tool and safety limits are present only for `runAgent`. */
+export type ModelCall = ModelRequest &
+  Partial<Pick<AgentRequest, 'tools' | 'readOnly' | 'maxTurns'>>;
 
 /**
  * A `ModelRunner` that answers `evaluate` and `runAgent` from one script, in order, and records
