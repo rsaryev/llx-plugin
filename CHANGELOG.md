@@ -22,6 +22,9 @@
 
 ### Fixed
 
+- Host: review fixes of model limits. A stray `sed -i` backup of the skill-limits test is removed, the
+  T2 layout check now fails on any file under `tests/` that is not a `.ts` file, and the skill hook
+  registration closure declares its return type instead of casting `[]`.
 - Host: review fixes of scoped hooks. `session.onBackground(listener)` tells an idle host of each
   background delivery, an `asyncRewake` exit 2 wake included, without polling. A view kept past
   `runScoped` now refuses `lifetime: 'turn'` registrations instead of leaking them for the session.

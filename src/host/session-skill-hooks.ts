@@ -14,7 +14,10 @@ import type { Entry } from './session-skill-entries.ts';
  */
 export function skillHookRegistration(registrar: SkillHooksRegistrar, ledger: SkillHookLedger) {
   const { used, counted } = ledger;
-  return (entry: Entry, hooks: NonNullable<Extract<Expansion, { ok: true }>['hooks']>) => {
+  return (
+    entry: Entry,
+    hooks: NonNullable<Extract<Expansion, { ok: true }>['hooks']>,
+  ): readonly PluginIssue[] => {
     const source = hookSourceOf(entry.invocable.origin);
     const prefix = `skill:${entry.plugin.id}:${entry.invocable.command}`;
     const others = used.get(source) ?? NO_HOOKS_YET;
@@ -43,7 +46,7 @@ export function skillHookRegistration(registrar: SkillHooksRegistrar, ledger: Sk
       pluginId: entry.plugin.id,
     });
     registrar.registerSkillHooks(prefix, entries);
-    return [] as readonly PluginIssue[];
+    return [];
   };
 }
 
