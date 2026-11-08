@@ -1,5 +1,6 @@
 import type { PluginDependency, PluginManifest } from '../manifest-schema.ts';
 import type { PluginIssue } from '../issues.ts';
+import type { Renames } from './renames.ts';
 
 /**
  * The contracts of the marketplace stream (docs/API.md, "Marketplace"): the shapes every later
@@ -220,7 +221,7 @@ export interface Marketplace {
   readonly forceRemoveDeletedPlugins: boolean;
   readonly allowCrossMarketplaceDependenciesOn: readonly string[];
   /** Old plugin name to the new one, or `null` for a plugin that was removed. */
-  readonly renames: Readonly<Record<string, string | null>>;
+  readonly renames: Renames;
 }
 
 /** Loading drops what Claude Code refuses; validating also reports what only `claude plugin validate` checks. */

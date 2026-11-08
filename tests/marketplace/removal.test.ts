@@ -4,8 +4,8 @@
  * the marketplace with the entries and the `renames` map, treat a plugin that is neither listed nor
  * renamed as removed, uninstall it from the user, project and local scopes, leave what only managed
  * settings installed, flag it `Removed from marketplace`; without the field a removed plugin stays
- * installed) and § Rename or remove a plugin ("Mark a plugin deprecated": remove the entry, map its
- * name to `null`, optionally set the flag). The kit decides; the host uninstalls. What the docs
+ * installed) and § Work around what a marketplace can't do ("Mark a plugin deprecated": remove the entry, map
+ * its name to `null`, optionally set the flag). The kit decides; the host uninstalls. What the docs
  * leave open (a null entry, a broken chain, a managed-only install, other marketplaces) is outside
  * `spec(...)` and in spec/judgments.md.
  */
@@ -80,7 +80,7 @@ spec('marketplace.field.forceRemoveDeletedPlugins', () => {
 
   test('a plugin that only managed settings installed stays in place: nothing to uninstall', () => {
     const found = removedPlugins([installed('gone', ['managed'])], marketplace([]));
-    expect(found).toEqual([{ id: `gone@${NAME}`, status: FLAGGED, uninstallFrom: [] }]);
+    expect(found.flatMap((one) => one.uninstallFrom)).toEqual([]);
   });
 
   test('"mark a plugin deprecated": the entry removed and its name mapped to null is uninstalled', () => {
@@ -88,6 +88,13 @@ spec('marketplace.field.forceRemoveDeletedPlugins', () => {
     expect(removedPlugins([installed('legacy-linter')], m).map((one) => one.id)).toEqual([
       `legacy-linter@${NAME}`,
     ]);
+  });
+});
+
+describe('what the docs leave open (spec/judgments.md)', () => {
+  test('a plugin that only managed settings installed is still reported as flagged', () => {
+    const found = removedPlugins([installed('gone', ['managed'])], marketplace([]));
+    expect(found).toEqual([{ id: `gone@${NAME}`, status: FLAGGED, uninstallFrom: [] }]);
   });
 
   test('removed plugins come in the order they were installed', () => {
@@ -97,9 +104,7 @@ spec('marketplace.field.forceRemoveDeletedPlugins', () => {
     );
     expect(found.map((one) => one.id)).toEqual([`b-gone@${NAME}`, `a-gone@${NAME}`]);
   });
-});
 
-describe('what the docs leave open (spec/judgments.md)', () => {
   test('only what was installed from this marketplace is considered', () => {
     expect(
       removedPlugins([installed('gone', ['user'], 'another-marketplace')], marketplace([])),

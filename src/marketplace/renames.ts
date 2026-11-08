@@ -98,8 +98,8 @@ function splitKey(key: string): { plugin: string; marketplace: string } | undefi
   return { plugin, marketplace };
 }
 
-export interface MigratedKeys {
-  readonly map: Record<string, unknown>;
+export interface MigratedKeys<V> {
+  readonly map: Record<string, V>;
   readonly notices: readonly string[];
 }
 
@@ -124,13 +124,14 @@ function moveKey(key: string, marketplace: Marketplace): KeyMove {
  * as `marketplaceName`: an old name's key becomes the new name's with its value unchanged, the key
  * of a removed plugin is dropped, every other key stays. When the user already has a key under the
  * new name, theirs is kept and the old one dropped (judgment). The notices are those the user sees,
- * each once. The given map is not changed.
+ * each once. When two old keys are rewritten to the same new key and the user has none, the first
+ * in map order wins and the other is dropped (judgment). The given map is not changed.
  */
-export function migrateSettingsKeys(
-  map: Readonly<Record<string, unknown>>,
+export function migrateSettingsKeys<V>(
+  map: Readonly<Record<string, V>>,
   marketplaceName: string,
   marketplace: Marketplace,
-): MigratedKeys {
+): MigratedKeys<V> {
   const registered =
     marketplace.name === marketplaceName ? marketplace : { ...marketplace, name: marketplaceName };
   const moves = Object.entries(map).map(([key, value]) => ({
@@ -139,7 +140,7 @@ export function migrateSettingsKeys(
     move: moveKey(key, registered),
   }));
   const staying = new Set(moves.filter((one) => one.move.key === one.key).map((one) => one.key));
-  const out = new Map<string, unknown>();
+  const out = new Map<string, V>();
   for (const { key, value, move } of moves) {
     const target = move.key;
     if (target === undefined || out.has(target)) continue;
@@ -152,10 +153,10 @@ export function migrateSettingsKeys(
   return { map: Object.fromEntries(out), notices: [...notices] };
 }
 
-export type ScopedSettings = { readonly [S in InstallScope]?: Readonly<Record<string, unknown>> };
+export type ScopedSettings<V> = { readonly [S in InstallScope]?: Readonly<Record<string, V>> };
 
-export interface MigratedScopes {
-  readonly scopes: { readonly [S in InstallScope]?: Readonly<Record<string, unknown>> };
+export interface MigratedScopes<V> {
+  readonly scopes: ScopedSettings<V>;
   readonly notices: readonly string[];
 }
 
@@ -164,12 +165,12 @@ export interface MigratedScopes {
  * settings cannot be, so they come back as given and their notice is given again on every call
  * until an admin updates them. A notice that several scopes give is given once.
  */
-export function migrateSettingsScopes(
-  scopes: ScopedSettings,
+export function migrateSettingsScopes<V>(
+  scopes: ScopedSettings<V>,
   marketplaceName: string,
   marketplace: Marketplace,
-): MigratedScopes {
-  const out: { [S in InstallScope]?: Readonly<Record<string, unknown>> } = {};
+): MigratedScopes<V> {
+  const out: { [S in InstallScope]?: Readonly<Record<string, V>> } = {};
   const notices = new Set<string>();
   for (const scope of INSTALL_SCOPES) {
     const given = scopes[scope];

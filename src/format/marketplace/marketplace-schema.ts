@@ -1,5 +1,6 @@
 import { error, warning, type PluginIssue } from '../issues.ts';
 import type { MarketplaceMetadata, Owner } from './types.ts';
+import type { Renames } from './renames.ts';
 
 /**
  * The top level of `marketplace.json` (plugins/marketplace-reference.md, "Top-level fields" and
@@ -164,7 +165,7 @@ export interface TopLevel {
   readonly metadata?: MarketplaceMetadata;
   readonly forceRemoveDeletedPlugins: boolean;
   readonly allowCrossMarketplaceDependenciesOn: readonly string[];
-  readonly renames: Readonly<Record<string, string | null>>;
+  readonly renames: Renames;
 }
 
 export interface TopLevelResult {

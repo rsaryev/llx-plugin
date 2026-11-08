@@ -140,6 +140,15 @@ spec('marketplace.field.renames', () => {
       expect(map).toEqual({ [`fmt@${NAME}`]: true });
     });
 
+    test('a rewritten map gives no further notice: the renamed notice appears once', () => {
+      const first = migrateSettingsKeys(enabled, NAME, documented);
+      expect(first.notices).toHaveLength(2);
+      expect(migrateSettingsKeys(first.map, NAME, documented)).toEqual({
+        map: first.map,
+        notices: [],
+      });
+    });
+
     test('the map it was given is not changed', () => {
       const given = { [`formatter@${NAME}`]: true };
       migrateSettingsKeys(given, NAME, documented);
@@ -181,10 +190,33 @@ spec('marketplace.field.renames', () => {
     });
 
     test('the plugin still loads under its new name when only managed settings enable it', () => {
+      const { scopes } = migrateSettingsScopes({ managed: settings }, NAME, documented);
       expect(resolveRename('formatter', documented)).toEqual({
         status: 'renamed',
         to: 'code-formatter',
       });
+      expect(scopes.managed).toEqual(settings);
+    });
+
+    test('the notice is given once for a rewritten scope and again for managed settings', () => {
+      const first = migrateSettingsScopes(
+        { user: settings, project: settings, local: settings, managed: settings },
+        NAME,
+        documented,
+      );
+      expect(first.notices).toHaveLength(1);
+      const again = migrateSettingsScopes(first.scopes, NAME, documented);
+      expect(again.notices).toEqual(first.notices);
+      const writable = migrateSettingsScopes(
+        {
+          user: first.scopes.user ?? {},
+          project: first.scopes.project ?? {},
+          local: first.scopes.local ?? {},
+        },
+        NAME,
+        documented,
+      );
+      expect(writable.notices).toEqual([]);
     });
   });
 });
@@ -211,6 +243,28 @@ describe('what the docs leave open (spec/judgments.md)', () => {
     expect(migrateSettingsKeys(both, NAME, documented).map).toEqual({
       [`code-formatter@${NAME}`]: false,
     });
+  });
+
+  test('a key is matched and noticed under the registered name, not the name in the file', () => {
+    const REGISTERED = 'my-registered-name';
+    const given = {
+      [`formatter@${REGISTERED}`]: true,
+      [`formatter@${NAME}`]: false,
+    };
+    const { map, notices } = migrateSettingsKeys(given, REGISTERED, documented);
+    expect(map).toEqual({
+      [`code-formatter@${REGISTERED}`]: true,
+      [`formatter@${NAME}`]: false,
+    });
+    expect(notices).toEqual([`Renamed to "code-formatter" in the "${REGISTERED}" marketplace`]);
+  });
+
+  test('two old keys rewritten to one new key, the user having none: the first in map order wins', () => {
+    const merged = marketplace(['fmt'], { v1: 'fmt', v2: 'fmt' });
+    const forward = { [`v1@${NAME}`]: 1, [`v2@${NAME}`]: 2 };
+    expect(migrateSettingsKeys(forward, NAME, merged).map).toEqual({ [`fmt@${NAME}`]: 1 });
+    const backward = { [`v2@${NAME}`]: 2, [`v1@${NAME}`]: 1 };
+    expect(migrateSettingsKeys(backward, NAME, merged).map).toEqual({ [`fmt@${NAME}`]: 2 });
   });
 
   test('a key that is not name@marketplace is kept', () => {

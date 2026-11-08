@@ -109,6 +109,12 @@
 
 ### Fixed
 
+- Marketplace renames and removal (`marketplace`): `migrateSettingsKeys` and `migrateSettingsScopes`
+  keep the type of the values they carry; `InstallScope` derives from the SDK's setting sources;
+  `Renames` is the one type of the map; tests now prove the notice appears once, managed settings
+  are left as given, a registered name that differs from the file's is used, and the first of two
+  old keys rewritten to one new key wins; the judgments record these, the host's **Flagged**
+  heading, and that renames chains are checked only by `validate`.
 - Archive download headers: a `headersHelper` command runs only for the command and archive URL
   the user accepted (`AcceptedCommand`, replacing a bare flag; a change in the query string alone
   does not count unless the host sets `queryCounts`); an empty `CLAUDE_CONFIG_DIR` is unset;

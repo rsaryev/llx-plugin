@@ -4,7 +4,8 @@
  * a name in `plugins`, with `renames.<name>: chain does not resolve"; "Claude Code follows the
  * chain from the oldest name") and plugins/marketplace-reference.md § Validation messages (the two
  * `renames.<old>` rows). The rule is checked by `validateRenames` and reaches `claude plugin
- * validate` through `validateMarketplace`; a marketplace that loads is not rejected for it.
+ * validate` through `validateMarketplace`; a marketplace that loads is not rejected for it (a kit
+ * judgment, tested outside `spec(...)`).
  * Cases the docs do not decide (which name stops a chain, the wording of the reason) are outside
  * `spec(...)` and in spec/judgments.md.
  */
@@ -40,6 +41,7 @@ spec('marketplace.field.renames', () => {
 
   test('a name that renames to itself is a cycle unless it is still a plugin', () => {
     expect(validateRenames({ a: 'a' }, [])).toHaveLength(1);
+    expect(validateRenames({ a: 'a' }, ['a'])).toEqual([]);
   });
 
   test('a chain that ends at a name that is neither in plugins nor a key is rejected', () => {
@@ -75,14 +77,10 @@ spec('marketplace.field.renames', () => {
     }
   });
 
-  test('claude plugin validate reports the chain, and a marketplace that loads is not refused', () => {
+  test('claude plugin validate reports a chain that does not resolve', () => {
     const raw = withFields({ renames: { formatter: 'missing' } });
-    const reader = recordingEntryReader().read;
-    const issues = validateMarketplace(raw, {}, reader);
+    const issues = validateMarketplace(raw, {}, recordingEntryReader().read);
     expect(errorsOf(issues).map((one) => one.path)).toEqual(['renames.formatter']);
-    const loaded = readMarketplace(raw, {}, reader);
-    expect(loaded.marketplace?.renames).toEqual({ formatter: 'missing' });
-    expect(errorsOf(loaded.issues)).toEqual([]);
   });
 
   test('the documented marketplace file with its renames map validates clean', () => {
@@ -96,6 +94,13 @@ spec('marketplace.field.renames', () => {
 });
 
 describe('what the docs leave open (spec/judgments.md)', () => {
+  test('a chain that does not resolve is checked only by validate: the marketplace still loads', () => {
+    const raw = withFields({ renames: { formatter: 'missing' } });
+    const loaded = readMarketplace(raw, {}, recordingEntryReader().read);
+    expect(loaded.marketplace?.renames).toEqual({ formatter: 'missing' });
+    expect(errorsOf(loaded.issues)).toEqual([]);
+  });
+
   test('a name that is still a plugin ends a chain, even when it is also a key', () => {
     expect(validateRenames({ a: 'b', b: 'a' }, ['b'])).toEqual([]);
   });
