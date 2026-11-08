@@ -4,6 +4,11 @@
 
 ### Added
 
+- `selectAgentHooks`, `agentHookGroups` and `hooksTrustGate`: the frontmatter hooks of an agent that
+  fire for an event (only while the agent is active, the `PreToolUse` and `PostToolUse` matcher
+  over the tool name, a subagent's `Stop` converted to `SubagentStop`, none for a plugin agent,
+  project-level and `--add-dir` agents skipped until their folder is trusted); `readAgent` reads the
+  `hooks` field with every hook event accepted.
 - `resolveSubagentPermissionMode`: the mode a subagent runs in from its `permissionMode` and the
   main conversation's (a main `bypassPermissions`, `acceptEdits` or `auto` forces its mode, `plan`
   is held and `dontAsk` then denies instead of asking, under `default` or `dontAsk` the set mode

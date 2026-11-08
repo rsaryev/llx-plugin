@@ -28,3 +28,11 @@ export {
   type SubagentPermission,
   type SubagentPermissionInput,
 } from './subagent-permission.ts';
+export {
+  agentHookGroups,
+  hooksTrustGate,
+  selectAgentHooks,
+  type AgentHookContext,
+  type AgentHookSelection,
+  type AgentRunKind,
+} from './hooks.ts';

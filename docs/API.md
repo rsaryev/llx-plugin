@@ -39,7 +39,7 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `readMarketplace(raw)`              | planned | `marketplace.json`: entries, sources, strict mode                     |
 | `readSkill(path, text)`             | planned | `SKILL.md` frontmatter and body                                       |
 | `readCommand(path, text)`           | planned | a command file (the older skill format)                               |
-| `readAgent(text, origin)`           | done (name, description, tools, disallowedTools, model, effort, maxTurns, autoCompactWindow, background, omitClaudeMd, isolation, color, initialPrompt, experimental) | an agent file → `AgentRecord` (official `AgentDefinition` + scoped name, source, `extras` for `color`, `isolation` and `cacheTtl`): a project, user or managed file without a name is documentation and a bad name, no description or unparseable YAML skips it; a plugin agent always loads (file-name fallback, `Agent from <plugin> plugin`) and lists the fields it ignores in `ignored`; a bad value is dropped with a warning; `unrecognized` names up to five unknown fields; the other fields follow |
+| `readAgent(text, origin)`           | done (name, description, tools, disallowedTools, model, effort, maxTurns, autoCompactWindow, background, omitClaudeMd, isolation, color, initialPrompt, experimental, hooks) | an agent file → `AgentRecord` (official `AgentDefinition` + scoped name, source, `extras` for `color`, `isolation` and `cacheTtl`; `hooks` in the settings' hook format, never for a plugin agent): a project, user or managed file without a name is documentation and a bad name, no description or unparseable YAML skips it; a plugin agent always loads (file-name fallback, `Agent from <plugin> plugin`) and lists the fields it ignores in `ignored`; a bad value is dropped with a warning; `unrecognized` names up to five unknown fields; the other fields follow |
 | `AGENT_FIELDS`, `AGENT_FIELD_NAMES`, `PLUGIN_IGNORED_FIELDS`, `AGENT_COLORS`, `AGENT_ISOLATIONS`, `AGENT_MEMORY_SCOPES`, `AUTO_COMPACT_RANGE` | done | the registry of the 19 documented frontmatter fields (plugin `supported` or `ignored`, and a coercer each) and the closed lists behind them |
 | `scopedAgentName`, `hookAgentType`, `validAgentName` | done | `my-plugin:review:security` (frontmatter `name` replaces the file segment, a manifest-listed file drops subfolders); the `agent_type` hooks receive; the name rules |
 | `readHooksFile(raw)`                | done    | `hooks/hooks.json` → official `HooksSettings`: events, matcher groups, every handler field; an error leaves no hooks, as Claude Code does |
@@ -302,6 +302,31 @@ The classifier behind `auto` is a model call and the host's; the kit says only t
 routes an action to it. Rules, hooks, protected paths and critical-path removals layer on the
 baseline and are not part of it. An agent team teammate follows the agent teams rules, not this
 function.
+
+### Sub-agents: frontmatter hooks
+
+```ts
+import { selectAgentHooks } from '@rsaryev/claude-plugin-kit';
+
+const { groups, skipped } = selectAgentHooks(agent, {
+  run: 'subagent',            // or 'main-session' for `--agent` and the `agent` setting
+  event: 'PreToolUse',
+  matcherValue: 'Bash',       // the event's matcher input; the tool name here
+  active: true,               // only while this agent is running
+  folderTrusted,              // the host's answer for the folder holding the agent file
+});
+// groups: the agent's own matcher groups to run; merge with the settings' groups for the event
+```
+
+| Function                                | Status | Does                                                                                   |
+| --------------------------------------- | ------ | -------------------------------------------------------------------------------------- |
+| `selectAgentHooks(agent, ctx)`          | done   | the agent's matcher groups that fire for one occurrence of an event: none while the agent is inactive (`skipped: 'inactive'`) or its project folder is untrusted (`'untrusted'`), none for a plugin agent, the matcher read with the hooks grammar (`Bash`, `Edit\|Write` exact; events without matcher support always fire) |
+| `agentHookGroups(agent, run)`           | done   | the agent's hooks for a run: a subagent's `Stop` becomes `SubagentStop` (after the file's own `SubagentStop` groups; a `matcher` on `Stop` is dropped), a main-session run keeps `Stop`; a plugin agent has none |
+| `hooksTrustGate(source, folderTrusted)` | done   | `skip-untrusted` for a project-level (and `--add-dir`) agent until its folder is trusted; user, `--agents`, managed and plugin agents need no trust |
+
+The kit selects and the hooks engine runs. `folderTrusted` is one boolean the host computes: trust of
+a parent folder or a `-p` session does not make it true. A main-session agent's groups run next to the
+settings' hooks, so the host merges the two lists.
 
 ## Testing kit (planned)
 

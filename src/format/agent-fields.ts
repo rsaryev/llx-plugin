@@ -14,7 +14,7 @@ import {
   type AgentCoercer,
   type Experimental,
 } from './agent-scalars.ts';
-import { readHooksSettings } from './hooks-settings.ts';
+import { hooks } from './agent-hooks-field.ts';
 import { warning } from './issues.ts';
 
 /**
@@ -139,16 +139,6 @@ const permissionMode: AgentCoercer<AgentFieldValue<'permissionMode'>> = (path, k
   if (mode !== undefined) return { value: mode, issues: [] };
   const message = `Invalid "${key}": "${text.value}" is not a permission mode; the field is ignored`;
   return { value: undefined, issues: [warning(path, message)] };
-};
-
-/** `hooks`: the settings' hook format; what is wrong is reported and no hook is kept. */
-const hooks: AgentCoercer<HooksSettings> = (path, key, raw) => {
-  if (raw === undefined || raw === null) return { value: undefined, issues: [] };
-  const read = readHooksSettings(raw);
-  const issues = read.issues.map((issue) =>
-    warning(path, `Invalid "${key}": ${issue.message}; the hooks are ignored`),
-  );
-  return { value: issues.length === 0 ? read.hooks : undefined, issues };
 };
 
 /**
