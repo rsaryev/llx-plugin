@@ -4,13 +4,16 @@
  * invalid one costs.
  */
 import { describe, expect, test } from 'bun:test';
+import { loadSettingsLayers, type PolicyScope } from '../../../src/settings/index.ts';
 import {
   HELPER_DEFAULT_TIMEOUT_MS,
   HELPER_MIN_REFRESH_MS,
   HELPER_MIN_TIMEOUT_MS,
   helperPathFault,
+  composeManagedReads,
   helperRunsNow,
   readPolicyHelper,
+  type ManagedReads,
 } from '../../../src/settings/managed/index.ts';
 import { compose } from '../../support/managed.ts';
 import { spec } from '../../support/spec.ts';
@@ -43,7 +46,27 @@ spec('policy.key.policyHelper', () => {
     expect(remote.runsAtLaunch).toBe(false);
     const hkcu = compose({ hkcu: { policyHelper: { path: PATH } } }).helper;
     expect(hkcu.helper).toBeUndefined();
-    expect(compose({ file: { model: 'a' } }, true).helper.helper).toBeUndefined();
+  });
+
+  test('a host-supplied parent layer that carries it never runs it, beside an admin source that merges parent settings or alone', async () => {
+    const parent = { model: 'x', policyHelper: { path: PATH } };
+    for (const managed of [
+      { file: { base: { value: { model: 'a', parentSettingsBehavior: 'merge' } } } },
+      {},
+    ] satisfies ManagedReads[]) {
+      const sources = {
+        read: (scope: PolicyScope) => Promise.resolve(scope === 'parent' ? parent : undefined),
+        managed: () => Promise.resolve(managed),
+      };
+      const { layers } = await loadSettingsLayers(sources, new AbortController().signal);
+      expect(layers.some((layer) => layer.scope === 'parent' || layer.scope === 'managed')).toBe(
+        true,
+      );
+      const plan = composeManagedReads(managed, { parentRestrictive: true }).helper;
+      expect(plan.helper).toBeUndefined();
+      expect(plan.runsAtLaunch).toBe(false);
+      expect(helperRunsNow(plan, { remoteStillDelivers: false })).toBe(false);
+    }
   });
 
   test('it is read from the highest-priority source that carries a policy key, which must be one of the three', () => {

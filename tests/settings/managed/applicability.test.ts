@@ -158,7 +158,13 @@ spec(`${WHERE}.Running sessions`, () => {
   });
 });
 
-spec(`${WHERE}.Changes that need approval`, () => {
+/**
+ * The timing is the docs' sentence over facts the caller supplies. Which settings "need approval" is
+ * the caller's classification (the docs' lists of dialog settings are open-ended: "such as"), and
+ * `requiredMinimumVersion` is the two facts of its sentence: neither is proven compatibility
+ * (spec/judgments.md).
+ */
+describe("when a server-managed change applies, given the caller's facts (judgment)", () => {
   test('a server-managed change to a setting that needs approval waits for the dialog in an interactive session', () => {
     expect(
       serverChangeTiming({ needsApproval: true, waitsForNextLaunch: false, hosted: false }),
@@ -187,7 +193,7 @@ spec(`${WHERE}.Changes that need approval`, () => {
   });
 });
 
-spec(`${WHERE}.Long-lived sessions`, () => {
+describe('requiredMinimumVersion on a running session (judgment)', () => {
   test('requiredMinimumVersion blocks an outdated binary from starting and does not end a running session', () => {
     expect(minimumVersionEffect({ outdated: true, running: false })).toEqual({
       blocksStart: true,

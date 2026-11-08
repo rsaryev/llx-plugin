@@ -13,6 +13,7 @@ export {
   type SourceRead,
   type SourceTraits,
   type UnreadableCause,
+  type UnreadableRead,
   type UnreadableVerdict,
 } from './admin-source.ts';
 export {

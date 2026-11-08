@@ -60,6 +60,78 @@ spec('settingsMerge.managed.Which managed source supplies login keys', () => {
     expect(settings.forceLoginMethod).toBe('gateway');
   });
 
+  test('a remote forceLoginMethod of claudeai or console applies when the machine policy carries a policy key but omits the method', () => {
+    for (const method of ['claudeai', 'console'] as const) {
+      const settings = policyOf({
+        remote: { model: 'a', forceLoginMethod: method },
+        file: { forceLoginOrgUUID: ORG },
+      });
+      expect(settings.forceLoginMethod).toBe(method);
+      expect(settings.forceLoginOrgUUID).toBe(ORG);
+    }
+  });
+
+  test('the machine method wins over the remote one it would otherwise accept', () => {
+    const settings = policyOf({
+      remote: { model: 'a', forceLoginMethod: 'console' },
+      file: { forceLoginMethod: 'claudeai' },
+    });
+    expect(settings.forceLoginMethod).toBe('claudeai');
+  });
+
+  test('gatewayInternalNetworks from the machine applies while remote settings are present', () => {
+    const settings = policyOf({
+      remote: { model: 'a', gatewayInternalNetworks: ['192.168.0.0/16'] },
+      file: { gatewayInternalNetworks: ['10.0.0.0/8'] },
+    });
+    expect(settings.gatewayInternalNetworks).toEqual(['10.0.0.0/8']);
+  });
+
+  describe('the highest-ranked machine source carrying a policy key supplies the gateway keys, whether or not remote settings are present', () => {
+    const machine = {
+      plist: { model: 'a', forceLoginGatewayUrl: 'https://mdm.example' },
+      file: {
+        forceLoginGatewayUrl: 'https://file.example',
+        gatewayInternalNetworks: ['10.0.0.0/8'],
+        forceLoginMethod: 'gateway',
+      },
+    };
+    const remote = { model: 'a', forceLoginGatewayUrl: 'https://remote.example' };
+
+    test('an MDM policy with a policy key hides every gateway login key of the file below it', () => {
+      for (const held of [machine, { remote, ...machine }]) {
+        const settings = policyOf(held);
+        expect(settings.forceLoginGatewayUrl).toBe('https://mdm.example');
+        expect(settings.gatewayInternalNetworks).toBeUndefined();
+        expect(settings.forceLoginMethod).toBeUndefined();
+      }
+    });
+
+    test('the file below supplies them when the MDM policy carries only control keys', () => {
+      for (const held of [machine, { remote, ...machine }]) {
+        const settings = policyOf({ ...held, plist: { ...MERGE } });
+        expect(settings.forceLoginGatewayUrl).toBe('https://file.example');
+        expect(settings.gatewayInternalNetworks).toEqual(['10.0.0.0/8']);
+        expect(settings.forceLoginMethod).toBe('gateway');
+      }
+    });
+
+    test('under merge the result is the same', () => {
+      const settings = policyOf({
+        remote: { ...remote, ...MERGE },
+        plist: machine.plist,
+        file: machine.file,
+      });
+      expect(settings.forceLoginGatewayUrl).toBe('https://mdm.example');
+      expect(settings.gatewayInternalNetworks).toBeUndefined();
+    });
+
+    test('server-managed settings alone leave them unset', () => {
+      const settings = policyOf({ remote });
+      expect(settings.forceLoginGatewayUrl).toBeUndefined();
+    });
+  });
+
   describe('a machine with both an MDM policy and a managed settings file', () => {
     const held = {
       plist: { model: 'a' },

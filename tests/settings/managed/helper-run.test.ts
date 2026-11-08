@@ -9,7 +9,7 @@ import {
   composeManaged,
   withHelperSettings,
 } from '../../../src/settings/managed/index.ts';
-import { compose } from '../../support/managed.ts';
+import { compose, document } from '../../support/managed.ts';
 import { PATH, envelope, failed, helper, run } from '../../support/managed-helper.ts';
 import { spec } from '../../support/spec.ts';
 
@@ -87,6 +87,24 @@ spec('policy.reference.Write the helper output', () => {
       expect(locked.layer.settings.sandbox?.network?.allowedDomains).toEqual(['helper.example']);
     });
 
+    test('no cross-source key of an admin source reaches the helper layer', () => {
+      const crowded = compose({
+        remote: { model: 'remote', allowManagedMcpServersOnly: true, maxEffortLevel: 'low' },
+        plist: {
+          policyHelper: helper,
+          deniedMcpServers: [{ serverName: 'x' }],
+          syncClaudeAiSkills: false,
+          enableArtifact: false,
+          disableClaudeAiConnectors: true,
+          env: { A: '1' },
+          attribution: false,
+          sandbox: { bwrapPath: '/usr/bin/bwrap', network: { strictAllowlist: true } },
+        },
+        file: { allowedMcpServers: [{ serverName: 'file' }], allowAllClaudeAiMcps: true },
+      });
+      expect(withHelperSettings(crowded, emitted).layer.settings).toEqual({ model: 'helper' });
+    });
+
     test('parent settings are never merged', () => {
       const parentMerging = compose({
         file: { policyHelper: helper, parentSettingsBehavior: 'merge' },
@@ -128,14 +146,30 @@ spec('policy.managed.Compute the policy with a helper program', () => {
 
   test('forceRemoteSettingsRefresh has its own startup rule and is not taken from the helper output', () => {
     const composed = compose({ file: { policyHelper: helper } });
-    const helped = withHelperSettings(composed, { forceRemoteSettingsRefresh: true });
+    const helped = withHelperSettings(composed, {
+      model: 'helper',
+      forceRemoteSettingsRefresh: true,
+    });
     expect(helped.forceRemoteRefresh).toBe(false);
+    expect(helped.layer.settings).toEqual({ model: 'helper' });
+    expect(helped.admins).toEqual([{ model: 'helper' }]);
+  });
+
+  test('the startup check still reads the admin sources, whatever the helper emits', () => {
+    const forced = compose({ file: { policyHelper: helper, forceRemoteSettingsRefresh: true } });
+    const helped = withHelperSettings(forced, { forceRemoteSettingsRefresh: false });
+    expect(helped.forceRemoteRefresh).toBe(true);
+    expect(helped.layer.settings.forceRemoteSettingsRefresh).toBeUndefined();
   });
 
   test('the composition stays pure: the sources that applied are re-composable without the helper', () => {
-    const composed = compose({ file: { policyHelper: helper, model: 'file' } });
-    expect(composeManaged([]).layer.settings).toEqual({});
-    expect(composed.layer.settings.model).toBe('file');
+    const documents = [document('file', { policyHelper: helper, model: 'file' })];
+    const before = composeManaged(documents);
+    const helped = withHelperSettings(before, { model: 'helper' });
+    expect(helped).not.toBe(before);
+    expect(helped.layer.settings.model).toBe('helper');
+    expect(before.layer.settings.model).toBe('file');
+    expect(composeManaged(documents)).toEqual(before);
   });
 });
 

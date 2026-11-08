@@ -58,12 +58,6 @@ spec(`${DEPLOY}.Windows`, () => {
 
 spec(`${CHOOSE}.File-based`, () => {
   test('a file is read at startup and reloaded when it changes, not polled', () => {
-    expect(MECHANISM_TRAITS.file).toMatchObject({
-      readAtStartup: true,
-      reloadsOnChange: true,
-      endpointManaged: true,
-    });
-    expect(MECHANISM_TRAITS.file.pollEveryMinutes).toBeUndefined();
     expect(rereadDue('file', { minutesSinceRead: 1, changed: true })).toBe(true);
     expect(rereadDue('file', { minutesSinceRead: 500, changed: false })).toBe(false);
   });
@@ -77,11 +71,6 @@ spec(`${CHOOSE}.File-based`, () => {
 
 spec(`${CHOOSE}.MDM or OS-level policy`, () => {
   test('a profile or registry value is read at startup and checked for changes every 30 minutes', () => {
-    expect(MECHANISM_TRAITS.mdm).toMatchObject({
-      readAtStartup: true,
-      pollEveryMinutes: 30,
-      endpointManaged: true,
-    });
     expect(rereadDue('mdm', { minutesSinceRead: 29, changed: true })).toBe(false);
     expect(rereadDue('mdm', { minutesSinceRead: 30, changed: false })).toBe(true);
   });
@@ -94,11 +83,7 @@ spec(`${CHOOSE}.MDM or OS-level policy`, () => {
 
 spec(`${CHOOSE}.Server-managed settings`, () => {
   test('server-managed settings are fetched at startup and polled hourly, and are not endpoint-managed', () => {
-    expect(MECHANISM_TRAITS.serverManaged).toMatchObject({
-      readAtStartup: true,
-      pollEveryMinutes: 60,
-      endpointManaged: false,
-    });
+    expect(MECHANISM_TRAITS.serverManaged.endpointManaged).toBe(false);
     expect(rereadDue('serverManaged', { minutesSinceRead: 59, changed: false })).toBe(false);
     expect(rereadDue('serverManaged', { minutesSinceRead: 60, changed: false })).toBe(true);
   });
@@ -113,7 +98,8 @@ spec(`${CHOOSE}.Server-managed settings`, () => {
 
 spec(`${CHOOSE}.HKCU registry, Windows and WSL`, () => {
   test('it is read at startup and checked every 30 minutes', () => {
-    expect(MECHANISM_TRAITS.hkcu).toMatchObject({ readAtStartup: true, pollEveryMinutes: 30 });
+    expect(rereadDue('hkcu', { minutesSinceRead: 29, changed: true })).toBe(false);
+    expect(rereadDue('hkcu', { minutesSinceRead: 30, changed: false })).toBe(true);
   });
 
   test('Claude Code uses it only when no admin document is present above it', () => {
@@ -217,7 +203,22 @@ spec(`${STORES}.Server-managed`, () => {
   });
 });
 
-spec('policy.managed.What a developer can change.Local admin rights', () => {
+spec('policy.managed.What a developer can change.The server-managed cache', () => {
+  test('an edit to the cache lasts only until the next successful fetch', () => {
+    const edited = { model: 'edited' };
+    expect(cacheAfterFetch(edited, { ok: false })).toEqual(edited);
+    expect(cacheAfterFetch(edited, { ok: true, settings: { model: 'server' } })).toEqual({
+      model: 'server',
+    });
+  });
+});
+
+/**
+ * `editOfManagedSource` states who can change a source as a table, not a behavior the kit runs on
+ * anything: the docs say a local administrator can edit the managed source and that the server cache
+ * edit lasts until the next fetch, and are silent on the HKCU registry (spec/judgments.md).
+ */
+describe('what a developer can change, as the kit tabulates it (judgment)', () => {
   test('a local administrator can edit the managed file or MDM profile itself; anyone else cannot', () => {
     for (const mechanism of ['file', 'mdm'] as const) {
       expect(editOfManagedSource(mechanism, true)).toBe('stays');
@@ -228,17 +229,10 @@ spec('policy.managed.What a developer can change.Local admin rights', () => {
   test('the user-writable HKCU registry needs no admin rights', () => {
     expect(editOfManagedSource('hkcu', false)).toBe('stays');
   });
-});
 
-spec('policy.managed.What a developer can change.The server-managed cache', () => {
-  test('an edit to the cache lasts only until the next successful fetch', () => {
+  test('an edit to the server-managed cache is replaced by the next successful fetch', () => {
     expect(editOfManagedSource('serverManaged', true)).toBe('until-next-fetch');
     expect(editOfManagedSource('serverManaged', false)).toBe('until-next-fetch');
-    const edited = { model: 'edited' };
-    expect(cacheAfterFetch(edited, { ok: false })).toEqual(edited);
-    expect(cacheAfterFetch(edited, { ok: true, settings: { model: 'server' } })).toEqual({
-      model: 'server',
-    });
   });
 });
 

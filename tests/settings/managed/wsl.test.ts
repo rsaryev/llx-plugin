@@ -8,7 +8,7 @@ import {
   readAdminDocument,
   wslChain,
 } from '../../../src/settings/managed/index.ts';
-import { document } from '../../support/managed.ts';
+import { DENIED, document } from '../../support/managed.ts';
 import { spec } from '../../support/spec.ts';
 
 describe('wslInheritsWindowsSettings', () => {
@@ -121,7 +121,7 @@ describe('wslInheritsWindowsSettings', () => {
     test('an HKLM value or Windows file that exists but cannot be read keeps /etc/claude-code from applying, chain on or off', () => {
       for (const flag of [true, false]) {
         const chain = wslChain({
-          hklm: readAdminDocument('hklm', { unreadable: 'denied' }),
+          hklm: readAdminDocument('hklm', DENIED),
           windowsFile: doc('file', { wslInheritsWindowsSettings: flag }),
           etcFile: doc('file', { model: 'etc' }),
         });

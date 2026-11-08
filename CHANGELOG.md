@@ -4,6 +4,16 @@
 
 ### Fixed
 
+- Managed sources, review of the composition findings. An unreadable source now carries the
+  underlying error (`{ unreadable: 'denied' | 'failed', reason }`), and the exit message names the
+  failed path or registry value in its `Detail:` line as errors.md shows it. An unlistable
+  `managed-settings.d/` reports `Managed settings drop-in directory could not be read: <reason>`, a
+  warning when the operating system denied the read and an error otherwise; a failure that exits
+  outranks a denial elsewhere in the file source. The helper's `forceRemoteSettingsRefresh` is no
+  longer left in the helper layer, and `PolicyHelper` and `ManagedBehavior` take their types from the
+  SDK. Tests prove every cross-source key, every key of the merge table rows and the login-key gateway
+  rules; the delivery and applicability stubs that echoed constants are now recorded as judgments.
+  `docs/API.md` states the order in which a host wires the policy helper.
 - Settings merge core, review of the permission, effort, source and file-location findings. The
   local file's allow rules and directories wait for trust only when it is tracked in git or `.claude`
   is a symlink (`permissionRuleLists(view, trusted, local)`); a host's parent `Read(!...)` and

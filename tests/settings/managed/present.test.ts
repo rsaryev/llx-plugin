@@ -13,11 +13,15 @@ import {
   type ManagedSource,
   type SourceRead,
 } from '../../../src/settings/managed/index.ts';
-import { compose, document, found } from '../../support/managed.ts';
+import { DENIED, FAILED, compose, document, found } from '../../support/managed.ts';
 import { spec } from '../../support/spec.ts';
 
 const COMBINES = 'settingsMerge.managed.How Claude Code combines managed sources';
 const DROPPED = 'policy.managed.Find entries Claude Code dropped';
+
+/** errors.md § Managed settings document could not be parsed: the message after the failed source. */
+const PARSE_FAILURE =
+  'Managed settings document could not be parsed as a JSON object; none of its settings are in effect. Fix or remove it.';
 
 const SOURCES_LINE = (list: string) => `Enterprise managed settings (${list})`;
 const used = (held: Parameters<typeof compose>[0]) => compose(held).used;
@@ -147,9 +151,9 @@ spec('settingsMerge.managed.When an admin document counts as present', () => {
   });
 
   test('an HKLM value, file or drop-in directory that exists but cannot be read is present', () => {
-    expect(present('hklm', { unreadable: 'denied' })).toBe(true);
-    expect(present('file', { unreadable: 'failed' })).toBe(true);
-    expect(present('plist', { unreadable: 'denied' })).toBe(true);
+    expect(present('hklm', DENIED)).toBe(true);
+    expect(present('file', FAILED)).toBe(true);
+    expect(present('plist', DENIED)).toBe(true);
   });
 
   test('an absent source is not present', () => {
@@ -160,7 +164,7 @@ spec('settingsMerge.managed.When an admin document counts as present', () => {
     const hkcu = { model: 'haiku' };
     expect(used({ file: { model: 'opus' }, hkcu })).toEqual(['file']);
     expect(composeManaged([document('hklm', {}), document('hkcu', hkcu)]).used).toEqual(['hkcu']);
-    const unreadable = readAdminDocument('hklm', { unreadable: 'denied' });
+    const unreadable = readAdminDocument('hklm', DENIED);
     expect(composeManaged([unreadable, document('hkcu', hkcu)]).used).toEqual([]);
   });
 
@@ -176,7 +180,9 @@ spec(`${DROPPED}.Managed settings file or drop-in file`, () => {
       const read = readAdminDocument('file', found(text), '/etc/claude-code/managed-settings.json');
       expect(read.broken).toBe(true);
       expect(read.issues[0]?.severity).toBe('error');
-      expect(read.issues[0]?.message).toContain('/etc/claude-code/managed-settings.json');
+      expect(read.issues[0]?.message).toStartWith(
+        `/etc/claude-code/managed-settings.json: ${PARSE_FAILURE}`,
+      );
     }
   });
 
@@ -239,14 +245,14 @@ spec(DROPPED, () => {
 
   describe('a source that exists but cannot be read, with no admin source supplying a policy', () => {
     test('a denied read starts the session without that source and records the failure', () => {
-      const composed = composeManaged([readAdminDocument('file', { unreadable: 'denied' })]);
+      const composed = composeManaged([readAdminDocument('file', DENIED)]);
       expect(composed.fatal).toBe(false);
       expect(composed.issues).toHaveLength(1);
       expect(composed.issues[0]?.severity).toBe('warning');
     });
 
     test('any other failure exits at startup with a message to contact an administrator', () => {
-      const composed = composeManaged([readAdminDocument('hklm', { unreadable: 'failed' })]);
+      const composed = composeManaged([readAdminDocument('hklm', FAILED)]);
       expect(composed.fatal).toBe(true);
       expect(composed.issues[0]?.severity).toBe('error');
       expect(composed.issues[0]?.message).toContain('Contact your administrator');
@@ -255,7 +261,7 @@ spec(DROPPED, () => {
     test('when another admin source supplies a policy the failure is not an exit', () => {
       const composed = composeManaged([
         document('remote', { model: 'opus' }),
-        readAdminDocument('file', { unreadable: 'failed' }),
+        readAdminDocument('file', FAILED),
       ]);
       expect(composed.fatal).toBe(false);
     });

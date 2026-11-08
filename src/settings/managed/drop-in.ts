@@ -1,12 +1,15 @@
-import { error, type PluginIssue } from '../../format/issues.ts';
+import type { PluginIssue } from '../../format/issues.ts';
 import type { Settings } from '../../protocol/official.ts';
 import { MERGES } from '../merge.ts';
 import { isRecord } from '../record.ts';
 import {
+  harsherCause,
   readAdminDocument,
+  unreadableIssue,
   type AdminDocument,
   type SourceRead,
   type UnreadableCause,
+  type UnreadableRead,
 } from './admin-source.ts';
 
 /**
@@ -23,15 +26,19 @@ export interface DropInFile {
 /** The `managed-settings.d/` folder: absent, present and unreadable, or its files. */
 export type DropInDirectory =
   | undefined
-  | { readonly unreadable: UnreadableCause }
+  | UnreadableRead
   | { readonly files: readonly DropInFile[] };
 
 export interface ManagedFileRead {
   /** `managed-settings.json`. */
   readonly base: SourceRead;
   readonly dropIns?: DropInDirectory;
-  /** What a report calls each file: its path. */
-  readonly label?: { readonly base?: string; readonly dropIn?: (name: string) => string };
+  /** What a report calls each file and the folder: its path. */
+  readonly label?: {
+    readonly base?: string;
+    readonly directory?: string;
+    readonly dropIn?: (name: string) => string;
+  };
 }
 
 /** "Claude Code ignores hidden files and files that don't end in `.json`." */
@@ -83,33 +90,72 @@ const SHAPE_OF: Readonly<Record<string, FileShape>> = {
   'true,true': 'file + drop-ins',
 };
 
+/** The read that decides the source's outcome: where it failed, why, and the cause. */
+interface Failure {
+  readonly cause: UnreadableCause;
+  readonly label: string;
+  readonly reason: string;
+}
+
 interface Parts {
   readonly documents: readonly AdminDocument[];
-  readonly unreadable?: UnreadableCause;
+  readonly failure?: Failure;
   readonly issues: readonly PluginIssue[];
+}
+
+/**
+ * The failure that counts when several parts fail: a cause that exits wins over one that starts the
+ * session without the source (managed-settings.md, "Find entries Claude Code dropped": any other
+ * failure exits), the first of equal causes otherwise (spec/judgments.md).
+ */
+const decisive = (current: Failure | undefined, next: Failure): Failure =>
+  current === undefined || harsherCause(current.cause, next.cause) !== current.cause
+    ? next
+    : current;
+
+const DIRECTORY_FAILED = 'Managed settings drop-in directory could not be read';
+
+/** The drop-in directory that cannot be listed: the failure that counts and the issue to report. */
+function directoryFailure(
+  directory: UnreadableRead,
+  label: string | undefined,
+): { readonly failure: Failure; readonly issue: PluginIssue } {
+  return {
+    failure: {
+      cause: directory.unreadable,
+      label: label ?? 'managed-settings.d',
+      reason: directory.reason,
+    },
+    issue: unreadableIssue(
+      directory.unreadable,
+      'managed:managed-settings.d',
+      `${DIRECTORY_FAILED}: ${directory.reason}`,
+    ),
+  };
 }
 
 function readParts(read: ManagedFileRead): Parts {
   const documents: AdminDocument[] = [];
   const issues: PluginIssue[] = [];
-  let unreadable: UnreadableCause | undefined;
+  let failure: Failure | undefined;
   const take = (source: SourceRead, label: string | undefined): void => {
-    if (source !== undefined && 'unreadable' in source) unreadable ??= source.unreadable;
-    documents.push(readAdminDocument('file', source, label));
+    const document = readAdminDocument('file', source, label);
+    if (document.unreadable !== undefined && document.unreadableAt !== undefined)
+      failure = decisive(failure, { cause: document.unreadable, ...document.unreadableAt });
+    documents.push(document);
   };
   take(read.base, read.label?.base);
   const directory = read.dropIns;
   if (directory !== undefined && 'unreadable' in directory) {
-    unreadable ??= directory.unreadable;
-    issues.push(
-      error('managed:managed-settings.d', 'Managed settings drop-in directory could not be read'),
-    );
+    const failed = directoryFailure(directory, read.label?.directory);
+    failure = decisive(failure, failed.failure);
+    issues.push(failed.issue);
   } else if (directory !== undefined) {
     const byName = new Map(directory.files.map((file) => [file.name, file.read]));
     for (const name of dropInOrder([...byName.keys()]))
       take(byName.get(name), read.label?.dropIn?.(name));
   }
-  return { documents, ...(unreadable === undefined ? {} : { unreadable }), issues };
+  return { documents, ...(failure === undefined ? {} : { failure }), issues };
 }
 
 /**
@@ -118,7 +164,7 @@ function readParts(read: ManagedFileRead): Parts {
  * source present.
  */
 export function readFileDocument(read: ManagedFileRead): AdminDocument {
-  const { documents, unreadable, issues } = readParts(read);
+  const { documents, failure, issues } = readParts(read);
   const broken = documents.some((document) => document.broken);
   const merged = mergeDropIns(
     documents
@@ -130,14 +176,15 @@ export function readFileDocument(read: ManagedFileRead): AdminDocument {
   const shape = SHAPE_OF[`${read.base !== undefined},${documents.length > 1}`];
   return {
     ...document,
-    present: document.present || unreadable !== undefined || broken,
+    present: document.present || failure !== undefined || broken,
     broken,
-    ...(unreadable === undefined ? {} : { unreadable }),
+    ...(failure === undefined
+      ? {}
+      : {
+          unreadable: failure.cause,
+          unreadableAt: { label: failure.label, reason: failure.reason },
+        }),
     ...(shape === undefined ? {} : { shape }),
-    issues: [
-      ...documents.flatMap((part) => part.issues).filter((_, index) => index >= 0),
-      ...issues,
-      ...document.issues,
-    ],
+    issues: [...documents.flatMap((part) => part.issues), ...issues, ...document.issues],
   };
 }

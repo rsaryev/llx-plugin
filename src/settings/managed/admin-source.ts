@@ -17,16 +17,22 @@ export type ManagedSource = (typeof MANAGED_SOURCES)[number];
 export const UNREADABLE_CAUSES = ['denied', 'failed'] as const;
 export type UnreadableCause = (typeof UNREADABLE_CAUSES)[number];
 
+/** A source that exists and could not be read: the cause and the underlying error's text (errors.md, `Detail: <source>: <reason>`). */
+export interface UnreadableRead {
+  readonly unreadable: UnreadableCause;
+  readonly reason: string;
+}
+
 /**
  * What the host found at one source. `undefined`: nothing there (not a failure). `value`: the
  * content, either the parsed JSON or its text (a plist the host converted with `plutil` comes as
- * the converted JSON). `unreadable`: it exists and the read failed. `malformed`: the platform
- * converter (`plutil`) reported the document malformed, with its message.
+ * the converted JSON). `unreadable`: it exists and the read failed, with the error. `malformed`: the
+ * platform converter (`plutil`) reported the document malformed, with its message.
  */
 export type SourceRead =
   | undefined
   | { readonly value: unknown }
-  | { readonly unreadable: UnreadableCause }
+  | UnreadableRead
   | { readonly malformed: string };
 
 /** The control keys: neither counts as a policy key (managed-settings.md, "How Claude Code combines managed sources"). */
@@ -104,6 +110,8 @@ export interface AdminDocument {
   /** It carries at least one policy key, so it can be the policy. */
   readonly delivers: boolean;
   readonly unreadable?: UnreadableCause;
+  /** Where and why it could not be read: the label a report names the source by, and the error. */
+  readonly unreadableAt?: { readonly label: string; readonly reason: string };
   /** How the file source is made of files: `file`, `drop-ins` or `file + drop-ins`. */
   readonly shape?: string;
   /** Present and not a JSON object: an admin one stops Claude Code from starting. */
@@ -165,7 +173,16 @@ export function readAdminDocument(
     // The user-writable registry never blocks launch and is never an admin document.
     return absent(
       source,
-      SOURCE_TRAITS[source].admin ? { present: true, unreadable: read.unreadable } : {},
+      SOURCE_TRAITS[source].admin
+        ? {
+            present: true,
+            unreadable: read.unreadable,
+            unreadableAt: {
+              label: label ?? SOURCE_TRAITS[source].statusLabel,
+              reason: read.reason,
+            },
+          }
+        : {},
     );
   }
   if ('malformed' in read) return brokenDocument(source, read.malformed, label);
@@ -213,6 +230,24 @@ const UNREADABLE_VERDICTS: {
     message: [...UNREADABLE_EXIT, '', `Detail: ${detail}`].join('\n'),
   }),
 };
+
+/** A cause that exits outranks one that starts the session without the source: the stricter outcome wins. */
+const CAUSE_RANK: { readonly [C in UnreadableCause]: number } = { denied: 0, failed: 1 };
+
+export const harsherCause = (a: UnreadableCause, b: UnreadableCause): UnreadableCause =>
+  CAUSE_RANK[b] > CAUSE_RANK[a] ? b : a;
+
+/** An issue about a failed read, an error where the cause exits and a warning where it does not. */
+const CAUSE_ISSUE: { readonly [C in UnreadableCause]: typeof error } = {
+  denied: warning,
+  failed: error,
+};
+
+export const unreadableIssue = (
+  cause: UnreadableCause,
+  path: string,
+  message: string,
+): PluginIssue => CAUSE_ISSUE[cause](path, message);
 
 export const unreadableVerdict = (
   cause: UnreadableCause,

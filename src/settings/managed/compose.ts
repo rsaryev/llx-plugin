@@ -19,8 +19,8 @@ import { readPolicyHelper, type PolicyHelper } from './policy-helper.ts';
  * combines managed sources", "Keys read from every admin source", "Compose every managed source";
  * settings-reference.md, `managedSourcesBehavior`). Pure over the documents the host read.
  */
-export const MANAGED_BEHAVIORS = ['first-wins', 'merge'] as const;
-export type ManagedBehavior = (typeof MANAGED_BEHAVIORS)[number];
+export type ManagedBehavior = NonNullable<Settings['managedSourcesBehavior']>;
+export const MANAGED_BEHAVIORS: readonly ManagedBehavior[] = ['first-wins', 'merge'];
 
 export interface ComposeOptions {
   /**
@@ -166,13 +166,13 @@ function unreadableIssues(admins: readonly AdminDocument[]): {
   exits: boolean;
 } {
   const verdicts = admins.flatMap((document) =>
-    document.unreadable === undefined
+    document.unreadable === undefined || document.unreadableAt === undefined
       ? []
       : [
           unreadableVerdict(
             document.unreadable,
-            SOURCE_TRAITS[document.source].statusLabel,
-            'the source exists and could not be read',
+            document.unreadableAt.label,
+            document.unreadableAt.reason,
           ),
         ],
   );
@@ -267,8 +267,13 @@ export function composeManaged(
  */
 export function withHelperSettings(
   composition: ManagedComposition,
-  emitted: Settings,
+  helperOutput: Settings,
 ): ManagedComposition {
+  // `forceRemoteSettingsRefresh` "has its own startup rule" that runs before the helper and reads
+  // the admin sources, so the helper's copy takes no part (`composition.forceRemoteRefresh`).
+  const emitted: Settings = Object.fromEntries(
+    Object.entries(helperOutput).filter(([name]) => name !== 'forceRemoteSettingsRefresh'),
+  );
   const settings = withCrossSourceKeys(
     { admins: [emitted], onMachine: [true], merging: false },
     emitted,

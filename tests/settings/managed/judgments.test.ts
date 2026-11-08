@@ -9,7 +9,7 @@ import {
   readAdminDocument,
   readHelperOutput,
 } from '../../../src/settings/managed/index.ts';
-import { compose, found, policyOf } from '../../support/managed.ts';
+import { FAILED, compose, found, policyOf } from '../../support/managed.ts';
 
 describe('judgments', () => {
   test('drop-ins sort by code unit, so an upper-case name precedes a lower-case one', () => {
@@ -65,7 +65,7 @@ describe('judgments', () => {
   });
 
   test('an unreadable HKCU registry never blocks launch and makes no document present', () => {
-    const read = readAdminDocument('hkcu', { unreadable: 'failed' });
+    const read = readAdminDocument('hkcu', FAILED);
     expect(read.present).toBe(false);
     expect(read.broken).toBe(false);
   });

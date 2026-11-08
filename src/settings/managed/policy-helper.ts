@@ -16,13 +16,10 @@ export const HELPER_MIN_REFRESH_MS = 60_000;
 /** "Reads a JSON envelope from stdout, capped at 1 MiB"; a helper that writes more to stdout or to stderr fails. */
 export const HELPER_OUTPUT_CAP_BYTES = 1024 * 1024;
 
-export interface PolicyHelper {
-  readonly path: string;
-  /** Milliseconds; defaults to `HELPER_DEFAULT_TIMEOUT_MS`. */
-  readonly timeoutMs: number;
-  /** `undefined`: run once at startup; `0`: refresh disabled; otherwise at least `HELPER_MIN_REFRESH_MS`. */
-  readonly refreshIntervalMs?: number;
-}
+/** The SDK's `policyHelper` with the timeout filled in: `refreshIntervalMs` stays unset until the settings say. */
+type SdkPolicyHelper = NonNullable<Settings['policyHelper']>;
+export type PolicyHelper = Required<Pick<SdkPolicyHelper, 'path' | 'timeoutMs'>> &
+  Pick<SdkPolicyHelper, 'refreshIntervalMs'>;
 
 export type HelperKey = { readonly helper: PolicyHelper } | { readonly issue: PluginIssue };
 

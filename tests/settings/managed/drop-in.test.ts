@@ -15,9 +15,13 @@ import {
   type DropInFile,
   type ManagedFileRead,
 } from '../../../src/settings/managed/index.ts';
+import { DENIED, FAILED } from '../../support/managed.ts';
 import { spec } from '../../support/spec.ts';
 
 const SPLIT = 'settingsMerge.managed.Split a file-based policy across teams';
+
+const DROPPED = 'policy.managed.Find entries Claude Code dropped';
+const DIRECTORY = 'Managed settings drop-in directory could not be read';
 
 const file = (name: string, value: unknown): DropInFile => ({ name, read: { value } });
 
@@ -210,7 +214,7 @@ describe('the file source as one document', () => {
   });
 
   test('a drop-in directory that exists but cannot be read keeps the source present', () => {
-    const merged = readFileDocument({ base: undefined, dropIns: { unreadable: 'denied' } });
+    const merged = readFileDocument({ base: undefined, dropIns: DENIED });
     expect(merged.present).toBe(true);
     expect(merged.unreadable).toBe('denied');
   });
@@ -219,5 +223,74 @@ describe('the file source as one document', () => {
     const merged = readFileDocument({ base: undefined });
     expect(merged.present).toBe(false);
     expect(merged.delivers).toBe(false);
+  });
+});
+
+const read = (dropIns: ManagedFileRead['dropIns'], base?: ManagedFileRead['base']) =>
+  readFileDocument({ base, dropIns });
+
+/** The messages of the exit and the issue a drop-in directory that failed comes to. */
+const exits = (label?: string) =>
+  composeManaged([
+    readFileDocument({
+      base: undefined,
+      dropIns: FAILED,
+      ...(label ? { label: { directory: label } } : {}),
+    }),
+  ]).issues.map((issue) => issue.message);
+
+spec(`${DROPPED}.Managed settings file or drop-in file`, () => {
+  test('a denied drop-in directory is a warning: the session starts without the source', () => {
+    const merged = read(DENIED);
+    expect(merged.issues).toEqual([
+      {
+        severity: 'warning',
+        path: 'managed:managed-settings.d',
+        message: `${DIRECTORY}: ${DENIED.reason}`,
+      },
+    ]);
+    expect(composeManaged([merged]).fatal).toBe(false);
+  });
+
+  test('a drop-in directory that fails for another reason is an error carrying the underlying error', () => {
+    const merged = read(FAILED);
+    expect(merged.issues).toEqual([
+      {
+        severity: 'error',
+        path: 'managed:managed-settings.d',
+        message: `${DIRECTORY}: ${FAILED.reason}`,
+      },
+    ]);
+    expect(composeManaged([merged]).fatal).toBe(true);
+  });
+
+  test('the exit names the directory, or the path the host gives, with the reason', () => {
+    expect(exits()[1]).toContain(`Detail: managed-settings.d: ${FAILED.reason}`);
+    expect(exits('/etc/claude-code/managed-settings.d')[1]).toContain(
+      `Detail: /etc/claude-code/managed-settings.d: ${FAILED.reason}`,
+    );
+  });
+
+  test('a failure that exits outranks a denial, in either order of the two files', () => {
+    const labelled = { base: '/etc/claude-code/managed-settings.json' };
+    const baseDenied = read(FAILED, DENIED);
+    expect(baseDenied.unreadable).toBe('failed');
+    const directoryDenied = readFileDocument({
+      base: FAILED,
+      dropIns: DENIED,
+      label: labelled,
+    });
+    expect(directoryDenied.unreadable).toBe('failed');
+    expect(directoryDenied.unreadableAt).toEqual({ label: labelled.base, reason: FAILED.reason });
+    expect(composeManaged([baseDenied]).fatal).toBe(true);
+    expect(composeManaged([directoryDenied]).fatal).toBe(true);
+  });
+
+  test('of two failures with the same cause the first one is named', () => {
+    const merged = readFileDocument({
+      base: DENIED,
+      dropIns: { unreadable: 'denied', reason: 'EACCES: directory' },
+    });
+    expect(merged.unreadableAt?.reason).toBe(DENIED.reason);
   });
 });

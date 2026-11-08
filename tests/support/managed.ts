@@ -9,10 +9,18 @@ import {
   type ManagedComposition,
   type ManagedSource,
   type SourceRead,
+  type UnreadableRead,
 } from '../../src/settings/managed/index.ts';
 
 /** The document a source holds when its JSON is `value`. */
 export const found = (value: unknown): SourceRead => ({ value });
+
+/** A read the operating system denied, and one that failed for another reason (an I/O error). */
+export const DENIED: UnreadableRead = {
+  unreadable: 'denied',
+  reason: "EACCES: permission denied, open 'managed-settings.json'",
+};
+export const FAILED: UnreadableRead = { unreadable: 'failed', reason: 'EIO: i/o error, read' };
 
 const REGISTRY: readonly ManagedSource[] = ['hklm', 'hkcu'];
 

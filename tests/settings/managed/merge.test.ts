@@ -3,7 +3,7 @@
  * source (the table, one row per kind of key); settings-reference.md, `managedSourcesBehavior` (the
  * same table, the keys of each row and the conditions it adds).
  */
-import { describe, expect, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { compose, policyOf } from '../../support/managed.ts';
 import { spec } from '../../support/spec.ts';
 
@@ -232,37 +232,6 @@ spec(`${COMPOSE}.Every other key`, () => {
     const settings = merged({ model: 'sonnet' }, { model: 'opus', cleanupPeriodDays: 7 });
     expect(settings.model).toBe('sonnet');
     expect(settings.cleanupPeriodDays).toBe(7);
-  });
-});
-
-describe('keys read from the highest-priority source only', () => {
-  test('a lower source value is ignored even when the highest source sets none', () => {
-    const picker = { options: [{ model: 'opus', label: 'Opus' }] };
-    const settings = merged(
-      { model: 'a', permissions: { defaultMode: 'plan' } },
-      {
-        apiKeyHelper: '/bin/key',
-        modelPicker: picker,
-        permissions: { defaultMode: 'acceptEdits' },
-      },
-    );
-    expect(settings.apiKeyHelper).toBeUndefined();
-    expect(settings.modelPicker).toBeUndefined();
-    expect(settings.permissions?.defaultMode).toBe('plan');
-    expect(merged({ model: 'a' }, { model: 'b' }).model).toBe('a');
-    expect(compose({ file: { modelPicker: picker } }).layer.settings.modelPicker).toEqual(picker);
-  });
-
-  test('the highest source supplies its own', () => {
-    expect(merged({ apiKeyHelper: '/bin/top' }, { apiKeyHelper: '/bin/low' }).apiKeyHelper).toBe(
-      '/bin/top',
-    );
-  });
-
-  test('a lower source cannot set a defaultMode when the highest sets none', () => {
-    expect(
-      merged({ model: 'a' }, { permissions: { defaultMode: 'plan' } }).permissions?.defaultMode,
-    ).toBeUndefined();
   });
 });
 
