@@ -11,6 +11,8 @@ import { handlerSubstituter } from './placeholders.ts';
 /** A spec to run, or none and the issues that say why. */
 export interface CommandPlan {
   readonly spec?: CommandSpec;
+  /** Set when the program would start nothing: the run is a failure to start, with this message. */
+  readonly notStarted?: string;
   readonly issues: readonly PluginIssue[];
 }
 

@@ -78,6 +78,9 @@ describe('working directory', () => {
   });
 });
 
+/** What Claude Code sets in every subprocess it spawns (env-vars.md, `CLAUDECODE` and `CLAUDE_CODE_CHILD_SESSION`). */
+const CLAUDE_CODE_SETS = { CLAUDECODE: '1', CLAUDE_CODE_CHILD_SESSION: '1' } as const;
+
 const envOf = async (variables: Record<string, string>) => {
   const runner = scriptedRunner({});
   await runHandler(
@@ -102,12 +105,13 @@ describe('environment', () => {
       HOME: '/home/user',
       NOT_OTEL_X: '1',
       CLAUDE_PROJECT_DIR: '/work/app',
+      ...CLAUDE_CODE_SETS,
     });
   });
 
   test('the OTEL_ prefix is matched exactly off Windows, where names are case-sensitive', async () => {
     const env = await envOf({ otel_lower: '1', OTEL_UPPER: '2' });
-    expect(env).toEqual({ otel_lower: '1', CLAUDE_PROJECT_DIR: '/work/app' });
+    expect(env).toEqual({ otel_lower: '1', CLAUDE_PROJECT_DIR: '/work/app', ...CLAUDE_CODE_SETS });
   });
 
   test('the OTEL_ prefix is matched in any case on Windows, where names are case-insensitive', async () => {
@@ -120,7 +124,11 @@ describe('environment', () => {
         environment: fakeEnvironment({ Otel_Mixed: '1', OTEL_UPPER: '2', Path: 'C:\\Windows' }),
       }),
     );
-    expect(runner.calls[0]?.env).toEqual({ Path: 'C:\\Windows', CLAUDE_PROJECT_DIR: '/work/app' });
+    expect(runner.calls[0]?.env).toEqual({
+      Path: 'C:\\Windows',
+      CLAUDE_PROJECT_DIR: '/work/app',
+      ...CLAUDE_CODE_SETS,
+    });
   });
 
   test('the exported variables win over an inherited one of the same name', async () => {

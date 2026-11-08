@@ -15,6 +15,7 @@ export { registerHooks, type HookDeclaration } from './register.ts';
 export * from './select/index.ts';
 export * from './input/index.ts';
 export * from './handlers/index.ts';
+export * from './env-file/index.ts';
 export { createHookEngine } from './engine.ts';
 export type { HookEngine, HookEngineOptions, HookPorts } from './engine.ts';
 export type { DispatchRequest, HandlerRun, HookOutcome } from './outcome.ts';

@@ -56,6 +56,12 @@ export interface HookEngineOptions {
   readonly tempDirectory?: string;
   readonly userConfigOf?: DispatchConfig['userConfigOf'];
   readonly httpPolicy?: DispatchConfig['httpPolicy'];
+  /** The host process's id, exported as `CLAUDE_PID` to command hooks. */
+  readonly processId?: DispatchConfig['processId'];
+  /** The `env` blocks of the settings files, resolved (`resolveSettingsEnv`). */
+  readonly settingsEnv?: DispatchConfig['settingsEnv'];
+  /** `CLAUDE_ENV_FILE` for the events that have one (`createEnvFiles`). */
+  readonly envFiles?: DispatchConfig['envFiles'];
 }
 
 export interface HookEngine {
@@ -83,6 +89,9 @@ const hostOf = (options: HookEngineOptions) => ({
   ...(options.tempDirectory === undefined ? {} : { tempDirectory: options.tempDirectory }),
   ...(options.userConfigOf === undefined ? {} : { userConfigOf: options.userConfigOf }),
   ...(options.httpPolicy === undefined ? {} : { httpPolicy: options.httpPolicy }),
+  ...(options.processId === undefined ? {} : { processId: options.processId }),
+  ...(options.settingsEnv === undefined ? {} : { settingsEnv: options.settingsEnv }),
+  ...(options.envFiles === undefined ? {} : { envFiles: options.envFiles }),
 });
 
 /** The engine over the real stages: select, build, run through the ports, read, merge. */

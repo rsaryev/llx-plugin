@@ -1,8 +1,10 @@
 import {
+  createEnvFiles,
   createHookEngine,
   createHookRegistry,
   ifEvaluatorFor,
   registerHooks,
+  type EnvFiles,
   type EventFactsOf,
   type HookOutcome,
   type HookSession,
@@ -11,7 +13,7 @@ import {
 } from '../hooks/index.ts';
 import type { HookEvent } from '../protocol/official.ts';
 import { hookSessionGates, type HookSessionGates } from '../settings/hooks/index.ts';
-import type { PolicyScope } from '../settings/index.ts';
+import { resolveSettingsEnv, type PolicyScope, type SettingsEnv } from '../settings/index.ts';
 import type { ActivePlugin, HostState } from './state.ts';
 import type { SessionOptions } from './types.ts';
 
@@ -74,7 +76,17 @@ export interface SkillHooksRegistrar {
   registerSkillHooks(prefix: string, entries: readonly RegisteredHandler[]): void;
 }
 
+/** What a shell the host runs itself needs of the session's hooks: the settings `env` and the env files. */
+export interface HookEnvironment {
+  /** The variables of the settings files' `env` blocks that apply in this session, and what was ignored. */
+  readonly settings: SettingsEnv;
+  /** The files of `CLAUDE_ENV_FILE`; absent when the host gave no store. */
+  readonly files?: EnvFiles;
+}
+
 export interface HookPart {
+  /** What the host's own Bash and PowerShell commands read, as the hooks do. */
+  readonly hookEnvironment: HookEnvironment;
   dispatch<E extends HookEvent>(
     event: E,
     facts: EventFactsOf<E>,
@@ -95,8 +107,27 @@ export function createHookPart(
   const gates = hookSessionGates(state.view, state.parent);
   const session = sessionOf(state, gates, options);
   const windows = state.options.windows ?? false;
+  const settings = resolveSettingsEnv(state.view.layers, {
+    // Judgment (spec/judgments.md): the session's one `trusted` answers for the project and local files.
+    isFolderTrusted: () => session.trusted,
+    environment: ports.environment.snapshot(),
+    windows,
+    ...(state.options.launchOwnsEnvironment === undefined
+      ? {}
+      : { launchOwnsEnvironment: state.options.launchOwnsEnvironment }),
+  });
+  const inheritedEnvFile = ports.environment.get('CLAUDE_ENV_FILE');
+  const files =
+    state.options.envFiles === undefined
+      ? undefined
+      : createEnvFiles(state.options.envFiles, {
+          launchScript: inheritedEnvFile === '' ? undefined : inheritedEnvFile,
+        });
   const engine = createHookEngine(ports, {
     windows,
+    settingsEnv: settings.values,
+    ...(state.options.processId === undefined ? {} : { processId: state.options.processId }),
+    ...(files === undefined ? {} : { envFiles: files }),
     ifEvaluator: ifEvaluatorFor({
       paths: {
         cwd: options.cwd,
@@ -115,6 +146,7 @@ export function createHookPart(
     ...settingsEntries(gates),
   ]);
   return {
+    hookEnvironment: { settings, ...(files === undefined ? {} : { files }) },
     registerSkillHooks(prefix, entries) {
       const previous = registry.entries.filter((entry) => entry.id.startsWith(`${prefix}:`));
       registry = registry.without(previous.map((entry) => entry.id)).with(entries);

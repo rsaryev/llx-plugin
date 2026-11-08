@@ -21,3 +21,12 @@ export {
   type ResolveInput,
   type ResolvedPolicy,
 } from './resolve.ts';
+export {
+  IGNORED_REASONS,
+  applySettingsEnv,
+  resolveSettingsEnv,
+  type IgnoredReason,
+  type IgnoredVariable,
+  type SettingsEnv,
+  type SettingsEnvContext,
+} from './env.ts';

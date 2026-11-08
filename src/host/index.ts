@@ -1,6 +1,7 @@
 /** The host and its sessions (layer 5, docs/API.md, "Host and sessions"). */
 export { createPluginHost, type HostedPlugin, type PluginHost } from './host.ts';
 export type { PluginSession } from './session.ts';
+export type { HookEnvironment } from './session-hooks.ts';
 export type {
   ExpandOptions,
   SkillInvoker,

@@ -229,6 +229,10 @@ describe('judgment: a hook of a settings file', () => {
     expect(calls[0]?.spec.command).toBe(
       'Write-Host "${env:CLAUDE_PLUGIN_ROOT} ${env:CLAUDE_PLUGIN_DATA}"',
     );
-    expect(Object.keys(calls[0]?.env ?? {})).toEqual(['CLAUDE_PROJECT_DIR']);
+    expect(Object.keys(calls[0]?.env ?? {}).toSorted()).toEqual([
+      'CLAUDECODE',
+      'CLAUDE_CODE_CHILD_SESSION',
+      'CLAUDE_PROJECT_DIR',
+    ]);
   });
 });

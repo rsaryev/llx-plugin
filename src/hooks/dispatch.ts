@@ -8,6 +8,7 @@ import { handlerTimeoutMs, planTimeouts } from './handlers/timeouts.ts';
 import { runLimited } from './handlers/remote/concurrency.ts';
 import { serializeHookInput } from './input/build.ts';
 import type { buildHookInput } from './input/build.ts';
+import type { EnvFiles } from './env-file/index.ts';
 import type { DispatchRequest, HookOutcome } from './outcome.ts';
 import type { selectHandlers } from './select/select.ts';
 import type { IfEvaluator } from './select/if-guard.ts';
@@ -40,6 +41,12 @@ export interface DispatchConfig {
   readonly tempDirectory?: string;
   readonly userConfigOf?: RunContext['userConfigOf'];
   readonly httpPolicy?: RunContext['httpPolicy'];
+  /** The host process's id: `CLAUDE_PID` in every command hook. */
+  readonly processId?: number;
+  /** The `env` of the settings files (`resolveSettingsEnv`), written over the host's environment for every hook. */
+  readonly settingsEnv?: RunContext['settingsEnv'];
+  /** `CLAUDE_ENV_FILE`: the files, and the clearing a `CwdChanged` event does. */
+  readonly envFiles?: EnvFiles;
 }
 
 /** The input text of one handler: a Monitor call that reached a `Bash` matcher is a Bash call. */
@@ -62,6 +69,7 @@ function contextOf(
     ports: config.ports,
     input,
     cwd: request.session.cwd,
+    sessionId: request.session.sessionId,
     windows: config.windows,
     defaultShell: config.defaultShell,
     timeouts,
@@ -70,6 +78,9 @@ function contextOf(
     ...(config.tempDirectory === undefined ? {} : { tempDirectory: config.tempDirectory }),
     ...(config.userConfigOf === undefined ? {} : { userConfigOf: config.userConfigOf }),
     ...(config.httpPolicy === undefined ? {} : { httpPolicy: config.httpPolicy }),
+    ...(config.processId === undefined ? {} : { processId: config.processId }),
+    ...(config.settingsEnv === undefined ? {} : { settingsEnv: config.settingsEnv }),
+    ...(config.envFiles === undefined ? {} : { envFiles: config.envFiles }),
   };
 }
 
@@ -98,6 +109,8 @@ export async function dispatchEvent<E extends HookEvent>(
 ): Promise<HookOutcome<E>> {
   const { event, facts, session } = request;
   const { stages } = config;
+  // "until the next CwdChanged event, when Claude Code clears them": whether or not a hook is there.
+  await config.envFiles?.beforeEvent(event, request.signal);
   const selection = stages.select(registry, {
     event,
     facts,

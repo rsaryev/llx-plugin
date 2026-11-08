@@ -207,6 +207,8 @@ spec('hooks.handler.command.command', () => {
   });
 });
 
+const CLAUDE_CODE_SETS = { CLAUDECODE: '1', CLAUDE_CODE_CHILD_SESSION: '1' } as const;
+
 describe('both forms export the placeholders as environment variables', () => {
   const FORMS = [
     ['exec', { command: 'run', args: [] as string[] }],
@@ -239,7 +241,11 @@ describe('both forms export the placeholders as environment variables', () => {
         const { call } = await ran(settingsCommand(hook), {
           environment: fakeEnvironment({ HOME: '/home/user' }),
         });
-        expect(call.env).toEqual({ HOME: '/home/user', CLAUDE_PROJECT_DIR: '/work/app' });
+        expect(call.env).toEqual({
+          HOME: '/home/user',
+          CLAUDE_PROJECT_DIR: '/work/app',
+          ...CLAUDE_CODE_SETS,
+        });
       });
     }
   });

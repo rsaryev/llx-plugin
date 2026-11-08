@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+### Added
+
+- Hooks: `CLAUDE_ENV_FILE`. The `EnvFileStore` port and `createEnvFiles` give `SessionStart` and `Setup`
+  hooks the file that lasts the session and `CwdChanged` and `FileChanged` hooks the file a `CwdChanged`
+  event clears, never a hook that runs PowerShell nor another event; `readPowershellVariables` reads the
+  plain `export`, `declare -x` and `NAME=value` lines PowerShell commands receive (none, with the
+  `Session environment is not all plain assignments` issue, when a line is another kind; on Windows
+  without a value that holds `/` or `\`). A host session takes `envFiles` and `processId` and reads
+  `session.hookEnvironment`.
+- Hooks: the process environment. `CLAUDE_CODE_SESSION_ID` (the input's `session_id`), `CLAUDECODE`,
+  `CLAUDE_CODE_CHILD_SESSION` and `CLAUDE_PID` are set; the settings files' `env` is written over the
+  inherited environment; `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` removes credentials by the docs' table
+  (`scrubEnvironment`) before the `OTEL_*` removal.
+- Hooks: a shell-form hook that PowerShell runs by default whose command is only quoted strings fails with
+  `PowerShell started no program` and the fixes instead of printing it.
+- Settings: `resolveSettingsEnv` and `applySettingsEnv`, the `env` block (merge per variable, trust, the
+  variables project and local files cannot set, the host-owned identity variables).
+
 ### Fixed
 
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a

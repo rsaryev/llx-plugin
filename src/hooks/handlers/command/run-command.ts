@@ -61,6 +61,9 @@ export async function runCommand(
   context: RunContext,
 ): Promise<HandlerResult> {
   const plan = await FORMS[formOf(entry)](entry, entry.handler.args ?? [], context);
+  if (plan.notStarted !== undefined) {
+    return { run: { kind: 'not-started', message: plan.notStarted }, issues: plan.issues };
+  }
   if (plan.spec === undefined) return { run: skipped(plan.issues), issues: plan.issues };
   const prepared = await request(entry, plan.spec, context);
   const issues = [...plan.issues, ...prepared.issues];

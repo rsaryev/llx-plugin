@@ -12,6 +12,7 @@ import type {
 } from '../../ports/index.ts';
 import type { HookHandlerOf, HookHandlerType } from '../../protocol/hook-config.ts';
 import type { RegisteredHandler } from '../contracts.ts';
+import type { HookEnvFiles } from '../env-file/index.ts';
 import type { HttpHookPolicy } from './remote/http-policy.ts';
 import type { RemoteRawRun } from './remote/types.ts';
 import type { StartObserver } from './status.ts';
@@ -62,6 +63,20 @@ export interface RunContext {
   /** The saved options of a plugin, for `${user_config.*}` and `CLAUDE_PLUGIN_OPTION_<KEY>`. */
   readonly userConfigOf?: (pluginId: string) => ResolvedUserConfig;
   readonly timeouts: TimeoutPlan;
+  /**
+   * The session this hook fires in: `CLAUDE_CODE_SESSION_ID` is its id in every command hook's
+   * environment, the `session_id` of the input (env-vars.md).
+   */
+  readonly sessionId?: string;
+  /** The host process's id, exported as `CLAUDE_PID` (env-vars.md); absent, the variable is not set. */
+  readonly processId?: number;
+  /**
+   * The variables of the settings files' `env` blocks (`resolveSettingsEnv`), which every hook process
+   * inherits in place of what the shell exported (env-vars.md, "Precedence").
+   */
+  readonly settingsEnv?: Readonly<Record<string, string>>;
+  /** Where `CLAUDE_ENV_FILE` points for the events that have one (hooks.md, "Persist environment variables"). */
+  readonly envFiles?: HookEnvFiles;
   /** The merged `allowedHttpHookUrls` and `httpHookAllowedEnvVars` of the settings; unset: no limit. */
   readonly httpPolicy?: HttpHookPolicy;
   readonly signal: AbortSignal;

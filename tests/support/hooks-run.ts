@@ -45,6 +45,10 @@ export interface ContextOptions {
   readonly startDirectory?: string;
   readonly tempDirectory?: string;
   readonly timeouts?: RunContext['timeouts'];
+  readonly sessionId?: string;
+  readonly processId?: number;
+  readonly settingsEnv?: RunContext['settingsEnv'];
+  readonly envFiles?: RunContext['envFiles'];
 }
 
 /** A run context over the fakes: POSIX paths, `bash`, an empty environment, input `{}`. */
@@ -65,6 +69,10 @@ export function runContext(options: ContextOptions): RunContext {
     ...(options.userConfigOf === undefined ? {} : { userConfigOf: options.userConfigOf }),
     ...(options.startDirectory === undefined ? {} : { startDirectory: options.startDirectory }),
     ...(options.tempDirectory === undefined ? {} : { tempDirectory: options.tempDirectory }),
+    ...(options.sessionId === undefined ? {} : { sessionId: options.sessionId }),
+    ...(options.processId === undefined ? {} : { processId: options.processId }),
+    ...(options.settingsEnv === undefined ? {} : { settingsEnv: options.settingsEnv }),
+    ...(options.envFiles === undefined ? {} : { envFiles: options.envFiles }),
   };
 }
 

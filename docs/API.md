@@ -702,6 +702,36 @@ cost fields of `SessionStart` outside resume and fork, `globs` of `InstructionsL
 warning. The free text of `Stop` and `SubagentStop` tasks and crons is capped at 1000 characters with
 the `… [+N chars]` marker.
 
+### Hook environment and `CLAUDE_ENV_FILE` (done: `hooks/handlers/command/env`, `scrub`, `powershell`, `hooks/env-file`)
+
+A command hook's process gets the host's environment with the settings files' `env` written over it
+(`RunContext.settingsEnv`, from `resolveSettingsEnv`), with its credentials removed when
+`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` is `1` (`scrubEnvironment`: the docs' table, a name or value that
+"looks like a credential" being a judgment) and without the `OTEL_*` variables; then the variables
+Claude Code exports: `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`,
+`CLAUDE_PLUGIN_OPTION_<KEY>`, `CLAUDECODE` and `CLAUDE_CODE_CHILD_SESSION` (`1`),
+`CLAUDE_CODE_SESSION_ID` (the input's `session_id`, so it follows a `/clear`), `CLAUDE_PID`
+(`options.processId` of the engine or host; unset when the host gives none) and `CLAUDE_ENV_FILE`.
+
+`CLAUDE_ENV_FILE` is the `EnvFileStore` port (`path`, `read`, `clear`) of the `hooks/env-file` module:
+`createEnvFiles(store, { launchScript })` hands the engine (`options.envFiles`) the file of each event
+and gives the host the rest.
+
+| Function                              | Does                                                                                  |
+| ------------------------------------- | ------------------------------------------------------------------------------------- |
+| `envFileKindOf(event)`                | `session` for `SessionStart` and `Setup`, `cwd` for `CwdChanged` and `FileChanged`, none for any other event |
+| `createEnvFiles(store, options)`      | `pathFor(event, shell)` (none for PowerShell hooks; exec form is not PowerShell), `beforeEvent` (a `CwdChanged` clears the `cwd` file, even when no hook handles it), `scripts` (what a Bash command runs first: the launch script, the session file, the `cwd` file) and `powershellVariables` |
+| `readPowershellVariables(text, { windows })` | the assignments PowerShell commands receive: only when every line is blank, a `#` comment or a plain `export`/`declare -x`/`NAME=value`; otherwise none and the `Session environment is not all plain assignments` issue; on Windows a value with `/` or `\` is left out |
+
+`powershellVariables({ windows, sandboxed })` reads the launch script and both files and returns none for
+a sandboxed command. A host session passes `processId` and `envFiles` in `PluginHostOptions` and reads
+`session.hookEnvironment` (`settings`: the `env` that applies and what was ignored; `files`).
+
+A shell-form hook that PowerShell runs by the host's default (no `shell` field) and whose command is only
+quoted strings starts nothing: the run is `not-started` with a message that begins `PowerShell started no
+program` and lists the fixes, and the Windows-without-Git-Bash error of a blocked call carries both texts.
+With `"shell": "powershell"` the command runs as written.
+
 ## Host and sessions (done: `host`)
 
 `createPluginHost` composes what the modules below already do; it adds no behaviour of its own. The
@@ -1064,6 +1094,26 @@ Scopes, highest first: `managed`, `parent` (the SDK `managedSettings`), `flag` (
 an empty one, an unreadable lock reads as `true`, and `strictPluginOnlyCustomization` as `true`;
 elsewhere the value or entry is dropped. The aliases `allowedMarketplaces` and
 `additionalMarketplaces` are rewritten to their canonical keys, so a resolver sees only those.
+
+### The `env` block (done: `settings/env`)
+
+```ts
+import { applySettingsEnv, resolveSettingsEnv } from '@rsaryev/claude-plugin-kit';
+
+const { values, ignored, issues } = resolveSettingsEnv(view.layers, {
+  isFolderTrusted: (scope) => trust[scope], // the project and local files wait for trust
+  environment: process.env, // the launch environment (an off value never replaces it)
+  windows: false,
+});
+const environment = applySettingsEnv(process.env, values, false); // a settings value replaces the shell's
+```
+
+Files combine per variable, the highest precedence winning; a value is copied as written (an empty string is
+a value; nothing is ever removed). Project and local files cannot set what a checked-out repository must not
+control (`CLAUDE_CONFIG_DIR`, the operating-system directories, the Windows program variables, the
+OpenTelemetry exporter variables except their off values, how Claude Code starts and signs in), and no file
+sets the identity variables the hosting environments own. `ignored` names the variable, the scope and the
+reason (`repository`, `host-owned`, `untrusted`, `launch`, `not-text`), never a value.
 
 ## Sub-agents (done: the tools a subagent gets)
 

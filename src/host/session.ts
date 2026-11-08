@@ -13,6 +13,7 @@ export type PluginSession = SkillPart & HookPart & ComponentPart;
 export function openSession(state: HostState, options: SessionOptions): PluginSession {
   const hooks = createHookPart(state, options);
   const hookPart: HookPart = {
+    hookEnvironment: hooks.hookEnvironment,
     dispatch: (event, facts, run) => hooks.dispatch(event, facts, run),
   };
   return {
