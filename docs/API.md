@@ -328,6 +328,38 @@ The kit selects and the hooks engine runs. `folderTrusted` is one boolean the ho
 a parent folder or a `-p` session does not make it true. A main-session agent's groups run next to the
 settings' hooks, so the host merges the two lists.
 
+### Sub-agents: how it is launched
+
+```ts
+import {
+  resolveSubagentModel, resolveSubagentEffort, effectiveAutoCompactWindow, turnLimitOutcome,
+  runsInBackground, claudeMdScopes, worktreeDisposition,
+} from '@rsaryev/claude-plugin-kit';
+
+const { model } = resolveSubagentModel({
+  invocation: toolCall.model, definition: agent.definition.model, // the file's `model`
+  envModel: env.CLAUDE_CODE_SUBAGENT_MODEL, mainModel: 'claude-opus-5-5[1m]', mainFamily: 'opus',
+});
+const effort = resolveSubagentEffort({ field: agent.definition.effort, session, sameModelAsMain: true });
+const window = effectiveAutoCompactWindow({ field: agent.definition.autoCompactWindow, inherited: 967_000, asMainSession: false });
+```
+
+| Function                                   | Status | Does                                                                                   |
+| ------------------------------------------ | ------ | -------------------------------------------------------------------------------------- |
+| `resolveSubagentModel(input)`              | done   | the "subagent model order": the invocation alias, the definition (`inherit` selects the main model), `CLAUDE_CODE_SUBAGENT_MODEL` (`inherit` is unset), the main model; a family alias of the main model's family becomes the main model's exact model (`[1m]` included), only `opus` when the family cannot be told (unless `ANTHROPIC_DEFAULT_OPUS_MODEL`); `force` skips the invocation and the definition. `from` says where it came from |
+| `resolveSubagentEffort(input)`             | done   | `CLAUDE_CODE_EFFORT_LEVEL` (`auto`/`unset` send none), the invocation parameter, the `effort` field, then the session level only on the main conversation's model |
+| `effectiveAutoCompactWindow(input)`        | done   | the variable (clamped to 100000..1000000) wins, the field only lowers the inherited window, none for a session run as the agent |
+| `turnLimitOutcome(maxTurns, turns)`        | done   | `{ stop, partial }` once `maxTurns` is reached |
+| `effectiveCacheTtl({ cacheTtl, usingUsageCredits })` | done | the frontmatter's step of the cache lifetime precedence; `1h` is ignored on usage credits |
+| `runsInBackground(input)`                  | done   | background unless Claude waits, `background: true` keeps it there, none when background tasks are disabled |
+| `claudeMdScopes(input)`                    | done   | `omitClaudeMd` drops the user, project and local files; managed policy stays except for a managed subagent; no effect for a main-session agent |
+| `worktreeDisposition(hasChanges)`          | done   | `isolation: worktree`: `cleanup` without changes, `keep` with |
+| `mainSessionFirstTurn(input)`              | done   | `initialPrompt` as the first turn of a main-session agent, prepended to the user's prompt; nothing for a subagent |
+
+The kit reads no environment variable: the host passes each as a plain value. Turning an alias into
+a version, the `availableModels` allowlist, the effort levels a model supports, compaction, the turn
+loop, cache requests and creating the worktree are the host's.
+
 ## Testing kit (planned)
 
 `@rsaryev/claude-plugin-kit/testing`: in-memory `PluginFiles`, a scripted `CommandRunner`, a

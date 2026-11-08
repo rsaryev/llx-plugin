@@ -36,3 +36,26 @@ export {
   type AgentHookSelection,
   type AgentRunKind,
 } from './hooks.ts';
+export {
+  claudeMdScopes,
+  effectiveAutoCompactWindow,
+  effectiveCacheTtl,
+  mainSessionFirstTurn,
+  runsInBackground,
+  turnLimitOutcome,
+  worktreeDisposition,
+  type AutoCompactInput,
+  type BackgroundInput,
+  type ClaudeMdScopes,
+  type TurnLimitOutcome,
+} from './launch.ts';
+export {
+  MODEL_ALIASES,
+  resolveSubagentEffort,
+  resolveSubagentModel,
+  type ModelAlias,
+  type ModelSource,
+  type SubagentEffortInput,
+  type SubagentModel,
+  type SubagentModelInput,
+} from './launch-model.ts';

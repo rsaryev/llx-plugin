@@ -4,6 +4,15 @@
 
 ### Added
 
+- `resolveSubagentModel` and `resolveSubagentEffort`: the model a subagent runs on (invocation
+  parameter, then the definition with `inherit`, then `CLAUDE_CODE_SUBAGENT_MODEL`, then the main
+  model; a family alias of the main model's family resolves to its exact model; the FORCE variable)
+  and its effort (`CLAUDE_CODE_EFFORT_LEVEL`, then the invocation, then the field, then the session
+  level only on the main model). `effectiveAutoCompactWindow` (the variable wins, the field only
+  lowers, none for a main-session agent), `turnLimitOutcome` (`maxTurns` marks the output partial),
+  `effectiveCacheTtl` (`experimental.cacheTtl`, `1h` ignored while on usage credits),
+  `runsInBackground`, `claudeMdScopes` (`omitClaudeMd`), `worktreeDisposition` (`isolation`) and
+  `mainSessionFirstTurn` (`initialPrompt`).
 - `selectAgentHooks`, `agentHookGroups` and `hooksTrustGate`: the frontmatter hooks of an agent that
   fire for an event (only while the agent is active, the `PreToolUse` and `PostToolUse` matcher
   over the tool name, a subagent's `Stop` converted to `SubagentStop`, none for a plugin agent,
