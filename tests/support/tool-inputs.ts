@@ -4,8 +4,9 @@
  * never the kit's registry, so the registry is checked against the docs and not against itself.
  *
  * The docs mark a field optional in its description. Where the table says nothing (Agent's
- * `subagent_type`, ExitPlanMode's injected fields) the row follows the SDK's input type or the
- * page's own prose; spec/judgments.md says so.
+ * `subagent_type`, the flags `run_in_background`, `replace_all`, `-i` and `multiline`, ExitPlanMode's
+ * injected fields) the row follows the SDK's input type or the page's own prose; spec/judgments.md
+ * says so.
  */
 export type InputFieldType = 'string' | 'number' | 'boolean' | 'array' | 'object';
 

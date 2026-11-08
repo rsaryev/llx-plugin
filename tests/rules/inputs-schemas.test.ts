@@ -46,6 +46,18 @@ const OWNED: ReadonlySet<string> = new Set([
   'tools.input.Write.file_path',
 ]);
 
+/**
+ * Fields whose table row carries no "Optional" marker: they are optional from the SDK's input type,
+ * a judgment (spec/judgments.md) tested outside spec().
+ */
+const SDK_OPTIONAL: ReadonlySet<string> = new Set([
+  'Bash.run_in_background',
+  'PowerShell.run_in_background',
+  'Edit.replace_all',
+  'Grep.-i',
+  'Grep.multiline',
+]);
+
 const without = (input: Record<string, unknown>, field: string): Record<string, unknown> =>
   Object.fromEntries(Object.entries(input).filter(([name]) => name !== field));
 
@@ -66,6 +78,7 @@ function contractOf(entry: InputRow): void {
     ]);
   });
 
+  if (SDK_OPTIONAL.has(`${tool}.${field}`)) return;
   test(`${tool}.${field} is ${optional ? 'optional' : 'required'}`, () => {
     const parse = parseToolInput(tool, base);
     expect(parse.issues.map(({ path, message }) => [path, message])).toEqual(
@@ -111,6 +124,30 @@ spec('tools.input.WebSearch.mode', () => {
 });
 
 describe('the rest of a tool_input (judgments, spec/judgments.md)', () => {
+  test('a flag whose table row has no "Optional" marker is optional, as in the SDK type', () => {
+    for (const entry of INPUT_TABLE.filter((row) => SDK_OPTIONAL.has(`${row.tool}.${row.field}`))) {
+      const parse = parseToolInput(entry.tool, without(validInput(entry.tool), entry.field));
+      expect([entry.tool, entry.field, entry.optional, parse.issues]).toEqual([
+        entry.tool,
+        entry.field,
+        true,
+        [],
+      ]);
+    }
+  });
+
+  test('WebSearch domain lists hold strings, as in the SDK type: another element is an issue at its index', () => {
+    for (const field of ['allowed_domains', 'blocked_domains']) {
+      const { issues } = parseToolInput('WebSearch', {
+        query: 'q',
+        [field]: ['docs.example.com', 1],
+      });
+      expect(issues.map((found) => found.path)).toEqual([`tool_input.${field}.1`]);
+    }
+    const { issues } = parseToolInput('WebSearch', { query: 'q', allowed_domains: [1] });
+    expect(issues.map((found) => found.path)).toEqual(['tool_input.allowed_domains.0']);
+  });
+
   test('a field the table does not list passes through without an issue', () => {
     // The SDK's input types carry more fields than hooks.md lists (Bash dangerouslyDisableSandbox).
     const raw = { command: 'ls', dangerouslyDisableSandbox: true, extra: { nested: 1 } };

@@ -78,6 +78,12 @@
 
 ### Fixed
 
+- Tool inputs: the optionality of Bash and PowerShell `run_in_background`, Edit `replace_all` and
+  Grep `-i` and `multiline` (the tables mark none optional) is recorded as a judgment and tested
+  outside the spec; `answerQuestions` derives its input type from the SDK's `AskUserQuestionInput`
+  (`multiSelect` stays optional, as hooks.md says); WebSearch domain lists reject non-string
+  elements at `tool_input.<field>.<index>` and ExitPlanMode `allowedPrompts` must be an array,
+  both recorded as judgments.
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
   parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
   (and `skill`) read `name:value` as a parameter.

@@ -98,7 +98,8 @@ const shell = (): Fields =>
 
 /**
  * One table per tool of hooks.md ("PreToolUse input"). Optionality is the table's ("Optional ...");
- * where it is silent, the SDK's input type decides (spec/judgments.md).
+ * where it is silent (the boolean flags `run_in_background`, `replace_all`, `-i`, `multiline`, and
+ * Agent, WebFetch and ExitPlanMode fields), the SDK's input type decides (spec/judgments.md).
  */
 export const TOOL_INPUT_FIELDS = {
   Bash: shell(),

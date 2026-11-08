@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { error, type PluginIssue } from '../../../format/issues.ts';
+import type { AskUserQuestionInput } from '../../../protocol/official-tools.ts';
 import { flag, list, record, text } from './field-schemas.ts';
 
 /**
@@ -38,10 +39,16 @@ export const questionsSchema = list(question).refine(questions.check, questions.
 /** "Maps question text to the selected option label". */
 export const answersSchema = record(text);
 
-/** What `answerQuestions` needs of an AskUserQuestion input; the SDK's `AskUserQuestionInput` has it. */
-export interface AskedQuestions {
-  readonly questions: readonly { readonly question: string; readonly multiSelect?: boolean }[];
-  readonly answers?: Readonly<Record<string, string>>;
+type OfficialQuestion = AskUserQuestionInput['questions'][number];
+
+/**
+ * What `answerQuestions` needs of an AskUserQuestion input, taken from the SDK's
+ * `AskUserQuestionInput`. `multiSelect` is optional here, as hooks.md says ("optional `multiSelect`
+ * flag"), where the SDK requires it (spec/judgments.md).
+ */
+export interface AskedQuestions extends Pick<AskUserQuestionInput, 'answers'> {
+  readonly questions: readonly (Pick<OfficialQuestion, 'question'> &
+    Partial<Pick<OfficialQuestion, 'multiSelect'>>)[];
 }
 
 export interface AnsweredQuestions<T extends AskedQuestions> {

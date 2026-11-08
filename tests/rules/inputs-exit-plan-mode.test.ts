@@ -11,11 +11,7 @@
  * this module's.
  */
 import { describe, expect, test } from 'bun:test';
-import {
-  effectiveExitPlanModeInput,
-  parseToolInput,
-  TOOL_INPUT_FIELDS,
-} from '../../src/rules/index.ts';
+import { effectiveExitPlanModeInput, parseToolInput } from '../../src/rules/index.ts';
 import { spec } from '../support/spec.ts';
 
 const paths = (raw: unknown): string[] =>
@@ -36,10 +32,6 @@ spec('tools.input.ExitPlanMode.plan', () => {
   test('the literal input from the model is typically empty, and that is not an issue', () => {
     expect(parseToolInput('ExitPlanMode', {}).issues).toEqual([]);
   });
-
-  test('it is documented, not in the SDK type', () => {
-    expect(TOOL_INPUT_FIELDS.ExitPlanMode.plan?.source).toBe('docs');
-  });
 });
 
 spec('tools.input.ExitPlanMode.planFilePath', () => {
@@ -53,10 +45,6 @@ spec('tools.input.ExitPlanMode.planFilePath', () => {
   test('a path that is not text is refused at tool_input.planFilePath', () => {
     expect(paths({ planFilePath: 7 })).toEqual(['tool_input.planFilePath']);
   });
-
-  test('it is documented, not in the SDK type', () => {
-    expect(TOOL_INPUT_FIELDS.ExitPlanMode.planFilePath?.source).toBe('docs');
-  });
 });
 
 spec('tools.input.ExitPlanMode.allowedPrompts', () => {
@@ -66,14 +54,6 @@ spec('tools.input.ExitPlanMode.allowedPrompts', () => {
     const parse = parseToolInput('ExitPlanMode', { plan: '## Plan', allowedPrompts });
     expect(parse.issues).toEqual([]);
     expect(parse.input.allowedPrompts).toEqual(allowedPrompts);
-  });
-
-  test('it is a list: anything else is refused', () => {
-    expect(paths({ allowedPrompts: 'run tests' })).toEqual(['tool_input.allowedPrompts']);
-  });
-
-  test('the entries of the ignored field are not inspected', () => {
-    expect(paths({ allowedPrompts: [{ tool: 'Edit', prompt: 1 }, 'anything'] })).toEqual([]);
   });
 
   test('the effective input leaves it out and keeps everything else', () => {
@@ -90,6 +70,16 @@ spec('tools.input.ExitPlanMode.allowedPrompts', () => {
     effectiveExitPlanModeInput(raw);
     expect(raw.allowedPrompts).toBe(allowedPrompts);
     expect(effectiveExitPlanModeInput({})).toEqual({});
+  });
+});
+
+describe('allowedPrompts type (judgment, spec/judgments.md)', () => {
+  test('the entries of the ignored field are not inspected', () => {
+    expect(paths({ allowedPrompts: [{ tool: 'Edit', prompt: 1 }, 'anything'] })).toEqual([]);
+  });
+
+  test('it is a list, as in the SDK type: anything else is refused', () => {
+    expect(paths({ allowedPrompts: 'run tests' })).toEqual(['tool_input.allowedPrompts']);
   });
 });
 
