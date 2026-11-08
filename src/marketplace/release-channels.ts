@@ -6,6 +6,7 @@ import type {
   PluginSourceKind,
   PluginSourceOf,
 } from '../format/marketplace/types.ts';
+import { declaredVersion } from './plugin-version.ts';
 
 /**
  * Release channels (plugins/host-marketplace.md, "Run release channels"): "Claude Code has no
@@ -57,14 +58,12 @@ function pointsAt<K extends PluginSourceKind>(
 
 const refOf = (source: PluginSource): string | undefined => pointsAt(source.kind, source);
 
-/** Judgment: a version that is blank is not set, as in `computePluginVersion`. */
-const declaredVersion = (
+/** The version a channel declares for an entry: `plugin.json`'s, then the entry's; a blank one is not set (`declaredVersion`). */
+const channelVersion = (
   entry: MarketplaceEntry,
   manifests: ChannelManifestVersions | undefined,
-): string | undefined => {
-  const candidates = [manifests?.get(entry.name), entry.version];
-  return candidates.find((one) => one !== undefined && one.trim() !== '');
-};
+): string | undefined =>
+  declaredVersion(manifests?.get(entry.name)) ?? declaredVersion(entry.version);
 
 const NAMES = (name: string): PluginIssue =>
   error(
@@ -90,8 +89,8 @@ function pluginFindings(
   manifests: ChannelManifests,
 ): PluginIssue[] {
   const found: PluginIssue[] = [];
-  const first = declaredVersion(one, manifests.first);
-  const second = declaredVersion(other, manifests.second);
+  const first = channelVersion(one, manifests.first);
+  const second = channelVersion(other, manifests.second);
   if (first !== undefined && first === second) found.push(sameVersion(one.name, first));
   const ref = refOf(one.source);
   if (ref !== undefined && ref === refOf(other.source)) found.push(sameRef(one.name));

@@ -1,54 +1,37 @@
 /**
  * plugins/host-marketplace.md § Rename or remove a plugin → Migrate users with a renames map (the
  * example marketplace and its three results: a renamed entry loads under its new name and the old
- * key is rewritten in `enabledPlugins` and `pluginConfigs` of the user, project and local scopes; a
- * `null` entry drops the key; managed settings cannot be rewritten, so the notice recurs; the chain
- * is followed from the oldest name, `renames` is append-only history, `claude plugin validate`
- * rejects `renames.<name>: chain does not resolve`), → Uninstall removed plugins from users'
- * machines (`forceRemoveDeletedPlugins`), and plugins/publish.md § Rename or remove a plugin (never
- * change a published `name`, `displayName` changes the label). The tests read the documented
- * `marketplace.json` through `readMarketplace`, so the decisions run over what a host loads. The
- * mechanics are unit-tested in renames.test.ts and removal.test.ts under marketplace.field.*; the
- * cases the docs leave open are in spec/judgments.md.
+ * key is rewritten in `enabledPlugins` and `pluginConfigs` of the user, project and local scopes,
+ * and the notice is shown once; a `null` entry drops the key; managed settings cannot be rewritten,
+ * so the notice recurs; the chain is followed from the oldest name, `renames` is append-only
+ * history, `claude plugin validate` rejects `renames.<name>: chain does not resolve`). The
+ * uninstall of removed plugins and publish.md's rename page are in renames-removal.test.ts. The
+ * tests read the documented `marketplace.json` through `readMarketplace`, so the decisions run over
+ * what a host loads. The mechanics are unit-tested in renames.test.ts under marketplace.field.*;
+ * the cases the docs leave open are in spec/judgments.md. One message is the host's to print and
+ * the kit only decides when: `Plugin "<name>" not cached at <path>` follows a rename in a
+ * marketplace added from a git repository or URL until the user runs `/plugin install`; the kit has
+ * no cache to look in (spec/judgments.md).
  */
 import { describe, expect, test } from 'bun:test';
-import { readManifest } from '../../src/format/index.ts';
-import {
-  effectiveDisplayName,
-  mergeEntryWithManifest,
-} from '../../src/format/marketplace/entry-merge.ts';
-import { readMarketplace, validateMarketplace } from '../../src/format/marketplace/marketplace.ts';
-import type { Marketplace } from '../../src/format/marketplace/types.ts';
+import { validateMarketplace } from '../../src/format/marketplace/marketplace.ts';
 import {
   migrateSettingsScopes,
   renameNotice,
   resolveRename,
   type ScopedSettings,
 } from '../../src/marketplace/renames.ts';
-import { removedPlugins, REMOVED_STATUS } from '../../src/marketplace/removal.ts';
-import { loaded, rawEntry } from '../support/marketplace-entries.ts';
+import {
+  documented,
+  documentedFile,
+  key,
+  NAME,
+  read,
+  REMOVED,
+} from '../support/marketplace-renames.ts';
 import { spec } from '../support/spec.ts';
 
-const NAME = 'your-marketplace';
 const RENAMED = 'Renamed to "code-formatter" in the "your-marketplace" marketplace';
-const REMOVED = 'Removed from the "your-marketplace" marketplace';
-
-/** The marketplace.json of the docs: `formatter` became `code-formatter`, `legacy-linter` was removed. */
-const documentedFile = {
-  name: NAME,
-  owner: { name: 'Your Org' },
-  plugins: [{ name: 'code-formatter', source: './plugins/code-formatter' }],
-  renames: { formatter: 'code-formatter', 'legacy-linter': null },
-};
-
-const read = (raw: unknown): Marketplace => {
-  const { marketplace } = readMarketplace(raw);
-  if (marketplace === undefined) throw new Error('the marketplace does not load');
-  return marketplace;
-};
-const documented = read(documentedFile);
-
-const key = (plugin: string) => `${plugin}@${NAME}`;
 
 spec('updates.hosting.Migrate users with a renames map.Renamed entry', () => {
   test('the plugin loads under its new name', () => {
@@ -86,6 +69,20 @@ spec('updates.hosting.Migrate users with a renames map.Renamed entry', () => {
       local: { [key('code-formatter')]: {} },
     });
     expect(migratedEnabled.notices).toEqual([RENAMED]);
+  });
+
+  test('the rename is shown once: after the keys are rewritten, user, project and local scopes give no second notice', () => {
+    const first = migrateSettingsScopes(
+      {
+        user: { [key('formatter')]: true },
+        project: { [key('formatter')]: true },
+        local: { [key('formatter')]: true },
+      },
+      NAME,
+      documented,
+    );
+    expect(first.notices).toEqual([RENAMED]);
+    expect(migrateSettingsScopes(first.scopes, NAME, documented).notices).toEqual([]);
   });
 
   test('a user who already uses the new name sees no rename at all', () => {
@@ -190,109 +187,16 @@ describe('the rest of the renames section: no entry, append-only history, valida
     ]);
   });
 
-  test('claude plugin validate rejects a chain that ends anywhere other than null or a name in plugins', () => {
+  test('claude plugin validate rejects a chain that ends anywhere other than null or a name in plugins, with renames.<name>: chain does not resolve', () => {
     const issues = validateMarketplace({ ...documentedFile, renames: { formatter: 'gone' } });
-    expect(
-      issues.filter((i) => i.severity === 'error' && i.path === 'renames.formatter'),
-    ).toHaveLength(1);
+    const found = issues.filter((i) => i.severity === 'error' && i.path === 'renames.formatter');
+    expect(found).toHaveLength(1);
+    expect(found[0]?.message).toStartWith('chain does not resolve');
   });
 
   test('the documented example validates cleanly', () => {
     expect(validateMarketplace(documentedFile).filter((i) => i.path.startsWith('renames'))).toEqual(
       [],
     );
-  });
-});
-
-/**
- * The id holds an apostrophe, which the `check:spec` literal scan (`'...'` or `"..."` only) cannot
- * read, so it is a name here; `spec()` still refuses an id that is not in requirements.json.
- */
-const UNINSTALL_REMOVED = `updates.hosting.Uninstall removed plugins from users${String.fromCodePoint(39)} machines`;
-
-spec(UNINSTALL_REMOVED, () => {
-  const flagged = (flag: boolean) =>
-    read({ ...documentedFile, ...(flag ? { forceRemoveDeletedPlugins: true } : {}) });
-  const installed = [
-    { name: 'legacy-linter', marketplace: NAME, scopes: ['user', 'project', 'local'] as const },
-    { name: 'dropped', marketplace: NAME, scopes: ['user'] as const },
-    { name: 'formatter', marketplace: NAME, scopes: ['user'] as const },
-    { name: 'code-formatter', marketplace: NAME, scopes: ['user'] as const },
-  ];
-
-  test('without the field a removed plugin stays installed', () => {
-    expect(removedPlugins(installed, flagged(false))).toEqual([]);
-  });
-
-  test('with it, a plugin neither listed nor renamed is removed; listed and renamed ones stay', () => {
-    expect(removedPlugins(installed, flagged(true)).map((one) => one.id)).toEqual([
-      key('legacy-linter'),
-      key('dropped'),
-    ]);
-  });
-
-  test('each removed plugin is uninstalled from the user, project and local scopes', () => {
-    const [legacy] = removedPlugins(installed, flagged(true));
-    expect(legacy?.uninstallFrom).toEqual(['user', 'project', 'local']);
-  });
-
-  test('plugins that only managed settings installed stay in place', () => {
-    const [only] = removedPlugins(
-      [{ name: 'dropped', marketplace: NAME, scopes: ['managed'] }],
-      flagged(true),
-    );
-    expect(only?.uninstallFrom).toEqual([]);
-  });
-
-  test('each removed plugin is listed with the status Removed from marketplace', () => {
-    const found = removedPlugins(installed, flagged(true));
-    expect(found.every((one) => one.status === REMOVED_STATUS)).toBe(true);
-    expect(REMOVED_STATUS).toBe('Removed from marketplace');
-  });
-
-  test('the field is read from the top level of marketplace.json', () => {
-    expect(flagged(true).forceRemoveDeletedPlugins).toBe(true);
-    expect(flagged(false).forceRemoveDeletedPlugins).toBe(false);
-  });
-});
-
-spec('updates.publish.Rename or remove a plugin', () => {
-  test('displayName changes the label users see and keeps the name unchanged', () => {
-    const { manifest } = readManifest({
-      name: 'code-formatter',
-      displayName: 'Code Formatter Pro',
-    });
-    if (manifest === undefined) throw new Error('the manifest does not load');
-    const merged = mergeEntryWithManifest(loaded(rawEntry({ name: 'code-formatter' })), manifest);
-    expect(effectiveDisplayName(merged)).toBe('Code Formatter Pro');
-    expect(merged.installName).toBe('code-formatter');
-  });
-
-  test('after a rename with no renames entry users lose the plugin: their install is under the old name', () => {
-    const renamedWithoutMap = read({ ...documentedFile, renames: undefined });
-    expect(resolveRename('formatter', renamedWithoutMap)).toEqual({ status: 'unknown' });
-  });
-
-  test('a renames entry migrates them instead', () => {
-    expect(resolveRename('formatter', documented)).toEqual({
-      status: 'renamed',
-      to: 'code-formatter',
-    });
-  });
-
-  test('to remove a plugin, delete the entry and map its name to null: existing installs are told, not failed', () => {
-    expect(resolveRename('legacy-linter', documented)).toEqual({ status: 'removed' });
-    expect(renameNotice('legacy-linter', documented)).toBe(REMOVED);
-  });
-});
-
-describe('judgments', () => {
-  test('a plugin listed again under an old name is current, so a rename that was reverted loads as is', () => {
-    const reverted = read({
-      ...documentedFile,
-      plugins: [{ name: 'formatter', source: './plugins/formatter' }],
-      renames: { formatter: 'code-formatter', 'code-formatter': 'formatter' },
-    });
-    expect(resolveRename('formatter', reverted)).toEqual({ status: 'current' });
   });
 });

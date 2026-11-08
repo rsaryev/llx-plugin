@@ -11,12 +11,19 @@ import { computePluginVersion, type PluginVersionInput } from './plugin-version.
  * How Claude Code decides a plugin has an update (plugins/loading.md, "Versions and updates"):
  * `claude plugin update` and background auto-update "compute the version again and don't replace
  * the cached copy when it matches what `installed_plugins.json` records". A new copy is made only
- * when the computed version differs; the kit decides, the host copies. Versions are strings, never
- * ranked: a version that goes backwards differs just the same (host-marketplace.md, "Users get a new
- * copy only when the plugin's computed version differs from the one they have").
+ * when the computed version differs; the kit decides, the host copies. The docs say a new copy is made
+ * "only when the plugin's computed version differs from the one they have" (host-marketplace.md) and
+ * do not say it must be higher; comparing as strings is the kit's judgment (spec/judgments.md).
  */
 
 export type UpdateOutcome = 'unchanged' | 'new copy';
+
+/**
+ * What `claude plugin update` prints when the computed version is unchanged: "<name> is already at
+ * the latest version (<version>)." (plugins/loading.md, "Versions and updates"; cli-reference.md).
+ */
+export const upToDateMessage = (name: string, version: string): string =>
+  `${name} is already at the latest version (${version}).`;
 
 /**
  * Whether `computed` is an update over what `installed_plugins.json` records for the plugin. A
@@ -84,19 +91,18 @@ export const loadsInPlace = (
 
 /** What the update check is about: where the plugin comes from decides which version counts. */
 export type UpdateSubject =
-  /** A marketplace plugin copied into the cache: its computed version. */
-  | { readonly from: 'marketplace'; readonly version: PluginVersionInput }
-  /** A plugin loaded in place: there is no copy to replace (`loadsInPlace`). */
-  | { readonly from: 'in-place' }
   /**
-   * A plugin of a marketplace hosted on claude.ai: "the version claude.ai records for the plugin is
-   * its version". `manifestVersion` is what the host read from the manifest; it is never used.
+   * A marketplace plugin: `source` and `origin` decide whether it loads in place (`loadsInPlace`);
+   * if it is copied into the cache, `version` is what its computed version comes from.
    */
   | {
-      readonly from: 'claude-ai';
-      readonly recordedVersion: string;
-      readonly manifestVersion?: string;
-    };
+      readonly from: 'marketplace';
+      readonly source: PluginSource;
+      readonly origin: MarketplaceSource | undefined;
+      readonly version: PluginVersionInput;
+    }
+  /** A plugin of a marketplace hosted on claude.ai: "the version claude.ai records for the plugin is its version". */
+  | { readonly from: 'claude-ai'; readonly recordedVersion: string };
 
 export type UpdateCheck = UpdateOutcome | 'loaded in place';
 
@@ -106,8 +112,10 @@ const CHECK: {
     installed: string | undefined,
   ) => UpdateCheck;
 } = {
-  marketplace: (subject, installed) => isUpdate(installed, computePluginVersion(subject.version)),
-  'in-place': () => 'loaded in place',
+  marketplace: (subject, installed) =>
+    loadsInPlace(subject.source, subject.origin)
+      ? 'loaded in place'
+      : isUpdate(installed, computePluginVersion(subject.version)),
   'claude-ai': (subject, installed) => isUpdate(installed, subject.recordedVersion),
 };
 
@@ -119,7 +127,10 @@ function check<F extends UpdateSubject['from']>(
   return CHECK[from](subject, installed);
 }
 
-/** The outcome of an update check for a plugin whose installed version is `installed`. */
+/**
+ * The outcome of an update check for a plugin whose installed version is `installed`: a plugin that
+ * loads in place is never compared, whatever its version string says.
+ */
 export const checkForUpdate = (
   subject: UpdateSubject,
   installed: string | undefined,

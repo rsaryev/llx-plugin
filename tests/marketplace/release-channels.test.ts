@@ -5,7 +5,11 @@
  * § Set update policy → Assign release channels to user groups (each group gets the matching
  * `extraKnownMarketplaces` entry). The pair is checked as pure data by `checkReleaseChannels`. What the
  * docs leave open (a pair that shares a ref, which findings are warnings) is outside `spec(...)` and
- * in spec/judgments.md.
+ * in spec/judgments.md. The two documented negatives are host-side and untested here: server-managed
+ * settings apply to every user of an organization, so they cannot differ per group, and a gateway
+ * policy's `extraKnownMarketplaces` does not merge with another policy's, so each group lists every
+ * marketplace it needs. The kit models neither the admin console nor gateway policies, only the
+ * settings a device ends up with (spec/judgments.md).
  */
 import { describe, expect, test } from 'bun:test';
 import { readMarketplace } from '../../src/format/marketplace/marketplace.ts';
@@ -150,51 +154,30 @@ spec('updates.hosting.Run release channels', () => {
   });
 });
 
-const registrationsOf = (marketplaceName: string, repo: string) =>
-  plan([
-    [
-      'managed',
-      { extraKnownMarketplaces: { [marketplaceName]: { source: { source: 'github', repo } } } },
-    ],
-  ]);
+/** The configuration one group receives, as org.md shows it, planned as the managed settings of that group's devices. */
+const groupConfig = (name: string, repo: string) => ({
+  extraKnownMarketplaces: { [name]: { source: { source: 'github', repo } } },
+});
+const receivedBy = (name: string, repo: string) =>
+  plan([['managed', groupConfig(name, repo)]]).map((r) => [r.name, r.status, r.entry.source]);
 
 spec('updates.org.Assign release channels to user groups', () => {
-  test('the stable group receives the stable-tools entry and nothing else', () => {
-    const stable = registrationsOf('stable-tools', 'your-org/stable-tools');
-    expect(stable.map((r) => [r.name, r.status])).toEqual([['stable-tools', 'register']]);
+  test('the stable group receives exactly the stable-tools marketplace, and latest-tools is absent', () => {
+    expect(receivedBy('stable-tools', 'your-org/stable-tools')).toEqual([
+      ['stable-tools', 'register', { source: 'github', repo: 'your-org/stable-tools' }],
+    ]);
   });
 
-  test('the early-access group receives latest-tools instead', () => {
-    const latest = registrationsOf('latest-tools', 'your-org/latest-tools');
-    expect(latest.map((r) => [r.name, r.status])).toEqual([['latest-tools', 'register']]);
+  test('the early-access group receives latest-tools instead, and stable-tools is absent', () => {
+    expect(receivedBy('latest-tools', 'your-org/latest-tools')).toEqual([
+      ['latest-tools', 'register', { source: 'github', repo: 'your-org/latest-tools' }],
+    ]);
   });
 
-  test('each group registers the marketplace of its own channel, so the two groups install different refs', () => {
-    const stable = registrationsOf('stable-tools', 'your-org/stable-tools');
-    const latest = registrationsOf('latest-tools', 'your-org/latest-tools');
-    expect(stable.map((r) => r.name)).not.toEqual(latest.map((r) => r.name));
+  test('the two marketplaces the groups receive are a valid channel pair of the same plugins', () => {
     expect(
       checkReleaseChannels(loadedMarketplace(stableTools), loadedMarketplace(latestTools)),
     ).toEqual([]);
-  });
-
-  test('a managed entry that sets autoUpdate fixes it for the group; one that leaves it unset does not', () => {
-    const fixed = plan([
-      [
-        'managed',
-        {
-          extraKnownMarketplaces: {
-            'stable-tools': {
-              source: { source: 'github', repo: 'your-org/stable-tools' },
-              autoUpdate: true,
-            },
-          },
-        },
-      ],
-    ]);
-    const open = registrationsOf('latest-tools', 'your-org/latest-tools');
-    expect(fixed.map((r) => r.autoUpdateFixed)).toEqual([true]);
-    expect(open.map((r) => r.autoUpdateFixed)).toEqual([false]);
   });
 });
 

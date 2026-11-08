@@ -1,12 +1,19 @@
-import type { PluginSourceKind } from '../format/marketplace/types.ts';
+import type {
+  PluginSource,
+  PluginSourceKind,
+  PluginSourceOf,
+} from '../format/marketplace/types.ts';
+import type { Sha256 } from '../ports/marketplace.ts';
 
 /**
  * The version Claude Code computes for a plugin it installs (plugins/loading.md, "Versions and
  * updates", "How Claude Code computes the version"). It is how an update is detected and it names
  * the plugin's cache directory. For every source type but `command`: the manifest's `version`, then
  * the marketplace entry's, then the source type's default; a `command` source always derives it from
- * what the command produced. Pure over facts: the host reads the manifest, learns the commit and
- * hashes the files or the path, because the kit has no git, no disk and no digest of its own.
+ * what the command produced. Pure over facts: the host reads the manifest and learns the commit,
+ * because the kit has no git and no disk. The kit hashes through the `Sha256` port only what the docs
+ * name: the downloaded archive (`archiveFacts`). The hash of a `git-subdir` path and of a command's
+ * output are facts the host supplies, because the docs give no algorithm for them.
  */
 
 export const UNKNOWN_VERSION = 'unknown';
@@ -44,7 +51,7 @@ export type SourceFacts =
       readonly kind: 'archive';
       /** The `sha256` pin in the marketplace entry. */
       readonly pin?: string;
-      /** The SHA-256 digest of the downloaded file. */
+      /** The SHA-256 digest of the downloaded file (`archiveFacts` computes it). */
       readonly downloadedDigest?: string;
     }
   | {
@@ -64,7 +71,7 @@ export interface PluginVersionInput {
 type FactsOf<K extends PluginSourceKind> = Extract<SourceFacts, { kind: K }>;
 
 /** A version the author wrote; a blank one is not set (judgment). */
-const declared = (value: string | undefined): string | undefined =>
+export const declaredVersion = (value: string | undefined): string | undefined =>
   value === undefined || value.trim() === '' ? undefined : value;
 
 const short = (hex: string): string => hex.toLowerCase().slice(0, SHORT_LENGTH);
@@ -141,8 +148,83 @@ function pick<K extends PluginSourceKind>(
 export function computePluginVersion(input: PluginVersionInput): string {
   return pick(
     input.source.kind,
-    declared(input.manifestVersion),
-    declared(input.entryVersion),
+    declaredVersion(input.manifestVersion),
+    declaredVersion(input.entryVersion),
     input.source,
   );
+}
+
+/** The facts of one source type that the marketplace entry alone gives; the host adds the rest. */
+export type KnownFacts = {
+  readonly [K in PluginSourceKind]: { readonly kind: K } & Partial<Omit<FactsOf<K>, 'kind'>>;
+}[PluginSourceKind];
+
+type KnownOf<K extends PluginSourceKind> = Extract<KnownFacts, { kind: K }>;
+
+/** A pinned `sha` is the commit of the source: no fetch is needed to know it. */
+const pinnedCommit = (source: { readonly sha?: string }): { readonly commit?: string } =>
+  source.sha === undefined ? {} : { commit: source.sha };
+
+const KNOWN: { readonly [K in PluginSourceKind]: (source: PluginSourceOf<K>) => KnownOf<K> } = {
+  relative: () => ({ kind: 'relative' }),
+  github: (source) => ({ kind: 'github', ...pinnedCommit(source) }),
+  url: (source) => ({ kind: 'url', ...pinnedCommit(source) }),
+  'git-subdir': (source) => ({ kind: 'git-subdir', ...pinnedCommit(source) }),
+  npm: () => ({ kind: 'npm' }),
+  archive: (source) => ({
+    kind: 'archive',
+    ...(source.sha256 === undefined ? {} : { pin: source.sha256 }),
+  }),
+  command: () => ({ kind: 'command' }),
+};
+
+function known<K extends PluginSourceKind>(kind: K, source: PluginSourceOf<K>): KnownOf<K> {
+  return KNOWN[kind](source);
+}
+
+/**
+ * What a marketplace entry's `source` tells about its version without a fetch: its kind, a pinned
+ * `sha` as the commit of a `github`, `url` or `git-subdir` source, and the `sha256` pin of an
+ * `archive`. The host adds only what it learns: the commit of an unpinned git source, the hash of a
+ * `git-subdir` path, the digest of a download (`archiveFacts`), the repository of a relative path
+ * and the hash of a command's output. Judgment (spec/judgments.md): a pinned `sha` is read as the
+ * commit.
+ */
+export function sourceFactsOf<S extends PluginSource>(source: S): KnownOf<S['kind']>;
+export function sourceFactsOf(source: PluginSource): KnownFacts {
+  return known(source.kind, source);
+}
+
+/**
+ * The facts of an `archive` source after the download: the entry's `sha256` pin and the SHA-256
+ * digest of the downloaded bytes ("the digest of the downloaded file when there is no pin"),
+ * computed through the `Sha256` port the archive fetch already uses.
+ */
+export async function archiveFacts(
+  source: PluginSourceOf<'archive'>,
+  bytes: Uint8Array,
+  sha256: Sha256,
+): Promise<FactsOf<'archive'>> {
+  const downloadedDigest = await sha256.hex(bytes);
+  return source.sha256 === undefined
+    ? { kind: 'archive', downloadedDigest }
+    : { kind: 'archive', pin: source.sha256, downloadedDigest };
+}
+
+const percent = (char: string): string =>
+  `%${(char.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(2, '0')}`;
+
+/**
+ * The version as one safe directory name, since "the version also names the plugin's cache
+ * directory" (`cache/<marketplace>/<plugin>/<version>/`) and a manifest or an entry may write any
+ * string, such as `../x`. Judgment (spec/judgments.md): percent-encoding keeps a version as it is
+ * when it is made of letters, digits and `.`, `-`, `_`, `+`, never lets two versions share a
+ * directory, and turns `.` and `..` (which are not names) into `%2E`s.
+ */
+export function versionCacheSegment(version: string): string {
+  const encoded = encodeURIComponent(version.toWellFormed())
+    .replace(/[!'()*~]/g, percent)
+    .replaceAll('%2B', '+');
+  if (encoded === '') return UNKNOWN_VERSION;
+  return /^\.+$/.test(encoded) ? encoded.replaceAll('.', '%2E') : encoded;
 }

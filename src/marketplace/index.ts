@@ -124,7 +124,11 @@ export {
 } from './cross-marketplace.ts';
 export {
   UNKNOWN_VERSION,
+  archiveFacts,
   computePluginVersion,
+  sourceFactsOf,
+  versionCacheSegment,
+  type KnownFacts,
   type PluginVersionInput,
   type RepositoryRoot,
   type SourceFacts,
@@ -133,6 +137,7 @@ export {
   checkForUpdate,
   isUpdate,
   loadsInPlace,
+  upToDateMessage,
   type UpdateCheck,
   type UpdateOutcome,
   type UpdateSubject,

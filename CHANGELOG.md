@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Marketplace updates: `checkForUpdate` now derives `loaded in place` from `loadsInPlace(source,
+  origin)` instead of trusting the host, and its claude.ai subject has no manifest version field;
+  `upToDateMessage` gives the `already at the latest version` wording; the SHA-256 of a downloaded
+  archive is computed through the `Sha256` port (`archiveFacts`); `sourceFactsOf` and
+  `versionCacheSegment` replace per-host switches; the blank-version rule is one helper. The
+  version, release-channel, renames and release tests assert what each docs section adds, and the
+  host-side messages and negatives are recorded in `spec/judgments.md`.
+
 ### Added
 
 - Marketplace: the version of a plugin as Claude Code computes it (`computePluginVersion`: manifest,
