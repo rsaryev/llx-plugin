@@ -59,9 +59,94 @@
   describes (events, matcher groups, the five handler types and their fields), into the official
   `HooksSettings`; and `matchesMatcher`, the matcher grammar of hooks.md (match-all, exact list,
   unanchored regular expression, the narrower set of `FileChanged` and `StopFailure`).
+- Hook input (`hooks/input`): `buildHookInput` makes the JSON a hook reads from the session and the
+  event's facts: the common fields (`session_id`, `prompt_id` absent before the first prompt,
+  `scratchpad_dir`, `permission_mode` with Manual as `default`, `effort` on tool-context events,
+  `agent_id` and `agent_type`, `hook_event_name`), facts checked against the official input type of
+  each of the 33 events (a wrong type or value is an issue and no input), the conditional fields
+  (`SessionStart` cost fields for resume and fork, `InstructionsLoaded` `globs`, `trigger_file_path`
+  and `parent_file_path` by `load_reason`), and the `Stop` task and cron entries capped at 1000
+  characters with the `… [+N chars]` marker and per-type fields. `serializeHookInput` is the one
+  JSON text for stdin and an HTTP body.
+- Command hook handler (`hooks/handlers`): `runHandler` runs a `command` hook through `CommandRunner`
+  in exec form (`args` present: the executable and one argument per element, no shell, placeholders
+  and `${user_config.*}` substituted as plain strings) or shell form (`bash` or `powershell`, the
+  placeholders rewritten to `${env:NAME}` for PowerShell, a plugin hook that references
+  `${user_config.*}` refused with the documented error), with the event JSON on stdin,
+  `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA` and `CLAUDE_PLUGIN_OPTION_<KEY>`
+  exported, `OTEL_*` removed and the documented working-directory fallbacks. `async` and
+  `asyncRewake` hooks return a background run at once (no timeout for `async`, a wake text on exit
+  code 2 for `asyncRewake`). `planTimeouts` and `handlerTimeoutMs` compute the limit the port
+  enforces (600/600/600/30/60, lowered on `UserPromptSubmit`, `PreModelSwitch`, `PostModelSwitch`
+  and `MessageDisplay`, the shared `SessionEnd` budget), and `statusMessage` reaches the host's
+  observer when a hook starts.
+- Remote hook handlers (`hooks/handlers/remote`): an `http` hook POSTs the hook input as JSON with
+  `Content-Type: application/json`, interpolating `$VAR` and `${VAR}` in header values only for the
+  names in `allowedEnvVars` (unlisted ones become empty strings); an `mcp_tool` hook calls the tool
+  on the server it names (a plugin server by its scoped name), substitutes `${path}` from the hook
+  input into the string arguments, waits for a connecting server only on events that can block or
+  change a result, and reports `isError` as a non-blocking error; `prompt` and `agent` hooks
+  substitute `$ARGUMENTS` (with the `\$` escape, the input appended when absent), pass `model` and
+  the 30 s and 60 s timeouts, and read the `ok` / `reason` / `impossible` answer. `okFalseEffect`
+  says what `ok: false` does on each of the 13 events (`continueOnBlock`, `impossible`, agent hooks),
+  and `runLimited` runs at most 12 prompt or agent hooks at once, in handler order.
+- The hook verdict and engine: `interpretRun` reads a run as the docs do (the stdout against exit
+  code table, exit 2 on each of the 33 events, `onFailure` on `command` and `http` hooks, HTTP
+  response handling, `ok: false` of prompt and agent hooks, background deliveries), and
+  `createHookEngine` dispatches an event through select, input, run, read and merge into a
+  `HookOutcome`.
+- Hook output (`hooks/output`): `parseHookOutput` reads a hook's JSON against the schema of its
+  event (the universal fields and a `hookSpecificOutput` bound to the official types, a value of the
+  wrong type is a validation failure, a key no schema names is dropped); `OUTPUT_CAPS` says which of
+  `continue`, `systemMessage`, `terminalSequence`, `decision` and the event's own fields each of the
+  33 events honours; `mergeOutputs` merges every hook's output in registry order (`PreToolUse` deny >
+  defer > ask > allow, `PreModelSwitch` deny > ask > allow, `PermissionRequest`, `PostToolUse`
+  rewrites checked against the Bash, Glob, Grep, WebFetch and WebSearch output shapes, the classifier
+  note capped at 2,000 characters, `Elicitation` where any decline wins) into typed `effects`;
+  `allowedTerminalSequence` keeps `terminalSequence` to OSC 0/1/2/9/99/777 and BEL;
+  `parsePermissionUpdates` validates the six permission update entries (`manual` is `default`);
+  `createOutputStage` caps each string of a hook at 10,000 characters, saving the rest through
+  `ScratchFiles` with a 2,000-character preview, and is the engine's default output stage
+  (`HookPorts.scratch`); `OutputStage` gains `limit`, `merge` takes the event's facts, and
+  `MergedOutput` carries `issues`.
+- Hook output (`hooks/output`): `SubagentStart` `hookSpecificOutput.additionalContext` is proven
+  as a requirement (accepted for that event only, carried from every hook, capped, and no decision
+  holds subagent creation back).
 
 ### Fixed
 
+- Hook output tests (`SubagentStart.additionalContext`): the title no longer claims `continue` is
+  dropped (it is carried); the matcher, the `<system-reminder>` escape, the cap boundary, the
+  2,000-character preview, the independence of hooks under the cap and the `hookEventName` failure
+  are now asserted.
+- Hook verdict and engine: a block now says who is shown its text (`BlockInfo.to`: `claude`, `user`,
+  `user-and-claude` or `none`), and on the events whose docs show it to no one (`ConfigChange`,
+  `Elicitation`, `ElicitationResult`, `WorktreeCreate`, `WorktreeRemove`) `reason` and `message` are
+  empty, the debug-log events keeping the hook's line in `debug`; a `PostToolBatch` stop leaves a
+  notice for the transcript and feedback for Claude; on `Elicitation` and `ElicitationResult` only
+  `hookSpecificOutput` is dropped from a run that did not exit 0 (`systemMessage` and `continue`
+  still count); a `UserPromptSubmit` command, HTTP or MCP tool hook that times out leaves a notice
+  with the timeout and the discarded output; a `continue: false` block no longer replaces an exit-2
+  reason; tests assert the route per event against the docs, the `<Event> hook error` notice of
+  `SessionStart`, `SubagentStart` and `PostModelSwitch`, and the judgments of assembling blocks.
+- Hook output: a `Stop` or `SubagentStop` hook that returns `continue: false` with
+  `additionalContext` stops instead of keeping the turn going; `decision` is `block` on every event,
+  and the deprecated `approve` is valid on `PreToolUse` only (any other value fails validation); a
+  `PreToolUse` `deny` from one hook drops another hook's `updatedInput`, as an exit-2 deny does; the
+  10,000-character cap no longer spills a `systemMessage` or specific field the event discards; the
+  merge and the cap use the checked output instead of parsing it again; the tool output mirrors and
+  `GateEffects` are bound to more of the official types; tests assert where a block's text goes
+  (`block.to`) per event, the `WorktreeCreate` path, the `PreCompact`, `TaskCreated` and
+  `PostToolUseFailure` blocks, the `TeammateIdle`, `TaskCompleted` and `SubagentStart` rows, and the
+  control characters in an OSC body; the judgments behind those rules are recorded.
+- Remote hook handlers: an `http` hook now honours the two settings allowlists through
+  `RunContext.httpPolicy` (`allowedHttpHookUrls` skips a hook whose URL matches no `*` pattern, with a
+  warning at `hooks.<Event>.url`; `httpHookAllowedEnvVars` narrows `allowedEnvVars` to the names on
+  both lists); an `mcp_tool` hook returns `cancelled` when the session aborts while it waits for the
+  server, instead of a "not connected" error, and with the optional `ports.clock` the wait and the
+  call share one hook `timeout` (`timed-out` when the wait used it up); tests assert all 33 values
+  of `WAITS_FOR_SERVER`, the exact appended prompt, malformed and reason-less replies for agent hooks
+  too, and keep judgment tests out of the `spec(...)` blocks of other ids.
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
   parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
   (and `skill`) read `name:value` as a parameter.
@@ -106,3 +191,36 @@
   and the Agent, Skill and WebFetch matchers read behaviour and specifier form through a registry
   and a named guard, and their input fields are tied to the SDK's `AgentInput`, `WebFetchInput`
   and `ArtifactInput`.
+- Hook selection (`hooks/select`): `createHookRegistry` and `selectHandlers` pick the handlers an
+  event runs: the event catalog (cadence, supported handler types per event, `EndConversation`
+  skipping both tool events), the field each event's matcher filters on (`MATCHER_TARGETS`, with
+  the narrow grammar of `FileChanged` and `StopFailure`, the canonical model of a model switch, and
+  the events that ignore a matcher), the documented matcher values tied to the SDK unions, `if`
+  evaluated on tool events only, Monitor commands matched by a `Bash` matcher, settings-handler
+  dedupe, `disableAllHooks` with managed precedence, workspace and folder trust, plugin enablement,
+  `once` for skill frontmatter, and the `FileChanged` watch list.
+- Hook selection (`hooks/select`): an `mcp_tool` hook on `Setup`, and on `SessionStart` at launch
+  (startup, resume, fork), is skipped and reported as a warning, because the MCP servers are not
+  available yet, and it runs after `/clear` or a compaction; an `if` of `Edit(src/**)` matches only
+  the `src` directory in the working directory (`Edit(**/src/**)` for any depth) instead of any
+  depth, and two rules joined with `&&` or `||` are reported as one rule that cannot match;
+  `allowManagedHooksOnly` and the `strictPluginOnlyCustomization` hooks lock gate handlers by
+  source (`allowManagedHooksOnly`, `forceEnabledPlugins` and `pluginOnlyHooks` on the session); the
+  `FileChanged` watch list (`fileChangedWatchList(entries, session)`) skips handlers that cannot
+  run; the session's `effort` takes the SDK type.
+- Hook input (`hooks/input`): `HookSession.permissionMode` takes the host's own text, so the
+  Manual label (sent as `"default"`) and a text that names no mode (warned, not sent) are reachable
+  through the typed API; `duration_ms`, `seconds_since_last_response` and
+  `estimated_cache_write_usd` accept any number, as the docs type them, while `context_tokens` and
+  `index` stay whole numbers (a judgment); issue paths write an array index as `[n]`
+  (`hooks.Stop.input.background_tasks[0].id`), as the warnings and the select stage do; the input
+  build no longer relies on casts beyond one commented join, and tests now cover `mcp_server`,
+  `permission_suggestions`, `tool_calls`, the optional titles and the Elicitation and ConfigChange
+  enums.
+- Command handler: an `asyncRewake` hook that exits with code 2 and writes only blank output no
+  longer wakes Claude with an empty reminder; the `OTEL_` exporter variables are removed in any
+  case on a Windows host; the handler registry dispatches without a type assertion; the PowerShell
+  rewrite of a settings hook's plugin placeholders, the override of inherited variables, and the
+  host-chosen default shell are recorded as judgments. Tests: judgments moved out of `spec(...)`,
+  and added for `${user_config.*}` in `command`, Git Bash path normalization and Windows exported
+  paths.

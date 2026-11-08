@@ -31,7 +31,15 @@ export type {
   SlashCommand,
   SyncHookJSONOutput,
 } from '@anthropic-ai/claude-agent-sdk';
-export type { ToolInputSchemas, ToolOutputSchemas } from '@anthropic-ai/claude-agent-sdk/sdk-tools';
+export type {
+  BashOutput,
+  GlobOutput,
+  GrepOutput,
+  ToolInputSchemas,
+  ToolOutputSchemas,
+  WebFetchOutput,
+  WebSearchOutput,
+} from '@anthropic-ai/claude-agent-sdk/sdk-tools';
 
 /** The members of a union that name their fields, not an open `{ [key: string]: unknown }`. */
 type Declared<T> = T extends unknown ? (string extends keyof T ? never : T) : never;

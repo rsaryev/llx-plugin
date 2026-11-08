@@ -168,6 +168,145 @@ applied) and the host starts them. Tests use the fakes in `tests/support/ports.t
 `scriptedRunner`, `recordingHttp`, `fakeModel`, `fakeMcp`, `fixedClock`, `locations`,
 `fakeEnvironment`, `memoryScratch`).
 
+## Hooks (select, input, handlers, verdict, engine and output done)
+
+The hook engine picks the handlers an event runs, runs them through ports, and merges what they
+return. The first stage, selection, is pure over data: no port, no I/O.
+
+```ts
+import { createHookRegistry, ifEvaluatorFor, selectHandlers } from '@rsaryev/claude-plugin-kit';
+
+const registry = createHookRegistry(entries); // RegisteredHandler[]: event, matcher, official handler, source
+const { selected, issues, monitor } = selectHandlers(registry, {
+  event: 'PreToolUse',
+  facts: { tool_name: 'Bash', tool_input: { command: 'rm -rf /tmp/build' }, tool_use_id: 't1' },
+  session, // trusted, disableAllHooks, enabledPlugins...
+  ifEvaluator: ifEvaluatorFor(matchContext), // reads each handler's `if`
+  modelCatalog, // names the canonical model of a model switch
+});
+```
+
+| Function                                   | Status  | Does                                                                         |
+| ------------------------------------------ | ------- | ---------------------------------------------------------------------------- |
+| `createHookRegistry(entries)`              | done    | an immutable registry: `entries`, `with`, `without`                          |
+| `selectHandlers(registry, request)`        | done    | the handlers an event runs, in registry order: event, gates (`disableAllHooks`, trust, plugin enablement, `allowManagedHooksOnly`, the plugin-only lock), settings dedupe, handler type, matcher, MCP client for `mcp_tool` (none on `Setup` or `SessionStart` at launch), `if`; `{ selected, issues, monitor }` |
+| `EVENT_CATALOG`, `supportsHandlerType`, `eventsSupporting`, `firesForTool` | done | per event: cadence, the handler types it supports, the tools whose calls never fire it (`EndConversation` on `PreToolUse` and `PostToolUse`) |
+| `MATCHER_TARGETS`, `MATCHER_VALUES`        | done    | per event, the input field its matcher filters on (or none: the matcher is ignored, `FileChanged` and `StopFailure` read in the narrow grammar), and the documented values, tied to the SDK unions |
+| `canonicalMatcherModel(toModel, catalog)`  | done    | the canonical name a model-switch matcher is tested against, `[1m]` stripped; none means every hook runs |
+| `ifEvaluatorFor(context)`                  | done    | an `if` reader over `evaluateIf`; a handler with `if` never runs on a non-tool event |
+| `fileChangedWatchList(entries, session)`   | done    | the literal file names the `FileChanged` matchers of handlers that can run register to watch |
+| `consumedByRun(entry, succeeded)`          | done    | whether `once: true` removes the handler: skill frontmatter and a successful run only |
+| `buildHookInput(event, facts, session)`    | done    | the input of an event as `{ input, issues }`: the common fields from the session, then the event's facts checked against the official input type; `input` is `undefined` when a fact has the wrong type or value |
+| `serializeHookInput(input)`                | done    | the one JSON text a command hook reads on stdin and an HTTP hook receives as its body |
+| `hookPermissionMode(mode)`                 | done    | the `permission_mode` a hook sees: the mode labeled Manual is `default` |
+| `runHandler(entry, context)`               | done    | runs one handler and returns `{ run, issues }`: a `command` hook in exec form or shell form, in the foreground or the background; an `http`, `mcp_tool`, `prompt` or `agent` hook through its port (`http`, `mcp`, `models` of the run ports) |
+| `planTimeouts(event, selected, environment)`, `handlerTimeoutMs(entry, plan)` | done | the limit in milliseconds the port enforces: defaults 600/600/600/30/60, lowered per event, none for `async`, the shared `SessionEnd` budget |
+| `okFalseEffect(event, run, options)`, `isPromptEvent(event)` | done | what `ok: false` of a prompt or agent hook does on each of the 13 events that run them: `none`, `allow-stop` (`impossible` on `Stop` and `SubagentStop`), or `block` with `endsTurn`, `delivery` and `deniesTool`; `continueOnBlock`, agent hooks and the two causes of `TaskCompleted` |
+| `runLimited(entries, run, limit?)`, `composePrompt(prompt, inputJson)` | done | at most 12 prompt or agent hooks at once, results in handler order; `$ARGUMENTS` and `\$` of a prompt. `runHandler` calls neither `runLimited` nor `okFalseEffect`: the interpreter and engine (planned) do, and until they exist a host calls them itself |
+| `interpretRun(entry, run, context)`        | done    | what one raw run came to, as a `HandlerVerdict`: the exit-code table (stdout against exit 0, 2, other), `EXIT2_RULES` per event, `onFailure`, HTTP response handling, `ok: false`, background deliveries |
+| `EXIT2_RULES`, `EXIT_TABLE`, `exitClassOf`  | done    | the "Exit code 2 behavior per event" table for all 33 events (can it block, what it does, where stderr goes, the events' own rules) and the "Exit code output" table as data |
+| `readStdout`, `readBody`, `readAsyncResponse` | done  | the stdout parsing rule of exit 0 (one JSON object; `{`...`}` text that is not one is a parse failure; arrays and quoted strings are plain text), an HTTP body, an async hook's one-line response |
+| `createHookEngine(ports, options)`         | done    | `dispatch(registry, { event, facts, session, signal })`: select, build the input, run every handler (at most 12 prompt or agent hooks at once), read each run, merge; returns a `HookOutcome` |
+| `parseHookOutput(event, json)`, `checkOutput` | done | a hook's JSON output against the schema of the event (the universal fields and the `hookSpecificOutput` of the event, bound to the official types): the checked output, or the validation message the `<hook name> hook error` notice carries. A key no schema names is dropped; a wrong type fails; `hookEventName` must name the event |
+| `mergeOutputs(event, outputs, facts)`      | done    | the merge of every hook's output, in registry order: what the event honours (`OUTPUT_CAPS`), `continue` and `stopReason`, `systemMessages`, `additionalContext` (with `<system-reminder>` tags defused), `terminalSequences`, the event's own rule (`PreToolUse` deny > defer > ask > allow, `PreModelSwitch` deny > ask > allow, `PermissionRequest`, `PostToolUse` rewrites and the classifier note, `Elicitation`) as `effects`, and the `issues` of what it dropped |
+| `OUTPUT_CAPS`                              | done    | per event, which of `continue`, `systemMessage`, `terminalSequence`, `decision` and `hookSpecificOutput` it accepts and which it discards |
+| `createOutputStage({ scratch })`           | done    | the `OutputStage` the engine uses by default: `parse`, `limit` (the 10,000-character cap per string, spilled to `ScratchFiles` with a 2,000-character preview, or cut when there is no port) and `merge` |
+| `allowedTerminalSequence(value)`           | done    | the value when it is only OSC `0`/`1`/`2`/`9`/`99`/`777` and BEL, ended by BEL or ST; else `undefined` and the field is ignored |
+| `parsePermissionUpdates(raw)`              | done    | the six permission update entries of `updatedPermissions` and `permission_suggestions`: the valid ones (`manual` is `default`) and an issue per entry that is not |
+| `finalizeEffects(event, effects, block)`   | done    | makes the effects agree with a block that is not a JSON decision: an exit-2 `PreToolUse` is a `deny`, a decline of one `Elicitation` hook beats the accept of another |
+
+Selection also applies the gates of hooks.md: `disableAllHooks` (managed hooks survive it unless the
+managed level sets it), workspace trust for settings-file hooks (and for a project skill's), the
+stricter folder trust for a project subagent's frontmatter hooks, and plugin enablement. A settings
+handler defined in several files runs once; a plugin's or skill's copy stays separate. A Monitor
+call that reached a hook through a `Bash` matcher is reported in `monitor`, with whether the hook's
+`allow` and `updatedInput` apply to it. `EventFactsOf<E>` is the official input minus the fields
+every event shares, except a shared field an event requires (`agent_type` of `SubagentStart`).
+
+`runHandler` takes a `RunContext`: the ports (`runner`, `locations`, `environment`, and an optional
+observer with `started`), the serialized input, the session's `cwd`, whether the host is Windows and
+which shell a hook with no `shell` field uses (`bash`, or `powershell` on Windows without Git Bash:
+the kit cannot tell), the directory the session started in and the system temp directory (the
+working-directory fallbacks), each plugin's saved options, the timeout plan and the abort signal. A
+command hook with `args` (even `[]`) is exec form and `shell` is ignored; without it the command is
+one string for the named shell. The result's `run` is `exited`, `timed-out` (the output is discarded),
+`not-started`, `cancelled`, `skipped` (a shell-form plugin hook that references `${user_config.*}`
+runs nothing and carries the documented error) or `background`, whose `done` settles when the process
+ends, with `wake` set for an `asyncRewake` hook that exited with code 2. What an exit code means and
+what `onFailure` does with it are `interpretRun`'s, below.
+
+The remote types return the raw answer in `run`: `http` (`status` and `body`, any status), `http-failed`
+(no answer), `mcp` (`isError` and `text`, also for a server that is not connected), `model` (`ok`,
+`reason`, `impossible` from a valid answer) and `model-failed` (the model did not answer, or not in the
+schema); a timeout and an abort are the shared `timed-out` and `cancelled`. A hook whose port the host
+did not give is `skipped` with an error issue. The run ports are `http` (`HttpClient`), `mcp`
+(`McpCaller`) and `models` (`ModelRunner`). An `http` hook interpolates `$VAR` and `${VAR}` in header
+values only for the names in `allowedEnvVars`; an `mcp_tool` hook waits for a connecting server only on
+events that can block or change a result (`MCP_TIMEOUT`, 30 s, within the hook timeout: with the
+optional `ports.clock` the call gets what the wait left, and an abort during the wait is `cancelled`).
+`RunContext.httpPolicy` carries the merged `allowedHttpHookUrls` (a hook whose URL matches no pattern
+is `skipped` with a warning) and `httpHookAllowedEnvVars` (a header variable needs both lists); the
+settings stream reads and merges the two keys, the host passes the result.
+
+`createHookEngine(ports, options)` takes the run ports (`commands`, `locations`, `environment`, and the
+optional `http`, `mcp`, `models`, `scratch`, `clock`, `observer`, `modelCatalog`) and `options.output`,
+an `OutputStage` (`parse`, `limit`, `merge`) that defaults to `createOutputStage` over `ports.scratch`;
+`windows`, `defaultShell`, the two fallback directories, `userConfigOf`, `httpPolicy` and `ifEvaluator`
+are the host's facts. A `HookOutcome` says `proceed` (false: the guarded action must not happen) with
+`block` (`via`: `exit2`, `decision`, `failure`, `continue-false` or `timeout`; the hook error line the
+docs show; `to`, who is shown them: `claude`, `user`, `user-and-claude` or `none`, where `reason` and
+`message` are empty and `debug` holds the hook's line when the docs send it to the debug log;
+`condition` for a `WorktreeRemove` that fails only if the directory remains), `continue` and
+`stopReason`, `systemMessages`, `additionalContext`, `effects`, `terminalSequences`, the `<Event>:<tool>
+hook error` `notices`, `feedback` (stderr that goes to Claude or the user without blocking), `stdout`
+(a `WorktreeCreate` command hook's, whose last line is the path), `runs`, `consumedOnce` (the ids a
+session removes) and `background` (the `additionalContext`, `systemMessage` or `wake` text of each
+`async` or `asyncRewake` hook once its process ends).
+
+`effects` carries what the merged output asks the host to do, one optional field per thing:
+`permissionDecision` with `permissionDecisionReason`, `updatedInput` and, for `defer`, the
+`deferCondition` the host applies (`-p` and a single tool call); `permissionRequest` (the `decision`
+object: `allow` with `updatedInput` and `updatedPermissions`, or `deny` with `message` and
+`interrupt`); `updatedToolOutput` (a built-in tool's value that does not match its output shape, for
+Bash, Glob, Grep, WebFetch and WebSearch, is dropped with an issue; MCP output and the other tools
+pass through) and `classifierContext` (at most 2,000 characters over every hook); `elicitation`
+(`action` and `content` the MCP server receives: any decline wins); `initialUserMessage`,
+`sessionTitle`, `reloadSkills`, `suppressOriginalPrompt`, `watchPaths`, `displayContent`, `retry`,
+`worktreePath`, `compactionInstructions` and `continuesTurn` (a `Stop` hook's `additionalContext`).
+Applying them (writing a title, watching a file, answering the server) is the host's. Each string of
+a hook (`additionalContext`, `systemMessage`, `initialUserMessage`, plain stdout) is capped at 10,000
+characters; over it the text goes to `ScratchFiles` and the model gets the path and a preview, except
+`PreCompact` stdout, which is cut.
+
+How a run is read (hooks.md, "Exit code output"): exit 0 applies valid JSON, and plain stdout reaches
+Claude on `UserPromptSubmit`, `UserPromptExpansion`, `SessionStart` and `PostModelSwitch` (the
+compaction instructions on `PreCompact`); JSON that fails the output stage's validation is a
+non-blocking error, as is any exit code other than 0 and 2 (the notice carries the first stderr line:
+`Failed with non-blocking status code: ...`) and a hook that cannot start; exit 2 blocks on the 16
+events that can, with the stderr as the reason, shown as the event's row routes it (a JSON decision's
+reason of the same hook replaces it) and the JSON fields unable to override it; a `PostToolBatch`
+stop also leaves a notice and feedback; `Elicitation` and `ElicitationResult` drop only
+`hookSpecificOutput` unless the hook exits 0; a timeout renders no decision except on
+`PreModelSwitch`, and on `UserPromptSubmit` leaves a notice with the timeout and the discarded
+output. `onFailure:
+"block"` on a `command` or `http` hook turns a failure (cannot start, other exit code, HTTP error,
+timeout, invalid output) into what exit 2 does on that event, a denial on `PermissionRequest`, and
+nothing on `Stop`, `SubagentStop`, `TaskCompleted`, `TeammateIdle` and background hooks. An HTTP 2xx
+with an empty body is a success, a 2xx JSON object is read like stdout, any other body, a non-2xx
+status and a connection failure are non-blocking errors. Without Git Bash a shell-form `PreToolUse`
+or `PermissionRequest` command hook is a gate as the docs describe (`defaultShell: 'powershell'` on
+Windows stands for it).
+
+`buildHookInput` puts `session_id`, `prompt_id` (absent until the first prompt), `transcript_path`,
+`cwd`, `scratchpad_dir` (absent without a scratchpad), `permission_mode` and `effort` (on the events
+that have them), `hook_event_name`, and `agent_id` and `agent_type` (inside an agent, or `agent_type`
+under `--agent`) from the session, so a host passes only the event's own facts. A fact with the wrong
+type or an unlisted value makes an error issue and no input; a field that belongs to other cases (the
+cost fields of `SessionStart` outside resume and fork, `globs` of `InstructionsLoaded` outside
+`path_glob_match`, a task field of another task type) or to no field of the event is dropped with a
+warning. The free text of `Stop` and `SubagentStop` tasks and crons is capped at 1000 characters with
+the `… [+N chars]` marker.
+
 ## Host and sessions (planned)
 
 ```ts

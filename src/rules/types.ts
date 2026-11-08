@@ -91,6 +91,12 @@ export interface MatchContext {
   readonly paths: PathContext;
   /** Environment variables an allow rule may see through when it strips `VAR=value` prefixes. */
   readonly safeEnvVars?: ReadonlySet<string>;
+  /**
+   * The rule type whose depth rule reads a single-directory relative path pattern (`src/**`), when
+   * it is not the rule's own behaviour: a hook's `if` reads `Edit(src/**)` like an allow rule, as
+   * "only the `src` directory in the working directory" (hooks.md, "Common fields").
+   */
+  readonly depthOf?: PermissionBehavior;
 }
 
 /** What the rules alone say about a call: the first behaviour that matched, with the rule. */
