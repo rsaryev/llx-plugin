@@ -29,10 +29,8 @@ spec('agents.frontmatter.background', () => {
     expect(runsInBackground({ background, claudeWillWait: true })).toBe(true);
   });
 
-  test('CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1: Claude waits for subagents, so nothing runs in the background', () => {
-    expect(
-      runsInBackground({ background: true, claudeWillWait: false, backgroundDisabled: true }),
-    ).toBe(false);
+  test('CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1: Claude waits for subagents, so none runs in the background', () => {
+    expect(runsInBackground({ claudeWillWait: false, backgroundDisabled: true })).toBe(false);
   });
 });
 
@@ -43,6 +41,7 @@ spec('agents.frontmatter.omitClaudeMd', () => {
       project: true,
       local: true,
       managedPolicy: true,
+      nested: true,
     });
   });
 
@@ -53,6 +52,7 @@ spec('agents.frontmatter.omitClaudeMd', () => {
       project: false,
       local: false,
       managedPolicy: true,
+      nested: true,
     });
   });
 
@@ -64,6 +64,7 @@ spec('agents.frontmatter.omitClaudeMd', () => {
       project: false,
       local: false,
       managedPolicy: false,
+      nested: true,
     });
   });
 
@@ -75,7 +76,17 @@ spec('agents.frontmatter.omitClaudeMd', () => {
       project: true,
       local: true,
       managedPolicy: true,
+      nested: true,
     });
+  });
+
+  test("a subdirectory's CLAUDE.md and path-scoped rules still load with `omitClaudeMd`, and for a managed subagent", () => {
+    for (const managedSubagent of [false, true]) {
+      expect(
+        claudeMdScopes({ omitClaudeMd: true, asMainSession: false, managedSubagent }).nested,
+      ).toBe(true);
+    }
+    expect(claudeMdScopes({ asMainSession: false, managedSubagent: false }).nested).toBe(true);
   });
 
   test('a managed subagent that does not omit CLAUDE.md still loads the managed policy files', () => {
@@ -87,16 +98,20 @@ spec('agents.frontmatter.omitClaudeMd', () => {
 });
 
 spec('agents.frontmatter.isolation', () => {
-  test('`isolation: worktree` is read as the worktree the subagent runs in', () => {
-    expect(agentWith('isolation: worktree').extras.isolation).toBe('worktree');
+  const isolation = agentWith('isolation: worktree').extras.isolation;
+
+  test('without `isolation` the subagent has no worktree, with or without changes', () => {
+    const { isolation: none } = agentWith('').extras;
+    expect(worktreeDisposition({ isolation: none, hasChanges: false })).toBe('none');
+    expect(worktreeDisposition({ isolation: none, hasChanges: true })).toBe('none');
   });
 
   test('the worktree is automatically cleaned up when the subagent makes no changes', () => {
-    expect(worktreeDisposition(false)).toBe('cleanup');
+    expect(worktreeDisposition({ isolation, hasChanges: false })).toBe('cleanup');
   });
 
   test('a worktree with changes stays on disk', () => {
-    expect(worktreeDisposition(true)).toBe('keep');
+    expect(worktreeDisposition({ isolation, hasChanges: true })).toBe('keep');
   });
 });
 
@@ -132,6 +147,12 @@ spec('agents.frontmatter.initialPrompt', () => {
 });
 
 describe('judgments (spec/judgments.md)', () => {
+  test('`background: true` does not override CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1', () => {
+    expect(
+      runsInBackground({ background: true, claudeWillWait: false, backgroundDisabled: true }),
+    ).toBe(false);
+  });
+
   test('the initial prompt and the user prompt are joined by a blank line', () => {
     expect(mainSessionFirstTurn({ initialPrompt: 'a', asMainSession: true, userPrompt: 'b' })).toBe(
       'a\n\nb',

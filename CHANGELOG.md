@@ -100,6 +100,13 @@
 
 ### Fixed
 
+- Agent launch: `worktreeDisposition` takes `{ isolation, hasChanges }` and returns `none` for an
+  agent without `isolation: worktree`; `ClaudeMdScopes` gains `nested` (a subdirectory's CLAUDE.md
+  and path-scoped rules still load with `omitClaudeMd`); the model, effort, background and
+  auto-compact tests now prove what the docs say (resolved model per value, documented-only
+  cases), the judgments sit in their own blocks, and `spec/judgments.md` records the
+  `CLAUDE_CODE_EFFORT_LEVEL=auto` effect on subagents, the host-side `k`/`M` suffixes of
+  `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, the `agent.spawn` model and the Explore and Plan subagents.
 - Agent hooks: a Monitor command (matcher input `Monitor`) is also matched as `Bash` on
   `PreToolUse` and `PermissionRequest`, never on `PostToolUse` (hooks.md, "Match Monitor
   commands"); the `--agents` (flag) trust exemption, the `FileChanged` and `StopFailure` narrow

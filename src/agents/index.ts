@@ -48,6 +48,7 @@ export {
   type BackgroundInput,
   type ClaudeMdScopes,
   type TurnLimitOutcome,
+  type WorktreeDisposition,
 } from './launch.ts';
 export {
   MODEL_ALIASES,

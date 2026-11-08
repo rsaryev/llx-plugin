@@ -93,10 +93,23 @@ spec('agents.frontmatter.model', () => {
   });
 
   test('each documented model value reads from a file and resolves', () => {
-    for (const model of ['sonnet', 'opus', 'haiku', 'fable', 'claude-opus-5-5', 'inherit']) {
+    // A main model whose family cannot be told, with `opus` pinned: every alias stays an alias.
+    // (For a Sonnet main model `sonnet` would be its exact ID, tested above.)
+    const unpinned = { mainModel: MAIN, opusPinned: true } as const;
+    const expected = {
+      sonnet: 'sonnet',
+      opus: 'opus',
+      haiku: 'haiku',
+      fable: 'fable',
+      'claude-opus-5-5': 'claude-opus-5-5',
+      inherit: MAIN,
+    } as const;
+    for (const [model, resolvedModel] of Object.entries(expected)) {
       const definition = agentWith(`model: ${model}`).definition.model;
-      const resolved = resolveSubagentModel({ definition, ...base });
-      expect(resolved.from).toBe('definition');
+      expect(resolveSubagentModel({ definition, ...unpinned })).toEqual({
+        model: resolvedModel,
+        from: 'definition',
+      });
     }
   });
 

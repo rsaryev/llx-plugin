@@ -352,13 +352,16 @@ const window = effectiveAutoCompactWindow({ field: agent.definition.autoCompactW
 | `turnLimitOutcome(maxTurns, turns)`        | done   | `{ stop, partial }` once `maxTurns` is reached |
 | `effectiveCacheTtl({ cacheTtl, usingUsageCredits })` | done | the frontmatter's step of the cache lifetime precedence; `1h` is ignored on usage credits |
 | `runsInBackground(input)`                  | done   | background unless Claude waits, `background: true` keeps it there, none when background tasks are disabled |
-| `claudeMdScopes(input)`                    | done   | `omitClaudeMd` drops the user, project and local files; managed policy stays except for a managed subagent; no effect for a main-session agent |
-| `worktreeDisposition(hasChanges)`          | done   | `isolation: worktree`: `cleanup` without changes, `keep` with |
+| `claudeMdScopes(input)`                    | done   | `omitClaudeMd` drops the user, project and local files; managed policy stays except for a managed subagent; a subdirectory's CLAUDE.md and path-scoped rules (`nested`) always load; no effect for a main-session agent |
+| `worktreeDisposition({ isolation, hasChanges })` | done | `none` without `isolation: worktree`; with it `cleanup` without changes, `keep` with (it stays until the periodic sweep) |
 | `mainSessionFirstTurn(input)`              | done   | `initialPrompt` as the first turn of a main-session agent, prepended to the user's prompt; nothing for a subagent |
 
 The kit reads no environment variable: the host passes each as a plain value. Turning an alias into
-a version, the `availableModels` allowlist, the effort levels a model supports, compaction, the turn
-loop, cache requests and creating the worktree are the host's.
+a version, the `availableModels` allowlist, the effort levels a model supports, a mod's `agent.spawn`
+hook `model` (it replaces the per-invocation parameter, so pass it as `invocation`), the built-in
+Explore and Plan subagents (`CLAUDE_CODE_SUBAGENT_MODEL` alone does not move them), parsing
+`CLAUDE_CODE_AUTO_COMPACT_WINDOW` with its `k` and `M` suffixes, compaction, the turn loop, cache
+requests and creating the worktree are the host's.
 
 ## Testing kit (planned)
 

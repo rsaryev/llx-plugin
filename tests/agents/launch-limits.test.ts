@@ -60,11 +60,6 @@ spec('agents.frontmatter.autoCompactWindow', () => {
     expect(field).toBeUndefined();
     expect(window(field)).toBe(967_000);
   });
-
-  test('a value outside 100000 to 1000000 has no effect either, however it got here', () => {
-    expect(window(99_999, { inherited: 967_000 })).toBe(967_000);
-    expect(window(1_000_001, { inherited: 2_000_000 })).toBe(2_000_000);
-  });
 });
 
 spec('agents.frontmatter.maxTurns', () => {
@@ -125,6 +120,11 @@ spec('agents.frontmatter.experimental', () => {
 });
 
 describe('judgments (spec/judgments.md)', () => {
+  test('a field outside 100000 to 1000000 has no effect, however it got here', () => {
+    expect(window(99_999, { inherited: 967_000 })).toBe(967_000);
+    expect(window(1_000_001, { inherited: 2_000_000 })).toBe(2_000_000);
+  });
+
   test('a turn count that is no positive whole number sets no limit', () => {
     for (const value of [0, -1, 2.5, Number.NaN]) {
       expect(turnLimitOutcome(value, 100)).toEqual({ stop: false, partial: false });

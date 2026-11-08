@@ -49,16 +49,22 @@ spec('agents.frontmatter.effort', () => {
     }
   });
 
-  test('CLAUDE_CODE_EFFORT_LEVEL set to `auto` or `unset` sends no level at all', () => {
+  test('CLAUDE_CODE_EFFORT_LEVEL set to `auto` or `unset` sends no effort level for the session level', () => {
+    for (const env of ['auto', 'unset']) {
+      expect(resolveSubagentEffort({ env, session: 'high', ...same })).toBeUndefined();
+    }
+  });
+});
+
+describe('judgments (spec/judgments.md)', () => {
+  test('CLAUDE_CODE_EFFORT_LEVEL set to `auto` or `unset` also suppresses the invocation parameter and the field', () => {
     for (const env of ['auto', 'unset']) {
       expect(
         resolveSubagentEffort({ env, invocation: 'max', field: 'low', session: 'high', ...same }),
       ).toBeUndefined();
     }
   });
-});
 
-describe('judgments (spec/judgments.md)', () => {
   test('a variable or parameter that names no level is ignored; a numeric field is kept as the SDK allows', () => {
     expect(
       resolveSubagentEffort({ env: 'turbo', invocation: 'ludicrous', field: 'low', ...same }),

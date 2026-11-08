@@ -1,5 +1,6 @@
 import { AUTO_COMPACT_RANGE } from '../format/agent-scalars.ts';
 import type { CacheTtl } from '../format/agent-scalars.ts';
+import type { AgentIsolation } from '../format/agent-fields.ts';
 
 /**
  * Small pure decisions a host takes when it starts a subagent, one per frontmatter field that
@@ -103,6 +104,8 @@ export interface ClaudeMdScopes {
   readonly project: boolean;
   readonly local: boolean;
   readonly managedPolicy: boolean;
+  /** A subdirectory's CLAUDE.md and matching path-scoped rules, loaded when the subagent works with files there. */
+  readonly nested: boolean;
 }
 
 const ALL_CLAUDE_MD: ClaudeMdScopes = {
@@ -110,12 +113,14 @@ const ALL_CLAUDE_MD: ClaudeMdScopes = {
   project: true,
   local: true,
   managedPolicy: true,
+  nested: true,
 };
 
 /**
  * The CLAUDE.md files a subagent starts with. `omitClaudeMd` drops the user, project and local
  * files; "managed policy files still load, except for managed subagents"; it is "Ignored when the
- * agent runs as the main session agent".
+ * agent runs as the main session agent". A subdirectory's CLAUDE.md and matching path-scoped rules
+ * "still load when the subagent works with files there", with or without `omitClaudeMd` (`nested`).
  */
 export function claudeMdScopes(input: {
   readonly omitClaudeMd?: boolean | undefined;
@@ -123,16 +128,29 @@ export function claudeMdScopes(input: {
   readonly managedSubagent: boolean;
 }): ClaudeMdScopes {
   if (input.omitClaudeMd !== true || input.asMainSession) return ALL_CLAUDE_MD;
-  return { user: false, project: false, local: false, managedPolicy: !input.managedSubagent };
+  return {
+    user: false,
+    project: false,
+    local: false,
+    managedPolicy: !input.managedSubagent,
+    nested: true,
+  };
 }
 
+export type WorktreeDisposition = 'none' | 'cleanup' | 'keep';
+
 /**
- * What happens to a subagent's worktree when it finishes: "automatically cleaned up if the
- * subagent makes no changes" (sub-agents.md, `isolation`), and one with changes "stays on disk"
- * (worktrees.md, "Isolate subagents with worktrees").
+ * What happens to a subagent's worktree when it finishes. Only `isolation: worktree` has one
+ * (sub-agents.md, `isolation`); it is "automatically cleaned up if the subagent makes no changes",
+ * and one with changes "stays on disk until the periodic sweep" (worktrees.md, "Isolate subagents
+ * with worktrees"). Without `isolation` there is no worktree: `none`.
  */
-export function worktreeDisposition(hasChanges: boolean): 'keep' | 'cleanup' {
-  return hasChanges ? 'keep' : 'cleanup';
+export function worktreeDisposition(input: {
+  readonly isolation?: AgentIsolation | undefined;
+  readonly hasChanges: boolean;
+}): WorktreeDisposition {
+  if (input.isolation !== 'worktree') return 'none';
+  return input.hasChanges ? 'keep' : 'cleanup';
 }
 
 /** Judgment: the docs say "Prepended to any user-provided prompt" and no separator; a blank line. */
