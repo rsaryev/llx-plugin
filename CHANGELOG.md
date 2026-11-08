@@ -88,6 +88,17 @@
   `--add-dir`, `autoUpdate` defaults, the official marketplace implied by `enabledPlugins`), and
   `createCommandSourcePolicy(view)` answers `disableCommandPluginSources` (falling back to
   `allowManagedHooksOnly`) for command-sourced plugins and marketplace `headersHelper` commands.
+- Hook policy (`settings/hooks`): `createHookPolicy(view, locks, context)` answers `disableAllHooks`
+  and `allowManagedHooksOnly` as `runs(origin)` for every origin of a hook (managed settings, SDK
+  callbacks, user, project, local and `--settings` files, plugins and their mods, frontmatter), with
+  the value left after precedence deciding the reach, force-enabled plugins matched by their full
+  `plugin@marketplace` id, command-sourced plugins and built-in mods; `commandsDisabled`,
+  `commandSettingsNarrowedToManaged`, `monitorsRun` and `goalCommandAvailable` give what follows the
+  hooks. `httpHook(url, allowedEnvVars)` applies `allowedHttpHookUrls` (`matchUrlPattern`: `*`,
+  host case and trailing dot) and `httpHookAllowedEnvVars` (the outer limit on a hook's list), both
+  merged across files. The Agent SDK's `managedSettings` rules (ignored beside an administrator
+  unless `parentSettingsBehavior` is `merge`; an empty allowlist ignored when the administrator ships
+  hooks or enables a plugin) are applied before any decision.
 
 ### Fixed
 
