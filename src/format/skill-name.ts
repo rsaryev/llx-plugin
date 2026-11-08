@@ -43,7 +43,7 @@ const hex = (point: string): string =>
   `U+${(point.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, '0')}`;
 
 /** The refused characters of `text` as code points (never the raw text: it may be invisible). */
-function refusedCharacters(text: string): string[] {
+export function refusedCharacters(text: string): string[] {
   const { points, flags } = refusedFlags(text);
   return points.filter((_point, index) => flags[index]).map(hex);
 }
@@ -65,7 +65,7 @@ interface Chosen {
 const NAMESPACE = 'anthropic-skills';
 
 /** skills.md, "Names reserved for synced skills": `anthropic-skills` and `anthropic-skills:<name>`. */
-const reservedNamespace = (text: string): string | undefined =>
+export const reservedNamespace = (text: string): string | undefined =>
   text === NAMESPACE || text.startsWith(`${NAMESPACE}:`) ? NAMESPACE : undefined;
 
 /** skills.md, "Choose where skills load": a folder named `synced`, "in any capitalization". */
@@ -162,7 +162,7 @@ interface NameRule {
   readonly choose: (dirName: string, declared: string | undefined) => Chosen;
 }
 
-const pluginPrefix = (origin: SkillOrigin): string =>
+export const pluginPrefix = (origin: SkillOrigin): string =>
   'plugin' in origin ? `${origin.plugin}:` : '';
 
 const RULES: { readonly [K in SkillOriginKind]: NameRule } = {

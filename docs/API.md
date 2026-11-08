@@ -39,7 +39,8 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `readMarketplace(raw)`              | planned | `marketplace.json`: entries, sources, strict mode                     |
 | `readSkill(path, text, layout)`     | done    | `SKILL.md` into a `Skill`: the 19 documented fields (defaults applied, a bad value dropped with a warning), the body, the folder; a YAML error loads the skill with no fields; the name and command come from `resolveSkillName`; a refused name is an error issue |
 | `resolveSkillName(layout, declared)` | done    | the command name of a skill: directory or `name`, the plugin prefix (not doubled), the plugin-root fallback, `anthropic-skills:` for a synced skill; a name with a zero-width, control, private-use, unassigned, bidi or blank character or `<` `>` is refused outside a plugin and hyphenated in a plugin skill folder |
-| `readCommand(path, text)`           | planned | a command file (the older skill format)                               |
+| `readCommand(path, text, layout)`   | done    | a flat command file (the older skill format) into a `Command`: the skill frontmatter except `name` and `paths`; the name is the path below `commands/` without the extension, folders joined by `:`, after the plugin prefix; a refused character or (outside a plugin) `anthropic-skills` refuses the file |
+| `readCommandEntry(key, entry, sourceText, ctx)` | done | one entry of the manifest `commands` map: `source` text or inline `content` (the body as written), `description`, `argumentHint`, `model` and `allowedTools` replace the same fields of the file; both or neither of `source` and `content`, and a missing source file, are errors for that entry |
 | `readAgent(path, text)`             | planned | an agent file → official `AgentDefinition`                            |
 | `readHooksFile(raw)`                | done    | `hooks/hooks.json` → official `HooksSettings`: events, matcher groups, every handler field; an error leaves no hooks, as Claude Code does |
 | `readHooksSettings(raw)`            | done    | the bare event map (inline `hooks`, skill frontmatter, `settings.json`) |
@@ -69,6 +70,29 @@ parsing them is `rules`' (layer 3), and substitution is the expansion's. `SKILL_
 closed list of documented keys, `FIELD_READERS` the reader of each; any other key is ignored
 without an issue. Whatever a host does with a field (forking, the model override, matching
 `paths`) is decided by the runtime functions that read the same `Skill`.
+
+### Commands (done: `format/command`, `skills/command-entries`)
+
+A command is the older skill format: a flat Markdown file (`commands/db/migrate.md` is
+`/my-plugin:db:migrate`) with the skill frontmatter except `name` and `paths`, or an entry of the
+manifest's `commands` object map. `loadCommandEntries` reads the entries through the files port; the
+result is a `Command` that `expandSkill` and `menuEntries` take like a skill:
+
+```ts
+const { commands, issues } = await loadCommandEntries(
+  manifest.commands, // { status: { source: './commands/status.md', argumentHint: '[env]' }, about: { content: '...' } }
+  files, // PluginFiles
+  { origin: { kind: 'plugin', plugin: 'my-plugin' } },
+  signal,
+);
+commands.map((command) => command.command); // ['my-plugin:status', 'my-plugin:about']
+```
+
+An entry sets exactly one of `source` and `content`; `content` is the body as written (never read
+for frontmatter). `description`, `argumentHint`, `model` and `allowedTools` of an entry replace the
+same fields of its source file. Each failure (both or neither of `source` and `content`, a missing
+or out-of-folder `source`, a refused name) is an error issue for that entry, and the other entries
+still load; an `allowedTools` rule that does not parse is dropped with a warning.
 
 ### Skill substitution (done: `skills/arguments`, `skills/substitute`, `skills/variables`)
 

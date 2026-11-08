@@ -59,6 +59,13 @@ export {
 export { readSkill, type SkillRead } from './format/skill.ts';
 export { resolveSkillName, type SkillName } from './format/skill-name.ts';
 export {
+  readCommand,
+  readCommandEntry,
+  type CommandEntryContext,
+  type CommandLayout,
+  type CommandRead,
+} from './format/command.ts';
+export {
   FIELD_READERS,
   SKILL_FIELDS,
   escapeAngleBrackets,
@@ -96,6 +103,7 @@ export {
   type OverrideState,
   type SkillOverrides,
 } from './skills/invocation.ts';
+export { loadCommandEntries, type CommandEntriesLoaded } from './skills/command-entries.ts';
 export { readSkillMentions, type SkillMention } from './skills/mention.ts';
 export {
   listingLine,

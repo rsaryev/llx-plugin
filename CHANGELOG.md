@@ -33,6 +33,15 @@
 
 ### Added
 
+- Commands: `readCommand` reads a flat command file (the older skill format: the skill frontmatter
+  except `name` and `paths`; the name is the path below `commands/` without the extension, folders
+  joined by `:`, after the plugin prefix) and `readCommandEntry` builds a command from an entry of
+  the manifest's `commands` object map (`source` or inline `content`, `description`, `argumentHint`,
+  `model`, `allowedTools`); `loadCommandEntries` reads each `source` through the `PluginFiles` port.
+  A missing source file, an entry with both or neither of `source` and `content`, a refused name
+  and a `source` outside the plugin folder are error issues for that entry only; an `allowedTools`
+  rule that does not parse is dropped with a warning. The loaded commands expand through
+  `expandSkill` and list through `menuEntries` like a skill.
 - Skills: dynamic context and `expandSkill`. `expandSkill` turns a skill or command into the text
   the model receives plus its grants (`allowed-tools` with `${CLAUDE_*}` substituted in the Bash
   rules, the docs' same-variable pattern), `disallowed-tools`, execution (inline or fork), model and
