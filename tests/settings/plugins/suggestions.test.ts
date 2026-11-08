@@ -194,6 +194,14 @@ spec('settings.key.pluginSuggestionMarketplaces', () => {
 });
 
 describe('suggestionMarketplaces judgments', () => {
+  test('a parent\'s allowlist does not declare the source: it is not "the same managed settings"', () => {
+    const list: Source = ['managed', { pluginSuggestionMarketplaces: ['your-marketplace'] }];
+    const parentList: Source = ['parent', { strictKnownMarketplaces: [yours] }];
+    const registered = { 'your-marketplace': yours };
+    expect(effective([list, parentList], registered)).toEqual([]);
+    expect(effective([list, allowlisted(yours)], registered)).toEqual(['your-marketplace']);
+  });
+
   test('the names come in the order the list gives them, each once', () => {
     const view: Source = [
       'managed',

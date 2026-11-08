@@ -137,6 +137,13 @@
 
 ### Fixed
 
+- Settings, customization lock: `McpOrigin` has `localConfig` beside `userConfig`, since local-scope MCP
+  servers live in `~/.claude.json`, which the `mcp` lock stops loading from (the judgment that put the
+  local scope in no table was wrong); tests now build the frontmatter hooks of a skills-directory plugin,
+  the `--settings` and SDK-option hooks under a hooks lock, a parent's `strictKnownMarketplaces` as a
+  non-declaration of a suggestion source, and the parent-lock composition; two tests that restated the
+  origin table or cited a plain-skill fallback the kit does not implement are removed or renamed, and the
+  fallback is recorded as a host decision.
 - Settings, channel keys: `allowed(entry)` takes the flag each entry came from (`channels` or
   `development`), so a session with both kinds bypasses the list for the development entries only;
   a bare `server:<name>` development entry needs no plugin or marketplace; the closed gate carries

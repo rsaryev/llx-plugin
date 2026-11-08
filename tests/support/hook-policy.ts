@@ -72,7 +72,8 @@ export const fromFrontmatter = (
 export const fromPluginFrontmatter = (
   owner: 'skill' | 'command' | 'agent',
   id: PluginHookSource['id'],
-): HookSource => ({ kind: 'frontmatter', owner, from: 'plugin', plugin: pluginSource(id) });
+  extra: Partial<Omit<PluginHookSource, 'id'>> = {},
+): HookSource => ({ kind: 'frontmatter', owner, from: 'plugin', plugin: pluginSource(id, extra) });
 
 /** Whether the hook of this origin runs. */
 export const runs = (policy: HookPolicy, origin: HookSource): boolean => policy.runs(origin).run;

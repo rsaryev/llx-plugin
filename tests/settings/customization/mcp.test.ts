@@ -5,14 +5,15 @@
  * § Choose how to control servers (the "Plugin servers only" row) and § Provided servers ("Provided
  * servers keep loading when `strictPluginOnlyCustomization` locks the `mcp` surface"), errors.md
  * § Cannot add MCP server when managed settings allow only plugin servers ("set ... to `true` or to a
- * list that includes `mcp`", the quoted message).
+ * list that includes `mcp`", the quoted message), mcp.md § Scopes (local-scope servers are stored in
+ * `~/.claude.json`).
  */
 import { describe, expect, test } from 'bun:test';
 import { PLUGIN_ONLY_SURFACES } from '../../../src/protocol/settings-keys.ts';
 import { customizationOf, locking } from '../../support/customization.ts';
 import { spec } from '../../support/spec.ts';
 
-const STOPPED = ['userConfig', 'projectFile'] as const;
+const STOPPED = ['userConfig', 'localConfig', 'projectFile'] as const;
 const KEPT = ['managedFile', 'managedSettings', 'plugin'] as const;
 
 const REFUSAL =
@@ -28,6 +29,11 @@ spec('settings.key.strictPluginOnlyCustomization.mcp', () => {
 
     test.each(KEPT)('servers from %s keep loading', (origin) => {
       expect(locked.loads('mcp', origin)).toBe(true);
+    });
+
+    test('local-scope servers are stored in ~/.claude.json, so the lock stops them with the user-scope ones', () => {
+      expect(locked.loads('mcp', 'localConfig')).toBe(false);
+      expect(customizationOf(locking(['skills'])).loads('mcp', 'localConfig')).toBe(true);
     });
 
     test('a server of a skills-directory plugin does not load', () => {

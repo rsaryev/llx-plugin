@@ -28,8 +28,13 @@ export type AgentsOrigin =
   | 'plugin'
   | 'skillsDirPlugin';
 
+/**
+ * `userConfig` is the user-scope servers and `localConfig` the local-scope ones (the default of
+ * `claude mcp add`): both live in `~/.claude.json` (mcp.md § Scopes), which the lock stops loading from.
+ */
 export type McpOrigin =
   | 'userConfig'
+  | 'localConfig'
   | 'projectFile'
   | 'managedFile'
   | 'managedSettings'
@@ -90,6 +95,7 @@ const AGENTS: { readonly [O in AgentsOrigin]: Blocks } = {
 
 const MCP: { readonly [O in McpOrigin]: Blocks } = {
   userConfig: 'whenSurfaceLocked',
+  localConfig: 'whenSurfaceLocked',
   projectFile: 'whenSurfaceLocked',
   managedFile: 'never',
   managedSettings: 'never',

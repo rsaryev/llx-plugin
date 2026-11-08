@@ -4,7 +4,12 @@
 import { describe, expect, test } from 'bun:test';
 import { readSurfaceLocks } from '../../../src/settings/customization/index.ts';
 import { customizationOf, locking } from '../../support/customization.ts';
-import { fromFrontmatter, fromPlugin, fromPluginFrontmatter } from '../../support/hook-policy.ts';
+import {
+  fromFrontmatter,
+  fromPlugin,
+  fromPluginFrontmatter,
+  fromSettings,
+} from '../../support/hook-policy.ts';
 
 describe('strictPluginOnlyCustomization judgments', () => {
   test('false is an explicit no-op, as the SDK type documents: nothing locked, nothing counted', () => {
@@ -27,11 +32,43 @@ describe('strictPluginOnlyCustomization judgments', () => {
     }
   });
 
-  test('the frontmatter hooks of a skills-directory plugin stop under any lock, as the plugin itself does', () => {
-    const policy = customizationOf(locking(['mcp']));
+  describe('the frontmatter hooks of a skills-directory plugin stop under any lock, as the plugin itself does', () => {
     const folder = { skillsDirPlugin: true };
-    expect(policy.loads('hooks', fromPlugin('p@skills-dir', folder))).toBe(false);
-    expect(policy.loads('hooks', fromPluginFrontmatter('skill', 'p@acme'))).toBe(true);
+
+    test.each([['mcp'], ['hooks']] as const)('under a lock on %s only', (surface) => {
+      const policy = customizationOf(locking([surface]));
+      expect(policy.loads('hooks', fromPlugin('p@skills-dir', folder))).toBe(false);
+      for (const owner of ['skill', 'command', 'agent'] as const) {
+        expect(policy.loads('hooks', fromPluginFrontmatter(owner, 'p@skills-dir', folder))).toBe(
+          false,
+        );
+      }
+    });
+
+    test('the same frontmatter hooks of a plugin a marketplace delivers keep loading under a lock on another surface', () => {
+      const policy = customizationOf(locking(['mcp']));
+      for (const owner of ['skill', 'command', 'agent'] as const) {
+        expect(policy.loads('hooks', fromPluginFrontmatter(owner, 'p@acme'))).toBe(true);
+      }
+    });
+
+    test('with nothing locked they load', () => {
+      const policy = customizationOf([]);
+      expect(policy.loads('hooks', fromPluginFrontmatter('skill', 'p@skills-dir', folder))).toBe(
+        true,
+      );
+    });
+  });
+
+  test("hooks from --settings and from the SDK settings option stop with the user's under a hooks lock", () => {
+    const policy = customizationOf(locking(['hooks']));
+    for (const scope of ['flag', 'sdkSettingsOption'] as const) {
+      expect(policy.loads('hooks', fromSettings(scope))).toBe(false);
+    }
+    const other = customizationOf(locking(['skills']));
+    for (const scope of ['flag', 'sdkSettingsOption'] as const) {
+      expect(other.loads('hooks', fromSettings(scope))).toBe(true);
+    }
   });
 
   test('a skill from the managed directory keeps its frontmatter hooks under every lock', () => {

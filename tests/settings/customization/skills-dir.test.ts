@@ -6,7 +6,7 @@
  * `strictKnownMarketplaces` allowlist without a `{ "source": "skills-dir" }` entry, or a
  * `blockedMarketplaces` list with one"; "The whole plugin is skipped when any one kind is locked"),
  * plugins/org.md § Keep skills-directory plugins loading ("If you lock any customization type ...
- * they stop loading whether or not the entry is present. The allowlist doesn't apply to plain skills"),
+ * they stop loading whether or not the entry is present"),
  * managed-mcp.md § Choose how to control servers ("Plugin servers only": skills-directory plugins stop
  * loading as plugins).
  */
@@ -90,15 +90,6 @@ spec('settings.key.strictPluginOnlyCustomization', () => {
         ],
       ]);
       expect(policy.skillsDirPlugins().admitted).toBe(false);
-    });
-  });
-
-  describe('plain skills are not plugins', () => {
-    test('a SKILL.md without a manifest is a plain skill: the allowlist does not apply to it', () => {
-      const policy = customizationOf([['managed', { strictKnownMarketplaces: [] }]]);
-      expect(policy.skillsDirPlugins().admitted).toBe(false);
-      expect(policy.loads('skills', 'userSkills')).toBe(true);
-      expect(policy.loads('skills', 'projectSkills')).toBe(true);
     });
   });
 });

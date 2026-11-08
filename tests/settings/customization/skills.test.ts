@@ -4,9 +4,7 @@
  * `.claude/commands/`, skills and commands under `--add-dir` directories, and skills synced from your
  * claude.ai account. It keeps loading bundled skills, skills in the managed policy directory, and
  * skills from plugins other than skills-directory plugins"), § `strictPluginOnlyCustomization` ("If
- * you lock any surface, Claude Code also stops loading skills-directory plugins"), plugins/loading.md
- * § Skills-directory plugins blocked by managed settings ("Unless skills are among the locked kinds,
- * a `SKILL.md` at the folder's root still loads as a plain skill"), admin-setup.md ("Locking skills
+ * you lock any surface, Claude Code also stops loading skills-directory plugins"), admin-setup.md ("Locking skills
  * also stops the skills your developers enable on claude.ai from syncing").
  */
 import { describe, expect, test } from 'bun:test';
@@ -63,11 +61,8 @@ spec('settings.key.strictPluginOnlyCustomization.skills', () => {
       },
     );
 
-    test('the root SKILL.md of a skills-directory folder still loads as a plain skill', () => {
+    test("a skills-directory plugin is skipped under a lock on another surface: it is not among the user's own skills", () => {
       const hooksOnly = customizationOf(locking(['hooks']));
-      expect(hooksOnly.loads('skills', 'userSkills')).toBe(true);
-      expect(hooksOnly.loads('skills', 'projectSkills')).toBe(true);
-      // The folder as a plugin does not load: any locked kind skips the whole plugin.
       expect(hooksOnly.loads('skills', 'skillsDirPlugin')).toBe(false);
     });
   });

@@ -53,6 +53,9 @@ spec('settings.key.strictPluginOnlyCustomization.hooks', () => {
     test("hooks of a skills-directory plugin, and its skills' frontmatter hooks", () => {
       const folder = { skillsDirPlugin: true };
       expect(locked.loads('hooks', fromPlugin(PLUGIN, folder))).toBe(false);
+      for (const owner of OWNERS) {
+        expect(locked.loads('hooks', fromPluginFrontmatter(owner, PLUGIN, folder))).toBe(false);
+      }
     });
   });
 

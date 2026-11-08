@@ -137,6 +137,9 @@ spec('settings.key.strictPluginOnlyCustomization.hooks', () => {
       });
       expect(parent.hooks.runs(fromSettings('user')).run).toBe(true);
       expect(parent.customization.locked.size).toBe(0);
+      expect(parent.customization.skillsDirPlugins()).toEqual({ admitted: true });
+      expect(parent.customization.loads('skills', 'userSkills')).toBe(true);
+      expect(parent.customization.loads('mcp', 'projectFile')).toBe(true);
     });
   });
 });
