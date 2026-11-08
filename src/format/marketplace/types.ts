@@ -195,7 +195,8 @@ export type MarketplaceSourceOf<Kind extends MarketplaceSourceKind> = Extract<
 export type MarketplaceLoadStatus =
   | 'loads'
   | 'fails: NPM marketplace sources not yet implemented'
-  | 'fails: Unsupported marketplace source type';
+  | 'fails: Unsupported marketplace source type'
+  | 'fails: The owner wildcard names no single repository to clone';
 
 export interface SourceParseResult {
   readonly source: MarketplaceSource | undefined;

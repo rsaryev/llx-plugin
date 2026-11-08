@@ -45,7 +45,7 @@ const mismatch = (path: string, expected: string, value: unknown): PluginIssue =
   error(path, `Invalid input: expected ${expected}, received ${typeName(value)}`);
 
 /** What a reader returns: the value when it is usable, and the issues it raised. */
-interface Read<T> {
+export interface Read<T> {
   readonly value: T | undefined;
   readonly issues: readonly PluginIssue[];
 }
@@ -88,7 +88,7 @@ function stringFields<K extends string>(
 const OWNER_STRINGS = ['email', 'url'] as const;
 
 /** `owner`: an object with a `name` (non-empty) and optional `email` and `url`. */
-function readOwner(value: unknown): Read<Owner> {
+export function readOwner(value: unknown): Read<Owner> {
   if (value === undefined) return fail(missing('owner'));
   if (!isRecord(value)) return fail(mismatch('owner', 'object', value));
   const name = value.name;

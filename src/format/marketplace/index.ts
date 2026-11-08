@@ -60,3 +60,8 @@ export { createEntryReader, readEntry, type SourceParser, type SourceReading } f
 export { DIRECTORY_LISTING_FIELDS, ENTRY_KEYS } from './entry-schema.ts';
 export { effectiveDisplayName, mergeEntryWithManifest, type EntryMerge } from './entry-merge.ts';
 export { effectiveTopic } from './relevance.ts';
+export {
+  DEFAULT_MARKETPLACE_PATH,
+  parseMarketplaceSource,
+  type MarketplaceSourceOptions,
+} from './marketplace-source.ts';

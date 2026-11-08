@@ -90,6 +90,16 @@
   it through `CommandRunner` (10 seconds, JSON object of strings, no credential variables for a
   catalog or project command) and `helperCache` reuses a `url` source's output for 60 seconds. Entry
   validation also warns about routing headers and a `headersHelper` without a `sha256` pin.
+- Marketplace sources (`marketplace`): `parseMarketplaceSource` reads the `source` object of
+  `extraKnownMarketplaces` or an entry of `strictKnownMarketplaces` and `blockedMarketplaces`
+  (`url`, `github`, `git`, `npm`, `file`, `directory`, `settings`, and the policy-only `skills-dir`,
+  `hostPattern`, `pathPattern`) with every field (`path` defaulting to
+  `.claude-plugin/marketplace.json`, `ref`, `sparsePaths`, the no-op `skipLfs`, a settings source's
+  `name` equal to its key and not reserved, its inline `plugins` as remote entries, the `owner/*`
+  wildcard in policy lists only) and the `loadStatus` `extraKnownMarketplaces` gives it;
+  `planMarketplaceFetch` turns a source into a git clone, a 5 MiB and 10 second file download, an
+  in-place read with the root two levels up, or an inline catalog; `parseMarketplaceInput` builds
+  the source `claude plugin marketplace add` builds from what you type, with `--sparse`.
 
 ### Fixed
 

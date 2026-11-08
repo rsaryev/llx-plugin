@@ -74,3 +74,5 @@ export {
   type PluginOperation,
 } from './header-policy.ts';
 export { isCredentialVariable, withoutCredentials } from './credential-variables.ts';
+export { planMarketplaceFetch } from './marketplace-fetch-plan.ts';
+export { parseMarketplaceInput, type MarketplaceInputOptions } from './marketplace-input.ts';
