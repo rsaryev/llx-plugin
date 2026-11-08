@@ -167,6 +167,7 @@ export const pluginPrefix = (origin: SkillOrigin): string =>
 
 const RULES: { readonly [K in SkillOriginKind]: NameRule } = {
   plugin: { prefix: pluginPrefix, choose: lenient },
+  managed: { prefix: () => '', choose: strict(true) },
   user: { prefix: () => '', choose: strict(true) },
   project: { prefix: () => '', choose: strict(true) },
   synced: { prefix: () => `${NAMESPACE}:`, choose: strict(false) },

@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Added
+
+- Skills: the skills and command files outside plugins. `scanFolders`, `scanNested` and
+  `resolveFolderSkills` read `.claude/skills/<name>/SKILL.md` and `.claude/commands/**.md` of the managed
+  directory, `~`, the project and its parents up to the repository root (a linked worktree stops at its
+  top and may borrow the main checkout's), each added directory, the directories below the working
+  directory a touched file is in, and the skills synced from claude.ai, through a new `FolderScan` port
+  (`ports/folder-scan`, with the `folderScan` fake and the shared `foundation/folder-walk`). Names clash as
+  skills.md says: enterprise over personal over project, a skill over a command file, a nested or
+  added-directory skill under `<dir>:<name>`, a synced skill's short name yielding to any other command;
+  a symlinked skill folder loads once. A skill folder holding a plugin manifest is reported as a
+  `<name>@skills-dir` plugin. New `managed` skill origin.
+- Host: `HostPorts.folders`, `SessionOptions.addedDirectories`, `session.reloadSkills` (the first read and
+  `/reload-skills`) and `session.touchFile`; `strictPluginOnlyCustomization` for skills is applied to the
+  folders. A plugin skill is also typed by its frontmatter `name` without the prefix when no command uses
+  it. `readSkillMentions` takes the listed `names`, so `/apps/web:deploy` is one word.
 ### Fixed
 
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a

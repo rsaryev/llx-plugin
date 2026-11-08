@@ -82,6 +82,7 @@ const ROOTS: {
   readonly [K in SkillOriginKind]: (locations: Locations, pluginId: string) => string;
 } = {
   plugin: (locations, pluginId) => locations.pluginRoot(pluginId),
+  managed: (locations) => locations.projectDir(),
   user: (locations) => locations.homeDir(),
   project: (locations) => locations.projectDir(),
   synced: (locations) => locations.homeDir(),

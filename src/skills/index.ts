@@ -100,3 +100,25 @@ export {
   type HooksAdmission,
   type HookUsage,
 } from './hook-limits.ts';
+export type { FolderScan, RepositoryChain, ScanFolder } from '../ports/folder-scan.ts';
+export {
+  SCAN_SCOPES,
+  type ScanContext,
+  type ScanRequest,
+  type ScanScope,
+} from './scan/locations.ts';
+export {
+  scanFolders,
+  scanScope,
+  type ScanOutcome,
+  type ScannedEntry,
+  type SkillsDirectoryPlugin,
+} from './scan/scan.ts';
+export { scanNested, type NestedScan } from './scan/nested.ts';
+export {
+  resolveFolderSkills,
+  type Resolution,
+  type ResolveFolderOptions,
+  type ResolvedFolderSkill,
+  type ShadowedEntry,
+} from './scan/resolve.ts';

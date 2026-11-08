@@ -56,6 +56,7 @@ export function admitSkillHooks(used: HookUsage, hooks: HooksSettings): HooksAdm
 
 const SOURCES: { readonly [K in SkillOriginKind]: (origin: SkillOrigin) => string } = {
   plugin: (origin) => `plugin:${'plugin' in origin ? origin.plugin : ''}`,
+  managed: () => 'managed',
   user: () => 'user',
   project: () => 'project',
   synced: () => 'synced',

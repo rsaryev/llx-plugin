@@ -29,6 +29,11 @@ export interface MentionOptions {
    * name qualifies, so the host should pass it.
    */
   readonly stackable?: (command: string) => boolean;
+  /**
+   * The names the session lists, so a directory-qualified name (`/apps/web:deploy`, `/b/cli:verify`)
+   * is one word although it holds `/`: a word that is exactly `/<a listed name>` is a mention.
+   */
+  readonly names?: ReadonlySet<string>;
 }
 
 /**
@@ -39,10 +44,10 @@ export interface MentionOptions {
 const NAME_WORD = /^[\p{L}\p{N}_:-]+$/u;
 const WORD = /\S+/gu;
 
-const nameOf = (word: string): string | undefined => {
+const nameOf = (word: string, options: MentionOptions): string | undefined => {
   if (!word.startsWith('/')) return undefined;
   const name = word.slice(1);
-  return NAME_WORD.test(name) ? name : undefined;
+  return NAME_WORD.test(name) || options.names?.has(name) === true ? name : undefined;
 };
 
 const isStackable = (options: MentionOptions, command: string): boolean =>
@@ -57,7 +62,7 @@ function stackedNames(
   if (options.interactive === false || !isStackable(options, first)) return [];
   const stacked: string[] = [];
   for (const word of following.slice(0, MAX_STACKED_SKILLS - 1)) {
-    const name = nameOf(word);
+    const name = nameOf(word, options);
     if (name === undefined || !isStackable(options, name)) break;
     stacked.push(name);
   }
@@ -68,7 +73,7 @@ function stackedNames(
 function readLeading(message: string, options: MentionOptions): SkillMention[] {
   const text = message.trimStart();
   const words = [...text.matchAll(WORD)];
-  const direct = nameOf(words[0]?.[0] ?? '');
+  const direct = nameOf(words[0]?.[0] ?? '', options);
   if (direct === undefined) return [];
   const stacked = stackedNames(
     direct,
@@ -87,7 +92,7 @@ export function readSkillMentions(message: string, options: MentionOptions = {})
   const mentions = readLeading(message, options);
   const seen = new Set(mentions.map((mention) => mention.command));
   for (const [word] of message.matchAll(WORD)) {
-    const name = nameOf(word);
+    const name = nameOf(word, options);
     if (name === undefined || seen.has(name)) continue;
     seen.add(name);
     mentions.push({ how: 'named', command: name });

@@ -24,6 +24,7 @@ export type SkillShellsMatchShellKind = Assert<Equal<SkillShell, ShellKind>>;
  */
 export type SkillOrigin =
   | { readonly kind: 'plugin'; readonly plugin: string; readonly rootSkill?: boolean }
+  | { readonly kind: 'managed' }
   | { readonly kind: 'user' }
   | { readonly kind: 'project' }
   | { readonly kind: 'synced' };
@@ -60,6 +61,12 @@ export const ORIGIN_TRAITS: { readonly [K in SkillOriginKind]: OriginTraits } = 
     substitutesSessionVariables: true,
     runsShell: true,
     honoursSkillOverrides: false,
+  },
+  managed: {
+    substitutesPluginVariables: false,
+    substitutesSessionVariables: true,
+    runsShell: true,
+    honoursSkillOverrides: true,
   },
   user: {
     substitutesPluginVariables: false,

@@ -14,6 +14,7 @@ import {
   menuEntries,
   modelListing,
   type ExpandPorts,
+  type ExpandSession,
   type Expansion,
   type Invocable,
   type Invoker,
@@ -21,6 +22,7 @@ import {
   type ModelListingResult,
   type ShellPermission,
 } from '../skills/index.ts';
+import { createFolderSkills, type FolderEntry, type SkillsReload } from './session-folders.ts';
 import type { SkillHooksRegistrar } from './session-hooks.ts';
 import type { ActivePlugin, HostState } from './state.ts';
 import type { SessionOptions } from './types.ts';
@@ -47,23 +49,65 @@ export interface SkillsListing {
 export interface SkillPart {
   skills(options?: SkillsOptions): SkillsListing;
   expandSkill(name: string, options: ExpandOptions): Promise<Expansion>;
+  /**
+   * Reads the folders again: the managed directory, `~/.claude/skills` and `~/.claude/commands`, the
+   * project and its parents, the added directories and the skills synced from claude.ai, and the
+   * nested directories a touched file loaded. The first call is what lists them at all; later calls
+   * are `/reload-skills`, which picks up a skills directory created during the session (skills.md,
+   * "Edit a skill during a session"). Needs `HostPorts.folders`.
+   */
+  reloadSkills(options: { readonly signal: AbortSignal }): Promise<SkillsReload>;
+  /**
+   * Claude read or edited a file: the `.claude/skills` of the directories between the working
+   * directory and the file load, once, and stay for the session (skills.md, "Load skills in
+   * monorepos and subdirectories").
+   */
+  touchFile(path: string, options: { readonly signal: AbortSignal }): Promise<SkillsReload>;
 }
 
-interface Entry {
-  readonly plugin: ActivePlugin;
-  readonly invocable: Skill | Command;
+/** A plugin's skill or command, or one of the folders' (`plugin` absent). */
+interface Entry extends FolderEntry {
+  readonly plugin?: ActivePlugin;
 }
 
 /** Without an answer from the host a shell placeholder asks, and an `ask` aborts the expansion (skills.md, "Permission checks on injected commands"). */
 const ASKS: ShellPermission = () => 'ask';
 
-const entriesOf = (state: HostState): readonly Entry[] =>
-  state.active.flatMap((plugin) =>
+const folderName = (dir: string): string =>
+  dir.slice(Math.max(dir.lastIndexOf('/'), dir.lastIndexOf('\\')) + 1);
+
+/**
+ * The name a plugin skill's frontmatter `name` also gives it without the plugin prefix: "The bare
+ * `/fancy` also invokes the skill unless another command already uses that name" (skills.md, "How a
+ * skill gets its command name"). A skill that keeps its folder's name has no bare name (judgment: the
+ * docs state it for a `name`), and neither has a plugin's root `SKILL.md`.
+ */
+function bareName(invocable: Skill | Command): string | undefined {
+  const { origin } = invocable;
+  if (!('plugin' in origin) || origin.rootSkill === true || !('dir' in invocable)) return undefined;
+  const bare = invocable.command.slice(`${origin.plugin}:`.length);
+  return bare === folderName(invocable.dir) ? undefined : bare;
+}
+
+function pluginEntries(state: HostState): readonly Entry[] {
+  const entries = state.active.flatMap((plugin) =>
     [...plugin.catalog.skills, ...plugin.catalog.commands].map((invocable) => ({
       plugin,
       invocable,
+      names: [invocable.command],
     })),
   );
+  const used = new Set(entries.map((entry) => entry.invocable.command));
+  return entries.map((entry) => {
+    const bare = bareName(entry.invocable);
+    if (bare === undefined || used.has(bare)) return entry;
+    used.add(bare);
+    return { ...entry, names: [...entry.names, bare] };
+  });
+}
+
+/** What a hook's source is named after: the plugin, else where the skill lives (`user`, `project`). */
+const ownerOf = (entry: Entry): string => entry.plugin?.id ?? entry.invocable.origin.kind;
 
 function failed(name: string, message: string): Expansion {
   return { ok: false, issues: [error(`/${name}`, message)] };
@@ -100,7 +144,7 @@ function skillHookRegistration(registrar: SkillHooksRegistrar) {
   const counted = new Map<string, HookUsage>();
   return (entry: Entry, hooks: NonNullable<Extract<Expansion, { ok: true }>['hooks']>) => {
     const source = hookSourceOf(entry.invocable.origin);
-    const prefix = `skill:${entry.plugin.id}:${entry.invocable.command}`;
+    const prefix = `skill:${ownerOf(entry)}:${entry.invocable.command}`;
     const others = used.get(source) ?? NO_HOOKS_YET;
     const own = counted.get(prefix) ?? NO_HOOKS_YET;
     const base = {
@@ -124,12 +168,23 @@ function skillHookRegistration(registrar: SkillHooksRegistrar) {
     const entries: readonly RegisteredHandler[] = registerHooks(hooks, {
       idPrefix: prefix,
       source: { kind: 'skill', label: '[skill]' },
-      pluginId: entry.plugin.id,
+      ...(entry.plugin === undefined ? {} : { pluginId: entry.plugin.id }),
     });
     registrar.registerSkillHooks(prefix, entries);
     return [] as readonly PluginIssue[];
   };
 }
+
+/** What a skill's variables resolve against: its plugin's, or nothing but the platform for a folder's. */
+const sessionOf = (entry: Entry, windows: boolean): ExpandSession =>
+  entry.plugin === undefined
+    ? { windows }
+    : {
+        pluginId: entry.plugin.id,
+        userConfig: entry.plugin.userConfig,
+        windows,
+        ...(entry.plugin.source === undefined ? {} : { pluginSource: entry.plugin.source }),
+      };
 
 /** The expansion with the warnings of registering its hooks, when it has hooks to register. */
 function withHooks(
@@ -153,10 +208,11 @@ export function createSkillPart(
   const addHooks = skillHookRegistration(registrar);
   const { ports } = state.options;
   const windows = state.options.windows ?? false;
-  const entries = entriesOf(state);
+  const plugins = pluginEntries(state);
+  const folders = createFolderSkills(state, options, () => plugins.flatMap((entry) => entry.names));
+  const entries = (): readonly Entry[] => [...plugins, ...folders.current()];
   const overrides = state.view.get('skillOverrides');
   const hooksLocked = hookSessionGates(state.view, state.parent).pluginOnlyHooks;
-  const invocables: readonly Invocable[] = entries.map((entry) => entry.invocable);
   const expandPorts: ExpandPorts = {
     runner: ports.commands,
     locations: ports.locations,
@@ -164,12 +220,20 @@ export function createSkillPart(
     permissions: options.permissions ?? ASKS,
   };
   return {
-    skills: (listing = {}) => ({
-      model: modelListing(invocables, { ...listing, ...(overrides && { overrides }) }),
-      menu: menuEntries(invocables, overrides === undefined ? {} : { overrides }),
-    }),
+    skills: (listing = {}) => {
+      const invocables: readonly Invocable[] = entries().map((entry) => entry.invocable);
+      return {
+        model: modelListing(invocables, { ...listing, ...(overrides && { overrides }) }),
+        menu: menuEntries(invocables, overrides === undefined ? {} : { overrides }),
+      };
+    },
+    reloadSkills: ({ signal }) => folders.reload(signal),
+    touchFile: (path, { signal }) => folders.touch(path, signal),
     async expandSkill(name, request) {
-      const entry = entries.find((each) => each.invocable.command === name);
+      const all = entries();
+      const entry =
+        all.find((each) => each.invocable.command === name) ??
+        all.find((each) => each.names.includes(name));
       if (entry === undefined) return failed(name, `Unknown skill: ${name}`);
       const invoker = request.invoker ?? 'user';
       const verdict = checkInvocation(entry.invocable, invoker, overrides);
@@ -184,12 +248,7 @@ export function createSkillPart(
           disableShellExecution: shellDisabled(state),
           shells: state.options.shells ?? { bash: true, powershell: windows },
           context: { interactive: options.interactive ?? true, trigger: invoker },
-          session: {
-            pluginId: entry.plugin.id,
-            userConfig: entry.plugin.userConfig,
-            windows,
-            ...(entry.plugin.source === undefined ? {} : { pluginSource: entry.plugin.source }),
-          },
+          session: sessionOf(entry, windows),
           policy: {
             hooksLockedToPlugins: hooksLocked,
             managedPermissionRulesOnly: managedPermissionRulesOnly(state),

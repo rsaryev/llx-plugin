@@ -6,6 +6,7 @@
 export { fixedClock } from './clock.ts';
 export { fakeEnvironment, memoryScratch } from './environment.ts';
 export { memoryFiles, type MemoryEntry } from './files.ts';
+export { folderScan, type DiskEntry, type DiskOptions } from './folders.ts';
 export { recordingHttp, type HttpReply } from './http.ts';
 export { locations, type LocationOptions } from './locations.ts';
 export { fakeMcp, type FakeMcpOptions } from './mcp.ts';

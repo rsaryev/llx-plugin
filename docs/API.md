@@ -98,6 +98,61 @@ same fields of its source file. Each failure (both or neither of `source` and `c
 or out-of-folder `source`, a refused name) is an error issue for that entry, and the other entries
 still load; an `allowedTools` rule that does not parse is dropped with a warning.
 
+### Skills and commands of the folders (done: `ports/folder-scan`, `foundation/folder-walk`, `skills/scan`)
+
+The skills a person or an organization keeps outside a plugin: `.claude/skills/<name>/SKILL.md` and
+the flat `.claude/commands/**.md` of the managed (enterprise) directory, `~`, the project and its
+parents, each directory passed with `--add-dir`, a `.claude/skills` below the working directory, and
+the skills downloaded from claude.ai into `~/.claude/skills/synced/` (skills.md, "Choose where skills
+load"). The kit reads them through the `FolderScan` port (`managedDirectory`, `open(dir)` giving
+`{ dir, files: PluginFiles, hostPath, canonicalPath }`, `repository(cwd)` giving the working
+directory and its parents up to the repository root, and the main checkout of a linked worktree,
+`directoriesBelow(start, touched)`); the fake is `folderScan(record, { managed, repositories, worktrees })`.
+
+```ts
+import { resolveFolderSkills, scanFolders, scanNested } from '@rsaryev/claude-plugin-kit';
+
+const context = { folders, request: { home, cwd, addedDirectories: ['../cli'] }, signal };
+const outcome = await scanFolders(context); // { entries, plugins, issues, watch }
+const nested = await scanNested(context, '/repo/apps/web/src/page.ts', loadedDirectories);
+const { resolved, shadowed } = resolveFolderSkills([...outcome.entries, ...nested.entries], {
+  cwd,
+  addedDirectories: ['../cli'],
+  taken: ['usage'], // commands other sources use: only a synced skill's short name yields to them
+});
+resolved[0]; // { invocable: Skill | Command, scope, names: ['deploy', 'deploy-staging'] }
+```
+
+- `scanFolders` reads the scopes in precedence order (`SCAN_SCOPES`): managed, personal, project, the
+  added directories, synced. A refused name (`anthropic-skills`, a folder `synced` in any
+  capitalization, a zero-width space or `<`) is an error issue and the skill does not load; a link that
+  leads nowhere is a warning. A symlinked skill folder is read from its target. `watch` lists the
+  skills folders that exist and that a session watches (personal, project, added directories).
+  `plugins` lists the skill folders of the personal and project locations that hold
+  `.claude-plugin/plugin.json` as `<name>@skills-dir` (a project's needs the workspace trust dialog,
+  `requiresTrust`, and is looked for in the working directory only); the host opens one with
+  `FolderScan.open(dir)` and `loadPlugin`.
+- `scanNested` reads the `.claude/skills` of the directories between the working directory and a touched
+  file, outermost first, skipping `loaded` ones; the session keeps them for the rest of its life.
+- `resolveFolderSkills` decides the names: enterprise over personal over project (the nearest
+  directory first); a skill over a command file of one name; a nested skill that clashes is
+  `<subdir path>:<name>` with its directory in the description, and the root one keeps the plain name; an
+  added directory's skill that clashes with a local skill or an earlier added directory takes the folder
+  name as prefix (`cli:verify`, `b/cli:verify` when two folders share a name); a synced skill is
+  `anthropic-skills:<name>` and also its short name unless another command uses it, names compared
+  ignoring case, spacing, invisible characters and compatibility forms. The same real folder reached
+  through several links is one skill. `names` lists every name that invokes an entry: a skill is typed
+  by its frontmatter `name` and by its folder's name.
+- The host: `HostPorts.folders` and `SessionOptions.addedDirectories` turn it on;
+  `session.reloadSkills({ signal })` (the `/reload-skills` of Claude Code, and the first read) lists the
+  folders next to the plugins' skills, and `session.touchFile(path, { signal })` loads the nested ones.
+  `strictPluginOnlyCustomization` for `skills` stops the personal, project, added-directory and synced
+  sources, never the managed directory. A skill of the managed directory keeps its hooks and its
+  `allowed-tools` grant under the locks.
+- A plugin's skill whose frontmatter `name` differs from its folder's is also typed by the bare name
+  (`/fancy` for `/my-plugin:fancy`) unless a command already uses it; `readSkillMentions` takes
+  `names` so a directory-qualified name (`/apps/web:deploy`) is one word.
+
 ### Skill substitution (done: `skills/arguments`, `skills/substitute`, `skills/variables`)
 
 What a skill's text becomes before the model reads it (skills.md, "Available string
@@ -738,7 +793,9 @@ host.plugins: readonly { id; name; enabled }[]   // every plugin given, with whe
 host.issues: readonly PluginIssue[]              // what the format readers found in enabled plugins
 host.openSession(options: SessionOptions): PluginSession;
 // SessionOptions: { sessionId; cwd; permissionMode; transcriptPath; effort?: { level };
-//   interactive? (true); trusted? (true); additionalDirectories?; permissions?: ShellPermission }
+//   interactive? (true); trusted? (true); additionalDirectories?; addedDirectories?;
+//   permissions?: ShellPermission }
+// HostPorts adds `folders?: FolderScan` (docs/API.md, "Skills and commands of the folders")
 ```
 
 A plugin runs when `HostPlugin.enabled` says so, else when `enabledPlugins` of the settings says so,
@@ -750,6 +807,7 @@ The session:
 | Method | Returns |
 | --- | --- |
 | `skills(options?)` | `{ model, menu }`: `modelListing` and `menuEntries` over the skills and commands of every enabled plugin, named `<plugin>:<name>`. The two invocation flags and the budget apply; `skillOverrides` leaves a plugin skill alone, as skills.md says. |
+| `reloadSkills({ signal })`, `touchFile(path, { signal })` | The folders' skills and commands (docs/API.md, "Skills and commands of the folders"): `reloadSkills` reads the managed, personal, project, added and synced folders and lists them next to the plugins' skills; `touchFile` loads the `.claude/skills` below the working directory on the way to a file. Each returns `{ issues, watch, plugins }`. Needs `HostPorts.folders`. |
 | `expandSkill(name, { arguments?, signal, invoker? })` | The `Expansion` of `expandSkill`: text with `$ARGUMENTS`, `${CLAUDE_PLUGIN_ROOT}` and the plugin's options substituted, shell placeholders run through the runner. `invoker` is `user` (default) or `model`. An unknown name, a skill of a disabled plugin or a refused invoker is `{ ok: false, issues }`. `disableSkillShellExecution` of the settings replaces the placeholders. Without `SessionOptions.permissions` a shell placeholder asks, which aborts the expansion. |
 | `dispatch(event, facts, { signal })` | The `HookOutcome<E>` of the engine. `facts` is the event's own fields (`EventFactsOf<E>`); the common fields come from the session. Handlers of every enabled plugin, then of the settings files, run with `if` read by the rules module and the policy of the settings: `disableAllHooks`, `allowManagedHooksOnly` (plugins force-enabled in managed `enabledPlugins` exempt), the `hooks` lock of `strictPluginOnlyCustomization`, `allowedHttpHookUrls`, `httpHookAllowedEnvVars`. A skill's `once` hook that ran is dropped after the dispatch. |
 | `agents(options?)` | `Resolved<SessionAgent>`: the official `AgentDefinition` of each plugin agent under `<plugin>:<name>`, its prompt with the plugin variables substituted, and `extras` (`color`, `isolation`, `cacheTtl`). |
@@ -1211,7 +1269,7 @@ when the script is spent, so a test never passes by accident.
 ```ts
 import {
   fakeEnvironment, fakeMcp, fakeModel, fixedClock, locations,
-  memoryFiles, memoryScratch, recordingHttp, scriptedRunner,
+  folderScan, memoryFiles, memoryScratch, recordingHttp, scriptedRunner,
 } from '@rsaryev/claude-plugin-kit/testing';
 
 const files = memoryFiles({ '.claude-plugin/plugin.json': '{"name":"demo"}' }); // PluginFiles
@@ -1219,7 +1277,8 @@ const runner = scriptedRunner({ stdout: 'ok' }, { exitCode: 2, stderr: 'no' }); 
 const web = recordingHttp({ status: 200, body: '{}' }); // HttpClient, `requests`
 ```
 
-`memoryFiles(record)` is the `PluginFiles` of a plugin folder, so a test loads a plugin with
+`folderScan(record, options)` is a `FolderScan` over an in-memory disk of absolute paths (links
+follow wherever they lead; the record is read again at each `open`). `memoryFiles(record)` is the `PluginFiles` of a plugin folder, so a test loads a plugin with
 `loadPlugin({ files })` and passes it to `createPluginHost`. `fakeModel(...)` answers `evaluate` and
 `runAgent`, `fakeMcp({ connected, tools })` an `McpCaller`, `fixedClock(start)` a `Clock` that moves
 only on `advance(ms)`, `locations(options)` fixed POSIX paths (`<plugins>/<id>`), `fakeEnvironment(record)`

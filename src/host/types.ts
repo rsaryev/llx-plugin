@@ -1,6 +1,7 @@
 import type { PluginIssue } from '../format/issues.ts';
 import type { Plugin } from '../loading/index.ts';
 import type { HookPorts } from '../hooks/index.ts';
+import type { FolderScan } from '../ports/folder-scan.ts';
 import type { EffortLevel, PermissionMode } from '../protocol/official.ts';
 import type { ParentSettingsContext } from '../settings/hooks/index.ts';
 import type { PolicyView } from '../settings/index.ts';
@@ -21,8 +22,12 @@ export interface HostPlugin {
   readonly source?: NonNullable<ExpandSession['pluginSource']>;
 }
 
-/** What the host passes: the ports, with the ones its hook handler types need. */
-export type HostPorts = HookPorts;
+/**
+ * What the host passes: the ports, with the ones its hook handler types need, and `folders`, the
+ * scope folders the personal, project, managed and added-directory skills are read from; without it
+ * a session lists the plugins' skills only.
+ */
+export type HostPorts = HookPorts & { readonly folders?: FolderScan };
 
 export interface PluginHostOptions {
   readonly plugins: readonly HostPlugin[];
@@ -53,6 +58,12 @@ export interface SessionOptions {
   readonly trusted?: boolean;
   /** Extra folders path rules in a hook's `if` treat as inside the project. */
   readonly additionalDirectories?: readonly string[];
+  /**
+   * The directories passed with `--add-dir` or `/add-dir`, in the order they were added. Their
+   * `.claude/skills` and `.claude/commands` load (`permissions.additionalDirectories` of a settings
+   * file grants file access only: skills.md, "Load skills from a directory outside the project").
+   */
+  readonly addedDirectories?: readonly string[];
   /** The answer for a skill's shell placeholder; absent, an `ask`, which aborts the expansion. */
   readonly permissions?: ShellPermission;
 }

@@ -46,12 +46,13 @@ const PLUGIN_KEEPS: { readonly [S in SkillPluginSource]: Keeps } = {
 /**
  * What each origin keeps. Under the hooks lock "a skill keeps its frontmatter hooks ... only if it's
  * a plugin skill, a bundled skill, or a skill in the managed settings directory" (the kit models
- * neither of the last two origins). With only managed permission rules, "Claude Code ignores
+ * the managed directory as the `managed` origin, which keeps both; a bundled skill is the host's). With only managed permission rules, "Claude Code ignores
  * `allowed-tools` in project and personal skills and in the other sources the setting's entry
  * lists", and a synced skill's grant "doesn't apply". A plugin keeps what its source keeps.
  */
 const KEEPS: { readonly [K in SkillOriginKind]: (source: SkillPluginSource) => Keeps } = {
   plugin: (source) => PLUGIN_KEEPS[source],
+  managed: () => KEEPS_ALL,
   user: () => KEEPS_NONE,
   project: () => KEEPS_NONE,
   synced: () => KEEPS_NONE,
