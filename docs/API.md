@@ -317,12 +317,19 @@ command source"), org.md ("Set update policy") and settings-reference.md ("Updat
 ## CLI (in progress: `cli`)
 
 ```ts
-import { startMarketplaceAdd, concludeMarketplaceAdd, planSessionFlags, renderCommand } from '@rsaryev/claude-plugin-kit';
+import { startMarketplaceAdd, concludeMarketplaceAdd, startUninstall, concludeUninstall, planSessionFlags, renderCommand } from '@rsaryev/claude-plugin-kit';
 
 const start = startMarketplaceAdd({ source: 'your-org/your-marketplace', scope: 'project', json: true });
 // { kind: 'fetch', source, scope: 'project', json: true } | { kind: 'claudeai', name, json: false } | { kind: 'done', output }
 const done = concludeMarketplaceAdd(start, { name: 'your-marketplace', alreadyOnDisk: false, registered });
 renderCommand(done.output, { json: true }); // { stdout: ['{"command":"marketplace-add","outcome":"ok",...}'], stderr: [], exitCode: 0 }
+
+const begun = startUninstall({ plugin: 'formatter@my-marketplace', scope: 'project' }, { graph, tty });
+// { kind: 'remove', id, scope, keepData, prune } | { kind: 'done', output }
+if (begun.kind === 'remove') {
+  const ended = concludeUninstall(begun, { remaining: [] }); // what the host read back after removing the record
+  // ended.cleanup: [{ id, deleteSaved: true, deleteDataFolder: 'formatter-my-marketplace' }] (G8)
+}
 
 const plan = planSessionFlags({ '--plugin-dir': ['./my-plugin'], '--bare': true }, facts);
 // plan.sessionPlugins, plan.skipped, plan.env, plan.refusals ...
@@ -347,6 +354,13 @@ and errors.md (the startup refusals). `claude agents`, `claude mcp`, `claude mcp
 | `planMarketplaceUpdate(args, facts)` | done | the listings to refresh (a pinned `ref` stays pinned), never a plugin; `Successfully updated marketplace: <name>` or a count; no name refuses `--json`; a seed-managed marketplace is skipped in bulk |
 | `planSessionFlags(given, facts)`, `startupRefusal(plan)` | done | the 20 session flags of `claude` summed into a `SessionPlan` (session-only plugins of the `inline` origin, the customizations skipped, the variables set, the settings scopes and `--settings` layer, the working directories, the agents, the channel entries, the MCP sources, the permission mode, the tools) and the refusals that exit `1` without starting (`disableSideloadFlags`, the 2 MiB settings file, an invalid `--agents`, both subagent-prompt flags) |
 | `skippedBy(mode)`, `managedPolicyUnderSafeMode(kind)`, `mcpSourcesRead(plan)`, `pluginFoldersOf(request, listing, hostVersion?)`, `sessionAgent(flag, setting)`, `addDirLoads(facts)` | done | the exact set each mode skips, what safe mode keeps of managed policy, where MCP servers are read from under `--strict-mcp-config` and `--bare`, the plugins a `--plugin-dir` folder holds, the flag over the `agent` setting and what an `--add-dir` directory loads given the modes and setting sources (`addDirLoads({ bare, claudeMdEnabled, skipped, settingScopes? })`; `planSessionFlags` fills `plan.addDirLoads`, `plan.agent` and `plan.readsStoredCredentials`) |
+| `startInstall(args, context)`, `planInstall(pending, found, sha256)` | done | `claude plugin install`: `startInstall` reads `-s`, `--config`, `-y`, `--accept-command`, `--marketplace` and `--json` and says which marketplace to add first (declared in the user settings) and refresh (`refreshBeforeInstall`); `planInstall` is the ladder: the plugin looked up, `Plugin "<id>" is already installed (scope: <scope>)` with exit `0`, the `--config` values checked, the dependency closure (`installClosure`), a command-source or `headersHelper` entry printed and accepted by `-y`, the `--accept-command` sha256 or the answer to `Run this command now? [y/N]` (`Aborted.`, `Aborted — the command was not run.`, `-y` ignored inside a session), and the `shownCommand` of a refused `--json` run; the effects to carry out are `InstallEffects` |
+| `decideAcceptance(request, sha256)`, `digestOf`, `exclusiveAcceptFlags` | done | a displayed command accepted or not: the digest covers exactly the command, the plugin and the catalog the run read after its own refresh, a digest that no longer matches is shown again with `acceptCommandMatched: false` |
+| `planPluginUpdate(args, facts, sha256)`, `concludeRetry(request, outcome)` | done | `claude plugin update`: the scope auto-detected local, project, user, managed, a bare name matched against the installed plugins (an ambiguous one lists the qualified commands), `<name> is already at the latest version (<version>).`, a changed command source or `headersHelper` accepted as in install, and the retry of an unfinished dependency install in the cached copy that fails the command only when the retry fails |
+| `planEnable(args, facts)`, `planDisable(args, facts)` | done | `claude plugin enable` and `disable`: the scope detected local, project, user (the first that mentions the plugin) or an override at a scope that wins, `is installed at <scope> scope, not <scope>` elsewhere, `already enabled`/`already disabled` with exit `1` (`already_in_goal_state`, `alreadyInGoalState`), the dependency cascade and its three refusals, dependents and an organization-required synced plugin refusing a disable, `--all` and the `Please specify a plugin name or use --all` line; the `enabledPlugins` entries to write are `writes` |
+| `planPruneCommand(args, facts)`, `answerPrune(plan, yes)` | done | `claude plugin prune`: `--dry-run`, `Nothing to prune`, `Remove? [y/N]`, `-y` and `Removed N auto-installed plugins: <names>`, no terminal without `-y` lists and removes nothing, exit `0` whatever is answered, scope `user` by default, never a plugin the user installed |
+| `startUninstall(args, facts)`, `concludeUninstall(start, after)`, `uninstallRetention(facts)` | done | `claude plugin uninstall`: `Successfully uninstalled plugin: <name> (scope: <scope>)`, `Failed to uninstall plugin "<plugin>":`, `settings_still_on`, `--prune` (orphans, `-y`, refused with `--json`) and G8: from the last scope the plugin's options, secrets and data directory go, except `--keep-data`, another plugin on the same folder (an id differing only in case) and records that cannot be read back (`savedKept: "install_records_unreadable"`); `keptData` in `--json` and `· data preserved` in `/plugin` |
+| `planConfigure(args, facts)`, `checkGiven`, `unsetKeys` | done | `claude plugin configure`: the options with `required`/`optional`, `sensitive`, `set`/`not set` and never a saved value, the `--json` object (`schema`, `choices`, `inputs`, `configured`, `unconfigured`, never a sensitive value), `--values-stdin` validated and saved or refused whole with `Failed to save configuration:`, only the full `name@marketplace` id (`No installed plugin has the id "<plugin>".`) |
 
 Where the docs name no wording or effect (the stream of a human line, the usage error of a refused
 flag combination, the text of a refused flag value) the choice is in `spec/judgments.md`.

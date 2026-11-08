@@ -124,3 +124,109 @@ export {
   type SessionPlan,
   type SessionPluginRequest,
 } from './flags/types.ts';
+export {
+  matchingIds,
+  nameOf,
+  parsePluginRef,
+  qualifiedCommands,
+  type PluginRef,
+} from './plugin-ref.ts';
+export {
+  DATA_PRESERVED,
+  SAVED_KEPT_UNREADABLE,
+  uninstallRetention,
+  type DataKeptBecause,
+  type Retention,
+  type RetentionFacts,
+} from './uninstall-data.ts';
+export {
+  concludeUninstall,
+  dataPreservedMark,
+  startUninstall,
+  type AfterRemoval,
+  type Cleanup,
+  type PruneStep,
+  type UninstallArguments,
+  type UninstallConclusion,
+  type UninstallFacts,
+  type UninstallStart,
+} from './uninstall-plan.ts';
+export {
+  answerPrune,
+  planPruneCommand,
+  type PruneArguments,
+  type PruneFacts,
+  type PrunePlan,
+  type PruneQuestion,
+} from './prune-plan.ts';
+export type { ToggleArguments, ToggleCommand, ToggleFacts } from './toggle-target.ts';
+export { planEnable, type EnabledWrite, type TogglePlan } from './enable-plan.ts';
+export { NAME_OR_ALL, planDisable, type DisableArguments } from './disable-plan.ts';
+export {
+  SAVE_FAILED,
+  SAVED_MESSAGE,
+  planConfigure,
+  type ConfigureArguments,
+  type ConfigureFacts,
+  type ConfigurePlan,
+  type ConfigurablePlugin,
+  type SavedValues,
+} from './configure-plan.ts';
+export {
+  checkGiven,
+  convertText,
+  unsetKeys,
+  type CheckedInput,
+  type ConfigProblem,
+  type DeclaredOptions,
+} from './user-config-input.ts';
+export {
+  ABORTED,
+  ABORTED_NOT_RUN,
+  ONLY_DISPLAYED,
+  PROMPT,
+  decideAcceptance,
+  digestOf,
+  exclusiveAcceptFlags,
+  type CommandAcceptance,
+  type AcceptanceFlags,
+  type AcceptanceRequest,
+  type CommandOrigin,
+  type DisplayedCommand,
+  type ShownCommand,
+} from './command-acceptance.ts';
+export {
+  applyConfig,
+  knownKeys,
+  notAppliedLines,
+  notYetSetLine,
+  parseConfigFlags,
+  type ConfigOutcome,
+  type InstallOptions,
+} from './install-config.ts';
+export {
+  startInstall,
+  type InstallArguments,
+  type InstallContext,
+  type InstallStart,
+  type PendingInstall,
+} from './install-start.ts';
+export {
+  planInstall,
+  type InstallEffects,
+  type InstallFound,
+  type InstallRun,
+} from './install-plan.ts';
+export {
+  concludeRetry,
+  planPluginUpdate,
+  type RetryRequest,
+  type UpdateEffects,
+  type UpdateRun,
+} from './update-plan.ts';
+export type {
+  DependencyInstallState,
+  UpdatableInstall,
+  PluginUpdateArguments,
+  PluginUpdateFacts,
+} from './update-facts.ts';

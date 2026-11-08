@@ -49,6 +49,26 @@
 
 ### Added
 
+- CLI lifecycle commands: `claude plugin install`, `update`, `enable`, `disable`, `prune`,
+  `uninstall` and `configure` as plans over ports. `startInstall`/`planInstall` run the install
+  ladder (already installed at that scope exits 0 with the exact line, a command-source or
+  `headersHelper` entry prints its command and needs `-y` or the `--accept-command` sha256, `Aborted.`
+  and `Aborted — the command was not run.`, `-y` ignored inside a session, the `shownCommand` of a
+  refused `--json` run, `--config` and `<server>.<key>` validated against `userConfig`, the
+  `--marketplace` source added first, the refresh before the install and the dependency closure);
+  `decideAcceptance` counts a sha256 only for the exact command, plugin and the catalog the run read
+  after its own refresh. `planPluginUpdate` detects the scope (local, project, user, managed), matches
+  a bare name and refuses an ambiguous one, reports `already at the latest version` and retries an
+  unfinished dependency install in the cached copy. `planEnable`/`planDisable` write the scope the
+  first mention or an override names, cascade to dependencies and refuse for dependents, a blocked or
+  higher-scope-false dependency or a required synced plugin. `planPruneCommand` covers `--dry-run`,
+  the terminal and `-y` matrix. `startUninstall`/`concludeUninstall` add G8: from the last scope the
+  plugin's options, secrets and data directory go, except with `--keep-data`, for another plugin on the
+  same folder, or when the install records cannot be read back (`savedKept`), with `keptData`,
+  `settings_still_on` and `--prune`. `planConfigure` lists options without saved values, saves
+  `--values-stdin` whole or not at all, and never prints a sensitive value. 27 requirements are proven
+  and the choices the docs leave open are in `spec/judgments.md`.
+
 - CLI: a new `cli` module (layer 5) that models the plugin and marketplace commands as plans over
   ports. `renderCommand` gives the human line, the exit code and the last-line JSON object of a
   command (`command`, `outcome`, `message`, `failureCode`, a usage error that prints no result line);
