@@ -738,7 +738,12 @@ host.plugins: readonly { id; name; enabled }[]   // every plugin given, with whe
 host.issues: readonly PluginIssue[]              // what the format readers found in enabled plugins
 host.openSession(options: SessionOptions): PluginSession;
 // SessionOptions: { sessionId; cwd; permissionMode; transcriptPath; effort?: { level };
-//   interactive? (true); trusted? (true); additionalDirectories?; permissions?: ShellPermission }
+//   interactive? (true); trusted? (true); additionalDirectories?; permissions?: ShellPermission;
+//   promptId?; scratchpadDir?; agent?: { id?; type? }; folderTrustAccepted? }
+session.withTurn(turn: TurnOptions): PluginSession;
+// TurnOptions: Partial<Pick<SessionOptions, 'permissionMode' | 'effort' | 'cwd' |
+//   'additionalDirectories' | 'permissions' | 'promptId' | 'scratchpadDir' | 'agent' |
+//   'folderTrustAccepted' | 'interactive'>>
 ```
 
 A plugin runs when `HostPlugin.enabled` says so, else when `enabledPlugins` of the settings says so,
@@ -755,6 +760,41 @@ The session:
 | `agents(options?)` | `Resolved<SessionAgent>`: the official `AgentDefinition` of each plugin agent under `<plugin>:<name>`, its prompt with the plugin variables substituted, and `extras` (`color`, `isolation`, `cacheTtl`). |
 | `mcpServers(options?)`, `lspServers(options?)`, `monitors(options?)` | `Resolved<ResolvedMcpServer>`, `Resolved<ResolvedLspServer>`, `Resolved<ResolvedMonitor>`: the substituted configs, with `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}` and `${user_config.*}` resolved. A server that cannot start is left out and its issue is in `issues`. |
 | `outputStyles()` | The `OutputStyle` of each enabled plugin, `id` `<plugin>:<name>`. |
+| `withTurn(turn)` | The same session for one turn: a `PluginSession` that shares the session's state and replaces only the fields `turn` names (see "Turns"). |
+
+`SessionOptions.promptId`, `scratchpadDir`, `agent` and `folderTrustAccepted` are the common fields
+`prompt_id`, `scratchpad_dir`, `agent_id` and `agent_type` of every hook input, and the workspace trust
+the frontmatter hooks of a project subagent need (hooks.md, "Common input fields", "Hooks in skills
+and agents"). A field left out is left out of the input.
+
+### Turns
+
+A host that serves many turns opens the session once and calls `session.withTurn(turn)` for each
+one: the mode, effort, folders, shell answer, prompt and agent of a turn are the turn's, and what
+must outlive a turn is the session's. The view `withTurn` returns shares the hooks registered so far
+(a skill's hooks keep running "on turns after the skill's own turn"), the `once` keys already
+consumed and what skill hooks have used of their limits; it never reopens the session, so none of
+that is lost. The hook input (`permission_mode`, `effort`, `cwd`), the base of an `if` path rule,
+`${CLAUDE_EFFORT}`, the working directory of a shell placeholder and its `permissions` answer all
+read the turn.
+
+```ts
+const session = host.openSession({ sessionId, cwd, permissionMode: 'default', transcriptPath });
+const turn = session.withTurn({
+  permissionMode: 'plan',
+  cwd: '/work/app/src',
+  permissions: (call) => rules.decide(call), // `ask` in the session, answered in this turn
+  promptId,
+});
+await turn.expandSkill('formatter:status', { signal });
+await turn.dispatch('PreToolUse', facts, { signal });
+```
+
+A turn replaces the fields it names and keeps the others; `agent` replaces whole. It may not change
+`sessionId`, `transcriptPath` or `trusted`, which belong to the session (spec/judgments.md), and a
+field given as `undefined` is ignored: a turn replaces a field but cannot unset it. The session
+`withTurn` is called on does not change, and `withTurn` on a view builds on that view's fields. Views
+of one session are one session for hooks: a skill expanded through one view fires through any other.
 
 `Resolved<T>` is `{ resolved: readonly T[]; issues: readonly PluginIssue[] }`. The saved options
 of a plugin are the `pluginConfigs` of the settings with the host's `userConfig` over them.

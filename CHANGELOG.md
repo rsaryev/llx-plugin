@@ -60,6 +60,14 @@
 
 ### Added
 
+- Host: `session.withTurn(turn)` returns the same session for one turn. A turn replaces only the
+  `permissionMode`, `effort`, `cwd`, `additionalDirectories`, `permissions` (the shell answer),
+  `promptId`, `scratchpadDir`, `agent`, `folderTrustAccepted` and `interactive` it names, and shares
+  what must outlive a turn: the skills' registered hooks, the `once` keys already consumed and the
+  limits on skill hooks. The session it is called on does not change.
+- Host: `SessionOptions` carries `promptId`, `scratchpadDir`, `agent` (`id`, `type`) and
+  `folderTrustAccepted` into the hook input (`prompt_id`, `scratchpad_dir`, `agent_id`,
+  `agent_type`) and the workspace-trust gate of a project subagent's hooks.
 - Spec: the requirement set now counts the docs' prose, not only their tables. Every heading of
   the plugin, mods, skills, subagents, hooks, MCP, managed MCP, settings, managed settings,
   permissions, environment, CLI, workflows, themes, output styles and channels pages is either

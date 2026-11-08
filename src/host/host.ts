@@ -1,7 +1,8 @@
 import type { PluginIssue } from '../format/issues.ts';
 import { openSession, type PluginSession } from './session.ts';
 import { createHostState } from './state.ts';
-import type { PluginHostOptions, SessionOptions } from './types.ts';
+import type { SessionOptions } from './session-types.ts';
+import type { PluginHostOptions } from './types.ts';
 
 /** A plugin the host knows and whether it runs. */
 export interface HostedPlugin {

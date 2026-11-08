@@ -1,7 +1,6 @@
 import { error, warning, type PluginIssue } from '../format/issues.ts';
 import type { Command, Skill } from '../format/skill-types.ts';
 import type { SlashCommand } from '../protocol/official.ts';
-import { hookSessionGates } from '../settings/hooks/index.ts';
 import { createSkillSettingsPolicy } from '../settings/skills/index.ts';
 import { registerHooks, type RegisteredHandler } from '../hooks/index.ts';
 import {
@@ -10,7 +9,6 @@ import {
   expandSkill,
   hookSourceOf,
   NO_HOOKS_YET,
-  type HookUsage,
   menuEntries,
   modelListing,
   type ExpandPorts,
@@ -21,9 +19,10 @@ import {
   type ModelListingResult,
   type ShellPermission,
 } from '../skills/index.ts';
+import type { SessionCore, SkillHookLedger } from './session-core.ts';
 import type { SkillHooksRegistrar } from './session-hooks.ts';
+import type { SessionOptions } from './session-types.ts';
 import type { ActivePlugin, HostState } from './state.ts';
-import type { SessionOptions } from './types.ts';
 
 /** Who asks for the skill: the user typing `/name`, or the model calling it. */
 export type SkillInvoker = Extract<Invoker, 'user' | 'model'>;
@@ -95,9 +94,8 @@ function shellDisabled(state: HostState): boolean {
  * "registers none of its hooks". Judgment: invoking a skill again replaces its own hooks and counts
  * them once (spec/judgments.md).
  */
-function skillHookRegistration(registrar: SkillHooksRegistrar) {
-  const used = new Map<string, HookUsage>();
-  const counted = new Map<string, HookUsage>();
+function skillHookRegistration(registrar: SkillHooksRegistrar, ledger: SkillHookLedger) {
+  const { used, counted } = ledger;
   return (entry: Entry, hooks: NonNullable<Extract<Expansion, { ok: true }>['hooks']>) => {
     const source = hookSourceOf(entry.invocable.origin);
     const prefix = `skill:${entry.plugin.id}:${entry.invocable.command}`;
@@ -145,17 +143,23 @@ function withHooks(
     : { ...expansion, issues: [...expansion.issues, ...issues] };
 }
 
+/**
+ * The skills of one turn: the cwd, effort, mode, interactivity and shell answer are the turn's, the
+ * limits on skill hooks are the session's (`core`), so a skill invoked in an earlier turn still
+ * counts and a later turn cannot register past them.
+ */
 export function createSkillPart(
   state: HostState,
+  core: SessionCore,
   options: SessionOptions,
   registrar: SkillHooksRegistrar,
 ): SkillPart {
-  const addHooks = skillHookRegistration(registrar);
+  const addHooks = skillHookRegistration(registrar, core.skillHooks);
   const { ports } = state.options;
   const windows = state.options.windows ?? false;
   const entries = entriesOf(state);
   const overrides = state.view.get('skillOverrides');
-  const hooksLocked = hookSessionGates(state.view, state.parent).pluginOnlyHooks;
+  const hooksLocked = core.gates.pluginOnlyHooks;
   const invocables: readonly Invocable[] = entries.map((entry) => entry.invocable);
   const expandPorts: ExpandPorts = {
     runner: ports.commands,

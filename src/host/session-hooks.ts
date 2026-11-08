@@ -5,15 +5,17 @@ import {
   registerHooks,
   type EventFactsOf,
   type HookOutcome,
+  type HookRegistry,
   type HookSession,
   type HookSource,
   type RegisteredHandler,
 } from '../hooks/index.ts';
 import type { HookEvent } from '../protocol/official.ts';
-import { hookSessionGates, type HookSessionGates } from '../settings/hooks/index.ts';
+import type { HookSessionGates } from '../settings/hooks/index.ts';
 import type { PolicyScope } from '../settings/index.ts';
+import type { SessionCore } from './session-core.ts';
+import type { SessionOptions } from './session-types.ts';
 import type { ActivePlugin, HostState } from './state.ts';
-import type { SessionOptions } from './types.ts';
 
 /** Where the hooks of a settings file of each scope are declared (hooks.md, "Hook locations"). */
 const SETTINGS_SOURCE: { readonly [S in PolicyScope]: HookSource } = {
@@ -42,6 +44,14 @@ const settingsEntries = (gates: HookSessionGates): readonly RegisteredHandler[] 
     registerHooks(hooks, { idPrefix: `settings:${scope}`, source: SETTINGS_SOURCE[scope] }),
   );
 
+/** The hooks a session starts with: every enabled plugin's, then the settings files'. */
+export const initialRegistry = (state: HostState, gates: HookSessionGates): HookRegistry =>
+  createHookRegistry([...state.active.flatMap(pluginEntries), ...settingsEntries(gates)]);
+
+/**
+ * The hook session of one turn: the common input fields and the gates. `promptId`, `scratchpadDir`,
+ * `agent` and `folderTrustAccepted` pass through as given; absent, the input omits them.
+ */
 function sessionOf(
   state: HostState,
   gates: HookSessionGates,
@@ -53,8 +63,14 @@ function sessionOf(
     cwd: options.cwd,
     permissionMode: options.permissionMode,
     ...(options.effort === undefined ? {} : { effort: options.effort }),
+    ...(options.promptId === undefined ? {} : { promptId: options.promptId }),
+    ...(options.scratchpadDir === undefined ? {} : { scratchpadDir: options.scratchpadDir }),
+    ...(options.agent === undefined ? {} : { agent: options.agent }),
     interactive: options.interactive ?? true,
     trusted: options.trusted ?? true,
+    ...(options.folderTrustAccepted === undefined
+      ? {}
+      : { folderTrustAccepted: options.folderTrustAccepted }),
     disableAllHooks: gates.disableAllHooks,
     allowManagedHooksOnly: gates.allowManagedHooksOnly,
     pluginOnlyHooks: gates.pluginOnlyHooks,
@@ -83,16 +99,18 @@ export interface HookPart {
 }
 
 /**
- * The hooks of a session: every enabled plugin's, then the settings files', through the engine
- * with the policy of the settings. A skill's hooks join them when the skill is expanded
- * (`registerSkillHooks`), and a skill's `once` hook that ran is dropped after the dispatch.
+ * The hooks of one turn over the session's core: the engine and the `if` path context are made from
+ * the turn's options (cheap), the registry is the core's, so a skill's hooks and the `once` hooks
+ * already consumed are the same in every turn. A skill's `once` hook that ran is dropped after the
+ * dispatch.
  */
 export function createHookPart(
   state: HostState,
+  core: SessionCore,
   options: SessionOptions,
 ): HookPart & SkillHooksRegistrar {
   const { ports } = state.options;
-  const gates = hookSessionGates(state.view, state.parent);
+  const { gates, registry } = core;
   const session = sessionOf(state, gates, options);
   const windows = state.options.windows ?? false;
   const engine = createHookEngine(ports, {
@@ -110,18 +128,19 @@ export function createHookPart(
       state.active.find((plugin) => plugin.id === id)?.userConfig ?? { declared: {}, values: {} },
     httpPolicy: gates.httpPolicy,
   });
-  let registry = createHookRegistry([
-    ...state.active.flatMap(pluginEntries),
-    ...settingsEntries(gates),
-  ]);
   return {
     registerSkillHooks(prefix, entries) {
-      const previous = registry.entries.filter((entry) => entry.id.startsWith(`${prefix}:`));
-      registry = registry.without(previous.map((entry) => entry.id)).with(entries);
+      const previous = registry.get().entries.filter((entry) => entry.id.startsWith(`${prefix}:`));
+      registry.set(
+        registry
+          .get()
+          .without(previous.map((entry) => entry.id))
+          .with(entries),
+      );
     },
     async dispatch(event, facts, { signal }) {
-      const outcome = await engine.dispatch(registry, { event, facts, session, signal });
-      registry = registry.without(outcome.consumedOnce);
+      const outcome = await engine.dispatch(registry.get(), { event, facts, session, signal });
+      registry.set(registry.get().without(outcome.consumedOnce));
       return outcome;
     },
   };

@@ -1,6 +1,8 @@
 /** The host and its sessions (layer 5, docs/API.md, "Host and sessions"). */
 export { createPluginHost, type HostedPlugin, type PluginHost } from './host.ts';
-export type { PluginSession } from './session.ts';
+export type { PluginSession, TurnPart } from './session.ts';
+export type { SessionOptions } from './session-types.ts';
+export type { TurnOptions } from './turn.ts';
 export type {
   ExpandOptions,
   SkillInvoker,
@@ -8,10 +10,4 @@ export type {
   SkillsOptions,
 } from './session-skills.ts';
 export type { ResolveOptions, SessionAgent } from './session-components.ts';
-export type {
-  HostPlugin,
-  HostPorts,
-  PluginHostOptions,
-  Resolved,
-  SessionOptions,
-} from './types.ts';
+export type { HostPlugin, HostPorts, PluginHostOptions, Resolved } from './types.ts';
