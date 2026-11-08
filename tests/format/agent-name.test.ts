@@ -19,6 +19,10 @@ spec('agents.frontmatter.name', () => {
     expect(validAgentName('reviewer-v2')).toBe(true);
   });
 
+  test('an empty name is invalid (judgment: spec/judgments.md)', () => {
+    expect(validAgentName('')).toBe(false);
+  });
+
   test('a name is at most 256 characters', () => {
     expect(validAgentName('a'.repeat(256))).toBe(true);
     expect(validAgentName('a'.repeat(257))).toBe(false);
@@ -84,6 +88,7 @@ describe('agent file names (judgment: the extension and separators)', () => {
     expect(agentFileName('C:\\plugin\\agents\\Security.MD')).toBe('Security');
     expect(agentFileName('security')).toBe('security');
     expect(agentFileName('notes.v2.md')).toBe('notes.v2');
+    expect(agentFileName('agents/.md')).toBe('.md');
   });
 
   test('empty and "." segments of a relative path add no name part', () => {

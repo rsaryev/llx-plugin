@@ -15,7 +15,11 @@ export type AgentOrigin = FileOrigin | PluginOrigin;
 interface FileOrigin {
   /** The file as the host names it: used for issues and for the file name fallback. */
   readonly path: string;
-  readonly source: Exclude<AgentSource, 'plugin'>;
+  /**
+   * `project` also stands for a directory added with `--add-dir` (judgment, spec/judgments.md). The
+   * `--agents` flag is JSON, not a file, so `flag` is no source of a file read here.
+   */
+  readonly source: Exclude<AgentSource, 'plugin' | 'flag'>;
   readonly plugin?: undefined;
 }
 

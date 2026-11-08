@@ -5,26 +5,9 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { readAgent } from '../../src/format/agent.ts';
-import type { AgentOrigin } from '../../src/format/agent-record.ts';
 import { spec } from '../support/spec.ts';
 
-const file = (front: string, body = 'You are a reviewer.\n'): string =>
-  `---\n${front}\n---\n${body}`;
-const FILES = ['project', 'user', 'managed'] as const;
-const at = (source: (typeof FILES)[number], path = 'agents/reviewer.md'): AgentOrigin => ({
-  source,
-  path,
-});
-const plugin = (relativePath?: string, path = 'agents/reviewer.md'): AgentOrigin => ({
-  source: 'plugin',
-  path,
-  plugin: { name: 'my-plugin', relativePath },
-});
-
-const loaded = (result: ReturnType<typeof readAgent>) => {
-  if (result.outcome !== 'loaded') throw new Error(`expected loaded, got ${result.reason}`);
-  return result.agent;
-};
+import { at, file, FILES, loaded, plugin } from '../support/agent-files.ts';
 
 spec(['agents.frontmatter.name', 'agents.frontmatter.description'], () => {
   test('a file with a name and a description loads; the body is the prompt', () => {
@@ -83,15 +66,23 @@ describe.each(FILES)('files Claude Code skips: %s agents directory', (source) =>
     });
 
     test.each([
-      ['starts with "-"', '-reviewer'],
-      ['contains ":"', 'my-plugin:reviewer'],
-      ['is longer than 256 characters', 'a'.repeat(257)],
-    ])('a name that %s: skipped with an error', (_why, name) => {
+      ['starts with "-"', '-reviewer', 'starts with "-"'],
+      ['contains ":"', 'my-plugin:reviewer', 'contains ":"'],
+      ['is longer than 256 characters', 'a'.repeat(257), 'longer than 256 characters'],
+    ])('a name that %s: skipped with an error naming that rule', (_why, name, rule) => {
       const result = readAgent(file(`name: ${name}\ndescription: d`), at(source));
       expect(result).toMatchObject({ outcome: 'skipped', reason: 'invalid', agent: undefined });
       expect(result.issues).toHaveLength(1);
       expect(result.issues[0]).toMatchObject({ severity: 'error', path: 'agents/reviewer.md' });
-      expect(result.issues[0]?.message).toContain('name');
+      expect(result.issues[0]?.message).toContain('Invalid "name"');
+      expect(result.issues[0]?.message).toContain(rule);
+    });
+
+    test('a name of exactly 256 characters loads', () => {
+      const name = 'a'.repeat(256);
+      const result = readAgent(file(`name: ${name}\ndescription: d`), at(source));
+      expect(loaded(result).name).toBe(name);
+      expect(result.issues).toEqual([]);
     });
   });
 
@@ -167,6 +158,25 @@ spec(['agents.frontmatter.name', 'agents.frontmatter.description'], () => {
       expect(result.issues[0]?.message).toContain('256');
     });
 
+    test('a name of exactly 256 characters is kept', () => {
+      const name = 'n'.repeat(256);
+      const result = readAgent(
+        file(`name: ${name}\ndescription: Reviews`),
+        plugin('security.md', 'agents/security.md'),
+      );
+      expect(loaded(result).name).toBe(name);
+      expect(result.issues).toEqual([]);
+    });
+
+    test('an opening --- that is not the first line: no frontmatter, so the file name and the fallback description', () => {
+      const text = `\n${file('name: x\ndescription: d', 'body')}`;
+      const result = readAgent(text, plugin('security.md', 'agents/security.md'));
+      const agent = loaded(result);
+      expect(agent.name).toBe('security');
+      expect(agent.scopedName).toBe('my-plugin:security');
+      expect(agent.definition.description).toBe('Agent from my-plugin plugin');
+    });
+
     test('frontmatter that does not parse: the agent still loads, named after the file', () => {
       const result = readAgent(
         file('name: reviewer\ndescription: [unclosed\nmodel: sonnet', 'Prompt body.\n'),
@@ -213,61 +223,5 @@ spec(['agents.frontmatter.name', 'agents.frontmatter.description'], () => {
       );
       expect(agent.scopedName).toBe('my-plugin:security');
     });
-  });
-});
-
-describe('judgments the docs leave open (spec/judgments.md)', () => {
-  test('a plugin agent with a name but no description loads with the fallback description and a warning', () => {
-    const result = readAgent(file('name: helper'), plugin(undefined, 'agents/helper.md'));
-    expect(loaded(result).definition.description).toBe('Agent from my-plugin plugin');
-    expect(result.issues).toHaveLength(1);
-    expect(result.issues[0]).toMatchObject({ severity: 'warning' });
-    expect(result.issues[0]?.message).toContain('description');
-  });
-
-  test('a plugin name with ":" or a leading "-" is kept as written: the docs give only the length fallback', () => {
-    const colon = readAgent(file('name: a:b\ndescription: d'), plugin(undefined, 'agents/x.md'));
-    expect(loaded(colon).scopedName).toBe('my-plugin:a:b');
-    const dash = readAgent(file('name: -a\ndescription: d'), plugin(undefined, 'agents/x.md'));
-    expect(loaded(dash).name).toBe('-a');
-  });
-
-  test('a plugin name that is not text falls back to the file name with a warning', () => {
-    const result = readAgent(
-      file('name: [a, b]\ndescription: d'),
-      plugin(undefined, 'agents/x.md'),
-    );
-    expect(loaded(result).name).toBe('x');
-    expect(result.issues[0]).toMatchObject({ severity: 'warning' });
-  });
-
-  test('a name that is not text in a project file is invalid, not documentation', () => {
-    const result = readAgent(file('name: [a, b]\ndescription: d'), at('project'));
-    expect(result).toMatchObject({ outcome: 'skipped', reason: 'invalid' });
-  });
-
-  test('a number is read as its text, like every frontmatter text field', () => {
-    const agent = loaded(readAgent(file('name: 2024\ndescription: d'), at('project')));
-    expect(agent.name).toBe('2024');
-  });
-
-  test('frontmatter that is a list, not a table, is handled like YAML that does not parse', () => {
-    expect(readAgent('---\n- a\n- b\n---\nbody', at('project'))).toMatchObject({
-      outcome: 'skipped',
-      reason: 'invalid',
-    });
-    const inPlugin = readAgent('---\n- a\n---\nbody', plugin(undefined, 'agents/x.md'));
-    expect(loaded(inPlugin).definition.description).toBe('Agent from my-plugin plugin');
-  });
-
-  test('a parse issue names the line of the YAML problem', () => {
-    const result = readAgent('---\nname: a\nb: c: d\n---\n', at('user'));
-    expect(result.issues[0]?.message).toContain('line 3');
-  });
-
-  test('the prompt is the body exactly as written, and the other record fields start empty', () => {
-    const agent = loaded(readAgent(file('name: a\ndescription: d', '\n\nBody\n\n'), at('user')));
-    expect(agent.definition.prompt).toBe('\n\nBody\n\n');
-    expect(agent).toMatchObject({ extras: {}, hooks: undefined, ignored: [], unrecognized: [] });
   });
 });

@@ -22,10 +22,14 @@ export const validAgentName = (name: string): boolean =>
 const SEPARATORS = /[\\/]/;
 const MARKDOWN_EXTENSION = /\.md$/i;
 
-/** The last segment of a path without its `.md`: what a plugin agent is named without a `name`. */
+/**
+ * The last segment of a path without its `.md`: what a plugin agent is named without a `name`.
+ * Judgment (spec/judgments.md): a segment that is nothing but `.md` keeps its whole text, so a
+ * name is never empty.
+ */
 export function agentFileName(path: string): string {
   const last = path.split(SEPARATORS).at(-1) ?? path;
-  return last.replace(MARKDOWN_EXTENSION, '');
+  return last.replace(MARKDOWN_EXTENSION, '') || last;
 }
 
 /**

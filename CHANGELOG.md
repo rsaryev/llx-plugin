@@ -67,6 +67,10 @@
 
 ### Fixed
 
+- Agent files: a project, user or managed file with a name that breaks a rule now has each rule's
+  own wording tested; a plugin agent in a file named `.md` is named `.md`, not an empty string; a
+  `--add-dir` directory reads as `project`, and `flag` is no source of a file read (`readAgent`).
+
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
   parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
   (and `skill`) read `name:value` as a parameter.
