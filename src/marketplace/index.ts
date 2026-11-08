@@ -122,3 +122,23 @@ export {
   type DeclaredIn,
   type RefusalEffect,
 } from './cross-marketplace.ts';
+export {
+  UNKNOWN_VERSION,
+  computePluginVersion,
+  type PluginVersionInput,
+  type RepositoryRoot,
+  type SourceFacts,
+} from './plugin-version.ts';
+export {
+  checkForUpdate,
+  isUpdate,
+  loadsInPlace,
+  type UpdateCheck,
+  type UpdateOutcome,
+  type UpdateSubject,
+} from './update-detection.ts';
+export {
+  checkReleaseChannels,
+  type ChannelManifestVersions,
+  type ChannelManifests,
+} from './release-channels.ts';

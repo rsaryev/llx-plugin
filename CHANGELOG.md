@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Added
+
+- Marketplace: the version of a plugin as Claude Code computes it (`computePluginVersion`: manifest,
+  then entry, then the source type's default, a command source from its hash), when a new copy is
+  made (`isUpdate`, `checkForUpdate`, `loadsInPlace`: only a differing version, never for a plugin
+  loaded in place, the claude.ai-recorded version for a synced plugin) and the check of a
+  release-channel pair (`checkReleaseChannels`). The renames migration, `forceRemoveDeletedPlugins`,
+  release tags and the `ref`/`sha`/`#ref` hold on a version are now proven against the pages that
+  describe them (plugins/host-marketplace.md, plugins/publish.md, plugins/org.md).
+
 ### Fixed
 
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
