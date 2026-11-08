@@ -18,6 +18,17 @@ const REQUIRE_CALL = 'require() is not available; write every file as an ES modu
 const isRelative = (specifier: string): boolean =>
   specifier.startsWith('./') || specifier.startsWith('../');
 
+/** Whether a relative `specifier`, written in a file of `directory` (relative to the plugin root), names a file outside the plugin directory. */
+function leavesRoot(directory: string, specifier: string): boolean {
+  let depth = directory.split('/').filter((part) => part !== '' && part !== '.').length;
+  for (const part of specifier.split('/')) {
+    if (part === '..') depth -= 1;
+    else if (part !== '.' && part !== '') depth += 1;
+    if (depth < 0) return true;
+  }
+  return false;
+}
+
 const FROM_TYPES: ReadonlySet<string> = new Set([
   'ImportDeclaration',
   'ExportNamedDeclaration',
@@ -40,8 +51,11 @@ export interface FileFacts {
   readonly issues: readonly PluginIssue[];
 }
 
-/** Imports, dynamic imports and `require` calls anywhere in the file. */
-export function fileFacts(program: Node, file: string): FileFacts {
+/**
+ * Imports, dynamic imports and `require` calls anywhere in the file. `directory` is the folder of the
+ * file, relative to the plugin root: "Import only from files inside the plugin directory" (create.md).
+ */
+export function fileFacts(program: Node, file: string, directory: string): FileFacts {
   const imports: string[] = [];
   const issues: PluginIssue[] = [];
   const stack: Node[] = [program];
@@ -53,8 +67,13 @@ export function fileFacts(program: Node, file: string): FileFacts {
     }
     const from = fromOf(node);
     if (from === undefined) continue;
-    if (isRelative(from)) imports.push(from);
-    else if (from !== 'claude-code') {
+    if (isRelative(from)) {
+      if (leavesRoot(directory, from)) {
+        issues.push(
+          error(file, `${file}: imports "${from}", outside the plugin directory: ${BAD_IMPORT}`),
+        );
+      } else imports.push(from);
+    } else if (from !== 'claude-code') {
       issues.push(error(file, `${file}: imports "${from}": ${BAD_IMPORT}`));
     }
   }

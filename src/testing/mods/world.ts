@@ -1,3 +1,4 @@
+import { readHooksJsonModules } from '../../format/mod-files.ts';
 import type { PluginFiles } from '../../ports/index.ts';
 import type { ModCompiler, ModRuntime } from '../../mods/ports.ts';
 import {
@@ -10,6 +11,7 @@ import {
 import type { HookReport, RegisteredHook } from '../../mods/types.ts';
 import type { ModHostPorts } from '../../mods/api/index.ts';
 import { fakeModInterface, fakePorts, idleClock, noImplementation } from './fake-ports.ts';
+import { unansweredReason } from './fallbacks.ts';
 import {
   inlineFolder,
   withInlineCompiler,
@@ -75,8 +77,15 @@ async function nameOf(files: PluginFiles): Promise<string> {
   }
 }
 
-const hasModule = async (files: PluginFiles): Promise<boolean> =>
-  (await files.readText('hooks/hooks.json'))?.includes('"modules"') === true;
+/** Whether `hooks/hooks.json` names a hooks module: parsed, so a file that holds only settings hooks is no mod. */
+async function hasModule(files: PluginFiles): Promise<boolean> {
+  const text = await files.readText('hooks/hooks.json');
+  try {
+    return text !== undefined && readHooksJsonModules(JSON.parse(text)).entry !== undefined;
+  } catch {
+    return false;
+  }
+}
 
 /** The candidate of a mod the test loads: where it runs decides how policy sees it. */
 function candidate(name: string, tier: TierName): ModCandidate {
@@ -147,6 +156,10 @@ async function placedMods(options: WorldOptions): Promise<readonly PlacedMod[]> 
   ];
 }
 
+const notStarted = (): never => {
+  throw new Error('the test has not called $ yet');
+};
+
 export function createWorld(options: WorldOptions): World {
   const fake = fakePorts();
   let mock: MockClock | undefined;
@@ -160,10 +173,7 @@ export function createWorld(options: WorldOptions): World {
     stubs,
     claude: undefined,
     needsRedraw: false,
-    host: () => {
-      if (!host) throw new Error('the test has not called $ yet');
-      return host;
-    },
+    host: () => host ?? notStarted(),
     reports,
     failures,
     appended: fake.appended,
@@ -206,6 +216,9 @@ export function createWorld(options: WorldOptions): World {
       compiler: withInlineCompiler(options.compiler, new Set(inline.map((mod) => mod.files))),
       policy: policyFor(placed),
       deny: { verdict: () => Promise.resolve('none') },
+      unanswered: unansweredReason,
+      // "session.start doesn't run by itself" in a test: the test fires it (test.md, "Follow the test kit's rules").
+      firesSessionStart: false,
       report: (report) => reports.push(report),
     });
     await host.registerBuiltIn(

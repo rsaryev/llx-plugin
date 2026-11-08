@@ -79,11 +79,26 @@ export function guardLoads(policy: ModsPolicyInput): boolean {
   return list === undefined || list.some(isGuardId);
 }
 
+const ROLLOUT_WORDS = {
+  'served-off': 'the rollout switch served off',
+  'saved-off': 'the rollout switch was saved off by an earlier session',
+} as const;
+
+/** The reason the rollout switch is off, as the debug log gives it for an installed plugin (troubleshoot.md, "Refusal messages"). */
+const rolloutRefusal = (rollout: NonNullable<ModsPolicyInput['rollout']>): string =>
+  `hooks modules are turned off for installed plugins in this process: ${ROLLOUT_WORDS[rollout]}`;
+
+/** What keeps every mod out until the trust prompt is answered: the wording is ours (judgment). */
+const UNTRUSTED =
+  'the directory is not trusted yet: no mod loads until the trust prompt is answered';
+
 /** The refusal text of an installed plugin's hooks module that policy keeps out, or `undefined`. */
 function installedRefusal(policy: ModsPolicyInput, isOrganizations: boolean): string | undefined {
+  if (policy.isTrusted === false) return UNTRUSTED;
   if (policy.flags.safeMode === true) {
     return 'installed plugins load no hooks module in this mode (--safe-mode)';
   }
+  if (policy.rollout !== undefined) return rolloutRefusal(policy.rollout);
   // The key reaches every installed plugin, the organization's too, in managed settings.
   if (flagSetting(policy.managed, 'disableAllHooks')) return 'disableAllHooks in managed settings';
   if (isOrganizations) return undefined;
@@ -106,9 +121,10 @@ function installedTier(policy: ModsPolicyInput, candidate: ModCandidate): Regist
   // doesn't meet the conditions"; a list in the user's settings orders the user's own mods.
   const names = (list: typeof prepend): boolean =>
     list !== undefined && list.isManaged === isOrganizations && list.ids.includes(candidate.id);
+  // "An id listed in both keys is prepended" (the `prependPlugins` description in the SDK's `Settings`).
+  if (names(prepend)) return 'prepend';
   if (names(append)) return 'append';
-  if (isOrganizations) return 'prepend';
-  return names(prepend) ? 'prepend' : 'user';
+  return isOrganizations ? 'prepend' : 'user';
 }
 
 /** The tier a built-in mod runs in: the guard first among `prepend`, other built-in mods last. */

@@ -15,6 +15,7 @@ import {
   modPlugin,
   organizations,
   policy,
+  registerOf,
   session,
 } from '../../support/mods-load.ts';
 import { codeTokens, sectionsOf, tableRows } from '../../support/mods-docs.ts';
@@ -29,16 +30,43 @@ spec('mods.setting.allowManagedModsOnly', () => {
         'cc-plugin-sec-default@builtin': { options: { allowManagedModsOnly: true } },
       },
     });
-    const { host } = session({ first: registerCalls, acme: registerCalls }, { policy: settings });
+    const { host } = session(
+      { first: registerCalls, acme: registerCalls, 'inline-mod': registerCalls },
+      { policy: settings },
+    );
     const report = await host.load([
       modPlugin(installed('first'), registerCalls),
       modPlugin(organizations('acme'), registerCalls),
       modPlugin(inline('inline-mod'), registerCalls),
     ]);
     expect(report.loaded.map((mod) => mod.name)).toEqual(['cc-plugin-sec-default', 'acme']);
-    expect(report.lines).toContain(
-      "first: refused by cc-plugin-sec-default: mods are limited to your organization's by policy (allowManagedModsOnly)",
+    for (const refused of ['first', 'inline-mod']) {
+      expect(report.lines).toContain(
+        `${refused}: refused by cc-plugin-sec-default: mods are limited to your organization's by policy (allowManagedModsOnly)`,
+      );
+    }
+  });
+
+  test('mods built into Claude Code keep running: the guard does not refuse them', async () => {
+    const settings = managed({
+      pluginConfigs: {
+        'cc-plugin-sec-default@builtin': { options: { allowManagedModsOnly: true } },
+      },
+    });
+    const builtinMod = { ...installed('agents-md'), isBuiltin: true, id: 'agents-md@builtin' };
+    const { host } = session(
+      { 'agents-md': registerCalls, first: registerCalls },
+      { policy: settings },
     );
+    const report = await host.load([
+      modPlugin(installed('first'), registerCalls),
+      modPlugin(builtinMod, registerCalls),
+    ]);
+    expect(report.loaded.map((mod) => [mod.name, mod.tier])).toEqual([
+      ['cc-plugin-sec-default', 'prepend'],
+      ['agents-md', 'builtin'],
+    ]);
+    expect(report.lines.join('\n')).not.toContain('agents-md');
   });
 
   test('only managed settings count: the option in user settings changes nothing', async () => {
@@ -115,7 +143,7 @@ spec('mods.setting.allowManagedModsOnly', () => {
 });
 
 spec('mods.setting.allowModsToOverrideDenyRules', () => {
-  const allowing = (on: (name: string, hook: () => unknown) => unknown): void => {
+  const allowing = (on: (name: string, ...rest: unknown[]) => void): void => {
     on('tool.check', () => ({ decision: 'allow', reason: 'looks fine' }));
   };
   const guardOptions = (overrides: boolean) =>
@@ -129,8 +157,7 @@ spec('mods.setting.allowModsToOverrideDenyRules', () => {
     verdict: 'deny' | 'ask' | 'none' | 'unknown' | 'throws',
   ) => {
     const s = session(
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the test's `on` is the hook registration function
-      { lifter: (on) => allowing(on as never) },
+      { lifter: registerOf((on) => allowing(on)) },
       {
         policy: settings,
         deny: {
@@ -141,7 +168,12 @@ spec('mods.setting.allowModsToOverrideDenyRules', () => {
         },
       },
     );
-    await s.host.load([modPlugin(installed('lifter'), (on) => allowing(on as never))]);
+    await s.host.load([
+      modPlugin(
+        installed('lifter'),
+        registerOf((on) => allowing(on)),
+      ),
+    ]);
     const result = await s.host.fire(
       'tool.check',
       { tool: 'Bash', input: { command: 'rm -rf /' } },
@@ -187,8 +219,40 @@ spec('mods.setting.allowModsToOverrideDenyRules', () => {
     }
   });
 
-  test('it is an option on the guard, read from managed settings only', () => {
-    expect(MOD_SETTINGS.allowModsToOverrideDenyRules.homes).toEqual(['guard-option']);
+  test("it is an option on the guard, read from managed settings only: set in the user's file, a denied call stays denied", async () => {
+    const userSet = policy({
+      managed: {},
+      user: {
+        pluginConfigs: {
+          'cc-plugin-sec-default@builtin': { options: { allowModsToOverrideDenyRules: true } },
+        },
+      },
+    });
+    const { result } = await check(userSet, 'deny');
+    expect(result).toEqual({
+      decision: 'deny',
+      reason: 'lifter tried to lift a deny rule in your settings',
+    });
+  });
+
+  test("it concerns a user's mod: an organization's mod that approves a call a deny rule refuses is not touched", async () => {
+    const s = session(
+      { acme: registerOf((on) => allowing(on)) },
+      { policy: guardOptions(false), deny: { verdict: () => Promise.resolve('deny') } },
+    );
+    await s.host.load([
+      modPlugin(
+        organizations('acme'),
+        registerOf((on) => allowing(on)),
+      ),
+    ]);
+    const result = await s.host.fire(
+      'tool.check',
+      { tool: 'Bash', input: { command: 'rm -rf /' } },
+      { core: () => Promise.resolve({ decision: 'ask' }) },
+    );
+    expect(result).toEqual({ decision: 'allow', reason: 'looks fine' });
+    expect(s.debug.join('\n')).not.toContain('tried to lift');
   });
 });
 

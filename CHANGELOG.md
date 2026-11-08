@@ -106,6 +106,20 @@
 
 ### Fixed
 
+- Mods loading, policy, scan and test kit: the test kit fails a mods API call no stub answers with
+  `no implementation for <name>` (not only `fs.read`), leaves `ui.invalidate`, `$.state` and
+  `session.append` to itself, and reads `hooks.json` as JSON instead of searching its text; an
+  inline mod written as method shorthand (`register(on) { ... }`, also `async`) loads; the host
+  fires `session.start` for each loaded mod after `load` and `reload`, a reload leaves the mods
+  the host registered itself, and `reloadMod(name)` keeps the version loaded before when a save
+  breaks the module (`reload failed, the previous version stays loaded:`); an id in both
+  `prependPlugins` and `appendPlugins` is prepended; the rollout switch refuses installed mods with
+  the documented `for installed plugins` lines; `isTrusted: false` keeps mods out until the trust
+  prompt is answered; `disableSideloadFlags` also rejects `--plugin-url`; the loader asks for the
+  types file where `claude plugin validate` does and an import that leaves the plugin directory is
+  refused; `validate` leaves out a file with nothing to report; the debug line lists the events;
+  `ModsSettingsFile` is typed from the SDK's `Settings`; the judgments row for gating events names
+  the five events of events.md.
 - Mods interface: `$.ui.ask` goes through a `tool.call` of `AskUserQuestion` and reads
   `result.answers`, so the documented stub works and a dismissed question rejects; `ui.message` and
   `ui.fault` reach only the mod that drew the `Client` (`DispatchOptions.only`); a toast raised

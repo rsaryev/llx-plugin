@@ -124,3 +124,14 @@ export function session(
 export function modPlugin(candidate: ModCandidate, register: RegisterFunction): ModPlugin {
   return { candidate, files: modFolder(candidate.name, register) };
 }
+
+/** The `on` of a test's `register`: a name, an optional filter and a hook, all loosely typed. */
+export type LooseOn = (name: string, ...rest: unknown[]) => { catch(handler: unknown): void };
+
+/**
+ * A `register` written with a loosely typed `on`, as a test needs it. The one cast: `RegisterFunction`
+ * types each hook by its event, and a test registers hooks of many events through one `on`.
+ */
+export const registerOf = (register: (on: LooseOn) => void | Promise<void>): RegisterFunction =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see the doc comment: only the type of `on` differs, the function is the same
+  register as unknown as RegisterFunction;

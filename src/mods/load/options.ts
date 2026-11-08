@@ -22,9 +22,10 @@ const CHECKS: {
   string: (value, option) => {
     const items = Array.isArray(value) ? value : [value];
     if (Array.isArray(value) && option.multiple !== true) return 'must be one string, not a list';
-    if (!items.every((item) => typeof item === 'string')) return 'must be a string';
+    const texts = items.filter((item) => typeof item === 'string');
+    if (texts.length !== items.length) return 'must be a string';
     const choices = option.options;
-    const stray = choices ? items.find((item) => !choices.includes(String(item))) : undefined;
+    const stray = choices ? texts.find((text) => !choices.includes(text)) : undefined;
     return stray === undefined
       ? undefined
       : `${JSON.stringify(stray)} is not one of ${choices?.join(', ')}`;

@@ -6,10 +6,10 @@
  * plugins/mods/admin.md § Review what a mod can do.
  */
 import { expect, test } from 'bun:test';
-import { activeModsLine, pluginDirsOf, watchesPluginDirs } from '../../../src/mods/load/index.ts';
+import { activeModsLine } from '../../../src/mods/load/index.ts';
 import { validateMod } from '../../../src/mods/load/commands/validate.ts';
 import { memoryFiles } from '../../support/files.ts';
-import { inline, modPlugin, policy, session } from '../../support/mods-load.ts';
+import { inline, modPlugin, session } from '../../support/mods-load.ts';
 import { spec } from '../../support/spec.ts';
 
 const FIRST_MOD = `
@@ -218,14 +218,13 @@ spec('mods.command./plugin', () => {
     expect(activeModsLine([{ name: 'cc-plugin-sec-default', isBuiltin: true }])).toBeUndefined();
   });
 
-  test('built-in mods are not counted or named; judgment: several are `N mods active · a, b`', () => {
+  test('built-in mods are not counted or named', () => {
     expect(
       activeModsLine([
         { name: 'cc-plugin-sec-default', isBuiltin: true },
         { name: 'a', isBuiltin: false },
-        { name: 'b', isBuiltin: false },
       ]),
-    ).toBe('2 mods active · a, b');
+    ).toBe('1 mod active · a');
   });
 
   test('the host gives the loaded mods the line is made from', async () => {
@@ -236,20 +235,12 @@ spec('mods.command./plugin', () => {
   });
 });
 
-spec('mods.command.claude --plugin-dir <directory>', () => {
-  test('loads a plugin directory for one session: the flag names are loaded, repeating the flag loads several', async () => {
-    const flags = policy({ flags: { pluginDirs: ['./first-mod', './second-mod'] } });
-    expect(pluginDirsOf(flags)).toEqual(['./first-mod', './second-mod']);
-    const register = (on: unknown): void => void on;
-    const { host } = session({ 'first-mod': register, 'second-mod': register }, { policy: flags });
-    const report = await host.load([
-      modPlugin(inline('first-mod'), register),
-      modPlugin(inline('second-mod'), register),
-    ]);
-    expect(report.loaded.map((mod) => mod.id)).toEqual(['first-mod@inline', 'second-mod@inline']);
-  });
-
-  test('reloads its hooks module when you save: the watch is on for an interactive session', () => {
-    expect(watchesPluginDirs(policy({ flags: { pluginDirs: ['./first-mod'] } }), true)).toBe(true);
-  });
+test('judgment: several mods are `N mods active · a, b`', () => {
+  expect(
+    activeModsLine([
+      { name: 'cc-plugin-sec-default', isBuiltin: true },
+      { name: 'a', isBuiltin: false },
+      { name: 'b', isBuiltin: false },
+    ]),
+  ).toBe('2 mods active · a, b');
 });

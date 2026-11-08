@@ -42,11 +42,21 @@ export function pluginDirsOf(policy: ModsPolicyInput): readonly string[] {
   return [...new Set([...policy.flags.pluginDirs, ...listed])];
 }
 
-/** The refusal at startup when managed `disableSideloadFlags` is set and a directory was named by flag. */
+/**
+ * The refusal at startup when managed `disableSideloadFlags` is set and a plugin was named by flag:
+ * `--plugin-dir` has the documented message (admin.md, "Test what users see"); `--plugin-url` has the
+ * same, naming its own flag (judgment).
+ */
 export function sideloadRefusal(policy: ModsPolicyInput): string | undefined {
   if (!flagSetting(policy.managed, 'disableSideloadFlags')) return undefined;
-  if (policy.flags.pluginDirs.length === 0) return undefined;
-  return "--plugin-dir is disabled by your organization's managed settings (disableSideloadFlags)";
+  const flags = [
+    { name: '--plugin-dir', given: policy.flags.pluginDirs },
+    { name: '--plugin-url', given: policy.flags.pluginUrls ?? [] },
+  ];
+  const named = flags.find((flag) => flag.given.length > 0);
+  return named === undefined
+    ? undefined
+    : `${named.name} is disabled by your organization's managed settings (disableSideloadFlags)`;
 }
 
 /**

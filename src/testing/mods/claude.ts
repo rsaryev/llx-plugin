@@ -45,6 +45,7 @@ export function createClaude(world: World): Record<string, Record<string, unknow
   const names: readonly string[] = [...MOD_EVENT_NAMES, ...CLASSIC_EVENT_NAMES];
   for (const name of names.filter(isFired)) {
     const [space = '', ...rest] = name.split('.');
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `names` lists event names of the protocol, which `AnyModEventName` is the type of
     tree[space] = { ...tree[space], [rest.join('.')]: fireOf(world, name as AnyModEventName) };
   }
   tree['ui'] = { mount: (spec: MountSpec): Promise<MountHandle> => mountUi(world, spec) };

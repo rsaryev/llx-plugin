@@ -7,6 +7,27 @@
  * and a type the reader cannot follow only costs the value its check.
  */
 
+import type { ModScan } from './scan/uses.ts';
+
+/**
+ * Why a module needs a types file it does not have, or `undefined` (reference.md, "Files": the file is
+ * "Required when the mod uses `$.state` or adds a namespace to the mods API"). A mod adds a namespace
+ * in an `engine.create` hook; judgment: a module that has one needs the file, as the scan cannot tell
+ * a hook that adds a namespace from one that only withholds.
+ */
+export function missingTypes(
+  scan: ModScan,
+  written: string,
+  typesPath: string,
+): string | undefined {
+  if (scan.stateReads.length + scan.stateWrites.length > 0) {
+    return `${written}: the module uses $.state, so ${typesPath} must declare its values`;
+  }
+  return scan.hooks.some((hook) => hook.event === 'engine.create')
+    ? `${written}: the module hooks engine.create, so ${typesPath} must declare the namespace it adds`
+    : undefined;
+}
+
 /** The text between the braces that open at `from` (the index of `{`), and the index after the closing one. */
 function block(
   text: string,

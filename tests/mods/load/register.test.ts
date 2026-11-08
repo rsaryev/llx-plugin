@@ -13,6 +13,7 @@ import {
   managed,
   modPlugin,
   organizations,
+  registerOf,
   session,
 } from '../../support/mods-load.ts';
 import { spec } from '../../support/spec.ts';
@@ -20,37 +21,29 @@ import { spec } from '../../support/spec.ts';
 const BLOCKED_CALLS = ['process.run', 'process.spawn'];
 
 type Event = { tier: string; plugin: string; uses: { calls: string[] } };
-type On = (name: string, ...rest: unknown[]) => { catch(handler: unknown): void };
 type Hook = ($: unknown, e: Event, next: (e: unknown) => Promise<unknown>) => Promise<unknown>;
 
 // The policy mod of the admin page, as `acme-guard/hooks/register.js`.
-const acmeGuard: RegisterFunction = (on) => {
-  (on as unknown as On)('plugin.register', (async (
-    _$: unknown,
-    e: Event,
-    next: (e: unknown) => Promise<unknown>,
-  ) => {
+const acmeGuard = registerOf((on) => {
+  on('plugin.register', (async (_$: unknown, e: Event, next: (e: unknown) => Promise<unknown>) => {
     const blocked = e.uses.calls.filter((call) => BLOCKED_CALLS.includes(call));
     if (e.tier === 'user' && blocked.length > 0) {
       return { refuse: 'Acme policy: mods may not call ' + blocked.join(', ') };
     }
     return next(e);
   }) satisfies Hook);
-};
+});
 
-const runner: RegisterFunction = (on) => {
-  (on as unknown as On)(
-    'tool.call',
-    async ($: { process: { run(a: string[]): Promise<unknown> } }) => {
-      await $.process.run(['ls']);
-      return { result: 'runner answered' };
-    },
-  );
-};
+const runner = registerOf((on) => {
+  on('tool.call', async ($: { process: { run(a: string[]): Promise<unknown> } }) => {
+    await $.process.run(['ls']);
+    return { result: 'runner answered' };
+  });
+});
 
-const reader: RegisterFunction = (on) => {
-  (on as unknown as On)('tool.call', async () => ({ result: 'reader answered' }));
-};
+const reader = registerOf((on) => {
+  on('tool.call', async () => ({ result: 'reader answered' }));
+});
 
 const policy = managed({ prependPlugins: ['acme-guard@acme-tools'] });
 const load = async (
@@ -93,30 +86,64 @@ spec('mods.event.plugin.register', () => {
     expect(await host.fire('tool.call', { tool: 'Bash' })).toEqual({ result: 'reader answered' });
   });
 
-  test("e.tier is where the mod would run: the organization's own mod may call what a user's may not", async () => {
-    const calls = (on: unknown) => runner(on as never, {});
-    const { report } = await load(
-      { 'acme-guard': acmeGuard, 'acme-tool': runner },
-      modPlugin(organizations('acme-guard'), acmeGuard),
-      modPlugin(organizations('acme-tool'), runner),
+  test("e.tier is where the mod would run: prepend for the organization's, append for the appended, user, builtin; the organization's own mod may call what a user's may not", async () => {
+    const seen: Record<string, string> = {};
+    const spy = registerOf((on) => {
+      on(
+        'plugin.register',
+        async (_$: unknown, e: Event, next: (e: unknown) => Promise<unknown>) => {
+          seen[e.plugin] = e.tier;
+          return next(e);
+        },
+      );
+    });
+    const builtinMod = { ...installed('agents-md'), isBuiltin: true, id: 'agents-md@builtin' };
+    const s = session(
+      { spy, 'acme-tool': runner, late: reader, 'user-mod': reader, 'agents-md': reader },
+      {
+        policy: managed({
+          prependPlugins: ['spy@acme-tools'],
+          appendPlugins: ['late@acme-tools'],
+        }),
+      },
     );
-    void calls;
-    expect(report.loaded.map((mod) => mod.name)).toEqual(['acme-guard', 'acme-tool']);
+    const report = await s.host.load([
+      modPlugin(organizations('spy'), spy),
+      modPlugin(organizations('late'), reader),
+      modPlugin(organizations('acme-tool'), runner),
+      modPlugin(installed('user-mod'), reader),
+      modPlugin(builtinMod, reader),
+    ]);
+    expect(seen).toEqual({
+      'acme-tool': 'prepend',
+      'user-mod': 'user',
+      late: 'append',
+      'agents-md': 'builtin',
+    });
+    // the organization's mod calls process.run and is not refused: nothing refuses a mod here
+    expect(report.lines).toEqual([]);
+    expect(report.loaded.map((mod) => mod.name)).toEqual([
+      'spy',
+      'acme-tool',
+      'user-mod',
+      'late',
+      'agents-md',
+    ]);
   });
 
   test("e.uses lists the mod's events, mods API calls without the $. prefix, environment variables and state", async () => {
     const seen: unknown[] = [];
-    const spy: RegisterFunction = (on) => {
-      (on as unknown as On)(
+    const spy = registerOf((on) => {
+      on(
         'plugin.register',
         async (_$: unknown, e: Event, next: (e: unknown) => Promise<unknown>) => {
           seen.push(e);
           return next(e);
         },
       );
-    };
-    const subject: RegisterFunction = (on) => {
-      (on as unknown as On)(
+    });
+    const subject = registerOf((on) => {
+      on(
         'tool.call',
         { tool: 'Bash' },
         async (
@@ -132,7 +159,7 @@ spec('mods.event.plugin.register', () => {
           return next(e);
         },
       );
-    };
+    });
     await load(
       { spy, subject },
       modPlugin(organizations('spy'), spy),
@@ -155,11 +182,11 @@ spec('mods.event.plugin.register', () => {
   });
 
   test('a hook that throws is skipped, so the check fails open; a .catch handler that returns the refusal fails closed', async () => {
-    const throwing: RegisterFunction = (on) => {
-      (on as unknown as On)('plugin.register', async () => {
+    const throwing = registerOf((on) => {
+      on('plugin.register', async () => {
         throw new Error('boom');
       });
-    };
+    });
     const open = await load(
       { 'acme-guard': throwing, runner },
       modPlugin(organizations('acme-guard'), throwing),
@@ -170,14 +197,14 @@ spec('mods.event.plugin.register', () => {
       'acme-guard: plugin.register hook skipped: threw Error: boom',
     ]);
 
-    const closed: RegisterFunction = (on) => {
-      (on as unknown as On)('plugin.register', async () => {
+    const closed = registerOf((on) => {
+      on('plugin.register', async () => {
         throw new Error('boom');
       }).catch(async (_$: unknown, e: Event, next: (e: unknown) => Promise<unknown>) => {
         if (e.tier !== 'user') return next(e);
         return { refuse: 'Acme policy check failed, so this mod was not loaded' };
       });
-    };
+    });
     const shut = await load(
       { 'acme-guard': closed, runner, acme: reader },
       modPlugin(organizations('acme-guard'), closed),
@@ -191,34 +218,21 @@ spec('mods.event.plugin.register', () => {
   });
 
   test('a refusal returned after next resolved still holds', async () => {
-    const after: RegisterFunction = (on) => {
-      (on as unknown as On)(
+    const after = registerOf((on) => {
+      on(
         'plugin.register',
         async (_$: unknown, e: unknown, next: (e: unknown) => Promise<unknown>) => {
           await next(e);
           return { refuse: 'after next' };
         },
       );
-    };
+    });
     const { report } = await load(
       { 'acme-guard': after, reader },
       modPlugin(organizations('acme-guard'), after),
       modPlugin(installed('reader'), reader),
     );
     expect(report.lines).toEqual(['reader: refused by acme-guard: after next']);
-  });
-
-  test('judgment: an answer that is not { refuse: string } fails the hook like a throw, and the mod loads', async () => {
-    const wrong: RegisterFunction = (on) => {
-      (on as unknown as On)('plugin.register', async () => ({ refuse: 3 }));
-    };
-    const { report, reports } = await load(
-      { 'acme-guard': wrong, reader },
-      modPlugin(organizations('acme-guard'), wrong),
-      modPlugin(installed('reader'), reader),
-    );
-    expect(report.loaded.map((mod) => mod.name)).toEqual(['acme-guard', 'reader']);
-    expect(reports[0]?.reason).toContain('returned the wrong shape');
   });
 
   test("a mod loaded with --plugin-dir is a user's mod too: its tier is user", async () => {
@@ -231,4 +245,17 @@ spec('mods.event.plugin.register', () => {
       'runner: refused by acme-guard: Acme policy: mods may not call process.run',
     ]);
   });
+});
+
+test('judgment: an answer that is not { refuse: string } fails the hook like a throw, and the mod loads', async () => {
+  const wrong = registerOf((on) => {
+    on('plugin.register', async () => ({ refuse: 3 }));
+  });
+  const { report, reports } = await load(
+    { 'acme-guard': wrong, reader },
+    modPlugin(organizations('acme-guard'), wrong),
+    modPlugin(installed('reader'), reader),
+  );
+  expect(report.loaded.map((mod) => mod.name)).toEqual(['acme-guard', 'reader']);
+  expect(reports[0]?.reason).toContain('returned the wrong shape');
 });

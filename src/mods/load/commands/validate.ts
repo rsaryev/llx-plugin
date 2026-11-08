@@ -7,7 +7,7 @@ import {
 import { validateManifest } from '../../../format/manifest.ts';
 import type { PluginFiles } from '../../../ports/index.ts';
 import type { ModCompiler } from '../../ports.ts';
-import { declaredState } from '../types-decl.ts';
+import { declaredState, missingTypes } from '../types-decl.ts';
 import { callLabel, hookLabel, scanHooksModule, type ModScan } from '../scan/index.ts';
 
 /**
@@ -139,18 +139,12 @@ async function checkModule(
   const types = await input.files.readText(typesPath, input.signal);
   const scan = scanHooksModule(source.code, written, {
     isEntry: true,
+    directory: entry.slice(0, Math.max(entry.lastIndexOf('/'), 0)),
     ...(types === undefined ? {} : { declaredState: declaredState(types) }),
   });
   const issues = [...scan.issues];
-  const usesState = scan.stateReads.length + scan.stateWrites.length > 0;
-  if (usesState && types === undefined) {
-    issues.push(
-      error(
-        typesPath,
-        `${written}: the module uses $.state, so ${typesPath} must declare its values`,
-      ),
-    );
-  }
+  const needed = types === undefined ? missingTypes(scan, written, typesPath) : undefined;
+  if (needed !== undefined) issues.push(error(typesPath, needed));
   const lines = scanLines(written, scan);
   return {
     lines,
@@ -234,6 +228,10 @@ async function checkModules(
   return { files: [...hooksFile, module.report], lines: module.lines };
 }
 
+/** "Files with no error, warning, or note get no entry, so `contents` is empty when there's nothing to report" (cli-reference.md, "Output and exit codes"). */
+const hasEntry = (file: FileReport): boolean =>
+  file.errors.length + file.warnings.length + file.notes.length > 0;
+
 const sum = (files: readonly FileReport[], key: 'errors' | 'warnings'): number =>
   files.reduce((total, file) => total + file[key].length, 0);
 
@@ -258,7 +256,7 @@ export async function validateMod(
     strict,
     target: input.target,
     manifest,
-    contents: modules.files,
+    contents: modules.files.filter(hasEntry),
     advice: [],
     lines,
     exitCode: done.exitCode,

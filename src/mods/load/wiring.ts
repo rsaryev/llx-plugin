@@ -14,8 +14,9 @@ import type { HookReport, ModChain, RegisteredHook, RegisterTier } from '../type
 import { createModsUi, withUiRules, type ModInterface, type ModsUi } from '../ui/index.ts';
 import { guardHooks, type ApprovalLedger } from './guard.ts';
 import type { LoaderEnv, LoadedMod } from './loader.ts';
-import type { ModsPolicyInput } from './policy-input.ts';
+import { pluginOptions, type ModsPolicyInput } from './policy-input.ts';
 import { tagRefusals, withRegisterRules, type RefusalBook } from './register-call.ts';
+import { withUnanswered } from './unanswered.ts';
 import { GUARD_ID, GUARD_NAME } from '../../protocol/mods-settings.ts';
 
 /** What the host is given (see `ModsHostOptions`, which adds nothing to it). */
@@ -29,6 +30,7 @@ export interface Wires {
   readonly debug: (line: string) => void;
   readonly report: (report: HookReport) => void;
   readonly signal: AbortSignal;
+  readonly unanswered?: (name: string) => string | undefined;
 }
 
 export interface Wired {
@@ -48,8 +50,8 @@ export interface Wired {
 
 /** The settings of a plugin: the user's `pluginConfigs` entry, with the managed one over it (judgment: the docs do not say which wins). */
 const savedOptions = (policy: ModsPolicyInput) => (id: string) => {
-  const user = policy.user.pluginConfigs?.[id]?.options;
-  const managed = policy.managed?.pluginConfigs?.[id]?.options;
+  const user = pluginOptions(policy.user, id);
+  const managed = pluginOptions(policy.managed, id);
   return user === undefined && managed === undefined ? undefined : { ...user, ...managed };
 };
 
@@ -58,10 +60,11 @@ export function wire(given: Wires): Wired {
   const { ports, policy, debug, report, signal } = given;
   const rules = withRegisterRules(withUiRules(withApiRules(createEventRules())));
   const chain = createModChain({ clock: ports.clock, rules });
+  const calls = given.unanswered ? withUnanswered(chain, given.unanswered) : chain;
   const state = createStateStore();
   const scopes: ScopeBook = new Map();
   const ui = createModsUi({
-    chain,
+    chain: calls,
     clock: ports.clock,
     iface: given.iface,
     state,
@@ -70,7 +73,7 @@ export function wire(given: Wires): Wired {
     debug,
   });
   const shared: Omit<ModsApiOptions, 'canWithhold'> = {
-    chain,
+    chain: calls,
     ports,
     registries: createRegistries(),
     state,

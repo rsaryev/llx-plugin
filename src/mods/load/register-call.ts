@@ -43,7 +43,6 @@ export const withRegisterRules = (rules: EventRules): EventRules => ({
 });
 
 /** Who answered each refusal: the hook that returned a reason first (an inner hook finishes before the hooks around it) is the refuser. */
-/** Who answered each refusal: the hook that returned a reason first (an inner hook finishes before the hooks around it) is the refuser. */
 export interface RefusalBook {
   readonly refusers: Map<string, string>;
 }

@@ -5,12 +5,11 @@
  */
 import { expect, test } from 'bun:test';
 import type { RegisterFunction } from '../../../src/testing/mods/index.ts';
+import { registerOf } from '../../support/mods-load.ts';
 import { runPluginTests, type TestFile } from '../../support/mods-testing.ts';
 import { spec } from '../../support/spec.ts';
 
-type Dollar = Record<string, Record<string, (input: unknown) => Promise<unknown>>>;
-
-const countdown = ((on: (name: string, ...rest: unknown[]) => void) => {
+const countdown = registerOf((on) => {
   on(
     'command.run',
     { command: 'countdown' },
@@ -32,7 +31,7 @@ const countdown = ((on: (name: string, ...rest: unknown[]) => void) => {
       return {};
     },
   );
-}) as RegisterFunction;
+});
 
 const run = (name: string, register: RegisterFunction, file: TestFile) =>
   runPluginTests({ name, register, tests: { [`tests/${name}.test.ts`]: file } });
@@ -41,7 +40,7 @@ spec('mods.command.claude plugin test [directory]', () => {
   test('mock.clock answers $.clock from a clock the test advances: the countdown ends with a toast', async () => {
     const result = await run('countdown', countdown, ({ test, expect, mock }) => {
       test('the countdown ends with a toast', async (claude, on) => {
-        const $ = claude as unknown as Dollar;
+        const $ = claude;
         const clock = mock.clock(on);
         const toasts: string[] = [];
         on('ui.toast', (_$: unknown, e: { text: string }) => {
@@ -59,14 +58,14 @@ spec('mods.command.claude plugin test [directory]', () => {
   });
 
   test('without mock.clock a $.clock call fails with `no implementation for clock.now`', async () => {
-    const stamp = ((on: (name: string, ...rest: unknown[]) => void) => {
+    const stamp = registerOf((on) => {
       on('command.run', { command: 'stamp' }, async ($: { clock: { now(): Promise<number> } }) => ({
         text: String(await $.clock.now()),
       }));
-    }) as RegisterFunction;
+    });
     const result = await run('stamp', stamp, ({ test, expect }) => {
       test('unanswered clock', async (claude, on) => {
-        const $ = claude as unknown as Dollar;
+        const $ = claude;
         on('command.run', () => ({ text: 'core' }));
         const answer = (await $['command']?.['run']?.({ command: 'stamp', args: '' })) as {
           text: string;
@@ -79,7 +78,7 @@ spec('mods.command.claude plugin test [directory]', () => {
   });
 
   test('mock.store answers $.store from the entries given; mock.env answers $.env.get', async () => {
-    const reader = ((on: (name: string, ...rest: unknown[]) => void) => {
+    const reader = registerOf((on) => {
       on(
         'command.run',
         { command: 'read' },
@@ -88,10 +87,10 @@ spec('mods.command.claude plugin test [directory]', () => {
           env: { get(n: string): Promise<unknown> };
         }) => ({ text: `${String(await $.store.get('count'))} ${String(await $.env.get('CI'))}` }),
       );
-    }) as RegisterFunction;
+    });
     const result = await run('reader', reader, ({ test, expect, mock }) => {
       test('values', async (claude, on) => {
-        const $ = claude as unknown as Dollar;
+        const $ = claude;
         mock.store(on, { count: 7 });
         mock.env(on, { CI: 'true' });
         const answer = (await $['command']?.['run']?.({ command: 'read', args: '' })) as {
@@ -104,7 +103,7 @@ spec('mods.command.claude plugin test [directory]', () => {
   });
 
   test('mock.session(on).appended() lists the rows the mod added, oldest first', async () => {
-    const writer = ((on: (name: string, ...rest: unknown[]) => void) => {
+    const writer = registerOf((on) => {
       on(
         'command.run',
         { command: 'note' },
@@ -114,10 +113,10 @@ spec('mods.command.claude plugin test [directory]', () => {
           return {};
         },
       );
-    }) as RegisterFunction;
+    });
     const result = await run('writer', writer, ({ test, expect, mock }) => {
       test('rows', async (claude, on) => {
-        const $ = claude as unknown as Dollar;
+        const $ = claude;
         const session = mock.session(on);
         await $['command']?.['run']?.({ command: 'note', args: '' });
         expect(session.appended()).toEqual([

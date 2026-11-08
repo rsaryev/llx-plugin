@@ -134,24 +134,43 @@ test('`on` is not declared again inside register', () => {
   ]);
 });
 
-test('imports only from files in the plugin by relative path, and `claude-code`; no import() and no require', () => {
-  const head = (line: string): string => `${line}\nexport function register(on) {}`;
-  expect(messages(head("import { atom } from 'claude-code'\nimport { f } from './f.js'"))).toEqual(
-    [],
-  );
-  expect(messages(head("import fs from 'node:fs'"))[0]).toContain('imports "node:fs"');
-  expect(messages(head("import x from 'left-pad'"))[0]).toContain('imports "left-pad"');
-  expect(
-    messages(
-      "export function register(on) { on('tool.call', async ($, e, next) => { await import('./x.js'); return next(e) }) }",
-    ),
-  ).toEqual([
-    'register.js: a dynamic import(); a hooks module imports its own files with an import declaration',
-  ]);
-  expect(messages(head("const fs = require('fs')"))[0]).toContain('require()');
-  expect(
-    scanHooksModule(head("import { f } from './f.js'\nimport g from '../g.js'"), 'a.js').imports,
-  ).toEqual(['./f.js', '../g.js']);
+spec('mods.file.hooks/register.js', () => {
+  test('imports only from files in the plugin by relative path, and `claude-code`; no import() and no require', () => {
+    const head = (line: string): string => `${line}\nexport function register(on) {}`;
+    expect(
+      messages(head("import { atom } from 'claude-code'\nimport { f } from './f.js'")),
+    ).toEqual([]);
+    expect(messages(head("import fs from 'node:fs'"))[0]).toContain('imports "node:fs"');
+    expect(messages(head("import x from 'left-pad'"))[0]).toContain('imports "left-pad"');
+    expect(
+      messages(
+        "export function register(on) { on('tool.call', async ($, e, next) => { await import('./x.js'); return next(e) }) }",
+      ),
+    ).toEqual([
+      'register.js: a dynamic import(); a hooks module imports its own files with an import declaration',
+    ]);
+    expect(messages(head("const fs = require('fs')"))[0]).toContain('require()');
+    expect(
+      scanHooksModule(head("import { f } from './f.js'\nimport g from '../g.js'"), 'hooks/a.js')
+        .imports,
+    ).toEqual(['./f.js', '../g.js']);
+  });
+
+  test('an import that leaves the plugin directory is refused, one that goes up and back down inside it is not', () => {
+    const head = (line: string): string => `${line}\nexport function register(on) {}`;
+    const from = (line: string, directory: string) =>
+      scanHooksModule(head(line), 'hooks/register.js', { isEntry: true, directory });
+    const outside = from("import x from '../../outside.js'", 'hooks');
+    expect(outside.issues.map((issue) => issue.message)).toEqual([
+      'hooks/register.js: imports "../../outside.js", outside the plugin directory: a hooks module imports only files inside the plugin directory, by relative path, and claude-code',
+    ]);
+    expect(outside.imports).toEqual([]);
+    expect(from("import x from '../lib/x.js'", 'hooks').issues).toEqual([]);
+    expect(from("import x from '../hooks/../lib/x.js'", 'hooks').issues).toEqual([]);
+    expect(from("import x from '../x.js'", 'hooks/deep').issues).toEqual([]);
+    expect(from("import x from '../../x.js'", 'hooks/deep').issues).toEqual([]);
+    expect(from("import x from '../../../x.js'", 'hooks/deep').issues).not.toEqual([]);
+  });
 });
 
 test('a hook with a .catch handler and a gating hook without one are told apart', () => {
@@ -168,6 +187,25 @@ export function register(on) {
     ['prompt.submit', false, true],
     ['session.start', false, false],
   ]);
+});
+
+test('the five gating events of events.md are config.set and plugin.register among them, and no other', () => {
+  const hooked = (event: string): boolean => {
+    const source = `export function register(on) { on('${event}', async ($, e, next) => next(e)) }`;
+    return scanHooksModule(source, 'register.js', { isEntry: true }).hooks[0]?.isGating === true;
+  };
+  for (const event of [
+    'tool.call',
+    'tool.check',
+    'prompt.submit',
+    'config.set',
+    'plugin.register',
+  ]) {
+    expect(hooked(event)).toBe(true);
+  }
+  for (const event of ['session.send', 'agent.spawn', 'session.start', 'turn.start']) {
+    expect(hooked(event)).toBe(false);
+  }
 });
 
 test('env reads and writes and state reads and writes are named; a computed name is marked', () => {
@@ -206,12 +244,14 @@ export function register(on) {}`;
   expect(messages(source('const'), { declaredState: new Set(['hello-tabs.count']) })).toEqual([]);
 });
 
-test('a module with no register, or code that does not parse, is an issue, never a throw', () => {
-  expect(messages('const x = 1')).toEqual([
-    'register.js: a hooks module exports register(on, options)',
-  ]);
-  expect(messages('export function register(on) {')[0]).toContain('register.js:');
-  expect(scanHooksModule('export function register(on) {', 'a.js').hooks).toEqual([]);
+spec('mods.file.hooks/register.js', () => {
+  test('a module with no register, or code that does not parse, is an issue, never a throw', () => {
+    expect(messages('const x = 1')).toEqual([
+      'register.js: a hooks module exports register(on, options)',
+    ]);
+    expect(messages('export function register(on) {')[0]).toContain('register.js:');
+    expect(scanHooksModule('export function register(on) {', 'a.js').hooks).toEqual([]);
+  });
 });
 
 test('a telemetry hook without { to: "collector" } fails the scan', () => {

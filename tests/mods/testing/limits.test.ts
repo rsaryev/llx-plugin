@@ -5,16 +5,14 @@
  * that holds no mod).
  */
 import { expect, test } from 'bun:test';
-import { MOD_LIMITS } from '../../../src/protocol/mods-limits.ts';
-import type { RegisterFunction } from '../../../src/testing/mods/index.ts';
 import { fixedClock } from '../../support/clock.ts';
-import { policy } from '../../support/mods-load.ts';
+import { policy, registerOf } from '../../support/mods-load.ts';
 import { runPluginTests, type TestFile } from '../../support/mods-testing.ts';
 import { spec } from '../../support/spec.ts';
 
-const idle = ((on: (name: string, ...rest: unknown[]) => void) => {
+const idle = registerOf((on) => {
   on('command.run', { command: 'idle' }, async () => ({}));
-}) as RegisterFunction;
+});
 
 /** A test that has been running for `ms` of the runner's clock and never finishes. */
 const stuckFor =
@@ -47,15 +45,11 @@ const outcome = (file: TestFile, clock: ReturnType<typeof fixedClock>) =>
   runPluginTests({ name: 'idle', register: idle, clock, tests: { 'tests/t.test.ts': file } });
 
 spec('mods.limit.claude plugin test', () => {
-  test('the limit is 5 seconds', () => {
-    expect(MOD_LIMITS.testMs).toBe(5000);
-  });
-
   test('a test that runs past 5 seconds fails with a timeout, one that stops before it passes', async () => {
     const clock = fixedClock();
     const slow = await outcome(stuckFor(clock, 5000), clock);
     expect(slow.exitCode).toBe(1);
-    expect(slow.lines.join('\n')).toContain('this test timed out after 5000ms');
+    expect(slow.failed).toBe(1);
     const clockTwo = fixedClock();
     const quick = await outcome(busyFor(clockTwo, 4999), clockTwo);
     expect(quick.exitCode).toBe(0);
@@ -64,7 +58,7 @@ spec('mods.limit.claude plugin test', () => {
   test('timeoutMs of the test replaces the 5 seconds, longer or shorter', async () => {
     const shortClock = fixedClock();
     const shorter = await outcome(stuckFor(shortClock, 100, { timeoutMs: 100 }), shortClock);
-    expect(shorter.lines.join('\n')).toContain('this test timed out after 100ms');
+    expect(shorter.failed).toBe(1);
     const longClock = fixedClock();
     const longer = await outcome(busyFor(longClock, 9000, { timeoutMs: 10_000 }), longClock);
     expect(longer.exitCode).toBe(0);
@@ -86,10 +80,9 @@ spec('mods.limit.claude plugin test', () => {
 });
 
 spec('mods.command.claude plugin test [directory]', () => {
-  test('in a directory that holds no mod it prints `no hooks module to load` and exits with 0', async () => {
+  test('in a directory that holds no mod it prints `no hooks module to load`', async () => {
     const run = await runPluginTests({ name: 'empty', tests: {} });
     expect(run.lines.join('\n')).toContain('no hooks module to load');
-    expect(run.exitCode).toBe(0);
   });
 
   test('disableAllHooks in your own settings or your organization`s policy: `hooks modules are turned off here`, exit 1', async () => {
@@ -146,4 +139,15 @@ spec('mods.command.claude plugin test [directory]', () => {
     });
     expect(run.lines.join('\n')).toContain('no hooks module to load');
   });
+});
+
+test('judgment: a directory with no mod exits 0, and a test past its limit reads `this test timed out after <n>ms`', async () => {
+  const run = await runPluginTests({ name: 'empty', tests: {} });
+  expect(run.exitCode).toBe(0);
+  const clock = fixedClock();
+  const slow = await outcome(stuckFor(clock, 5000), clock);
+  expect(slow.lines.join('\n')).toContain('this test timed out after 5000ms');
+  const shortClock = fixedClock();
+  const shorter = await outcome(stuckFor(shortClock, 100, { timeoutMs: 100 }), shortClock);
+  expect(shorter.lines.join('\n')).toContain('this test timed out after 100ms');
 });

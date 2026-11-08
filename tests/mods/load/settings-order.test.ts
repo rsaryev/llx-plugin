@@ -8,15 +8,14 @@
  */
 import { expect, test } from 'bun:test';
 import { MOD_SETTINGS } from '../../../src/protocol/mods-settings.ts';
-import {
-  decideModLoad,
-  orderMods,
-  parsePluginDirs,
-  pluginDirsOf,
-  watchesPluginDirs,
-} from '../../../src/mods/load/index.ts';
-import { installed, managed, organizations, policy } from '../../support/mods-load.ts';
+import { decideModLoad, orderMods, parsePluginDirs } from '../../../src/mods/load/index.ts';
+import type { ModsPolicyInput } from '../../../src/mods/load/index.ts';
+import { installed, managed, organizations, policy, session } from '../../support/mods-load.ts';
 import { spec } from '../../support/spec.ts';
+
+const dirsOf = (settings: ModsPolicyInput) => session({}, { policy: settings }).host.pluginDirs();
+const watches = (settings: ModsPolicyInput, isInteractive: boolean) =>
+  session({}, { policy: settings }).host.watchesPluginDirs(isInteractive);
 
 const names = (order: ReturnType<typeof orderMods>) =>
   order.ordered.map((mod) => `${mod.candidate.name}:${mod.tier}`);
@@ -37,42 +36,39 @@ spec('mods.setting.CLAUDE_CODE_PLUGIN_DIRS', () => {
 
   test('read from the environment, or `env` in ~/.claude/settings.json, and loaded as --plugin-dir does (after the flags)', () => {
     const fromEnv = policy({ env: { CLAUDE_CODE_PLUGIN_DIRS: '/env/one' } });
-    expect(pluginDirsOf(fromEnv)).toEqual(['/env/one']);
+    expect(dirsOf(fromEnv)).toEqual(['/env/one']);
     const fromSettings = policy({ user: { env: { CLAUDE_CODE_PLUGIN_DIRS: '/settings/one' } } });
-    expect(pluginDirsOf(fromSettings)).toEqual(['/settings/one']);
+    expect(dirsOf(fromSettings)).toEqual(['/settings/one']);
     const both = policy({
       env: { CLAUDE_CODE_PLUGIN_DIRS: '/env/one:/flag/one' },
       flags: { pluginDirs: ['/flag/one'] },
     });
-    expect(pluginDirsOf(both)).toEqual(['/flag/one', '/env/one']);
+    expect(dirsOf(both)).toEqual(['/flag/one', '/env/one']);
   });
 
   test('it is read from the environment and the user settings only: managed `env` is not one of its homes', () => {
     expect(MOD_SETTINGS.CLAUDE_CODE_PLUGIN_DIRS.homes).toEqual(['environment', 'user-env']);
     const viaManaged = policy({ managed: { env: { CLAUDE_CODE_PLUGIN_DIRS: '/managed' } } });
-    expect(pluginDirsOf(viaManaged)).toEqual([]);
+    expect(dirsOf(viaManaged)).toEqual([]);
   });
 });
 
 spec('mods.setting.CLAUDE_CODE_PLUGIN_DIR_WATCH', () => {
   test('`1` makes a long-running non-interactive session reload --plugin-dir mods on save; other values do not', () => {
-    expect(watchesPluginDirs(policy({ env: { CLAUDE_CODE_PLUGIN_DIR_WATCH: '1' } }), false)).toBe(
-      true,
-    );
+    expect(watches(policy({ env: { CLAUDE_CODE_PLUGIN_DIR_WATCH: '1' } }), false)).toBe(true);
     for (const value of [undefined, '0', 'true', '']) {
-      expect(
-        watchesPluginDirs(policy({ env: { CLAUDE_CODE_PLUGIN_DIR_WATCH: value } }), false),
-      ).toBe(false);
+      expect(watches(policy({ env: { CLAUDE_CODE_PLUGIN_DIR_WATCH: value } }), false)).toBe(false);
     }
   });
 
   test('an interactive session watches a --plugin-dir directory without it (create.md: it hot-reloads when you save)', () => {
-    expect(watchesPluginDirs(policy(), true)).toBe(true);
+    expect(watches(policy(), true)).toBe(true);
+    expect(watches(policy({ env: { CLAUDE_CODE_PLUGIN_DIR_WATCH: '0' } }), true)).toBe(true);
   });
 });
 
 spec(['mods.setting.prependPlugins', 'mods.setting.appendPlugins'], () => {
-  const guardRow = (ids: readonly string[]) => ids;
+  const guardRow = (ids: string[]) => ids;
 
   test('mods in prependPlugins run before every mod a user installs, those in appendPlugins after, in the listed order', () => {
     const settings = {
@@ -174,10 +170,41 @@ spec(['mods.setting.prependPlugins', 'mods.setting.appendPlugins'], () => {
     }
   });
 
-  test('settings: a repository cannot set them, so they have no home in project or local settings', () => {
-    for (const name of ['prependPlugins', 'appendPlugins'] as const) {
-      expect(MOD_SETTINGS[name].homes).toEqual(['managed', 'user']);
-    }
+  test('a repository cannot set them: lists in project or local settings, handed over with the rest, change no order', () => {
+    const repository = {
+      ...policy(),
+      project: { prependPlugins: ['b@market'] },
+      local: { appendPlugins: ['a@market'] },
+    };
+    const order = orderMods(repository, [installed('a'), installed('b')]);
+    expect(names(order)).toEqual(['a:user', 'b:user']);
+    expect(order.notes).toEqual([]);
+  });
+
+  test('an id listed in both keys is prepended: it runs in the prepend tier, in the prepend order, with no note', () => {
+    const order = orderMods(
+      managed({
+        prependPlugins: ['sec-default@builtin', 'acme-both@acme-tools'],
+        appendPlugins: ['acme-both@acme-tools', 'acme-z@acme-tools'],
+      }),
+      [organizations('acme-z'), organizations('acme-both'), installed('user-mod')],
+    );
+    expect(names(order)).toEqual([
+      'cc-plugin-sec-default:prepend',
+      'acme-both:prepend',
+      'user-mod:user',
+      'acme-z:append',
+    ]);
+    expect(order.notes).toEqual([]);
+    expect(
+      decideModLoad(
+        managed({
+          prependPlugins: ['acme-both@acme-tools'],
+          appendPlugins: ['acme-both@acme-tools'],
+        }),
+        organizations('acme-both'),
+      ).tier,
+    ).toBe('prepend');
   });
 
   test('among the mods a user installs, a mod runs before the mods it lists under dependencies (events.md)', () => {
@@ -197,4 +224,13 @@ spec(['mods.setting.prependPlugins', 'mods.setting.appendPlugins'], () => {
       'agents-md:builtin',
     ]);
   });
+});
+
+test('judgment: the variable is trimmed, empty pieces and repeats dropped, relative paths kept, flags first, the process environment before `env` of settings', () => {
+  const both = policy({
+    env: { CLAUDE_CODE_PLUGIN_DIRS: ' ./rel : :/abs/one:/flag/one ' },
+    user: { env: { CLAUDE_CODE_PLUGIN_DIRS: '/settings/ignored' } },
+    flags: { pluginDirs: ['/flag/one'] },
+  });
+  expect(dirsOf(both)).toEqual(['/flag/one', './rel', '/abs/one']);
 });

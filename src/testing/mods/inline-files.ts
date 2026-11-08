@@ -9,13 +9,26 @@ import { inlineRuntime } from './inline-runtime.ts';
  * kit's scan reads it as it reads any mod, and the runtime runs the function itself.
  */
 
-/** The text of `register` as a hooks module that exports it: a function declaration is renamed, anything else is assigned. */
+const DECLARED = /^(async\s+)?function\s*\*?\s*[\w$]*/;
+/** Method shorthand, `register(on) { ... }` or `async register(on) { ... }`: `toString()` gives it without `function`. */
+const METHOD = /^(async\s+)?(\*\s*)?(?!async\s*\()([\w$]+)\s*\(/;
+
+/**
+ * The text of `register` as a hooks module that exports it: a function declaration and method
+ * shorthand (`{ name: 'runner', register(on) { ... } }`, the shape test.md writes) become
+ * `export function register`, anything else (an arrow function) is assigned.
+ */
 export function moduleText(register: RegisterFunction): string {
   const text = register.toString();
-  const declared = /^(async\s+)?function\s*\*?\s*[\w$]*/;
-  return declared.test(text)
-    ? `export ${text.replace(declared, (head) => head.replace(/[\w$]*$/, 'register'))}`
-    : `export const register = ${text}`;
+  if (DECLARED.test(text)) {
+    return `export ${text.replace(DECLARED, (head) => head.replace(/[\w$]*$/, 'register'))}`;
+  }
+  const method = METHOD.exec(text);
+  if (method) {
+    const [head = '', isAsync = '', star = ''] = method;
+    return `export ${isAsync}function${star === '' ? '' : '*'} register(${text.slice(head.length)}`;
+  }
+  return `export const register = ${text}`;
 }
 
 const encoder = new TextEncoder();

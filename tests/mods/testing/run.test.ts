@@ -4,16 +4,15 @@
  * [directory]`: every file under the directory whose name ends in `.test.ts` or `.test.tsx`).
  */
 import { expect, test } from 'bun:test';
-import type { RegisterFunction } from '../../../src/testing/mods/index.ts';
+import { registerOf } from '../../support/mods-load.ts';
 import { runPluginTests } from '../../support/mods-testing.ts';
 import { spec } from '../../support/spec.ts';
 
 type Next = (e: unknown) => Promise<unknown>;
-type Register = (on: (name: string, ...rest: unknown[]) => void) => void;
 
 // first-mod/hooks/register.js of create.md, trimmed to the hooks the test of test.md reaches.
 let calls = 0;
-const firstMod: RegisterFunction = ((on) => {
+const firstMod = registerOf((on) => {
   calls = 0;
   on('tool.call', async ($: { ui: { invalidate(name: string): void } }, e: never, next: Next) => {
     calls += 1;
@@ -23,7 +22,7 @@ const firstMod: RegisterFunction = ((on) => {
   on('command.run', { command: 'tally' }, async () => ({
     text: 'Claude has made ' + calls + ' tool calls since this mod loaded',
   }));
-}) satisfies Register as RegisterFunction;
+});
 
 spec('mods.command.claude plugin test [directory]', () => {
   test('runs the test of the first-mod example: two tool calls, then /tally counts both', async () => {
@@ -107,7 +106,7 @@ spec('mods.command.claude plugin test [directory]', () => {
   });
 
   test('a stub that returns a bare value for a mods API call is reported as `returned neither { value } nor { deny }`', async () => {
-    const reader: RegisterFunction = ((on) => {
+    const reader = registerOf((on) => {
       on(
         'command.run',
         { command: 'read' },
@@ -115,7 +114,7 @@ spec('mods.command.claude plugin test [directory]', () => {
           text: String(await $.store.get('k')),
         }),
       );
-    }) satisfies Register as RegisterFunction;
+    });
     const run = await runPluginTests({
       name: 'reader',
       register: reader,
@@ -138,7 +137,7 @@ spec('mods.command.claude plugin test [directory]', () => {
   });
 
   test('a mod call nobody answers fails with `no implementation for <name>`', async () => {
-    const reader: RegisterFunction = ((on) => {
+    const reader = registerOf((on) => {
       on(
         'command.run',
         { command: 'read' },
@@ -146,7 +145,7 @@ spec('mods.command.claude plugin test [directory]', () => {
           text: String(await $.store.get('k')),
         }),
       );
-    }) satisfies Register as RegisterFunction;
+    });
     const run = await runPluginTests({
       name: 'reader',
       register: reader,

@@ -52,13 +52,35 @@ spec('mods.setting.disableAllHooks', () => {
     expect(decideModLoad(policy({ user: { disableAllHooks: true } }), builtinMod).load).toBe(true);
   });
 
-  test('it is read from any settings file: both homes count', () => {
-    expect(MOD_SETTINGS.disableAllHooks.homes).toEqual(['any-file']);
+  test('either file turns it on: on its own the user file stops every installed mod, beside managed settings the managed file stops the organization too', () => {
+    const userOnly = policy({ user: { disableAllHooks: true } });
+    for (const candidate of [installed('a'), inline('b')]) {
+      expect(decideModLoad(userOnly, candidate).load).toBe(false);
+    }
+    expect(decideModLoad(userOnly, organizations('c')).load).toBe(true);
+    const bothFiles = policy({ managed: { disableAllHooks: true }, user: {} });
+    for (const candidate of [installed('a'), inline('b'), organizations('c')]) {
+      expect(decideModLoad(bothFiles, candidate)).toMatchObject({
+        load: false,
+        reason: 'disableAllHooks in managed settings',
+      });
+    }
+    // false in a file turns nothing off
+    const off = policy({ managed: { disableAllHooks: false }, user: { disableAllHooks: false } });
+    expect(decideModLoad(off, installed('a')).load).toBe(true);
   });
 
-  test('a plugin that is not loaded keeps the rest of itself: the decision is about the hooks module only', () => {
-    const decision = decideModLoad(managed({ disableAllHooks: true }), installed('first-mod'));
-    expect(Object.keys(decision).toSorted()).toEqual(['load', 'reason', 'tier']);
+  test('a plugin that is not loaded keeps the rest of itself: the host reports the hooks module only, with the documented debug line', async () => {
+    const { host, debug } = session(
+      { 'first-mod': register },
+      { policy: managed({ disableAllHooks: true }) },
+    );
+    const report = await host.load([modPlugin(installed('first-mod'), register)]);
+    expect(report.loaded.map((mod) => mod.name)).toEqual(['cc-plugin-sec-default']);
+    expect(report.lines).toEqual([
+      'hooks module first-mod@market not loaded: disableAllHooks in managed settings',
+    ]);
+    expect(debug).toEqual([...report.lines]);
   });
 });
 
@@ -115,54 +137,48 @@ spec('mods.setting.disableSideloadFlags', () => {
     expect(MOD_SETTINGS.disableSideloadFlags.homes).toEqual(['managed']);
   });
 
-  test('judgment: directories from CLAUDE_CODE_PLUGIN_DIRS are sideloaded too, so none loads', () => {
-    const settings = managed({ disableSideloadFlags: true });
-    expect(pluginDirsOf({ ...settings, env: { CLAUDE_CODE_PLUGIN_DIRS: '/a' } })).toEqual([]);
-  });
-});
-
-spec('mods.setting.pluginConfigs', () => {
-  const grader = (on: unknown): void => void on;
-  void grader;
-
-  test('holds userConfig values for a mod, keyed by its id, or its name and @inline for one loaded with --plugin-dir', async () => {
-    const seen: unknown[] = [];
-    const mod = (_on: unknown, options?: unknown): void => void seen.push(options);
-    const manifest = JSON.stringify({
-      name: 'first-mod',
-      userConfig: {
-        greeting: {
-          type: 'string',
-          title: 'Greeting',
-          description: 'What to say',
-          default: 'hello',
-        },
-        count: { type: 'number', title: 'Count', description: 'How many', default: 1 },
-      },
-    });
-    const files = modPlugin(inline('first-mod'), register).files;
-    const withConfig = {
-      candidate: inline('first-mod'),
-      files: {
-        ...files,
-        readText: (path: string) =>
-          path === '.claude-plugin/plugin.json' ? Promise.resolve(manifest) : files.readText(path),
-      },
+  test('--plugin-url is rejected at startup too, with its own flag in the message, and nothing loads', async () => {
+    const flags = {
+      ...managed({ disableSideloadFlags: true }),
+      flags: { pluginDirs: [], pluginUrls: ['https://example.com/mod.zip'] },
     };
+    expect(sideloadRefusal(flags)).toBe(
+      "--plugin-url is disabled by your organization's managed settings (disableSideloadFlags)",
+    );
+    const { host } = session({ 'any-mod': register }, { policy: flags });
+    const report = await host.load([modPlugin(inline('any-mod'), register)]);
+    expect(report.startupRefusal).toMatch(/^--plugin-url is disabled by your organization's/);
+    expect(report.loaded).toEqual([]);
+    // a user's file does not reject it, and without the flag nothing is refused
+    const userSet = policy({
+      user: { disableSideloadFlags: true },
+      flags: { pluginDirs: [], pluginUrls: ['https://example.com/mod.zip'] },
+    });
+    expect(sideloadRefusal(userSet)).toBeUndefined();
+    expect(sideloadRefusal(managed({ disableSideloadFlags: true }))).toBeUndefined();
+  });
+
+  test('the host hands over no directory of CLAUDE_CODE_PLUGIN_DIRS once the setting is on, and flags first when it is off', async () => {
+    const settings = managed({ disableSideloadFlags: true });
     const { host } = session(
-      { 'first-mod': (on, options) => mod(on, options) },
+      { 'any-mod': register },
+      { policy: { ...settings, env: { CLAUDE_CODE_PLUGIN_DIRS: '/a:/b' } } },
+    );
+    expect(host.pluginDirs()).toEqual([]);
+    const open = session(
+      { 'any-mod': register },
       {
         policy: policy({
-          user: { pluginConfigs: { 'first-mod@inline': { options: { greeting: 'hi' } } } },
+          env: { CLAUDE_CODE_PLUGIN_DIRS: '/a:/b' },
+          flags: { pluginDirs: ['/c'] },
         }),
       },
     );
-    await host.load([withConfig]);
-    // saved value first, the declared default for the rest ("defaults filled in")
-    expect(seen).toEqual([{ greeting: 'hi', count: 1 }]);
+    expect(open.host.pluginDirs()).toEqual(['/c', '/a', '/b']);
   });
+});
 
-  test('both user and managed settings hold it; an entry for another id changes nothing', () => {
-    expect(MOD_SETTINGS.pluginConfigs.homes).toEqual(['user', 'managed']);
-  });
+test('judgment: directories from CLAUDE_CODE_PLUGIN_DIRS are sideloaded too, so none loads', () => {
+  const settings = managed({ disableSideloadFlags: true });
+  expect(pluginDirsOf({ ...settings, env: { CLAUDE_CODE_PLUGIN_DIRS: '/a' } })).toEqual([]);
 });

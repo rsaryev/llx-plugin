@@ -12,7 +12,7 @@ import { modOptions } from './options.ts';
 import type { OrderedMod } from './order.ts';
 import { askToLoad, tagRefusals, type RefusalBook } from './register-call.ts';
 import { combineScans, scanHooksModule, type ModScan } from './scan/index.ts';
-import { declaredState } from './types-decl.ts';
+import { declaredState, missingTypes } from './types-decl.ts';
 import { withApproval, type ApprovalLedger } from './guard.ts';
 import type { ModUses, ScannedHook } from './scan/uses.ts';
 
@@ -93,6 +93,29 @@ async function readJson(files: PluginFiles, path: string, signal: AbortSignal): 
   }
 }
 
+/**
+ * The static scan of the compiled module, with the types file it needs. The rules are the ones
+ * `claude plugin validate` checks: the loader runs "the same static analysis".
+ */
+async function scanned(
+  env: LoaderEnv,
+  files: PluginFiles,
+  manifest: PluginManifest,
+  module: { readonly entry: string; readonly code: string },
+): Promise<{ readonly scan: ModScan } | { readonly problem: string }> {
+  const typesPath = resolveTypesPath(manifest);
+  const types = await files.readText(typesPath, env.signal);
+  const scan = scanHooksModule(module.code, module.entry, {
+    isEntry: true,
+    directory: module.entry.slice(0, Math.max(module.entry.lastIndexOf('/'), 0)),
+    ...(types === undefined ? {} : { declaredState: declaredState(types) }),
+  });
+  const errors = firstError(scan.issues);
+  if (errors.length > 0) return { problem: messages(errors) };
+  const needed = types === undefined ? missingTypes(scan, module.entry, typesPath) : undefined;
+  return needed === undefined ? { scan } : { problem: needed };
+}
+
 /** The manifest, the module the plugin names, its compiled code, its scan and its options; or why not. */
 async function prepare(env: LoaderEnv, plugin: ModPlugin): Promise<Prepared | LoadOutcome> {
   const { candidate, files } = plugin;
@@ -108,13 +131,12 @@ async function prepare(env: LoaderEnv, plugin: ModPlugin): Promise<Prepared | Lo
   if (compiled.code === undefined) {
     return didNotLoad(candidate.name, messages(compiled.issues) || 'the compiler gave no code');
   }
-  const types = await files.readText(resolveTypesPath(manifestRead.manifest), env.signal);
-  const scan = scanHooksModule(compiled.code, modules.entry, {
-    isEntry: true,
-    ...(types === undefined ? {} : { declaredState: declaredState(types) }),
+  const checked = await scanned(env, files, manifestRead.manifest, {
+    entry: modules.entry,
+    code: compiled.code,
   });
-  if (firstError(scan.issues).length > 0)
-    return didNotLoad(candidate.name, messages(firstError(scan.issues)));
+  if ('problem' in checked) return didNotLoad(candidate.name, checked.problem);
+  const { scan } = checked;
   const fitted = modOptions(
     candidate.id,
     manifestRead.manifest.userConfig ?? {},
@@ -129,6 +151,9 @@ async function prepare(env: LoaderEnv, plugin: ModPlugin): Promise<Prepared | Lo
     options: fitted.options,
   };
 }
+
+/** What each loaded module was made from, so a failed reload can put it back. */
+const preparedOf = new WeakMap<LoadedMod, Prepared>();
 
 const isPrepared = (value: Prepared | LoadOutcome): value is Prepared => 'code' in value;
 
@@ -166,24 +191,26 @@ async function start(env: LoaderEnv, mod: OrderedMod, prepared: Prepared): Promi
     await guest.dispose();
     return didNotLoad(name, messages(issues));
   }
-  env.debug(`hooks module ${id} loaded, tier ${mod.tier}`);
+  // troubleshoot.md: `hooks module first-mod@inline loaded (worker, environment 2, tier user); events: ...`.
+  // The worker and its environment belong to the host's runtime, so the line gives the tier and the events (judgment).
+  env.debug(`hooks module ${id} loaded (tier ${mod.tier}); events: ${uses.events.join(',')}`);
   const unload = async (): Promise<void> => {
     env.chain.unregister(name);
     handle.dispose();
     await guest.dispose();
   };
   await env.onLoaded?.(name);
-  return {
-    mod: {
-      id,
-      name,
-      tier: mod.tier,
-      isBuiltin: mod.candidate.isBuiltin,
-      hooks: prepared.scan.hooks,
-      uses,
-      unload,
-    },
+  const loadedMod: LoadedMod = {
+    id,
+    name,
+    tier: mod.tier,
+    isBuiltin: mod.candidate.isBuiltin,
+    hooks: prepared.scan.hooks,
+    uses,
+    unload,
   };
+  preparedOf.set(loadedMod, prepared);
+  return { mod: loadedMod };
 }
 
 /** Loads one hooks module; the plugin's other parts are the host's. */
@@ -195,4 +222,45 @@ export async function loadMod(
   const prepared = await prepare(env, { candidate: mod.candidate, files });
   if (!isPrepared(prepared)) return prepared;
   return start(env, mod, prepared);
+}
+
+/** What reloading one mod came to. */
+export interface ReloadOutcome {
+  /** The mod now loaded: the new version, or the previous one when the reload failed. */
+  readonly mod?: LoadedMod;
+  /** The transcript line: the mod and its hooks, or `reload failed, the previous version stays loaded:` and the reason. */
+  readonly line: string;
+}
+
+/** The reason of a load outcome without the `<mod>: ` that starts its line. */
+const reasonOf = (name: string, outcome: LoadOutcome): string =>
+  (outcome.line ?? 'the module has no hooks').replace(`${name}: `, '');
+
+/**
+ * Reloads one mod after its files changed (reference.md, "Commands": `--plugin-dir` "reloads its
+ * hooks module when you save"; troubleshoot.md, "Read the debug log"). A save that breaks the module
+ * keeps the version loaded before running. The line wording after the colon is ours (judgment).
+ */
+export async function reloadMod(
+  env: LoaderEnv,
+  current: LoadedMod,
+  mod: OrderedMod,
+  files: PluginFiles,
+): Promise<ReloadOutcome> {
+  const name = mod.candidate.name;
+  const failed = (reason: string): string =>
+    `${name}: reload failed, the previous version stays loaded: ${reason}`;
+  const next = await prepare(env, { candidate: mod.candidate, files });
+  if (!isPrepared(next)) return { mod: current, line: failed(reasonOf(name, next)) };
+  const previous = preparedOf.get(current);
+  await current.unload();
+  const started = await start(env, mod, next);
+  if (started.mod) {
+    return {
+      mod: started.mod,
+      line: `${name}: reloaded; hooks: ${started.mod.uses.events.join(',')}`,
+    };
+  }
+  const restored = previous ? await start(env, mod, previous) : {};
+  return { ...(restored.mod ? { mod: restored.mod } : {}), line: failed(reasonOf(name, started)) };
 }

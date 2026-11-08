@@ -16,7 +16,12 @@ export interface ScanOptions {
   readonly declaredState?: ReadonlySet<string>;
   /** The module the manifest names: only it must export `register`. */
   readonly isEntry?: boolean;
+  /** The folder of the file relative to the plugin root, for the rule that an import stays inside it; the folder of `file` when absent. */
+  readonly directory?: string;
 }
+
+/** The folder part of a path written with `/`. */
+const directoryOf = (path: string): string => path.slice(0, Math.max(path.lastIndexOf('/'), 0));
 
 const TOO_DEEP = `code nested too deep to scan: more than ${MOD_LIMITS.scopes} scopes`;
 const NO_REGISTER = 'a hooks module exports register(on, options)';
@@ -46,7 +51,7 @@ export function scanHooksModule(source: string, file: string, options: ScanOptio
   if (maxScopeDepth(program) > MOD_LIMITS.scopes) {
     return { ...nothing(file), issues: [error(file, `${file}: ${TOO_DEEP}`)] };
   }
-  const facts = fileFacts(program, file);
+  const facts = fileFacts(program, file, options.directory ?? directoryOf(file));
   const top = indexProgram(program, file, options.declaredState);
   const found = emptyFound();
   const run = newRun(file, top, found);

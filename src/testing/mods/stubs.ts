@@ -50,9 +50,9 @@ export function createStubBook(): StubBook {
   const run = (name: string, e: unknown, $: unknown, index: number): unknown => {
     const hook = stubs.get(name)?.[index];
     if (!hook) return STREAMS.has(name) ? emptyStream(name) : missing(name);
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the stub was written for this event's input, which the chain hands it as it is
     return Reflect.apply(hook, undefined, [
       $,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the stub was written for this event's input, which the chain hands it as it is
       e as never,
       (next: unknown) => run(name, next, $, index + 1),
     ]);
@@ -62,8 +62,8 @@ export function createStubBook(): StubBook {
       stubs.set(name, [...(stubs.get(name) ?? []), hook]);
     },
     names: () => [...stubs.keys()],
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a stub of a stream is an async generator, any other is a promise or a value
     answer: (name, e, $) =>
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a stub of a stream is an async generator, any other is a promise or a value
       run(name, e, $, 0) as Promise<unknown> | AsyncGenerator<unknown, unknown>,
     hooks: ($) =>
       [...stubs.keys()].filter(isCall).map((name): RegisteredHook => {

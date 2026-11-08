@@ -91,6 +91,7 @@ export async function mountUi(world: World, spec: MountSpec): Promise<MountHandl
   const draw = async (): Promise<void> => {
     world.needsRedraw = false;
     const settled = await host.fire('ui.render', built.event, {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `ui.render` is no stream event, so the stubs answer it with a promise
       core: (e) => world.answer('ui.render', e) as Promise<unknown>,
     });
     const drawn = foldRender(request.site, request.surface, settled);

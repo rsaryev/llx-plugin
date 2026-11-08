@@ -1,10 +1,5 @@
 import type { PluginFiles } from '../../ports/index.ts';
-import {
-  ENGINE_ORIGIN,
-  type AnyModEventName,
-  type StreamEventName,
-} from '../../protocol/mods-events.ts';
-import { GUARD_NAME } from '../../protocol/mods-settings.ts';
+import { type AnyModEventName, type StreamEventName } from '../../protocol/mods-events.ts';
 import type { ModHostPorts } from '../api/index.ts';
 import type { DenyRuleChecker, ModCompiler, ModRuntime } from '../ports.ts';
 import type {
@@ -12,15 +7,21 @@ import type {
   EventOf,
   HookReport,
   ModChain,
-  ReentryInfo,
   RegisteredHook,
   RegisterTier,
   ResultOf,
 } from '../types.ts';
 import type { ModInterface, ModsUi } from '../ui/index.ts';
-import { loadMod, type LoadedMod, type LoadOutcome, type ModPlugin } from './loader.ts';
-import { orderMods, type OrderedMod } from './order.ts';
-import { sideloadRefusal } from './plugin-dirs.ts';
+import type { LoadedMod, ModPlugin, ReloadOutcome } from './loader.ts';
+import {
+  announceSessionStart,
+  loadOne,
+  dispatchOptionsFor,
+  reloadOne,
+  type FireSettings,
+} from './host-support.ts';
+import { orderMods } from './order.ts';
+import { pluginDirsOf, sideloadRefusal, watchesPluginDirs } from './plugin-dirs.ts';
 import type { ModsPolicyInput } from './policy-input.ts';
 import { wire } from './wiring.ts';
 
@@ -42,6 +43,19 @@ export interface ModsHostOptions {
   readonly debug?: (line: string) => void;
   readonly report?: (report: HookReport) => void;
   readonly signal?: AbortSignal;
+  /**
+   * For the test kit: why a mods API call ends in nothing, or `undefined` for a call that ends in its
+   * effect. The call fails with that reason once no hook before the caller has answered it.
+   */
+  readonly unanswered?: (name: string) => string | undefined;
+  /**
+   * Whether `session.start` fires for each mod after `load` and `reload` (reference.md, "Session":
+   * "Once for each loaded mod ... and again after a reload of that mod"). The default is true; the test
+   * kit turns it off, as "`session.start` doesn't run by itself" there (test.md).
+   */
+  readonly firesSessionStart?: boolean;
+  /** Whether the session is interactive, for the input of `session.start` (default true). */
+  readonly isInteractive?: boolean;
 }
 
 export interface ModLoadReport {
@@ -52,21 +66,19 @@ export interface ModLoadReport {
   readonly startupRefusal?: string;
 }
 
-export interface FireOptions {
-  readonly signal?: AbortSignal;
-  /** Claude Code's own behaviour, at the end of the chain; without it the chain ends in `undefined`. */
-  readonly core?: (e: unknown) => Promise<unknown> | AsyncGenerator<unknown, unknown>;
-  /** Only this mod's hooks handle the event (`session.start` once for each loaded mod). */
-  readonly only?: string;
-  readonly reentry?: ReentryInfo;
-  readonly groupMs?: number;
-}
+/** What a caller of `fire` may give: its own signal, the core behaviour at the end of the chain, and the narrowing options the chain has. */
+export type FireOptions = FireSettings;
 
 export interface ModsHost {
   /** Loads hooks modules in the order policy gives; every failure is a line, never a throw. */
   load(plugins: readonly ModPlugin[]): Promise<ModLoadReport>;
   /** `/reload-plugins`: unloads every mod and loads the same plugins again. */
   reload(): Promise<ModLoadReport>;
+  /**
+   * A save in the directory of one mod loaded with `--plugin-dir`: its hooks module is read again and
+   * `register` runs again. A save that breaks the module keeps the version loaded before.
+   */
+  reloadMod(name: string): Promise<ReloadOutcome | undefined>;
   fire<N extends AnyModEventName>(
     name: N,
     input: EventOf<N>,
@@ -79,13 +91,21 @@ export interface ModsHost {
   ): AsyncGenerator<ChunkOf<N>, ResultOf<N>>;
   /**
    * A mod the host provides itself, such as one built into Claude Code: its hooks are registered as
-   * given, in the tier given, and it shows in `active()` as built in. `unload()` takes it away.
+   * given, in the tier given, and it shows in `active()` as built in. `/reload-plugins` leaves it
+   * alone ("Mods built into Claude Code are unaffected"); `dispose()` takes it away.
    */
   registerBuiltIn(
     name: string,
     tier: RegisterTier,
     hooks: readonly RegisteredHook[],
   ): Promise<LoadedMod>;
+  /**
+   * The plugin directories the host loads for the session, to hand over to `load`: `--plugin-dir`,
+   * then `CLAUDE_CODE_PLUGIN_DIRS` (none when `disableSideloadFlags` is on).
+   */
+  pluginDirs(): readonly string[];
+  /** Whether a save in a `--plugin-dir` directory reloads its mod (`reloadMod`): always interactively, otherwise with `CLAUDE_CODE_PLUGIN_DIR_WATCH=1`. */
+  watchesPluginDirs(isInteractive: boolean): boolean;
   readonly ui: ModsUi;
   readonly chain: ModChain;
   active(): readonly LoadedMod[];
@@ -93,7 +113,9 @@ export interface ModsHost {
 }
 
 const noop = (): void => undefined;
+/** troubleshoot.md ties the suffix to `hooks module did not load`, not to a refusal by another mod. */
 const UNLOADED = '; the version loaded before is unloaded';
+const DID_NOT_LOAD = 'hooks module did not load';
 
 /** What ordering says before any module loads: its notes, and a line for each module policy keeps out. */
 const skippedLines = (order: ReturnType<typeof orderMods>): string[] => [
@@ -110,15 +132,9 @@ export function createModsHost(options: ModsHostOptions): ModsHost {
   const { chain, env } = wired;
   const { policy } = options;
   let loaded: LoadedMod[] = [];
+  /** What the host registered itself: a reload does not touch it. */
+  const builtIns: LoadedMod[] = [];
   let plugins: readonly ModPlugin[] = [];
-
-  /** The guard is registered by the host; every other module is the loader's. */
-  async function loadOne(mod: OrderedMod, files: PluginFiles | undefined): Promise<LoadOutcome> {
-    if (mod.candidate.isBuiltin && mod.candidate.name === GUARD_NAME) {
-      return { mod: await wired.registerGuard() };
-    }
-    return files ? loadMod(env, mod, files) : {};
-  }
 
   async function loadAll(
     given: readonly ModPlugin[],
@@ -136,15 +152,20 @@ export function createModsHost(options: ModsHostOptions): ModsHost {
     );
     const lines = skippedLines(order);
     for (const mod of order.ordered) {
-      const outcome = await loadOne(mod, filesOf.get(mod.candidate.id));
+      const outcome = await loadOne(wired, mod, filesOf.get(mod.candidate.id));
       if (outcome.mod) loaded.push(outcome.mod);
       if (outcome.line !== undefined) {
-        lines.push(before.has(mod.candidate.name) ? `${outcome.line}${UNLOADED}` : outcome.line);
+        const unloaded = before.has(mod.candidate.name) && outcome.line.includes(DID_NOT_LOAD);
+        lines.push(unloaded ? `${outcome.line}${UNLOADED}` : outcome.line);
       }
     }
     for (const line of lines) debug(line);
+    if (options.firesSessionStart !== false) await announceStart(loaded);
     return { loaded: [...loaded], lines };
   }
+
+  const announceStart = (mods: readonly LoadedMod[]): Promise<void> =>
+    announceSessionStart({ options, chain, dispatchOptions }, mods);
 
   async function unloadAll(): Promise<ReadonlySet<string>> {
     const names = new Set(loaded.map((mod) => mod.name));
@@ -153,33 +174,37 @@ export function createModsHost(options: ModsHostOptions): ModsHost {
     return names;
   }
 
-  const dispatchOptions = (opts: FireOptions) => ({
-    origin: ENGINE_ORIGIN,
-    signal: opts.signal ?? signal,
-    core: opts.core ?? (() => Promise.resolve(undefined)),
-    report: env.report,
-    debug,
-    ...(opts.only === undefined ? {} : { only: opts.only }),
-    ...(opts.reentry === undefined ? {} : { reentry: opts.reentry }),
-    ...(opts.groupMs === undefined ? {} : { groupMs: opts.groupMs }),
-  });
+  const dispatchOptions = dispatchOptionsFor({ env, debug, signal });
 
   return {
     load: (given) => loadAll(given, new Set()),
     reload: async () => loadAll(plugins, await unloadAll()),
+    reloadMod: async (name) => {
+      const done = await reloadOne(env, plugins, loaded, name);
+      if (!done) return undefined;
+      loaded = done.loaded;
+      debug(done.outcome.line);
+      if (done.replaced && options.firesSessionStart !== false)
+        await announceStart([done.replaced]);
+      return done.outcome;
+    },
     fire: (name, input, opts = {}) => chain.dispatch(name, input, dispatchOptions(opts)),
     fireStream: (name, input, opts = {}) =>
       chain.dispatchStream(name, input, dispatchOptions(opts)),
     registerBuiltIn: async (name, tier, hooks) => {
       const mod = await wired.registerNative(name, tier, hooks);
-      loaded.push(mod);
+      builtIns.push(mod);
       return mod;
     },
+    pluginDirs: () => pluginDirsOf(policy),
+    watchesPluginDirs: (isInteractive) => watchesPluginDirs(policy, isInteractive),
     ui: wired.ui,
     chain,
-    active: () => [...loaded],
+    active: () => [...builtIns, ...loaded],
     async dispose() {
       await unloadAll();
+      for (const mod of builtIns.toReversed()) await mod.unload();
+      builtIns.length = 0;
       background.abort(new Error('the mods host was disposed'));
     },
   };

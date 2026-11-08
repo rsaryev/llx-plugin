@@ -1,14 +1,12 @@
 /**
  * plugins/mods/test.md § Test a drawing (`$.ui.mount`, the hello-tabs example, the handle's methods,
- * the stub for a `ui.render` hook that returns `next(e)`), § Test a policy mod (`tier`, `plugins`, the
- * message of a refused mod).
+ * the stub for a `ui.render` hook that returns `next(e)`).
  */
 import { expect, test } from 'bun:test';
-import type { RegisterFunction } from '../../../src/testing/mods/index.ts';
+import { registerOf } from '../../support/mods-load.ts';
 import { runPluginTests, type TestFile } from '../../support/mods-testing.ts';
 import { spec } from '../../support/spec.ts';
 
-type Dollar = Record<string, Record<string, (input: never) => Promise<unknown>>>;
 type Element = (props: Record<string, unknown>) => unknown;
 type Resolve = (e: unknown) => Record<'Box' | 'Text' | 'Button' | 'Input' | 'Select', Element>;
 type Hook = (
@@ -31,7 +29,7 @@ const mounter = (claude: unknown) =>
   (claude as { ui: { mount: (spec: unknown) => Promise<Handle> } }).ui.mount;
 
 // hello-tabs/hooks/register.js of interface.md: the pane with two tabs and a counter.
-const helloTabs = ((on: (name: string, ...rest: unknown[]) => void) => {
+const helloTabs = registerOf((on) => {
   let tab = 'one';
   let count = 0;
   on('ui.render', { component: 'Pane' }, (async ($, e, next) => {
@@ -70,7 +68,7 @@ const helloTabs = ((on: (name: string, ...rest: unknown[]) => void) => {
       children: [Box({ children: [tabButton('one', 'One'), tabButton('two', 'Two')] }), ...body],
     });
   }) satisfies Hook);
-}) as RegisterFunction;
+});
 
 const PANE = {
   plugin: 'hello-tabs',
@@ -155,7 +153,7 @@ spec('mods.command.claude plugin test [directory]', () => {
   test('input types into an Input and presses Enter, kind change does not; select picks an option', async () => {
     const result = await runPluginTests({
       name: 'form',
-      register: ((on: (name: string, ...rest: unknown[]) => void) => {
+      register: registerOf((on) => {
         const log: string[] = [];
         on('ui.render', { component: 'Pane' }, ((
           $: { ui: { resolve: Resolve; invalidate(name: string): void } },
@@ -182,7 +180,7 @@ spec('mods.command.claude plugin test [directory]', () => {
             ],
           });
         }) as never);
-      }) as RegisterFunction,
+      }),
       tests: {
         'tests/form.test.ts': ({ test, expect }) => {
           test('gestures', async (claude) => {
@@ -202,73 +200,3 @@ spec('mods.command.claude plugin test [directory]', () => {
 });
 
 // acme-guard/hooks/register.js of admin.md, trimmed to the check under test.
-const acmeGuard = ((on: (name: string, ...rest: unknown[]) => void) => {
-  on(
-    'plugin.register',
-    async (
-      _$: unknown,
-      e: { tier: string; uses: { calls: string[] } },
-      next: (e: unknown) => Promise<unknown>,
-    ) => {
-      const blocked = e.uses.calls.filter((call) =>
-        ['process.run', 'process.spawn'].includes(call),
-      );
-      if (e.tier === 'user' && blocked.length > 0) {
-        return { refuse: 'Acme policy: mods may not call ' + blocked.join(', ') };
-      }
-      return next(e);
-    },
-  );
-}) as RegisterFunction;
-
-const runner = {
-  name: 'runner',
-  register: ((on: (name: string, ...rest: unknown[]) => void) => {
-    on('tool.call', async ($: { process: { run(argv: string[]): Promise<unknown> } }) => {
-      await $.process.run(['ls']);
-      return { result: 'runner answered' };
-    });
-  }) as RegisterFunction,
-};
-const reader = {
-  name: 'reader',
-  register: ((on: (name: string, ...rest: unknown[]) => void) => {
-    on('tool.call', async () => ({ result: 'reader answered' }));
-  }) as RegisterFunction,
-};
-
-spec('mods.command.claude plugin test [directory]', () => {
-  test('tier("prepend") loads the mod under test ahead of the inline mods, which `plugins` adds: it refuses one that starts a process and admits one that does not', async () => {
-    const result = await runPluginTests({
-      name: 'acme-guard',
-      register: acmeGuard,
-      tests: {
-        'tests/guard.test.ts': ({ test, tier, expect }) => {
-          tier('prepend');
-          test('refuses a mod that starts a process', { plugins: [runner] }, async (claude, on) => {
-            const $ = claude as unknown as Dollar;
-            on('tool.call', () => ({ result: 'claude code answered' }));
-            let message = '';
-            try {
-              await $['tool']?.['call']?.({ tool: 'Bash', command: 'ls' } as never);
-            } catch (error) {
-              message = (error as Error).message;
-            }
-            expect(message).toBe(
-              'runner: refused by acme-guard: Acme policy: mods may not call process.run',
-            );
-          });
-          test('admits a mod that starts no process', { plugins: [reader] }, async (claude, on) => {
-            const $ = claude as unknown as Dollar;
-            on('tool.call', () => ({ result: 'claude code answered' }));
-            const out = await $['tool']?.['call']?.({ tool: 'Bash', command: 'ls' } as never);
-            expect(out).toEqual({ result: 'reader answered' });
-          });
-        },
-      },
-    });
-    expect(result.lines.join('\n')).toContain('(pass) refuses a mod that starts a process');
-    expect(result.lines.join('\n')).toContain('(pass) admits a mod that starts no process');
-    expect(result.exitCode).toBe(0);
-  });
-});
