@@ -1,7 +1,9 @@
 import type { PermissionBehavior } from '../../protocol/official.ts';
+import type { ArtifactInput } from '../../protocol/official-tools.ts';
 import type { SpecifierMatcher } from '../matchers.ts';
+import { isDomainSpecifier } from '../specifier-guards.ts';
 import { escapeLiteral } from '../tool-pattern.ts';
-import type { PermissionRule } from '../types.ts';
+import type { PermissionRule, PreparedCall } from '../types.ts';
 import { inputString } from './input.ts';
 
 /**
@@ -15,6 +17,18 @@ import { inputString } from './input.ts';
 const stripTrailingDot = (host: string): string => (host.endsWith('.') ? host.slice(0, -1) : host);
 
 const normalize = (text: string): string => stripTrailingDot(text.trim().toLowerCase());
+
+/** A label with a `*` or URL syntax in it is not a name to convert: it stays as written. */
+const NOT_A_PLAIN_LABEL = /[*:/?#@\\]/;
+
+/** A label with non-ASCII letters, as the URL parser spells it (`bücher` is `xn--bcher-kva`). */
+function asciiLabel(label: string): string {
+  if (!/\P{ASCII}/u.test(label) || NOT_A_PLAIN_LABEL.test(label)) return label;
+  return parseUrl(`http://${label}/`)?.hostname ?? label;
+}
+
+/** The rule's pattern spelled as `URL.hostname` spells the host, so `domain:bücher.de` meets `https://bücher.de/`. */
+const asciiPattern = (pattern: string): string => pattern.split('.').map(asciiLabel).join('.');
 
 /** The port a URL goes to: the one it names, else its scheme's default. */
 const DEFAULT_PORT: ReadonlyMap<string, string> = new Map([
@@ -61,12 +75,13 @@ function matchBracketed(address: RegExpExecArray, url: URL): boolean {
 /**
  * Whether the `domain:` pattern of a WebFetch rule covers the host of `url`. An address in brackets
  * (`[::1]`) covers that address on every port, and `[::1]:443` on port 443 only; a URL that does not
- * parse has no host and matches no pattern.
+ * parse has no host and matches no pattern. A pattern with non-ASCII labels is compared in the
+ * punycode form `URL.hostname` gives the host (spec/judgments.md).
  */
 export function matchDomainPattern(pattern: string, url: string): boolean {
   const parsed = parseUrl(url);
   if (parsed === undefined) return false;
-  const wanted = normalize(pattern);
+  const wanted = asciiPattern(normalize(pattern));
   if (wanted === '*') return true;
   const address = BRACKETED.exec(wanted);
   if (address !== null) return matchBracketed(address, parsed);
@@ -80,10 +95,52 @@ export function matchDomainPattern(pattern: string, url: string): boolean {
  */
 export const matchWebFetchRule: SpecifierMatcher = (rule, call) => {
   const { specifier } = rule;
-  if (specifier?.form !== 'domain') return false;
+  if (!isDomainSpecifier(specifier)) return false;
   const url = inputString(call.input, 'url');
   return url !== undefined && matchDomainPattern(specifier.pattern, url);
 };
+
+/** The `Artifact` call that reads a published artifact (the SDK's `ArtifactInput.action`). */
+const ARTIFACT_READ = 'read' satisfies NonNullable<ArtifactInput['action']>;
+
+/**
+ * A host of the `*.claudeusercontent.com` content host that serves artifact pages
+ * (artifacts.md, "Allowlist the viewer domain"; errors.md names it `*.frame.claudeusercontent.com`).
+ * The kit sees no real one, so a rule covers the content host when it covers this probe.
+ */
+const CONTENT_HOST_PROBE = 'https://artifact.frame.claudeusercontent.com/';
+
+/** A deny or ask `domain:` rule applies to an artifact read; an allow rule does not pre-approve one. */
+const DOMAIN_RULE_REACHES_ARTIFACT_READ: { readonly [B in PermissionBehavior]: boolean } = {
+  allow: false,
+  deny: true,
+  ask: true,
+};
+
+/**
+ * Whether a `WebFetch(domain:...)` rule covers an `Artifact` read (permissions.md, "Allow or deny
+ * every fetch"): a `domain:` rule covering `claude.ai`, as the read's URL names it, or the
+ * `*.claudeusercontent.com` content host applies to the read in a deny or ask rule. A bare
+ * `WebFetch` rule never does, because its tool name is not the call's; the `Artifact` rule is a
+ * rule on that tool and matches by name.
+ */
+export function domainRuleCoversArtifactRead(rule: PermissionRule, call: PreparedCall): boolean {
+  const { specifier } = rule;
+  if (rule.toolGlob || rule.value.toolName !== 'WebFetch' || !isDomainSpecifier(specifier)) {
+    return false;
+  }
+  if (!DOMAIN_RULE_REACHES_ARTIFACT_READ[rule.behavior] || call.toolName !== 'Artifact') {
+    return false;
+  }
+  const url = inputString(call.input, 'url');
+  if (url === undefined || inputString(call.input, 'action') !== ARTIFACT_READ) {
+    return false;
+  }
+  return (
+    matchDomainPattern(specifier.pattern, url) ||
+    matchDomainPattern(specifier.pattern, CONTENT_HOST_PROBE)
+  );
+}
 
 /** The sandbox's domain lists (sandboxing.md, "Network isolation"). */
 export type SandboxList = 'allowed' | 'denied';
@@ -113,7 +170,7 @@ const SANDBOX_HONORED = /^(?:\*|\*\.[^*]+|[^*]+)$/;
 export function sandboxDomainEntry(rule: PermissionRule): SandboxDomainEntry | undefined {
   const { specifier } = rule;
   const list = SANDBOX_LIST[rule.behavior];
-  if (rule.value.toolName !== 'WebFetch' || specifier?.form !== 'domain' || list === undefined) {
+  if (rule.value.toolName !== 'WebFetch' || !isDomainSpecifier(specifier) || list === undefined) {
     return undefined;
   }
   const domain = normalize(specifier.pattern);

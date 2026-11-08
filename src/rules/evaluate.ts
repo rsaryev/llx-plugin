@@ -5,6 +5,7 @@ import { matchesCallParam } from './param.ts';
 import { routesToCall } from './path/file-rules.ts';
 import { isCarvedOut } from './path/negation.ts';
 import { ruleFormatOf } from './specifier-formats.ts';
+import { domainRuleCoversArtifactRead } from './target/domain.ts';
 import { toolNameMatches } from './tool-pattern.ts';
 import type { MatchContext, PermissionRule, PreparedCall, RuleVerdict } from './types.ts';
 
@@ -22,10 +23,11 @@ export function matchRule(
 ): boolean {
   if (!toolNameMatches(rule, call.toolName)) {
     // A path rule also covers the calls of the tools it stands for: an Edit rule Write, a Read rule Grep.
-    return (
-      routesToCall(rule, call.toolName) &&
-      matchers[ruleFormatOf(rule.value.toolName)](rule, call, ctx)
-    );
+    if (routesToCall(rule, call.toolName)) {
+      return matchers[ruleFormatOf(rule.value.toolName)](rule, call, ctx);
+    }
+    // A `WebFetch(domain:...)` rule also covers an artifact read, which is a call of `Artifact`.
+    return domainRuleCoversArtifactRead(rule, call);
   }
   const { specifier } = rule;
   if (specifier === undefined) return true;

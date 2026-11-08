@@ -87,10 +87,17 @@ const COWORK_TOOL_OF: ReadonlyMap<string, string> = new Map([
   ['mcp__workspace__web_fetch', 'WebFetch'],
 ]);
 
+/** Only a deny rule reaches the Cowork twin of a tool: "Allow rules don't carry over". An ask rule does not (spec/judgments.md). */
+const COVERS_COWORK_TWIN: { readonly [B in PermissionBehavior]: boolean } = {
+  allow: false,
+  deny: true,
+  ask: false,
+};
+
 /** Whether `rule` is a deny rule that names a whole built-in tool and `toolName` is that tool's Cowork twin. */
 export function denyCoversCoworkTool(rule: PermissionRule, toolName: string): boolean {
   return (
-    rule.behavior === 'deny' &&
+    COVERS_COWORK_TWIN[rule.behavior] &&
     rule.specifier === undefined &&
     COWORK_TOOL_OF.get(toolName) === rule.value.toolName
   );

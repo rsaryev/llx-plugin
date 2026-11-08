@@ -180,10 +180,15 @@ spec('tools.tool.WebFetch', () => {
     expect(fetch(rules, 'https://other.test/')).toBe(undefined);
   });
 
-  test('allowing github.com and denying curl is the documented setup: only that host is approved', () => {
-    const rules = [parsed('WebFetch(domain:github.com)', 'allow')];
+  test('allowing github.com and denying curl is the documented setup: only that host is fetched, and curl is refused', () => {
+    const rules = [parsed('WebFetch(domain:github.com)', 'allow'), parsed('Bash(curl *)', 'deny')];
     expect(fetch(rules, 'https://github.com/rsaryev/x')).toBe('allow');
     expect(fetch(rules, 'https://gist.github.com/x')).toBe(undefined);
+    const bash = (command: string) =>
+      evaluateRules(rules, call('Bash', { command }), matchContext).behavior;
+    expect(bash('curl https://github.com/rsaryev/x')).toBe('deny');
+    expect(bash('curl -L https://example.com')).toBe('deny');
+    expect(bash('ls')).toBe(undefined);
   });
 
   test('a domain rule of WebFetch never covers another tool', () => {
@@ -220,6 +225,17 @@ describe('what the docs leave open about WebFetch rules (spec/judgments.md)', ()
     for (const url of ['not a url', 'example.com', '', 'mailto:a@example.com']) {
       expect([url, fetchCovered('WebFetch(domain:*)', url)]).toEqual([url, false]);
     }
+  });
+
+  test('a rule with non-ASCII labels meets the host as URL.hostname spells it (punycode)', () => {
+    for (const rule of ['WebFetch(domain:bücher.de)', 'WebFetch(domain:xn--bcher-kva.de)']) {
+      expect([rule, fetchCovered(rule, 'https://bücher.de/')]).toEqual([rule, true]);
+      expect([rule, fetchCovered(rule, 'https://xn--bcher-kva.de/x')]).toEqual([rule, true]);
+    }
+    expect(fetchCovered('WebFetch(domain:*.bücher.de)', 'https://shop.bücher.de/')).toBe(true);
+    expect(fetchCovered('WebFetch(domain:BÜCHER.de.)', 'https://bücher.de/')).toBe(true);
+    expect(fetchCovered('WebFetch(domain:bücher.de)', 'https://bucher.de/')).toBe(false);
+    expect(fetchCovered('WebFetch(domain:bücher.de)', 'https://evil.de/')).toBe(false);
   });
 
   test('a specifier without the domain: prefix matches nothing', () => {

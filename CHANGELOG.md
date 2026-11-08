@@ -79,3 +79,11 @@
   only, not one at any depth; a file named `..hidden` is matched by a rule instead of being taken for
   a parent climb; `Read(src/**/*.ts)` as a deny or ask rule reaches a nested `src`; a `/` rule with
   no usable text guards its anchor, not the filesystem root.
+- Permission rules: a deny or ask `WebFetch(domain:...)` rule now applies to an artifact read (an
+  `Artifact` call with `action: read`) when it covers `claude.ai` or `*.claudeusercontent.com`,
+  while a bare `WebFetch` rule and an allow rule do not; an `Agent(general-purpose)` deny or ask
+  rule now covers a call that leaves `subagent_type` out, and `Agent(fork)` names a fork; a
+  `domain:` rule with non-ASCII labels (`bücher.de`) matches the punycode host; the Cowork twin
+  and the Agent, Skill and WebFetch matchers read behaviour and specifier form through a registry
+  and a named guard, and their input fields are tied to the SDK's `AgentInput`, `WebFetchInput`
+  and `ArtifactInput`.

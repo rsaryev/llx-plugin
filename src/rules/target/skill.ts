@@ -1,6 +1,7 @@
 import type { PermissionBehavior } from '../../protocol/official.ts';
 import type { SpecifierMatcher } from '../matchers.ts';
 import type { PreparedCall } from '../types.ts';
+import { isTextSpecifier } from '../specifier-guards.ts';
 import { inputString } from './input.ts';
 
 /**
@@ -39,7 +40,7 @@ function namesOf(behavior: PermissionBehavior, call: PreparedCall): readonly str
 
 export const matchSkillRule: SpecifierMatcher = (rule, call) => {
   const { specifier } = rule;
-  if (specifier?.form !== 'text') return false;
+  if (!isTextSpecifier(specifier)) return false;
   const { pattern } = specifier;
   return namesOf(rule.behavior, call).some((name) => skillCovers(pattern, name));
 };

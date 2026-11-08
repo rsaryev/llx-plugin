@@ -5,8 +5,11 @@
  * field, in a deny rule or `--disallowedTools`); hooks.md § Agent (the input fields `subagent_type`,
  * `model`, `description`); tools-reference.md § Tools reference (Agent, rule format "subagent type").
  *
- * Where the docs are silent (case, wildcards, a call without `subagent_type`, a plugin-qualified
- * name) the test sits outside spec() and the choice is a row in spec/judgments.md.
+ * sub-agents.md § Turn fork mode off (`Agent(fork)` in `permissions.deny` stops forks).
+ *
+ * Where the docs are silent (case, wildcards, a call without `subagent_type`, how a fork call is
+ * spelled, a plugin-qualified name) the test sits outside spec() and the choice is a row in
+ * spec/judgments.md.
  */
 import { describe, expect, test } from 'bun:test';
 import type { AgentInput } from '../../src/protocol/official-tools.ts';
@@ -93,6 +96,16 @@ spec('tools.tool.Agent', () => {
     });
     expect(issues).toEqual([]);
     expect(rule?.specifier).toEqual({ form: 'text', pattern: 'Explore' });
+    const cliRules = rule === undefined ? [] : [rule];
+    expect(verdict(cliRules, agent({ subagent_type: 'Explore' }))).toBe('deny');
+    expect(verdict(cliRules, agent({ subagent_type: 'Plan' }))).toBe(undefined);
+  });
+
+  test('Agent(fork) in permissions.deny stops forks and leaves the other subagents', () => {
+    const rules = [parsed('Agent(fork)')];
+    expect(verdict(rules, agent({ subagent_type: 'fork' }))).toBe('deny');
+    expect(verdict(rules, agent({ subagent_type: 'Explore' }))).toBe(undefined);
+    expect(verdict(rules, agent({ subagent_type: 'forked' }))).toBe(undefined);
   });
 });
 
@@ -175,10 +188,20 @@ describe('what the docs leave open about Agent rules (spec/judgments.md)', () =>
     expect(covers('deny', 'Agent(Exp*)', 'Agent', agent({ subagent_type: 'Exp*' }))).toBe(true);
   });
 
-  test('a call without subagent_type matches no name', () => {
-    for (const behavior of BEHAVIORS) {
-      expect(covers(behavior, 'Agent(general-purpose)', 'Agent', agent())).toBe(false);
+  test('a call without subagent_type is general-purpose for a deny or ask rule, no name for an allow rule', () => {
+    for (const behavior of ['ask', 'deny'] as const) {
+      expect(covers(behavior, 'Agent(general-purpose)', 'Agent', agent())).toBe(true);
+      expect(covers(behavior, 'Agent(Explore)', 'Agent', agent())).toBe(false);
     }
+    expect(covers('allow', 'Agent(general-purpose)', 'Agent', agent())).toBe(false);
+    expect(covers('allow', 'Agent(Explore)', 'Agent', agent())).toBe(false);
+  });
+
+  test('a fork is the call whose subagent_type is fork, and Agent(fork) names it literally', () => {
+    for (const behavior of BEHAVIORS) {
+      expect(covers(behavior, 'Agent(fork)', 'Agent', agent({ subagent_type: 'fork' }))).toBe(true);
+    }
+    expect(covers('deny', 'Agent(fork)', 'Agent', agent())).toBe(false);
   });
 
   test('a plugin-qualified name is a name, not a parameter rule on a field called after the plugin', () => {
