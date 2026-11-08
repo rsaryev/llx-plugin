@@ -123,11 +123,13 @@ const isTable = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
- * An inline definition: a table whose every value is a table (the server's config). The config
- * itself is the MCP reader's to validate, so only its outer shape is checked here.
+ * An inline definition: a table with at least one key whose every value is a table (the server's
+ * config). The config itself is the MCP reader's to validate, so only its outer shape is checked
+ * here; the predicate stands in for the SDK's `McpServerConfigForProcessTransport` until that
+ * reader exists (judgment, spec/judgments.md).
  */
 const isInlineServer = (value: unknown): value is Exclude<AgentMcpServerSpec, string> =>
-  isTable(value) && Object.values(value).every(isTable);
+  isTable(value) && Object.keys(value).length > 0 && Object.values(value).every(isTable);
 
 /** `permissionMode`: a mode, or `manual` for `default` (the one alias the docs name). */
 const permissionMode: AgentCoercer<AgentFieldValue<'permissionMode'>> = (path, key, raw) => {

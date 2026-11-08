@@ -62,10 +62,21 @@ describe('an invalid value is dropped with a warning and the agent still loads',
     expect(loaded(read('maxTurns: "8"')).definition.maxTurns).toBe(8);
   });
 
-  test('the flag spellings of the shared reader apply: yes, on, 1', () => {
-    expect(loaded(read('background: yes')).definition.background).toBe(true);
-    expect(loaded(read('omitClaudeMd: off')).definition.omitClaudeMd).toBe(false);
+  test('a flag is a YAML boolean or the text true or false, in any case', () => {
+    expect(loaded(read('background: true')).definition.background).toBe(true);
+    expect(loaded(read('background: "TRUE"')).definition.background).toBe(true);
+    expect(loaded(read('omitClaudeMd: "false"')).definition.omitClaudeMd).toBe(false);
   });
+
+  test.each(['yes', 'on', 'off', 'no', '1', '0', '"yes"', '"1"', '2'])(
+    'background: %s is not a flag here: dropped with a warning',
+    (written) => {
+      const result = read(`background: ${written}`);
+      expect(loaded(result).definition).not.toHaveProperty('background');
+      expect(result.issues).toHaveLength(1);
+      expect(result.issues[0]?.message).toContain('is not a flag');
+    },
+  );
 });
 
 describe('autoCompactWindow reads a string as its leading integer', () => {
@@ -78,7 +89,7 @@ describe('autoCompactWindow reads a string as its leading integer', () => {
     expect(result.issues).toEqual([]);
   });
 
-  test.each(['big', '[200000]', '200000.5', 'true'])(
+  test.each(['big', '[200000]', '200000.5', '"200000.5"', '"200000.5 tokens"', 'true'])(
     '%s is not a token count: ignored with a report',
     (written) => {
       const result = read(`autoCompactWindow: ${written}`);
@@ -200,6 +211,12 @@ describe('the registry reads the fields other sub-packages resolve', () => {
       'slack',
       { playwright: { type: 'stdio', command: 'npx' } },
     ]);
+  });
+
+  test('mcpServers drops an empty inline definition', () => {
+    const result = read('mcpServers:\n  - {}\n  - slack');
+    expect(loaded(result).definition.mcpServers).toEqual(['slack']);
+    expect(result.issues).toHaveLength(1);
   });
 });
 

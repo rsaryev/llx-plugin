@@ -274,4 +274,23 @@ describe('the field table (plugins/components.md, "Frontmatter fields in plugin 
   test.each(IGNORED)('a plugin agent ignores %s', (field) => {
     expect(AGENT_FIELDS[field].plugin).toBe('ignored');
   });
+
+  const APPLIED: readonly (readonly [
+    string,
+    'tools' | 'disallowedTools' | 'skills' | 'memory',
+    unknown,
+  ])[] = [
+    ['tools: Read, Grep', 'tools', ['Read', 'Grep']],
+    ['disallowedTools: Write, Edit', 'disallowedTools', ['Write', 'Edit']],
+    ['skills:\n  - api-conventions', 'skills', ['api-conventions']],
+    ['memory: project', 'memory', 'project'],
+  ];
+
+  test.each(APPLIED)('a plugin agent applies %j', (extra, field, value) => {
+    const result = pluginRead(extra);
+    const agent = loaded(result);
+    expect(agent.definition).toMatchObject({ [field]: value });
+    expect(agent.ignored).toEqual([]);
+    expect(result.issues).toEqual([]);
+  });
 });

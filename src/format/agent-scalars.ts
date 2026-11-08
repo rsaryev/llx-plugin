@@ -40,7 +40,19 @@ function adapt<T>(path: string, read: FieldRead<T>): AgentFieldRead<T> {
 
 export const textField: AgentCoercer<string> = (path, key, raw) => adapt(path, readText(key, raw));
 
-export const boolField: AgentCoercer<boolean> = (path, key, raw) => adapt(path, readFlag(key, raw));
+/**
+ * `background`, `omitClaudeMd`: sub-agents.md says "Set to `true`", so only a YAML boolean or the
+ * text `true` or `false` is a flag here; `yes`, `on`, `1` and `0` belong to skills and commands
+ * (judgment, spec/judgments.md).
+ */
+export const boolField: AgentCoercer<boolean> = (path, key, raw) => {
+  const text = typeof raw === 'string' ? raw.trim().toLowerCase() : undefined;
+  const spelled = text === undefined || text === '' || text === 'true' || text === 'false';
+  if (typeof raw === 'number' || !spelled) {
+    return { value: undefined, issues: ignored(path, key, 'is not a flag: use true or false') };
+  }
+  return adapt(path, readFlag(key, raw));
+};
 
 /** `tools`, `disallowedTools`, `skills`: "a comma-separated string ... or a YAML list". */
 export const tokenList: AgentCoercer<string[]> = (path, key, raw) => {
@@ -63,13 +75,14 @@ export const effortField = enumField(EFFORT_LEVELS);
 /** sub-agents.md, "Set the auto-compact window for one subagent": a token count in this range. */
 export const AUTO_COMPACT_RANGE = { min: 100_000, max: 1_000_000 } as const;
 
-const LEADING_INTEGER = /^\s*[+-]?\d+/;
+const LEADING_INTEGER = /^\s*[+-]?\d+(?!\.\d)/;
 
 /**
  * What Claude Code reads from the field: a YAML number as it is, and a string as its leading
  * integer, because "in frontmatter Claude Code reads `200k` as 200". YAML 1.2 reads `200k` as a
  * string, so the leading integer is how the kit reaches the documented 200. A value with no
- * leading integer reads as nothing (judgment, spec/judgments.md).
+ * leading integer, or whose integer is followed by a fraction (`"200000.5"`), reads as nothing,
+ * the same as the unquoted number (judgment, spec/judgments.md).
  */
 function windowTokens(raw: unknown): number | undefined {
   if (typeof raw === 'number') return raw;

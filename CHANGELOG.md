@@ -74,6 +74,13 @@
 
 ### Fixed
 
+- Agent fields: a quoted fraction such as `autoCompactWindow: "200000.5"` is dropped with
+  `invalid autoCompactWindow` instead of truncating to 200000; `background` and `omitClaudeMd`
+  accept a YAML boolean or the text `true` or `false` only (not `yes`, `on`, `1`); an empty
+  inline `mcpServers` definition (`- {}`) is dropped; a plugin agent now has a test for each of
+  `tools`, `disallowedTools`, `skills` and `memory`; the judgments say why plugin-ignored fields
+  are not "unrecognized".
+
 - Agent files: a project, user or managed file with a name that breaks a rule now has each rule's
   own wording tested; a plugin agent in a file named `.md` is named `.md`, not an empty string; a
   `--add-dir` directory reads as `project`, and `flag` is no source of a file read (`readAgent`).
