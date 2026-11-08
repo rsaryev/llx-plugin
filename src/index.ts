@@ -24,3 +24,18 @@ export type {
 export type * from './protocol/official.ts';
 export type * from './ports/index.ts';
 export * from './loading/index.ts';
+export * from './rules/index.ts';
+export {
+  PERMISSION_BEHAVIORS,
+  PERMISSION_MODES,
+  normalizePermissionMode,
+} from './protocol/permission-modes.ts';
+export {
+  DOCUMENTED_TOOLS,
+  REMOVED_TOOLS,
+  SDK_ONLY_TOOLS,
+  type DocumentedTool,
+  type RemovedTool,
+  type SdkOnlyTool,
+} from './protocol/tool-names.ts';
+export type * from './protocol/official-tools.ts';

@@ -187,11 +187,68 @@ The host maps its own tools to Claude Code's names and inputs before dispatching
 `Write`, `Edit`…, typed by the official `ToolInputSchemas`), so a plugin's `"matcher": "Write|Edit"`
 and `"if": "Bash(git *)"` mean what they mean in Claude Code.
 
-## Permission rules (planned)
+## Permission rules (done: syntax, bare, parameter and glob rules, precedence, Bash and PowerShell commands, hook `if`, path rules, domain, MCP, Agent and Skill rules)
 
-`parseRule('Bash(git push *)')` and `matchRule(rule, toolName, input)`: Claude Code's rule syntax
-(permissions.md), used by the `if` field of hooks, `allowed-tools` of skills and commands, and a
-host's own permission system. Every example table in permissions.md is a requirement.
+Claude Code's rule syntax (permissions.md), used by the `if` field of hooks, `allowed-tools` of
+skills and commands, and a host's own permission system. Pure functions over data, no ports.
+
+```ts
+import { evaluateRules, parseRule, ruleIssues } from '@rsaryev/claude-plugin-kit';
+
+const { rule, issues } = parseRule('Agent(model:opus)', { behavior: 'deny', source: { kind: 'user' } });
+const verdict = evaluateRules(rules, { toolName: 'Agent', input: { model: 'opus' } }, context);
+// verdict.behavior is 'deny' | 'ask' | 'allow' | undefined, with the rule that matched
+```
+
+| Function                         | Status  | Does                                                                         |
+| -------------------------------- | ------- | ---------------------------------------------------------------------------- |
+| `parseRule(text, { behavior, source })` | done | `Tool` / `Tool(specifier)` to a `PermissionRule`; a skipped rule is `rule: undefined` plus issues |
+| `formatRule(value)`              | done    | the text of an official `PermissionRuleValue`                                |
+| `matchRule(rule, call, context)` | done    | bare rules, tool-name globs and `Tool(param:value)`; other specifiers go to the matcher of the tool's rule format |
+| `evaluateRules(rules, call, context)` | done | deny, then ask, then allow; the first match wins and specificity never reorders |
+| `ruleIssues(rules, knownTools)`  | done    | the matches-no-tool startup warning (typos and labels such as `Stop Task`)   |
+| Bash and PowerShell command matchers | done | `Bash(npm run *)`, `Monitor(...)` and `PowerShell(...)`: wildcards, compound commands, wrappers, exec wrappers and `find` actions |
+| `evaluateIf(ifRule, toolName, input, context)` | done | whether a hook `if` runs: `{ runs, issues }`; the Bash table of hooks.md, "runs when it cannot tell", a `Bash(...)` rule also answering a Monitor call, and issues reported at `hooks.if` |
+| `splitCommand`, `stripWrappers`, `matchBashPattern`, `requiresPromptDespitePrefixRule` | done | the pieces of the Bash matcher, for a host that reads commands itself |
+| `Read(...)`, `Edit(...)` path matchers | done | the four anchors (`//`, `~/`, `/` per settings source, `path`/`./path`), gitignore matching, the allow versus deny/ask depth rule, `!` negation, Windows POSIX form, routing (Edit covers Write and NotebookEdit, Read covers Grep and Glob, Edit allow implies read, Read deny covers Edit and Write) |
+| `prepareCall(call, paths, resolver)`, `resolveRuleDirectories(rules, paths, resolver)` | done | the symlink two-path rule through the `PathResolver` port: allow needs both paths, deny and ask either; a rule written through a symlinked directory also applies at its real location (`PathContext.realDirectories`); an unresolvable path is a `PortFailure` |
+| `readsNetworkPath`, `isNetworkPath`   | done    | UNC and `/net` paths, which always prompt                                    |
+| `matchCdRule(rule, target, context)`  | done    | `Cd(path)` patterns: whole-path, `*` one segment, `**` across                |
+| `WebFetch(domain:...)` matcher, `matchDomainPattern(pattern, url)` | done | the hostname of the call's `url`: case-insensitive, trailing dot stripped, `*.` any depth but not the domain, bare `*`, a `*` elsewhere one label, `[::1]` and `[::1]:443`, non-ASCII labels as punycode; a deny or ask rule covering `claude.ai` or `*.claudeusercontent.com` also applies to an `Artifact` read call |
+| `sandboxDomainEntry(rule)`, `sandboxDomainLists(rules)` | done | the sandbox list a `WebFetch(domain:...)` rule adds to, as data; a bare `WebFetch` adds nothing |
+| `Agent(Name)`, `Skill(name)` and `Skill(name *)` matchers | done | `subagent_type` exact (omitted is `general-purpose` for deny and ask; `Agent(fork)` names a fork); `skill` exact or prefix (a whole name or a namespace); a deny rule also sees `PreparedCall.skillNames` |
+| `mcpToolRuleMatches`, `normalizeMcpServerName`, `pluginMcpServerName`, `mcpToolName` | done | `mcp__server`, `mcp__server__*`, `mcp__server__tool`; deny and ask rules also cover a server whose name holds `__`, allow rules do not; the Cowork tools of a bare `Bash` or `WebFetch` deny rule |
+| `decide`, tool catalog            | planned | modes and the tool table                                                     |
+
+`parseRule` returns the official `{ toolName, ruleContent? }` in `rule.value` and the read form in
+`rule.specifier` (`param`, `domain` or `text`), so matching never parses text again. Deny and ask
+rules read `name:value` as an input parameter; an allow rule keeps each tool's own syntax. An
+`mcp__` rule with parentheses is skipped in a settings file (`RuleSource` `managed`,
+`embedder-managed`, `project`, `local`, `user`, `flag-settings`) and read as a parameter rule from
+the command line or the session. A `Skill(skill:<name>)` deny rule also matches the names in
+`PreparedCall.skillNames`.
+`SPECIFIER_MATCHERS` holds one matcher per `RuleFormatId` (the "Rule format" table of
+tools-reference.md). The `bare` format, a tool the table lists no specifier for, has no matcher and
+fails closed: an allow rule matches nothing, a deny or ask rule matches every call of its tool.
+
+A command rule (`src/rules/bash`) splits the command at `&&`, `||`, `;`, `|`, `|&`, `&` and
+newlines outside quotes, and again inside `$()`, backticks, subshells and control-flow bodies. An
+allow rule matches when every subcommand matches it and never matches a command the kit could not
+read to the end (`npm test &&`); a deny or ask rule matches when any subcommand does. Each
+subcommand is also tried after the fixed wrappers (`timeout`, `time`, `nice`, `nohup`, `stdbuf`,
+`command`, `builtin`, `noglob`, bare `xargs`) and leading `VAR=value` assignments are stripped (an
+allow rule strips only `NODE_ENV`, `LANG`, `NO_COLOR` and `MatchContext.safeEnvVars`). A prefix
+allow rule never approves `watch`, `setsid`, `ionice`, `flock` or a `find` that runs, deletes or
+writes. `ruleIssues` also reports a `Bash` allow rule with a `*` before the subcommand
+(`Bash(git * main)`). The rule matches the text as written, never a path or quote-normalised form:
+`/usr/bin/curl` and `sh -c 'curl ...'` are not `Bash(curl *)`.
+
+A path rule (`src/rules/path`) is a gitignore pattern over the path below its anchor (the `ignore`
+package). Deny and ask rules match when any of a call's paths matches, allow rules when all do (the
+requested path and `PreparedCall.resolvedPaths`, which `prepareCall` fills). A `!` rule carves paths
+out of the rules before it in the same source and list; `evaluateRules` applies it. `Write(...)`,
+`Glob(...)`, `Grep(...)` and `NotebookEdit(...)` rules with a path never match; write `Edit(...)` or
+`Read(...)`. A host asks `readsNetworkPath` before it trusts any allow rule, hook or classifier.
 
 ## Testing kit (planned)
 

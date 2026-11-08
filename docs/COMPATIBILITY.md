@@ -5,6 +5,7 @@ and a run of every test. A requirement is proven when a passing test under `spec
 (docs/SPEC.md). Do not edit by hand.
 
 **Overall: 6.7% (56 of 834 requirements proven).**
+**Overall: 10.9% (91 of 834 requirements proven).**
 
 | Category | Proven | Total | Share |
 | --- | ---: | ---: | ---: |
@@ -20,12 +21,12 @@ and a run of every test. A requirement is proven when a passing test under `spec
 | agents | 0 | 28 | 0.0% |
 | output-styles | 0 | 4 | 0.0% |
 | hooks | 0 | 294 | 0.0% |
-| permissions | 0 | 36 | 0.0% |
+| permissions | 30 | 36 | 83.3% |
 | mcp | 0 | 4 | 0.0% |
 | lsp | 0 | 14 | 0.0% |
 | monitors | 0 | 4 | 0.0% |
 | channels | 3 | 3 | 100.0% |
-| tools | 0 | 102 | 0.0% |
+| tools | 14 | 102 | 13.7% |
 | mods | 0 | 160 | 0.0% |
 
 ## layout
@@ -70,7 +71,7 @@ Unproven: `hooks.event.ConfigChange`, `hooks.event.CwdChanged`, `hooks.event.Dir
 
 ## permissions
 
-Unproven: `permissions.mode.acceptEdits`, `permissions.mode.auto`, `permissions.mode.bypassPermissions`, `permissions.mode.default`, `permissions.mode.dontAsk`, `permissions.mode.plan`, `permissions.rule../path`, `permissions.rule.//path`, `permissions.rule./path`, `permissions.rule.~/path`, `permissions.rule.Agent(isolation:worktree)`, `permissions.rule.Agent(model:opus)`, `permissions.rule.Bash`, `permissions.rule.Bash(* --help *)`, `permissions.rule.Bash(* --version)`, `permissions.rule.Bash(curl *)`, `permissions.rule.Bash(git * main)`, `permissions.rule.Bash(git log * main)`, `permissions.rule.Bash(git push *)`, `permissions.rule.Bash(ls *)`, `permissions.rule.Bash(ls*)`, `permissions.rule.Bash(npm run *)`, `permissions.rule.Bash(npm run build)`, `permissions.rule.Bash(rm *)`, `permissions.rule.Bash(run_in_background:true)`, `permissions.rule.Edit(**/src/**)`, `permissions.rule.Edit(/src/**)`, `permissions.rule.Edit(src/**)`, `permissions.rule.path`, `permissions.rule.Read`, `permissions.rule.Read(./.env)`, `permissions.rule.Read(.env)`, `permissions.rule.Read(**/.env)`, `permissions.rule.Read(//**/.env)`, `permissions.rule.WebFetch`, `permissions.rule.WebFetch(domain:example.com)`
+Unproven: `permissions.mode.acceptEdits`, `permissions.mode.auto`, `permissions.mode.bypassPermissions`, `permissions.mode.default`, `permissions.mode.dontAsk`, `permissions.mode.plan`
 
 ## mcp
 
@@ -86,7 +87,7 @@ Unproven: `monitors.field.command`, `monitors.field.description`, `monitors.fiel
 
 ## tools
 
-Unproven: `tools.input.Agent.agentId`, `tools.input.Agent.content`, `tools.input.Agent.description`, `tools.input.Agent.model`, `tools.input.Agent.modelsUsed`, `tools.input.Agent.prompt`, `tools.input.Agent.resolvedModel`, `tools.input.Agent.status`, `tools.input.Agent.subagent_type`, `tools.input.Agent.totalDurationMs`, `tools.input.Agent.totalTokens`, `tools.input.Agent.totalToolUseCount`, `tools.input.Agent.usage`, `tools.input.AskUserQuestion.answers`, `tools.input.AskUserQuestion.questions`, `tools.input.Bash.changedFiles`, `tools.input.Bash.command`, `tools.input.Bash.description`, `tools.input.Bash.files`, `tools.input.Bash.moreFiles`, `tools.input.Bash.run_in_background`, `tools.input.Bash.shared`, `tools.input.Bash.skipped`, `tools.input.Bash.timeout`, `tools.input.Bash.unavailable`, `tools.input.Edit.file_path`, `tools.input.Edit.new_string`, `tools.input.Edit.old_string`, `tools.input.Edit.replace_all`, `tools.input.ExitPlanMode.allowedPrompts`, `tools.input.ExitPlanMode.plan`, `tools.input.ExitPlanMode.planFilePath`, `tools.input.Glob.path`, `tools.input.Glob.pattern`, `tools.input.Grep.-i`, `tools.input.Grep.glob`, `tools.input.Grep.multiline`, `tools.input.Grep.output_mode`, `tools.input.Grep.path`, `tools.input.Grep.pattern`, `tools.input.PowerShell.command`, `tools.input.PowerShell.description`, `tools.input.PowerShell.run_in_background`, `tools.input.PowerShell.timeout`, `tools.input.Read.file_path`, `tools.input.Read.limit`, `tools.input.Read.offset`, `tools.input.WebFetch.offset`, `tools.input.WebFetch.prompt`, `tools.input.WebFetch.url`, `tools.input.WebSearch.allowed_domains`, `tools.input.WebSearch.blocked_domains`, `tools.input.WebSearch.mode`, `tools.input.WebSearch.query`, `tools.input.Write.content`, `tools.input.Write.file_path`, `tools.tool.Agent`, `tools.tool.Artifact`, `tools.tool.AskUserQuestion`, `tools.tool.Bash`, `tools.tool.CronCreate`, `tools.tool.CronDelete`, `tools.tool.CronList`, `tools.tool.Edit`, `tools.tool.EndConversation`, `tools.tool.EnterPlanMode`, `tools.tool.EnterWorktree`, `tools.tool.ExitPlanMode`, `tools.tool.ExitWorktree`, `tools.tool.Glob`, `tools.tool.Grep`, `tools.tool.ListAgents`, `tools.tool.ListMcpResourcesTool`, `tools.tool.LSP`, `tools.tool.Monitor`, `tools.tool.NotebookEdit`, `tools.tool.PowerShell`, `tools.tool.PushNotification`, `tools.tool.Read`, `tools.tool.ReadMcpResourceTool`, `tools.tool.RemoteTrigger`, `tools.tool.ReportFindings`, `tools.tool.ScheduleWakeup`, `tools.tool.SendFeedback`, `tools.tool.SendMessage`, `tools.tool.SendUserFile`, `tools.tool.ShareOnboardingGuide`, `tools.tool.Skill`, `tools.tool.SubagentHandback`, `tools.tool.TaskCreate`, `tools.tool.TaskGet`, `tools.tool.TaskList`, `tools.tool.TaskOutput`, `tools.tool.TaskStop`, `tools.tool.TaskUpdate`, `tools.tool.TodoWrite`, `tools.tool.ToolSearch`, `tools.tool.WaitForMcpServers`, `tools.tool.WebFetch`, `tools.tool.WebSearch`, `tools.tool.Workflow`, `tools.tool.Write`
+Unproven: `tools.input.Agent.agentId`, `tools.input.Agent.content`, `tools.input.Agent.modelsUsed`, `tools.input.Agent.prompt`, `tools.input.Agent.resolvedModel`, `tools.input.Agent.status`, `tools.input.Agent.totalDurationMs`, `tools.input.Agent.totalTokens`, `tools.input.Agent.totalToolUseCount`, `tools.input.Agent.usage`, `tools.input.AskUserQuestion.answers`, `tools.input.AskUserQuestion.questions`, `tools.input.Bash.changedFiles`, `tools.input.Bash.description`, `tools.input.Bash.files`, `tools.input.Bash.moreFiles`, `tools.input.Bash.run_in_background`, `tools.input.Bash.shared`, `tools.input.Bash.skipped`, `tools.input.Bash.timeout`, `tools.input.Bash.unavailable`, `tools.input.Edit.new_string`, `tools.input.Edit.old_string`, `tools.input.Edit.replace_all`, `tools.input.ExitPlanMode.allowedPrompts`, `tools.input.ExitPlanMode.plan`, `tools.input.ExitPlanMode.planFilePath`, `tools.input.Glob.pattern`, `tools.input.Grep.-i`, `tools.input.Grep.glob`, `tools.input.Grep.multiline`, `tools.input.Grep.output_mode`, `tools.input.Grep.pattern`, `tools.input.PowerShell.description`, `tools.input.PowerShell.run_in_background`, `tools.input.PowerShell.timeout`, `tools.input.Read.limit`, `tools.input.Read.offset`, `tools.input.WebFetch.offset`, `tools.input.WebFetch.prompt`, `tools.input.WebSearch.allowed_domains`, `tools.input.WebSearch.blocked_domains`, `tools.input.WebSearch.mode`, `tools.input.WebSearch.query`, `tools.input.Write.content`, `tools.tool.Artifact`, `tools.tool.AskUserQuestion`, `tools.tool.Bash`, `tools.tool.CronCreate`, `tools.tool.CronDelete`, `tools.tool.CronList`, `tools.tool.Edit`, `tools.tool.EndConversation`, `tools.tool.EnterPlanMode`, `tools.tool.EnterWorktree`, `tools.tool.ExitPlanMode`, `tools.tool.ExitWorktree`, `tools.tool.Glob`, `tools.tool.Grep`, `tools.tool.ListAgents`, `tools.tool.ListMcpResourcesTool`, `tools.tool.LSP`, `tools.tool.Monitor`, `tools.tool.NotebookEdit`, `tools.tool.PowerShell`, `tools.tool.PushNotification`, `tools.tool.Read`, `tools.tool.ReadMcpResourceTool`, `tools.tool.RemoteTrigger`, `tools.tool.ReportFindings`, `tools.tool.ScheduleWakeup`, `tools.tool.SendFeedback`, `tools.tool.SendMessage`, `tools.tool.SendUserFile`, `tools.tool.ShareOnboardingGuide`, `tools.tool.SubagentHandback`, `tools.tool.TaskCreate`, `tools.tool.TaskGet`, `tools.tool.TaskList`, `tools.tool.TaskOutput`, `tools.tool.TaskStop`, `tools.tool.TaskUpdate`, `tools.tool.TodoWrite`, `tools.tool.ToolSearch`, `tools.tool.WaitForMcpServers`, `tools.tool.WebSearch`, `tools.tool.Workflow`, `tools.tool.Write`
 
 ## mods
 
