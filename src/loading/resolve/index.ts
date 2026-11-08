@@ -30,6 +30,9 @@ export {
   type McpResolution,
   type ResolvedMcpServer,
 } from './mcp.ts';
+export { monitorsToStart, type MonitorEvent, type MonitorMode } from './monitor-trigger.ts';
+export { resolveMonitor, type MonitorResolution, type ResolvedMonitor } from './monitor.ts';
+export { MONITOR_GUARD } from './shell-guard-monitor.ts';
 export { HEADERS_HELPER_GUARD, rejectUserConfigInShell, type ShellGuard } from './shell-guard.ts';
 export {
   OPTION_VARIABLES,

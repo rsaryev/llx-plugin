@@ -46,7 +46,8 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `readMcpConfig(raw, origin)`, `readMcpServer(name, raw, origin)` | done | `.mcp.json` (wrapper or bare map) → `PluginMcpServer` map; an entry Claude Code would drop is an error issue |
 | `collectMcpServers(files, manifestValue, options)`, `classifyMcpSource(value)` | done | the root `.mcp.json`, then each `mcpServers` source in order (`.json` file, inline map, `.mcpb` or `.dxt` bundle path or URL); a later name replaces an earlier one |
 | `readLspConfig(raw, origin)`, `readLspServer(name, raw, origin)`, `mergeLspSources(reads)` | done | an LSP server map (`.lsp.json` or inline: no wrapper) → `LspServer` map; one invalid entry skips the whole map; a later source replaces an earlier server of the same name |
-| `readMonitors(raw)`, `readOutputStyle(...)` | planned | the remaining component files |
+| `readMonitors(raw, origin)`, `readMonitor(raw, origin, index)`, `parseMonitorTrigger(when)` | done | `monitors/monitors.json` or the inline `experimental.monitors` array → `Monitor[]` (strict entry; unique names; `when` as `{ kind: 'always' }` or `{ kind: 'on-skill-invoke', skill }`); every problem is an error issue |
+| `readOutputStyle(...)` | planned | the remaining component file |
 
 ## Loading (planned)
 
@@ -171,6 +172,29 @@ The kit never starts a language server and never enforces a timeout: the host's 
 process, waits `startupTimeoutMs`, applies `requestTimeoutMs`, terminates after `shutdownTimeoutMs`,
 pushes diagnostics when `diagnostics` is on and speaks the protocol. The kit proves the values and
 decisions it hands over.
+
+### Monitors (done: `format/monitors`, `loading/resolve/monitor*`)
+
+```ts
+import { readMonitors, resolveMonitor, monitorsToStart } from '@rsaryev/claude-plugin-kit';
+
+const { monitors, issues } = readMonitors(JSON.parse(monitorsJson), 'monitors/monitors.json');
+const { resolved } = await resolveMonitor(monitors[0], scope); // undefined when it must not start
+const toStart = monitorsToStart(monitors, { kind: 'session-start' }, started, { interactive: true });
+for (const monitor of toStart) started.add(monitor.name); // the host spawns each and remembers the name
+```
+
+| API | What it does |
+| --- | --- |
+| `Monitor`, `MonitorTrigger` | kit-owned types (the SDK has no monitor config type): `name`, `command`, `description`, and `when` as a tagged trigger |
+| `readMonitors(raw, origin)` | the array of one source; a strict entry (an unknown key is an error), `when` absent is `always`, a malformed `when` is an error naming the two forms, a repeated `name` is an error and the first keeps it; valid entries are still returned |
+| `resolveMonitor(monitor, scope)` | `command` gets the three path variables and `${ENV_VAR}`; `${user_config.*}` in it is the errors.md message and `resolved` is `undefined`, with no value needed; `environment` is always empty (nothing exported, no `CLAUDE_PLUGIN_OPTION_<KEY>`) |
+| `monitorsToStart(monitors, event, started, mode)` | pure: `always` starts on `session-start` and `plugin-reload`; `on-skill-invoke:<skill>` starts on `skill-invoked` for that skill, the first time only; nothing starts when `mode.interactive` is false (`-p`) |
+| `MONITOR_GUARD` | the monitor message for `rejectUserConfigInShell` |
+
+The kit never spawns a monitor: the host runs `command` in a shell in the session's working
+directory, outside the sandbox, keeps the set of started names (a name in it is never returned
+again), and turns what the process prints into notifications.
 
 ## Ports (done)
 

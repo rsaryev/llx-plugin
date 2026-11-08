@@ -76,6 +76,12 @@
   and `diagnostics` true, `transport` always `stdio`), and the runtime decisions the host reads:
   `lspRestartDecision`, `languageIdFor`, `lspExtensionConflicts`, `initializeOptionsOf` and
   `didChangeConfigurationOf`.
+- Monitors of a plugin: `readMonitors` (the four fields of manifest-reference's `monitors` table as a
+  strict entry; unique names; `when` read as `always` or `on-skill-invoke:<skill>`, anything else an
+  error), `resolveMonitor` (path variables and `${ENV_VAR}` in `command`, `${user_config.*}` refused
+  with the errors.md message, nothing exported) and `monitorsToStart`, the pure engine that says which
+  monitors an event starts: `always` on session start and plugin reload, a skill monitor the first
+  time its skill runs, none in non-interactive mode.
 
 ### Fixed
 
