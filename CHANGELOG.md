@@ -36,6 +36,14 @@
 
 ### Fixed
 
+- Hooks (review of the per-event contracts): `effects.deferCondition` is removed, `resolveDefer` is the
+  one way to know whether a `defer` applies; `effects.stopCondition` of a `TaskCompleted` now comes from
+  its own merger and the teammate-stop rule of an `ok: false` hook from `EXIT2_RULES`, not from an event
+  name; the tests no longer assert echoes of their own input, claims the host owns (`hook_response`,
+  the debug log, the pasted-text expansion) or titles that overstate what they check; added tests for
+  `ElicitationResult` `mode` and `elicitation_id`, the value sets of `PreModelSwitch` and
+  `PostModelSwitch`, `UserPromptExpansion.command_source`, the `PreToolUse` exit-2 path through
+  `decide`, and the `WorktreeCreate` path reading; the judgments for these are in `spec/judgments.md`.
 - Hooks (review of the runtime outcomes): the `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` count resets when
   Claude calls a tool (`PreToolUse`, `PostToolUse`, `PostToolUseFailure`, with or without a hook) and
   when a Stop holds nothing, no longer on `stop_hook_active`; `StopBlockCap.reset` and

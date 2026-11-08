@@ -1,37 +1,25 @@
 /**
- * hooks.md § "PreCompact output": stdout as compaction instructions, cut at the cap with a marker;
- * and the input the scripts of the task and teammate sections read.
+ * hooks.md § "PreCompact output": stdout as compaction instructions, cut at the cap with a marker.
  */
-import { describe, expect, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { createOutputStage } from '../../../src/hooks/index.ts';
 import type { HookEvent } from '../../../src/protocol/official.ts';
 import { fire } from '../../support/hooks-fire.ts';
+import { runScript } from '../../support/hooks-script.ts';
 import { stage, viaEngine } from '../../support/hooks-output.ts';
 import { command, entry, FACTS } from '../../support/hooks-select.ts';
 import { memoryScratch, type RunnerReply } from '../../support/ports.ts';
 import { spec } from '../../support/spec.ts';
 
-/** One command hook of `event` whose script is `script`, fired with `facts`. */
 /** Two hooks of `event` that differ in their command, so the engine does not run them once (hooks.md, "How a hook resolves"). */
 const twoHooks = (event: HookEvent) => [
   entry(event, { handler: command('./one.sh') }),
   entry(event, { handler: command('./two.sh') }),
 ];
 
-const runScript = <E extends HookEvent>(event: E, script: RunnerReply, facts: object) =>
-  fire(event, [entry(event)], [script], {
-    output: stage,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the facts are the event's own
-    facts: facts as never,
-  }).then(({ outcome }) => outcome);
-
-/** The JSON a command hook reads on stdin. */
-const inputOf = (run: { readonly stdin?: string }): Record<string, unknown> =>
-  JSON.parse(run.stdin ?? '{}') as Record<string, unknown>;
+const stdoutOf = (text: string): RunnerReply => ({ exitCode: 0, stdout: text });
 
 spec('hooks.behavior.PreCompact output', () => {
-  const stdoutOf = (text: string): RunnerReply => ({ exitCode: 0, stdout: text });
-
   test('when a hook exits 0 and does not block, its stdout is the instructions for the compaction summary', async () => {
     const outcome = await runScript(
       'PreCompact',
@@ -99,23 +87,5 @@ spec('hooks.behavior.PreCompact output', () => {
       { output: stage },
     );
     expect(outcome.effects.compactionInstructions).toEqual(['a'.repeat(6_000), 'b'.repeat(6_000)]);
-  });
-});
-
-describe('the examples of these sections receive the input the docs show', () => {
-  test.each([
-    ['TeammateIdle', { teammate_name: 'a', team_name: 'b' }],
-    ['TaskCreated', { task_id: '1', task_subject: 's' }],
-  ] as const)('%s', async (event, facts) => {
-    let read: Record<string, unknown> = {};
-    await runScript(
-      event,
-      (run) => {
-        read = inputOf(run);
-        return {};
-      },
-      facts,
-    );
-    expect(read).toMatchObject({ hook_event_name: event, ...facts });
   });
 });

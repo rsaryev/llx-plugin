@@ -659,8 +659,8 @@ session removes) and `background` (the `additionalContext`, `systemMessage` or `
 `async` or `asyncRewake` hook once its process ends).
 
 `effects` carries what the merged output asks the host to do, one optional field per thing:
-`permissionDecision` with `permissionDecisionReason`, `updatedInput` and, for `defer`, the
-`deferCondition` the host applies (`-p` and a single tool call); `permissionRequest` (the `decision`
+`permissionDecision` with `permissionDecisionReason` and `updatedInput` (`resolveDefer` says whether
+a `defer` applies: `-p` and a single tool call); `permissionRequest` (the `decision`
 object: `allow` with `updatedInput` and `updatedPermissions`, or `deny` with `message` and
 `interrupt`); `updatedToolOutput` (a built-in tool's value that does not match its output shape, for
 Bash, Glob, Grep, WebFetch and WebSearch, is dropped with an issue; MCP output and the other tools

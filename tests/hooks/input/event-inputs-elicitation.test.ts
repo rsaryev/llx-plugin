@@ -91,14 +91,49 @@ spec('hooks.behavior.ElicitationResult input', () => {
     expect(builtFromExample('ElicitationResult', example).wire).toEqual(example);
   });
 
-  test.each(['accept', 'decline', 'cancel'])(
-    'the action %s arrives, and a declined or cancelled one has no content',
-    (action) => {
-      const { wire } = builtInput('ElicitationResult', { mcp_server_name: 's', action });
-      expect(wire?.['action']).toBe(action);
-      expect(wire).not.toHaveProperty('content');
-    },
-  );
+  test.each(['accept', 'decline', 'cancel'])('the action %s arrives', (action) => {
+    const { wire } = builtInput('ElicitationResult', { mcp_server_name: 's', action });
+    expect(wire?.['action']).toBe(action);
+  });
+
+  test('content, mode and elicitation_id are optional: absent when not given', () => {
+    const { wire } = builtInput('ElicitationResult', { mcp_server_name: 's', action: 'accept' });
+    expect(Object.keys(wire ?? {})).toEqual([
+      'session_id',
+      'transcript_path',
+      'cwd',
+      'hook_event_name',
+      'mcp_server_name',
+      'action',
+    ]);
+  });
+
+  test.each(['form', 'url'])('mode %s arrives when given', (mode) => {
+    const { wire } = builtInput('ElicitationResult', {
+      mcp_server_name: 's',
+      action: 'accept',
+      mode,
+    });
+    expect(wire?.['mode']).toBe(mode);
+  });
+
+  test('elicitation_id arrives when the server gave one', () => {
+    const { wire } = builtInput('ElicitationResult', {
+      mcp_server_name: 's',
+      action: 'accept',
+      elicitation_id: 'e-1',
+    });
+    expect(wire?.['elicitation_id']).toBe('e-1');
+  });
+
+  test('a mode outside form and url is refused', () => {
+    const refused = builtInput('ElicitationResult', {
+      mcp_server_name: 's',
+      action: 'accept',
+      mode: 'popup',
+    });
+    expect(refused.errors).toEqual(['hooks.ElicitationResult.input.mode']);
+  });
 
   test('an action outside accept, decline and cancel is refused', () => {
     const refused = builtInput('ElicitationResult', { mcp_server_name: 's', action: 'skip' });
@@ -142,12 +177,5 @@ spec('hooks.behavior.Notification input', () => {
     expect(builtInput('Notification', { message: 'm' }).errors).toEqual([
       'hooks.Notification.input.notification_type',
     ]);
-  });
-
-  test('a notification type the table does not list still arrives: a plugin raises its own', () => {
-    // judgment (spec/judgments.md): the SDK types `notification_type` as a string
-    expect(
-      builtInput('Notification', { message: 'm', notification_type: 'plugin_notification' }).wire,
-    ).toBeDefined();
   });
 });

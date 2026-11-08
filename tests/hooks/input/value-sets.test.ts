@@ -14,17 +14,14 @@ import { stage } from '../../support/hooks-output.ts';
 import { entry, FACTS } from '../../support/hooks-select.ts';
 import { requirementKeys } from '../../support/requirements.ts';
 import { spec } from '../../support/spec.ts';
+import { stdinJson } from '../../support/stdin.ts';
 
 /** What a command hook of `event` with this matcher read on stdin, or `undefined` when it did not run. */
 async function ranWith(event: HookEvent, matcher: string, facts: object) {
   const hook = entry(event, { matcher });
-  const { runner } = await fire(event, [hook], [{ exitCode: 0 }], {
-    output: stage,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the facts are one event's, picked by the caller
-    facts: facts as never,
-  });
+  const { runner } = await fire(event, [hook], [{ exitCode: 0 }], { output: stage, facts });
   const stdin = runner.calls[0]?.stdin;
-  return stdin === undefined ? undefined : (JSON.parse(stdin) as Record<string, unknown>);
+  return stdin === undefined ? undefined : stdinJson({ stdin });
 }
 
 const NOTIFICATION_TYPES = requirementKeys('hooks.matcherValue.Notification.');

@@ -5,30 +5,18 @@
  */
 import { expect, test } from 'bun:test';
 import { createEnvFiles, createHookEngine, createHookRegistry } from '../../../src/hooks/index.ts';
-import type { HookEvent } from '../../../src/protocol/official.ts';
 import { memoryEnvFiles } from '../../support/env-files.ts';
 import { fire } from '../../support/hooks-fire.ts';
 import { answer, fireModelHook, promptHook } from '../../support/hooks-model-fire.ts';
 import { specific, stage, viaEngine } from '../../support/hooks-output.ts';
+import { runScript } from '../../support/hooks-script.ts';
 import { entry, FACTS, session } from '../../support/hooks-select.ts';
-import {
-  fakeEnvironment,
-  locations,
-  scriptedRunner,
-  type RunnerReply,
-} from '../../support/ports.ts';
+import { fakeEnvironment, locations, scriptedRunner } from '../../support/ports.ts';
 import { spec } from '../../support/spec.ts';
+import { stdinJson } from '../../support/stdin.ts';
 
-const runScript = <E extends HookEvent>(event: E, script: RunnerReply, facts: object) =>
-  fire(event, [entry(event)], [script], {
-    output: stage,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the facts are the event's own
-    facts: facts as never,
-  }).then(({ outcome }) => outcome);
-
-/** The JSON a command hook reads on stdin. */
-const inputOf = (run: { readonly stdin?: string }): Record<string, unknown> =>
-  JSON.parse(run.stdin ?? '{}') as Record<string, unknown>;
+/** A `PermissionDenied` hook's `retry` answer. */
+const retry = (value: boolean) => specific('PermissionDenied', { retry: value });
 
 spec('hooks.behavior.Setup decision control', () => {
   const FIELDS = {
@@ -68,7 +56,10 @@ spec('hooks.behavior.Setup decision control', () => {
     expect(outcome.additionalContext).toEqual([]);
   });
 
-  test('the stdout, stderr and exit code reach the host in the finished report, for its hook_response events', async () => {
+  // hooks.md: "a Setup hook's stdout, stderr, and exit code appear ... only as `hook_response`
+  // events". The event is the host's to write; the kit's part is the report of the run with its
+  // exit code (`HookObserver.finished` carries no stdout or stderr).
+  test('the exit code of a Setup hook reaches the host in the finished report, for its hook_response event', async () => {
     const finished: unknown[] = [];
     await fire('Setup', [entry('Setup')], [{ exitCode: 3, stdout: 'out', stderr: 'err' }], {
       output: stage,
@@ -150,7 +141,7 @@ spec('hooks.behavior.InstructionsLoaded decision control', () => {
     await runScript(
       'InstructionsLoaded',
       (run) => {
-        seen.push(inputOf(run));
+        seen.push(stdinJson(run));
         return {};
       },
       { file_path: '/p/CLAUDE.md', memory_type: 'Project', load_reason: 'session_start' },
@@ -167,8 +158,6 @@ spec('hooks.behavior.InstructionsLoaded decision control', () => {
 });
 
 spec('hooks.behavior.PermissionDenied decision control', () => {
-  const retry = (value: boolean) => specific('PermissionDenied', { retry: value });
-
   test('retry: true tells the model it may retry the denied call', async () => {
     const outcome = await viaEngine('PermissionDenied', [retry(true)]);
     expect(outcome.effects.retry).toBe(true);

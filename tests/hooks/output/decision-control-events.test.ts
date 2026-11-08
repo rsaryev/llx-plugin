@@ -4,18 +4,11 @@
  * events with no decision control, and the list of events that rewrite content.
  */
 import { describe, expect, test } from 'bun:test';
-import type { HookEvent } from '../../../src/protocol/official.ts';
 import { fire } from '../../support/hooks-fire.ts';
+import { exits } from '../../support/hooks-script.ts';
 import { specific, stage, viaEngine } from '../../support/hooks-output.ts';
 import { entry, FACTS } from '../../support/hooks-select.ts';
 import { spec } from '../../support/spec.ts';
-
-const exits = (event: HookEvent, exitCode: number, stderr: string, facts?: object) =>
-  fire(event, [entry(event)], [{ exitCode, stderr }], {
-    output: stage,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the facts are the event's own
-    ...(facts === undefined ? {} : { facts: facts as never }),
-  }).then(({ outcome }) => outcome);
 
 spec('hooks.behavior.Decision control', () => {
   describe('PreModelSwitch: hookSpecificOutput or top-level decision', () => {
@@ -139,11 +132,16 @@ spec('hooks.behavior.Decision control', () => {
   });
 
   describe('MessageDisplay: hookSpecificOutput.displayContent', () => {
-    test('displayContent replaces the displayed text', async () => {
+    test('displayContent replaces the displayed text and nothing Claude sees', async () => {
       const outcome = await viaEngine('MessageDisplay', [
         specific('MessageDisplay', { displayContent: 'redacted' }),
       ]);
       expect(outcome.effects.displayContent).toBe('redacted');
+      // "the transcript and what Claude sees keep the original": keeping the original text is the
+      // host's; the kit adds nothing to Claude's context or feedback for it.
+      expect(outcome.additionalContext).toEqual([]);
+      expect(outcome.feedback).toEqual([]);
+      expect(outcome.proceed).toBe(true);
     });
   });
 

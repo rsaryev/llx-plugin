@@ -4,19 +4,10 @@
  * real engine and output stage, with a negative case for each pattern.
  */
 import { describe, expect, test } from 'bun:test';
-import type { HookEvent } from '../../../src/protocol/official.ts';
 import { parseHookOutput } from '../../../src/hooks/index.ts';
-import { fire } from '../../support/hooks-fire.ts';
-import { specific, stage, viaEngine } from '../../support/hooks-output.ts';
-import { entry } from '../../support/hooks-select.ts';
+import { exits } from '../../support/hooks-script.ts';
+import { specific, viaEngine } from '../../support/hooks-output.ts';
 import { spec } from '../../support/spec.ts';
-
-const exits = (event: HookEvent, exitCode: number, stderr: string, facts?: object) =>
-  fire(event, [entry(event)], [{ exitCode, stderr }], {
-    output: stage,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the facts are the event's own
-    ...(facts === undefined ? {} : { facts: facts as never }),
-  }).then(({ outcome }) => outcome);
 
 spec('hooks.behavior.Decision control', () => {
   describe('top-level decision: UserPromptSubmit, UserPromptExpansion, PostToolUse, PostToolUseFailure, PostToolBatch, Stop, SubagentStop, ConfigChange, PreCompact', () => {
@@ -133,7 +124,8 @@ spec('hooks.behavior.Decision control', () => {
       },
     );
 
-    test('TaskCompleted: continue false is ignored when the TaskUpdate tool fired the event, so the outcome says on what it holds', async () => {
+    test('TaskCompleted: continue false carries the stop condition for the host, and nothing else carries one', async () => {
+      // The TaskUpdate half is the host's trigger: event-decisions-task.test.ts dispatches both.
       const stops = await viaEngine('TaskCompleted', [{ continue: false, stopReason: 's' }]);
       expect(stops.effects.stopCondition).toBe('teammate-finished-its-turn');
       const goes = await viaEngine('TaskCompleted', [{}]);

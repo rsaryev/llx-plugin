@@ -13,11 +13,6 @@ interface GateEffects {
   readonly permissionDecisionReason?: string;
   /** Replaces the whole input of the tool call (`PreToolUse` only). */
   readonly updatedInput?: HookSpecificOutputOf<'PreToolUse'>['updatedInput'];
-  /**
-   * `defer` only: "Claude Code honors `defer` only in non-interactive mode with the `-p` flag, and
-   * only when Claude makes a single tool call in the turn". The host applies the condition.
-   */
-  readonly deferCondition?: 'non-interactive-single-tool-call';
 }
 
 /** `PermissionRequest`: the `decision` object of the winning hooks. */

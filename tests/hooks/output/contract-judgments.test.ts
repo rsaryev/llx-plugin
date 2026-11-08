@@ -3,10 +3,42 @@
  * and says so. None of these is `spec(...)`: a judgment never counts as compatibility.
  */
 import { describe, expect, test } from 'bun:test';
-import { resolveDefer, resolveWorktreePath } from '../../../src/hooks/index.ts';
+import {
+  lastPathLine,
+  resolveDefer,
+  resolveWorktreePath,
+  stripAnsi,
+} from '../../../src/hooks/index.ts';
 import { fire } from '../../support/hooks-fire.ts';
 import { specific, stage, viaEngine } from '../../support/hooks-output.ts';
-import { entry, FACTS } from '../../support/hooks-select.ts';
+import { command, entry, FACTS } from '../../support/hooks-select.ts';
+
+/** The path of a hook that printed `stdout` and exited `exitCode`, in a repository with one symlink. */
+const run = async (stdout: string, exitCode = 0) =>
+  resolveWorktreePath(
+    (
+      await fire('WorktreeCreate', [entry('WorktreeCreate')], [{ stdout, exitCode }], {
+        output: stage,
+      })
+    ).outcome,
+    {
+      ranIn: '/w',
+      repositoryRoot: '/w',
+      isSymlink: (path) => Promise.resolve(path === '/w/link'),
+    },
+  );
+
+const ESC = '\u001b';
+const createdBy = (...stdouts: readonly string[]) =>
+  fire(
+    'WorktreeCreate',
+    stdouts.map((_text, index) =>
+      entry('WorktreeCreate', { handler: command(`./wt-${index}.sh`) }),
+    ),
+    stdouts.map((stdout) => ({ exitCode: 0, stdout })),
+    { output: stage },
+  ).then(({ outcome }) => outcome);
+const IN = { ranIn: '/work/app' };
 
 describe('WorktreeCreate: two kinds of hook answer', () => {
   test('an HTTP hook worktreePath wins over what a command hook printed', async () => {
@@ -23,19 +55,6 @@ describe('WorktreeCreate: two kinds of hook answer', () => {
   });
 
   test('the failures name the rejected component and say what was wrong', async () => {
-    const run = async (stdout: string, exitCode = 0) =>
-      resolveWorktreePath(
-        (
-          await fire('WorktreeCreate', [entry('WorktreeCreate')], [{ stdout, exitCode }], {
-            output: stage,
-          })
-        ).outcome,
-        {
-          ranIn: '/w',
-          repositoryRoot: '/w',
-          isSymlink: (path) => Promise.resolve(path === '/w/link'),
-        },
-      );
     expect(await run('', 0)).toEqual({
       failure: 'The WorktreeCreate hook returned no worktree path.',
     });
@@ -96,5 +115,44 @@ describe('TaskCompleted continue: false when the host does not say what fired it
     const outcome = await viaEngine('TaskCompleted', [{ continue: false, stopReason: 'x' }]);
     expect(outcome.continue).toBe(false);
     expect(outcome.effects.stopCondition).toBe('teammate-finished-its-turn');
+  });
+});
+
+describe('WorktreeCreate: how the path is read', () => {
+  test('each line is trimmed, so a path with surrounding spaces is altered', async () => {
+    expect(lastPathLine('/tmp/wt\n  /tmp/spaced  \n')).toBe('/tmp/spaced');
+    expect(await resolveWorktreePath(await createdBy('  /tmp/spaced  \n'), IN)).toEqual({
+      path: '/tmp/spaced',
+    });
+  });
+
+  test('the ANSI strip covers CSI, OSC and two-character escapes only', () => {
+    expect(stripAnsi(`${ESC}[1mA${ESC}]0;t\u0007B${ESC}7C`)).toBe('ABC');
+    // a three-character escape (select character set) loses its first two characters and keeps the third
+    expect(stripAnsi(`${ESC}(B`)).toBe('B');
+  });
+
+  test('when several command hooks answer, the last hook is the one used', async () => {
+    const outcome = await createdBy('/first/wt\n/first/last\n', '/second/wt\n');
+    expect(await resolveWorktreePath(outcome, IN)).toEqual({ path: '/second/wt' });
+  });
+
+  test('a hook that printed nothing does not hide the hook before it', async () => {
+    const outcome = await createdBy('/first/wt\n', '\n');
+    expect(await resolveWorktreePath(outcome, IN)).toEqual({ path: '/first/wt' });
+  });
+
+  test('only a leading slash or a drive and separator make a path absolute: a UNC path is relative', async () => {
+    const outcome = await createdBy('\\\\server\\share\\wt\n');
+    expect(await resolveWorktreePath(outcome, IN)).toEqual({ path: '/work/app/server/share/wt' });
+  });
+
+  test('a relative path with more .. segments than the base has stops at the root', async () => {
+    expect(await resolveWorktreePath(await createdBy('../../../../x\n'), IN)).toEqual({
+      path: '/x',
+    });
+    expect(
+      await resolveWorktreePath(await createdBy('..\\..\\..\\x\n'), { ranIn: 'C:\\a\\b' }),
+    ).toEqual({ path: 'C:\\x' });
   });
 });

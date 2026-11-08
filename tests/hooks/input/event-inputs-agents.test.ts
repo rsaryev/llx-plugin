@@ -33,6 +33,34 @@ spec('hooks.behavior.PostModelSwitch input', () => {
     expect(pre.wire).toEqual({ ...example, hook_event_name: 'PreModelSwitch' });
   });
 
+  test.each(['command', 'picker', 'sdk'])('the source %s is one of the two events', (source) => {
+    expect(builtInput('PreModelSwitch', { ...fields, source }).wire?.['source']).toBe(source);
+    expect(builtInput('PostModelSwitch', { ...fields, source }).wire?.['source']).toBe(source);
+  });
+
+  test.each(['5m', '1h'])('cache_ttl %s arrives', (cacheTtl) => {
+    expect(builtInput('PostModelSwitch', { ...fields, cache_ttl: cacheTtl }).wire).toMatchObject({
+      cache_ttl: cacheTtl,
+    });
+    expect(builtInput('PreModelSwitch', { ...fields, cache_ttl: cacheTtl }).wire).toMatchObject({
+      cache_ttl: cacheTtl,
+    });
+  });
+
+  test.each(['configured', 'catalog', 'default'])('pricing %s arrives', (pricing) => {
+    expect(builtInput('PostModelSwitch', { ...fields, pricing }).wire?.['pricing']).toBe(pricing);
+    expect(builtInput('PreModelSwitch', { ...fields, pricing }).wire?.['pricing']).toBe(pricing);
+  });
+
+  test('requested_model is null when the request was for the default model, even for a command', () => {
+    const { wire } = builtInput('PreModelSwitch', {
+      ...fields,
+      source: 'command',
+      requested_model: null,
+    });
+    expect(wire?.['requested_model']).toBeNull();
+  });
+
   test('two more source values: auto and resume', () => {
     for (const source of ['auto', 'resume']) {
       expect(builtInput('PostModelSwitch', { ...fields, source }).wire?.['source']).toBe(source);

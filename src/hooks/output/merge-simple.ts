@@ -239,3 +239,12 @@ export function mergeElicitation(
       : { block: { via: 'decision' as const, by: blocking.handler.id } }),
   };
 }
+
+/**
+ * `TaskCompleted`'s `continue: false` holds only when a teammate's finished turn fired the event:
+ * the input does not say which, so the merge marks the stop and the host applies the condition.
+ */
+export const mergeTaskCompleted: Merger = (reads) =>
+  reads.some((read) => read.output?.continue === false)
+    ? { effects: { stopCondition: 'teammate-finished-its-turn' }, issues: [] }
+    : NOTHING;

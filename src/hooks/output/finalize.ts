@@ -13,7 +13,7 @@ import { hasText } from './fields.ts';
 type OnBlock = (effects: EventEffects, block: BlockInfo) => EventEffects;
 
 const denyTool: OnBlock = (effects, block) => {
-  const { updatedInput: _dropped, deferCondition: _condition, ...rest } = effects;
+  const { updatedInput: _dropped, ...rest } = effects;
   return {
     ...rest,
     permissionDecision: 'deny',

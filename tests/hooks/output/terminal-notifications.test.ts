@@ -9,7 +9,7 @@ import {
   createHookRegistry,
   type HookSession,
 } from '../../../src/hooks/index.ts';
-import type { RegisteredHandler } from '../../../src/hooks/index.ts';
+import type { EventFactsOf, RegisteredHandler } from '../../../src/hooks/index.ts';
 import type { HookEvent } from '../../../src/protocol/official.ts';
 import { fire } from '../../support/hooks-fire.ts';
 import { specific, stage } from '../../support/hooks-output.ts';
@@ -23,6 +23,7 @@ import {
   type RunnerReply,
 } from '../../support/ports.ts';
 import { spec } from '../../support/spec.ts';
+import { stdinJson } from '../../support/stdin.ts';
 
 const ESC = '\u001b';
 const BEL = '\u0007';
@@ -32,8 +33,8 @@ const httpEntry = (event: HookEvent): RegisteredHandler =>
   entry(event, { handler: { type: 'http', url: 'http://wt.test/hook' } });
 
 /** One dispatch in a session shaped by `options.session`, with the real output stage. */
-async function dispatchIn(
-  event: HookEvent,
+async function dispatchIn<E extends HookEvent>(
+  event: E,
   entries: readonly RegisteredHandler[],
   replies: readonly RunnerReply[],
   options: { readonly session?: Partial<HookSession>; readonly http?: readonly HttpReply[] } = {},
@@ -47,9 +48,10 @@ async function dispatchIn(
     },
     { output: stage },
   );
+  const facts: EventFactsOf<E> = FACTS[event];
   return engine.dispatch(createHookRegistry(entries), {
     event,
-    facts: FACTS[event] as never,
+    facts,
     session: session(options.session),
     signal: new AbortController().signal,
   });
@@ -58,8 +60,8 @@ async function dispatchIn(
 spec('hooks.behavior.Emit terminal notifications', () => {
   /** The docs' script: a desktop notification from a Notification hook. */
   const notifyScript: RunnerReply = (run) => {
-    const input = JSON.parse(run.stdin ?? '{}') as { message?: string };
-    const body = input.message ?? 'Needs your attention';
+    const message = stdinJson(run)['message'];
+    const body = typeof message === 'string' ? message : 'Needs your attention';
     const sequence = `${ESC}]777;notify;Claude Code;${body}${BEL}`;
     return { exitCode: 0, stdout: JSON.stringify({ terminalSequence: sequence }) };
   };

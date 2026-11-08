@@ -24,6 +24,18 @@ const created = (stdout: string, exitCode = 0) =>
     ({ outcome }) => outcome,
   );
 
+const ask = (body: string) =>
+  fire('WorktreeCreate', [httpEntry('WorktreeCreate')], [], {
+    output: stage,
+    http: [{ status: 200, body }],
+  }).then(({ outcome }) => outcome);
+
+const links = (...linked: string[]) => ({
+  repositoryRoot: '/work/app',
+  ranIn: '/work/app',
+  isSymlink: (path: string) => Promise.resolve(linked.includes(path)),
+});
+
 const IN = { ranIn: '/work/app' };
 
 spec('hooks.behavior.WorktreeCreate output', () => {
@@ -66,12 +78,6 @@ spec('hooks.behavior.WorktreeCreate output', () => {
   });
 
   describe('an HTTP hook returns hookSpecificOutput.worktreePath in the response body', () => {
-    const ask = (body: string) =>
-      fire('WorktreeCreate', [httpEntry('WorktreeCreate')], [], {
-        output: stage,
-        http: [{ status: 200, body }],
-      }).then(({ outcome }) => outcome);
-
     test('the documented response gives the path', async () => {
       const outcome = await ask(
         JSON.stringify({
@@ -122,7 +128,6 @@ spec('hooks.behavior.WorktreeCreate output', () => {
       ['a/./b', '/work/app/a/b'],
       ['a/b/../c', '/work/app/a/c'],
       ['../sibling', '/work/sibling'],
-      ['../../../../x', '/x'],
     ])('%s becomes %s', async (given, expected) => {
       const outcome = await created(`${given}\n`);
       expect(await resolveWorktreePath(outcome, IN)).toEqual({ path: expected });
@@ -163,12 +168,6 @@ spec('hooks.behavior.WorktreeCreate output', () => {
   });
 
   describe('a path that passes through a symlink below the repository root is refused', () => {
-    const links = (...linked: string[]) => ({
-      repositoryRoot: '/work/app',
-      ranIn: '/work/app',
-      isSymlink: (path: string) => Promise.resolve(linked.includes(path)),
-    });
-
     test('the error names the symlink component', async () => {
       const outcome = await created('/work/app/shared/wt\n');
       const result = await resolveWorktreePath(outcome, links('/work/app/shared'));

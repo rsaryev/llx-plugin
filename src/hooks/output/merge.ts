@@ -4,7 +4,6 @@ import type { HookEvent } from '../../protocol/official.ts';
 import { EXIT2_RULES } from '../verdict/exit2.ts';
 import type { MergedBlock, MergedOutput, TaggedOutput } from '../verdict/types.ts';
 import { OUTPUT_CAPS } from './caps.ts';
-import type { EventEffects } from './effects.ts';
 import { textIn } from './fields.ts';
 import { routeMessages } from './messages.ts';
 import { mergePermissionRequest, mergePreModelSwitch, mergePreToolUse } from './merge-gates.ts';
@@ -17,6 +16,7 @@ import {
   mergeRetry,
   mergeSessionStart,
   mergeStop,
+  mergeTaskCompleted,
   mergeUserPrompt,
   mergeWatchList,
   mergeWorktreeCreate,
@@ -53,7 +53,7 @@ const MERGERS: { readonly [E in HookEvent]: Merger } = {
   Setup: () => NOTHING,
   TeammateIdle: () => NOTHING,
   TaskCreated: () => NOTHING,
-  TaskCompleted: () => NOTHING,
+  TaskCompleted: mergeTaskCompleted,
   Elicitation: (reads) => mergeElicitation('Elicitation', reads),
   ElicitationResult: (reads) => mergeElicitation('ElicitationResult', reads),
   ConfigChange: () => NOTHING,
@@ -193,12 +193,6 @@ function decisionBlockOf(
       };
 }
 
-/** `TaskCompleted`'s `continue: false` holds only when a teammate's finished turn fired the event. */
-const withStopCondition = (event: HookEvent, stops: boolean, effects: EventEffects): EventEffects =>
-  event === 'TaskCompleted' && stops
-    ? { ...effects, stopCondition: 'teammate-finished-its-turn' }
-    : effects;
-
 const firstOf = <T>(values: readonly (T | undefined)[]): T | undefined =>
   values.find((value) => value !== undefined);
 
@@ -232,7 +226,7 @@ export function mergeOutputs(
     systemMessages: messages.toUser,
     additionalContext: [...reads.flatMap((read) => contextOf(event, read)), ...messages.toClaude],
     terminalSequences: sequences.sequences,
-    effects: withStopCondition(event, stopping.length > 0, merged.effects),
+    effects: merged.effects,
     issues: [...merged.issues, ...sequences.issues],
   };
 }

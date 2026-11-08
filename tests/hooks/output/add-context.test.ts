@@ -6,25 +6,27 @@
  */
 import { expect, test } from 'bun:test';
 import { createOutputStage } from '../../../src/hooks/index.ts';
-import type { CommandResult } from '../../../src/ports/index.ts';
-import type { HookEvent } from '../../../src/protocol/official.ts';
 import { fire } from '../../support/hooks-fire.ts';
+import { hookNamed, prints } from '../../support/hooks-script.ts';
 import { specific, stage, viaEngine } from '../../support/hooks-output.ts';
-import { command, entry, FACTS } from '../../support/hooks-select.ts';
+import { entry, FACTS } from '../../support/hooks-select.ts';
 import { memoryScratch, type RunnerReply } from '../../support/ports.ts';
 import { spec } from '../../support/spec.ts';
+import { recordOf, stdinJson } from '../../support/stdin.ts';
 
-const inputOf = (run: { readonly stdin?: string }): Record<string, unknown> =>
-  JSON.parse(run.stdin ?? '{}') as Record<string, unknown>;
+/** "which test command applies to the file just edited": the hook reads the edited path on stdin. */
+const ruleScript: RunnerReply = (run) => {
+  const path = String(recordOf(stdinJson(run)['tool_input'])['file_path']);
+  return path.endsWith('.ts')
+    ? prints(specific('PostToolUse', { additionalContext: 'For TypeScript files run `bun test`.' }))
+    : prints({});
+};
 
-/** A hook's own JSON as a script prints it. */
-const prints = (body: object): Partial<CommandResult> => ({
-  exitCode: 0,
-  stdout: JSON.stringify(body),
+const edit = (file_path: string) => ({
+  ...FACTS.PostToolUse,
+  tool_name: 'Edit',
+  tool_input: { file_path },
 });
-
-const hookNamed = (event: HookEvent, name: string) =>
-  entry(event, { handler: command(`./${name}.sh`) });
 
 spec('hooks.behavior.Add context for Claude', () => {
   /** The events whose section says where the reminder appears. */
@@ -105,7 +107,7 @@ spec('hooks.behavior.Add context for Claude', () => {
 
   test('a value over 10,000 characters is saved to a file: Claude gets the path and a preview of the first 2,000 characters', async () => {
     const scratch = memoryScratch('/session');
-    const long = `${'0123456789'.repeat(1_200)}`;
+    const long = '0123456789'.repeat(1_200);
     const { outcome } = await fire(
       'PostToolUse',
       [entry('PostToolUse')],
@@ -153,65 +155,32 @@ spec('hooks.behavior.Add context for Claude', () => {
 });
 
 spec('hooks.behavior.Add context for Claude.Environment state', () => {
-  const branchScript: RunnerReply = (run) => {
-    const input = inputOf(run);
-    return prints(
-      specific('SessionStart', {
-        additionalContext: `The current branch is main. The session source is ${String(input['source'])}.`,
-      }),
-    );
-  };
+  const SOURCES = ['startup', 'resume', 'fork', 'clear', 'compact'] as const;
+  const state = specific('SessionStart', { additionalContext: 'The current branch is main.' });
 
-  test.each(['startup', 'resume', 'fork', 'clear', 'compact'] as const)(
-    'a SessionStart hook states the branch for a session that %ss, and runs again on resume and fork so it can refresh',
+  // hooks.md: a SessionStart hook "runs again on resume with `source` set to "resume", or "fork"",
+  // "so they can refresh their context": the kit delivers its context for each of these sources.
+  test.each(SOURCES)(
+    'a SessionStart hook states the branch for a session that %ss',
     async (source) => {
-      const { outcome } = await fire('SessionStart', [entry('SessionStart')], [branchScript], {
-        output: stage,
-        facts: { source },
-      });
-      expect(outcome.additionalContext).toEqual([
-        `The current branch is main. The session source is ${source}.`,
-      ]);
+      const outcome = await viaEngine('SessionStart', [state], { source });
+      expect(outcome.additionalContext).toEqual(['The current branch is main.']);
     },
   );
 
-  test('a hook for the resume and fork matchers refreshes the state and stays out of a fresh start', async () => {
+  test('a hook for the resume and fork matchers runs on those two sources and stays out of a fresh start', async () => {
     const hooks = [entry('SessionStart', { matcher: 'resume|fork' })];
-    const fresh = await fire('SessionStart', hooks, [branchScript], {
-      output: stage,
-      facts: { source: 'startup' },
-    });
-    expect(fresh.outcome.additionalContext).toEqual([]);
-    const resumed = await fire('SessionStart', hooks, [branchScript], {
-      output: stage,
-      facts: { source: 'resume' },
-    });
-    expect(resumed.outcome.additionalContext).toHaveLength(1);
-    const forked = await fire('SessionStart', hooks, [branchScript], {
-      output: stage,
-      facts: { source: 'fork' },
-    });
-    expect(forked.outcome.additionalContext).toHaveLength(1);
+    const ran = async (source: (typeof SOURCES)[number]) =>
+      (await fire('SessionStart', hooks, [prints(state)], { output: stage, facts: { source } }))
+        .runner.calls.length;
+    expect(await ran('startup')).toBe(0);
+    expect(await ran('resume')).toBe(1);
+    expect(await ran('fork')).toBe(1);
   });
 });
 
 spec('hooks.behavior.Add context for Claude.Conditional project rules', () => {
-  /** "which test command applies to the file just edited": the hook reads the edited path. */
-  const ruleScript: RunnerReply = (run) => {
-    const path = String((inputOf(run)['tool_input'] as { file_path?: string }).file_path);
-    return path.endsWith('.ts')
-      ? prints(
-          specific('PostToolUse', { additionalContext: 'For TypeScript files run `bun test`.' }),
-        )
-      : prints({});
-  };
-  const edit = (file_path: string) => ({
-    ...FACTS.PostToolUse,
-    tool_name: 'Edit',
-    tool_input: { file_path },
-  });
-
-  test('the context depends on the file just edited', async () => {
+  test('the hook reads the edited file path on stdin, so the context it returns can depend on it', async () => {
     const hooks = [entry('PostToolUse', { matcher: 'Edit|Write' })];
     const ts = await fire('PostToolUse', hooks, [ruleScript], {
       output: stage,
@@ -225,7 +194,7 @@ spec('hooks.behavior.Add context for Claude.Conditional project rules', () => {
     expect(md.outcome.additionalContext).toEqual([]);
   });
 
-  test('an `if` rule can keep the hook from running for other files, and the matcher for other tools', async () => {
+  test('an `if` rule keeps the hook from running for other files, and the matcher for other tools', async () => {
     const guarded = entry('PostToolUse', {
       matcher: 'Edit',
       handler: { type: 'command', command: './rules.sh', if: 'Edit(src/**)' },

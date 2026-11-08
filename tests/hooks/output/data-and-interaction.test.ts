@@ -6,22 +6,33 @@
  */
 import { expect, test } from 'bun:test';
 import { createOutputStage, preToolUseHookOutcome } from '../../../src/hooks/index.ts';
-import type { CommandResult } from '../../../src/ports/index.ts';
 import { ask, allow, decision } from '../../support/decide.ts';
 import { fire } from '../../support/hooks-fire.ts';
+import { prints } from '../../support/hooks-script.ts';
 import { specific, stage, viaEngine } from '../../support/hooks-output.ts';
 import { entry, FACTS } from '../../support/hooks-select.ts';
 import { memoryScratch, type RunnerReply } from '../../support/ports.ts';
 import { spec } from '../../support/spec.ts';
+import { recordOf, stdinJson } from '../../support/stdin.ts';
 
-const inputOf = (run: { readonly stdin?: string }): Record<string, unknown> =>
-  JSON.parse(run.stdin ?? '{}') as Record<string, unknown>;
-
-/** A hook's own JSON as a script prints it. */
-const prints = (body: object): Partial<CommandResult> => ({
-  exitCode: 0,
-  stdout: JSON.stringify(body),
-});
+/** The docs' kind of script: reads the questions from stdin and answers each with its first option. */
+const pickFirstOptions: RunnerReply = (run) => {
+  const toolInput = recordOf(stdinJson(run)['tool_input']);
+  const questions = Array.isArray(toolInput['questions']) ? toolInput['questions'] : [];
+  const picked = Object.fromEntries(
+    questions.map((item) => {
+      const question = recordOf(item);
+      const options = Array.isArray(question['options']) ? question['options'] : [];
+      return [String(question['question']), String(recordOf(options[0])['label'])];
+    }),
+  );
+  return prints(
+    specific('PreToolUse', {
+      permissionDecision: 'allow',
+      updatedInput: { questions, answers: picked },
+    }),
+  );
+};
 
 spec('hooks.behavior.Add context for Claude.External data', () => {
   const issues = 'Open issues assigned to you: #12 Login fails, #15 Slow search';
@@ -114,22 +125,10 @@ spec('hooks.behavior.Tools that require user interaction', () => {
   });
 
   test('a script reads the tool input from stdin, collects the answer, and returns it with allow', async () => {
-    const script: RunnerReply = (run) => {
-      const { questions } = (inputOf(run)['tool_input'] ?? {}) as { questions: typeof QUESTIONS };
-      const picked = Object.fromEntries(
-        questions.map((q) => [q.question, q.options[0]?.label ?? '']),
-      );
-      return prints(
-        specific('PreToolUse', {
-          permissionDecision: 'allow',
-          updatedInput: { questions, answers: picked },
-        }),
-      );
-    };
     const { outcome } = await fire(
       'PreToolUse',
       [entry('PreToolUse', { matcher: 'AskUserQuestion' })],
-      [script],
+      [pickFirstOptions],
       {
         output: stage,
         facts: ask1,

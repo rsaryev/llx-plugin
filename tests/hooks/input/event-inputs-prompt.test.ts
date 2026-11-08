@@ -39,6 +39,24 @@ spec('hooks.behavior.UserPromptExpansion input', () => {
     expect(wire?.['expansion_type']).toBe('mcp_prompt');
   });
 
+  test('command_source is a string when given and absent when not', () => {
+    const facts = {
+      expansion_type: 'slash_command',
+      command_name: 'x',
+      command_args: '',
+      prompt: '/x',
+    };
+    expect(
+      builtInput('UserPromptExpansion', { ...facts, command_source: 'plugin' }).wire?.[
+        'command_source'
+      ],
+    ).toBe('plugin');
+    expect(builtInput('UserPromptExpansion', facts).wire).not.toHaveProperty('command_source');
+    expect(builtInput('UserPromptExpansion', { ...facts, command_source: 3 }).errors).toEqual([
+      'hooks.UserPromptExpansion.input.command_source',
+    ]);
+  });
+
   test('an expansion type other than slash_command and mcp_prompt is refused', () => {
     const refused = builtInput('UserPromptExpansion', {
       expansion_type: 'skill',
@@ -75,17 +93,6 @@ spec('hooks.behavior.UserPromptSubmit input', () => {
 
   test('the documented example', () => {
     expect(builtFromExample('UserPromptSubmit', example).wire).toEqual(example);
-  });
-
-  test('a skill typed as /deploy staging arrives as the line typed, not the expanded content', () => {
-    expect(builtInput('UserPromptSubmit', { prompt: '/deploy staging' }).wire?.['prompt']).toBe(
-      '/deploy staging',
-    );
-  });
-
-  test('a prompt with pasted text keeps the lines around it', () => {
-    const prompt = 'see\n<pasted_content id="1">\nlog line\n</pasted_content id="1">';
-    expect(builtInput('UserPromptSubmit', { prompt }).wire?.['prompt']).toBe(prompt);
   });
 
   test('session_title arrives when the session has a custom title, and is absent otherwise', () => {

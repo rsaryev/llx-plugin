@@ -1,7 +1,7 @@
 /**
  * hooks.md, the "<Event> input" section of PermissionRequest, PostToolBatch and PreToolUse: the
- * documented JSON example is what the kit builds (including `mcp_server` for an MCP tool and the
- * Windows path example), and a missing or mistyped field is refused with an error naming it.
+ * documented JSON example is what the kit builds (including `mcp_server` for an MCP tool), and a
+ * missing or mistyped field is refused with an error naming it.
  */
 import { expect, test } from 'bun:test';
 import { builtFromExample, builtInput } from '../../support/hooks-doc-input.ts';
@@ -149,21 +149,6 @@ spec('hooks.behavior.PreToolUse input', () => {
 
   test('the documented example of the common input fields: a Bash call', () => {
     expect(builtFromExample('PreToolUse', bash).wire).toEqual(bash);
-  });
-
-  test('a Write call on Windows keeps its backslash path: the kit hands tool_input on as it is', () => {
-    const write = {
-      ...head,
-      hook_event_name: 'PreToolUse',
-      tool_name: 'Write',
-      tool_input: { file_path: 'C:\\project\\src\\index.ts', content: '...' },
-      tool_use_id: 'toolu_2',
-    };
-    const { wire } = builtFromExample('PreToolUse', write);
-    expect(wire?.['tool_input']).toEqual({
-      file_path: 'C:\\project\\src\\index.ts',
-      content: '...',
-    });
   });
 
   test('for an MCP tool the input also carries mcp_server: the name and where it came from', () => {

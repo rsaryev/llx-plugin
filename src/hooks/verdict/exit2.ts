@@ -60,6 +60,8 @@ export interface Exit2Rule {
   readonly blocksUnlessDirectoryGone?: boolean;
   /** Exit 2 with nothing on stdout and a missing-file stderr is a non-blocking error for these sources. */
   readonly missingFileIsError?: (source: HookSource) => boolean;
+  /** A hook that ends the turn stops a teammate instead of holding an action back (`TeammateIdle`; `TaskCompleted` when a teammate's finished turn fired it). */
+  readonly stopsTeammate?: boolean;
   /** The event's own exception to blocking (`ConfigChange`: "`policy_settings` changes can't be blocked"). */
   readonly cannotBlockWhen?: (facts: object) => boolean;
 }
@@ -93,9 +95,15 @@ export const EXIT2_RULES: { readonly [E in HookEvent]: Exit2Rule } = {
   UserPromptExpansion: blocks('blocks-expansion', 'user'),
   Stop: blocks('prevents-stop', 'claude', KEEPS_WORKING),
   SubagentStop: blocks('prevents-subagent-stop', 'claude', KEEPS_WORKING),
-  TeammateIdle: blocks('prevents-teammate-idle', 'claude', { ignoresOnFailure: true }),
+  TeammateIdle: blocks('prevents-teammate-idle', 'claude', {
+    ignoresOnFailure: true,
+    stopsTeammate: true,
+  }),
   TaskCreated: blocks('rolls-back-task-creation', 'claude'),
-  TaskCompleted: blocks('prevents-task-completion', 'claude', KEEPS_WORKING),
+  TaskCompleted: blocks('prevents-task-completion', 'claude', {
+    ...KEEPS_WORKING,
+    stopsTeammate: true,
+  }),
   ConfigChange: blocks('blocks-config-change', 'debug', { cannotBlockWhen: isPolicySettings }),
   StopFailure: ignored('discarded'),
   PostToolUse: ignored('claude'),

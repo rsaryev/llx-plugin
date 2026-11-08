@@ -5,9 +5,8 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { createHookEngine, createHookRegistry } from '../../../src/hooks/index.ts';
-import type { HookEvent } from '../../../src/protocol/official.ts';
-import { fire } from '../../support/hooks-fire.ts';
 import { stage, viaEngine } from '../../support/hooks-output.ts';
+import { runScript } from '../../support/hooks-script.ts';
 import { entry, FACTS, session } from '../../support/hooks-select.ts';
 import {
   fakeEnvironment,
@@ -16,28 +15,49 @@ import {
   type RunnerReply,
 } from '../../support/ports.ts';
 import { spec } from '../../support/spec.ts';
+import { stdinJson } from '../../support/stdin.ts';
 
-const runScript = <E extends HookEvent>(event: E, script: RunnerReply, facts: object) =>
-  fire(event, [entry(event)], [script], {
-    output: stage,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the facts are the event's own
-    facts: facts as never,
-  }).then(({ outcome }) => outcome);
+/** The docs' script of TaskCreated: a task subject must start with a ticket number. */
+const ticketScript: RunnerReply = (run) =>
+  /^\[TICKET-[0-9]+\]/.test(String(stdinJson(run)['task_subject']))
+    ? { exitCode: 0 }
+    : {
+        exitCode: 2,
+        stderr: "Task subject must start with a ticket number, e.g. '[TICKET-123] Add feature'\n",
+      };
 
-/** The JSON a command hook reads on stdin. */
-const inputOf = (run: { readonly stdin?: string }): Record<string, unknown> =>
-  JSON.parse(run.stdin ?? '{}') as Record<string, unknown>;
-
-spec('hooks.behavior.TaskCreated decision control', () => {
-  /** The docs' script: a task subject must start with a ticket number. */
-  const ticketScript: RunnerReply = (run) =>
-    /^\[TICKET-[0-9]+\]/.test(String(inputOf(run)['task_subject']))
+/** The docs' script of TaskCompleted: block completion when the tests fail. */
+const testsScript =
+  (passing: boolean): RunnerReply =>
+  (run) =>
+    passing
       ? { exitCode: 0 }
       : {
           exitCode: 2,
-          stderr: "Task subject must start with a ticket number, e.g. '[TICKET-123] Add feature'\n",
+          stderr: `Tests not passing. Fix failing tests before completing: ${String(stdinJson(run)['task_subject'])}\n`,
         };
 
+/** The docs' script of TeammateIdle: a build artifact must exist before the teammate goes idle. */
+const artifactScript = (exists: boolean): RunnerReply =>
+  exists
+    ? { exitCode: 0 }
+    : { exitCode: 2, stderr: 'Build artifact missing. Run the build before stopping.\n' };
+
+const dispatchBy = (taskCompletedBy: 'task-update' | 'teammate-turn', reply: RunnerReply) => {
+  const engine = createHookEngine(
+    { commands: scriptedRunner(reply), locations: locations(), environment: fakeEnvironment() },
+    { output: stage },
+  );
+  return engine.dispatch(createHookRegistry([entry('TaskCompleted')]), {
+    event: 'TaskCompleted',
+    facts: FACTS.TaskCompleted,
+    session: session(),
+    signal: new AbortController().signal,
+    taskCompletedBy,
+  });
+};
+
+spec('hooks.behavior.TaskCreated decision control', () => {
   test('exit code 2 cancels the creation and the stderr text goes back to Claude as the message', async () => {
     const outcome = await runScript('TaskCreated', ticketScript, {
       task_id: 'task-001',
@@ -85,16 +105,6 @@ spec('hooks.behavior.TaskCreated decision control', () => {
 });
 
 spec('hooks.behavior.TaskCompleted decision control', () => {
-  /** The docs' script: block completion when the tests fail. */
-  const testsScript =
-    (passing: boolean): RunnerReply =>
-    (run) =>
-      passing
-        ? { exitCode: 0 }
-        : {
-            exitCode: 2,
-            stderr: `Tests not passing. Fix failing tests before completing: ${String(inputOf(run)['task_subject'])}\n`,
-          };
   const facts = { task_id: 'task-001', task_subject: 'Implement user authentication' };
 
   test('exit code 2: the task is not marked completed and the stderr is fed back to the model', async () => {
@@ -118,7 +128,7 @@ spec('hooks.behavior.TaskCompleted decision control', () => {
     expect(outcome.stopReason).toBe('Teammate has no budget left');
   });
 
-  test('it holds only when a teammate finishing its turn fired the event: the TaskUpdate tool ignores it, exit code 2 still blocks', async () => {
+  test('the merge leaves the stop to the host: continue: false carries the stop condition, and exit code 2 blocks without one', async () => {
     const stops = await viaEngine('TaskCompleted', [{ continue: false, stopReason: 'x' }]);
     expect(stops.effects.stopCondition).toBe('teammate-finished-its-turn');
     const blocked = await runScript('TaskCompleted', testsScript(false), facts);
@@ -128,19 +138,6 @@ spec('hooks.behavior.TaskCompleted decision control', () => {
 });
 
 describe('TaskCompleted with the trigger the host knows', () => {
-  const dispatchBy = (taskCompletedBy: 'task-update' | 'teammate-turn', reply: RunnerReply) => {
-    const engine = createHookEngine(
-      { commands: scriptedRunner(reply), locations: locations(), environment: fakeEnvironment() },
-      { output: stage },
-    );
-    return engine.dispatch(createHookRegistry([entry('TaskCompleted')]), {
-      event: 'TaskCompleted',
-      facts: FACTS.TaskCompleted,
-      session: session(),
-      signal: new AbortController().signal,
-      taskCompletedBy,
-    });
-  };
   const stops = { stdout: JSON.stringify({ continue: false, stopReason: 'Out of budget' }) };
 
   spec('hooks.behavior.TaskCompleted decision control', () => {
@@ -167,11 +164,6 @@ describe('TaskCompleted with the trigger the host knows', () => {
 });
 
 spec('hooks.behavior.TeammateIdle decision control', () => {
-  /** The docs' script: a build artifact must exist before the teammate goes idle. */
-  const artifactScript = (exists: boolean): RunnerReply =>
-    exists
-      ? { exitCode: 0 }
-      : { exitCode: 2, stderr: 'Build artifact missing. Run the build before stopping.\n' };
   const facts = { teammate_name: 'researcher', team_name: 'session-a1b2c3d4' };
 
   test('exit code 2: the teammate receives the stderr as feedback and continues working instead of going idle', async () => {
@@ -192,18 +184,5 @@ spec('hooks.behavior.TeammateIdle decision control', () => {
     expect(outcome.continue).toBe(false);
     expect(outcome.stopReason).toBe('Work is complete');
     expect(outcome.block).toBeUndefined();
-  });
-
-  test('the script reads the teammate from the input', async () => {
-    let read: Record<string, unknown> = {};
-    await runScript(
-      'TeammateIdle',
-      (run) => {
-        read = inputOf(run);
-        return {};
-      },
-      facts,
-    );
-    expect(read).toMatchObject({ teammate_name: 'researcher', team_name: 'session-a1b2c3d4' });
   });
 });

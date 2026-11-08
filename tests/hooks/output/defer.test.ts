@@ -5,22 +5,12 @@
  */
 import { expect, test } from 'bun:test';
 import { preToolUseHookOutcome, resolveDefer } from '../../../src/hooks/index.ts';
-import type { CommandResult } from '../../../src/ports/index.ts';
-import type { HookEvent } from '../../../src/protocol/official.ts';
 import { ask, allow, decision } from '../../support/decide.ts';
 import { fire } from '../../support/hooks-fire.ts';
+import { hookNamed, prints } from '../../support/hooks-script.ts';
 import { specific, stage, viaEngine } from '../../support/hooks-output.ts';
-import { command, entry, FACTS } from '../../support/hooks-select.ts';
+import { FACTS } from '../../support/hooks-select.ts';
 import { spec } from '../../support/spec.ts';
-
-/** A hook's own JSON as a script prints it. */
-const prints = (body: object): Partial<CommandResult> => ({
-  exitCode: 0,
-  stdout: JSON.stringify(body),
-});
-
-const hookNamed = (event: HookEvent, name: string) =>
-  entry(event, { handler: command(`./${name}.sh`) });
 
 spec('hooks.behavior.Defer a tool call for later', () => {
   const defer = specific('PreToolUse', { permissionDecision: 'defer' });
@@ -30,10 +20,9 @@ spec('hooks.behavior.Defer a tool call for later', () => {
     tool_input: { questions: [] },
   };
 
-  test('a defer holds the turn: the outcome carries it with the condition the host applies', async () => {
+  test('a defer is the merged decision: the host resolves it against the turn with resolveDefer', async () => {
     const outcome = await viaEngine('PreToolUse', [defer], AskQuestion);
     expect(outcome.effects.permissionDecision).toBe('defer');
-    expect(outcome.effects.deferCondition).toBe('non-interactive-single-tool-call');
   });
 
   test('honored only in -p, and only when Claude makes a single tool call in the turn', async () => {
@@ -99,7 +88,7 @@ spec('hooks.behavior.Defer a tool call for later', () => {
     ).toEqual(allow('hook'));
   });
 
-  test('updatedInput is ignored for defer, and the reason goes to the debug log only', async () => {
+  test('updatedInput is ignored for defer', async () => {
     const outcome = await viaEngine('PreToolUse', [
       specific('PreToolUse', {
         permissionDecision: 'defer',
@@ -110,6 +99,30 @@ spec('hooks.behavior.Defer a tool call for later', () => {
     expect(outcome.effects.updatedInput).toBeUndefined();
     expect(outcome.proceed).toBe(true);
     expect(outcome.block).toBeUndefined();
+  });
+
+  // hooks.md: the reason of "allow" and "defer" is "written to the debug log only": the kit hands
+  // it to the host in `effects` (the debug log is the host's) and routes it nowhere Claude or the
+  // user reads; a deny's reason is the one "shown to Claude".
+  test.each(['allow', 'defer'] as const)(
+    'the reason of %s goes to the debug log only: it reaches no block, feedback or message',
+    async (permissionDecision) => {
+      const outcome = await viaEngine('PreToolUse', [
+        specific('PreToolUse', { permissionDecision, permissionDecisionReason: 'because' }),
+      ]);
+      expect(outcome.effects.permissionDecisionReason).toBe('because');
+      expect(outcome.block).toBeUndefined();
+      expect(outcome.feedback).toEqual([]);
+      expect(outcome.systemMessages).toEqual([]);
+      expect(outcome.additionalContext).toEqual([]);
+    },
+  );
+
+  test('the reason of deny is the one shown to Claude: it is the block reason', async () => {
+    const outcome = await viaEngine('PreToolUse', [
+      specific('PreToolUse', { permissionDecision: 'deny', permissionDecisionReason: 'because' }),
+    ]);
+    expect(outcome.block).toMatchObject({ to: 'claude', reason: 'because' });
   });
 
   test('precedence among hooks is deny > defer > ask > allow', async () => {

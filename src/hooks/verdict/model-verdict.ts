@@ -40,8 +40,7 @@ function failedVerdict(
   // A teammate that stops is not an action held back: on `TeammateIdle` ending the turn is the
   // reverse of a block ("by default the teammate stops"; `continueOnBlock` "keeps it working"), and
   // `TaskCompleted` fired by a teammate stopping "behaves like `TeammateIdle`".
-  const stopsTeammate =
-    effect.endsTurn && (rule.effect === 'prevents-teammate-idle' || event === 'TaskCompleted');
+  const stopsTeammate = effect.endsTurn && rule.stopsTeammate === true;
   const holds = rule.canBlock && !stopsTeammate;
   const toClaude = !effect.endsTurn && !rule.canBlock;
   const block = holds ? routedBlock(event, 'decision', { reason, message }) : undefined;
