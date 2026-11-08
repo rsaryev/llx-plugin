@@ -35,6 +35,17 @@
 
 ### Added
 
+- CLI: a new `cli` module (layer 5) that models the plugin and marketplace commands as plans over
+  ports. `renderCommand` gives the human line, the exit code and the last-line JSON object of a
+  command (`command`, `outcome`, `message`, `failureCode`, a usage error that prints no result line);
+  `chooseScope` and `writeScope` the scope grammar; `resolveCommand` the command table with its
+  aliases; `startMarketplaceAdd`/`concludeMarketplaceAdd`, `planMarketplaceList`,
+  `planMarketplaceRemove` and `planMarketplaceUpdate` the four marketplace commands; and
+  `planSessionFlags` the 20 session flags of `claude` (`--plugin-dir`, `--plugin-url`, `--bare`,
+  `--safe-mode`, `--restricted`, `--setting-sources`, `--settings`, `--disable-slash-commands`,
+  `--add-dir`, `--agent`, `--agents`, the subagent-prompt flags, `--channels`, the development
+  channels, `--mcp-config`, `--strict-mcp-config`, `--permission-mode`, `--tools`) with the refusals
+  that exit `1` without starting. `scripts/check-layers.ts` gives the module its layer.
 - Marketplace dependencies: a pure dependency graph over plain facts. `installClosure` plans the
   transitive install of a plugin's dependencies (dependencies first, each step with who asked, every
   range, what the ranges resolve against and the shown `2.1.0-8713c5b11005` version; cycles end, a

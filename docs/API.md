@@ -314,6 +314,43 @@ command source"), org.md ("Set update policy") and settings-reference.md ("Updat
 | `planUpdate(request, installed, registered)` | done | `Update plugins now`: one plugin; **Update marketplace** (listing, then the plugins installed from it, and the `command` and `headersHelper` ones left to the user); `claude plugin marketplace update [name]` refreshes listings and updates no plugin |
 | `readVersionPolicy(layers)`, `pickAllowedVersion(policy, versions)`, `startGate(policy, { command, current })`, `channelSwitch({ from, to, currentVersion, answer? })` | done | `autoUpdatesChannel`, `minimumVersion` (never blocks a start), `requiredMinimumVersion` and `requiredMaximumVersion` (managed only): what an update may install, the refusal to start outside the range (`claude update`, `claude install` and `claude doctor` stay available), and what the `/config` channel switch writes (only `latest` to `stable` asks; the same channel is a no-op) |
 
+## CLI (in progress: `cli`)
+
+```ts
+import { startMarketplaceAdd, concludeMarketplaceAdd, planSessionFlags, renderCommand } from '@rsaryev/claude-plugin-kit';
+
+const start = startMarketplaceAdd({ source: 'your-org/your-marketplace', scope: 'project', json: true });
+// { kind: 'fetch', source, scope: 'project', json: true } | { kind: 'claudeai', name, json: false } | { kind: 'done', output }
+const done = concludeMarketplaceAdd(start, { name: 'your-marketplace', alreadyOnDisk: false, registered });
+renderCommand(done.output, { json: true }); // { stdout: ['{"command":"marketplace-add","outcome":"ok",...}'], stderr: [], exitCode: 0 }
+
+const plan = planSessionFlags({ '--plugin-dir': ['./my-plugin'], '--bare': true }, facts);
+// plan.sessionPlugins, plan.skipped, plan.env, plan.refusals ...
+```
+
+The kit has no CLI of its own: each documented command is a pure plan or decision whose outcome a host
+carries out (print the lines, exit with the code, write the settings file, delete the cache). Pages:
+cli-reference.md ("CLI commands", "CLI flags"), plugins/cli-reference.md ("claude plugin commands",
+"JSON result format", "JSON result for marketplace commands", "plugin marketplace add", "list",
+"remove", "update", "Flags that load a plugin for one session"), plugins/org.md (`disableSideloadFlags`)
+and errors.md (the startup refusals). `claude agents`, `claude mcp`, `claude mcp login` and
+`claude mcp logout` are host-delegated rows of the command table, not proven behaviour.
+
+| API | Status | What it does |
+| --- | --- | --- |
+| `commandSucceeded`, `commandFailed`, `marketplaceSuccess`, `marketplaceFailure`, `usageError`, `noResultLine`, `unexpectedError`, `renderCommand(output, { json, before? })`, `PluginCommandResult` | done | the result of a command: `command`, `outcome` `ok`/`failed`, `message` always, `failureCode` and other fields when they apply; with `--json` the last stdout line is that object, a usage error prints no result line and exits `1` with the reason on stderr, a name that can print no result line (`anthropic-plugin-directory`) exits `1`, an unexpected error exits `2` |
+| `chooseScope(command, given)`, `detectScope(command, declaredAt)`, `writeScope(plugin, requested, declaredAt)`, `scopeFlagSpelling(command)` | done | the scope grammar: `user`, `project`, `local` (`managed` for `update`), the default per command (user; auto-detect; every scope for `marketplace remove`), auto-detect local then project then user (then managed), an override at a scope that takes precedence and the `Plugin "<name>" is installed at <scope> scope, not <scope>` refusal elsewhere, `-s` only on plugin commands |
+| `resolveCommand(words)`, `COMMAND_TABLE`, `PLUGIN_SUBCOMMANDS`, `MARKETPLACE_SUBCOMMANDS` | done | the words a host routes: `plugins`, `i`, `remove`, `rm`, `autoremove`, `new`, `marketplace rm`; an unlisted word under `plugin` is unknown, under `mcp` and `agents` an argument |
+| `startMarketplaceAdd(args)`, `concludeMarketplaceAdd(start, fetched)` | done | `claude plugin marketplace add`: the source forms (`parseMarketplaceInput`), `--scope`, `--sparse` for `github` and `git` only, `--claudeai` (refuses `--scope` and `--sparse`, `--json` has no effect), the name checks, the `Successfully added marketplace: <name> (declared in <scope> settings)` and `already on disk` lines, the declaration to write and the dependency installs of installed plugins that lacked them |
+| `planMarketplaceList(request)` | done | `Configured marketplaces:` and one `Source:` line each, `No marketplaces configured`, the `From claude.ai:` section, and the `--json` array whose fields (`name`, `source`, `repo`, `url`, `path`, `ref`, `installLocation`, or `marketplaceId` and `organizationUuid` for claude.ai) depend on the source type |
+| `planMarketplaceRemove(args, facts)` | done | the declarations to remove (every scope, or `--scope`), and from the last scope the cache and every plugin installed from it with its options, secrets and data |
+| `planMarketplaceUpdate(args, facts)` | done | the listings to refresh (a pinned `ref` stays pinned), never a plugin; `Successfully updated marketplace: <name>` or a count; no name refuses `--json`; a seed-managed marketplace is skipped in bulk |
+| `planSessionFlags(given, facts)`, `startupRefusal(plan)` | done | the 20 session flags of `claude` summed into a `SessionPlan` (session-only plugins of the `inline` origin, the customizations skipped, the variables set, the settings scopes and `--settings` layer, the working directories, the agents, the channel entries, the MCP sources, the permission mode, the tools) and the refusals that exit `1` without starting (`disableSideloadFlags`, the 2 MiB settings file, an invalid `--agents`, both subagent-prompt flags) |
+| `skippedBy(mode)`, `managedPolicyUnderSafeMode(kind)`, `mcpSourcesRead(plan)`, `pluginFoldersOf(request, listing, hostVersion?)`, `sessionAgent(flag, setting)`, `addDirLoads(facts)` | done | the exact set each mode skips, what safe mode keeps of managed policy, where MCP servers are read from under `--strict-mcp-config` and `--bare`, the plugins a `--plugin-dir` folder holds, the flag over the `agent` setting and what an `--add-dir` directory loads |
+
+Where the docs name no wording or effect (the stream of a human line, the usage error of a refused
+flag combination, the text of a refused flag value) the choice is in `spec/judgments.md`.
+
 ## Loading (done: `loading`, `format/layout`)
 
 ```ts

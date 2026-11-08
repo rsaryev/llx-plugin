@@ -29,6 +29,7 @@ const LAYERS: Readonly<Record<string, number>> = {
   mods: 4,
   updates: 4,
   host: 5,
+  cli: 5,
   testing: 6,
 };
 const TOP = 99;

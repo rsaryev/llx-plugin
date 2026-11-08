@@ -220,3 +220,5 @@ export {
   type PluginSettings,
   type PluginSettingsRead,
 } from './format/plugin-settings.ts';
+
+export * from './cli/index.ts';
