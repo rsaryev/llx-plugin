@@ -113,21 +113,43 @@ spec('environment.component.http', () => {
   });
 });
 
-describe('credential variables in a remote server (mcp.md, "Credential variables that read as empty")', () => {
-  test('read as empty in url and headers, expand in a stdio env', async () => {
-    const remote = await resolveMcpServer(
+spec('mcpSettings.behavior.Credential variables that read as empty', () => {
+  const remote = (url: string, headers: Record<string, string>) =>
+    resolveMcpServer(
       'api',
-      {
-        type: 'http',
-        url: 'https://x.test/${ANTHROPIC_AUTH_TOKEN}',
-        headers: { A: 'Bearer ${ANTHROPIC_AUTH_TOKEN}' },
-      },
-      scopeOf(),
+      { type: 'http', url, headers },
+      scopeOf({
+        environment: fakeEnvironment({
+          ANTHROPIC_AUTH_TOKEN: 'tok',
+          NPM_TOKEN: 'npm',
+          ANTHROPIC_BASE_URL: 'https://proxy.test',
+          API_KEY: 'mine',
+        }),
+      }),
     );
-    expect(remote.resolved?.server).toMatchObject({
-      url: 'https://x.test/',
-      headers: { A: 'Bearer ' },
+
+  test('a covered name reads as empty in url and headers, set or not, its default ignored', async () => {
+    const { resolved } = await remote('https://x.test/${ANTHROPIC_AUTH_TOKEN}', {
+      A: 'Bearer ${ANTHROPIC_AUTH_TOKEN}',
+      B: '${NPM_TOKEN}',
+      C: '${HTTPS_PROXY}',
+      D: '${ANTHROPIC_API_KEY:-fallback}',
     });
+    expect(resolved?.server).toMatchObject({
+      url: 'https://x.test/',
+      headers: { A: 'Bearer ', B: '', C: '', D: '' },
+    });
+  });
+
+  test('a provider base URL and a name of your own expand', async () => {
+    const { resolved } = await remote('${ANTHROPIC_BASE_URL}/mcp', { K: '${API_KEY}' });
+    expect(resolved?.server).toMatchObject({
+      url: 'https://proxy.test/mcp',
+      headers: { K: 'mine' },
+    });
+  });
+
+  test('a stdio server reads the same name as written', async () => {
     const stdio = await resolveMcpServer(
       'db',
       { command: 'node', env: { T: '${ANTHROPIC_AUTH_TOKEN}' } },

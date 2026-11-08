@@ -122,6 +122,16 @@ opposite (plugins/components.md, "Commands" and "Agents"), and the kit keeps the
 session shows otherwise. `bun run corpus:load` prints the agreement per field; that residual is
 all of the remaining `skills` and `agents` differences.
 
+## Remote MCP credential oracle
+
+`bun run oracle:remote-mcp-env` observes which `${VAR}` names Claude Code reads as empty in a remote
+MCP server's `url` and `headers` (mcp.md lists them "such as"). For the names of
+`tests/fixtures/remote-mcp-env/candidates.txt`, a project `.mcp.json` sends one header per name to a
+local HTTP server through `claude mcp get`; a covered name arrives empty whether or not it is set,
+so the run sets no variable and gets a bare environment. The result is committed as `expected.json`
+beside the candidates; `tests/loading/remote-mcp-credentials.test.ts` checks the kit's rule against it
+without running Claude Code, and `--check` fails when a new release empties other names.
+
 ## Runtime oracle
 
 `bun run oracle:runtime` compares what the kit's SESSION registers with what a Claude Code session
