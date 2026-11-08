@@ -19,7 +19,8 @@ agent, not a model client and not a sandbox. It runs anywhere JavaScript runs.
 | 3     | `rules`       | Permission rule syntax: parse and match, tool names, path globs (planned)     |
 | 3     | `settings`    | Settings layers and the policy keys, pure over data (planned)                 |
 | 3     | `marketplace` | Marketplace and plugin-entry reading, sources, dependencies (planned)         |
-| 3     | `loading`     | A plugin folder to a typed `Plugin`, variable substitution (planned)          |
+| 3     | `loading`     | A plugin folder to a typed `Plugin`; `loading/resolve` holds variable substitution (planned) |
+| 3     | `foundation`  | Shared by mods and the layer-4 streams: budgets, result shapes (planned)      |
 | 4     | `agents`      | Sub-agent definitions and their scoping (planned)                             |
 | 4     | `hooks`       | The hook engine: select, run through ports, merge outputs (planned)           |
 | 4     | `skills`      | Skill and command expansion (planned)                                         |
@@ -35,8 +36,15 @@ layer. `tests/support/` holds the fakes of the ports until `testing` publishes t
 `src/ports/` is one type-only file per port (`index.ts` is the barrel). Conventions every stream
 follows:
 
-- A port is minimal; a stream that needs more of one extends it in its own file, in its own module
-  or as `src/ports/<stream>.ts`, and never edits a shared port without its owner.
+- A port is minimal; a stream that needs more of one extends it in its own file and never edits a
+  shared port without its owner. A port that names only layer-1 and layer-0 types is
+  `src/ports/<stream>.ts`; one that names a type of layer 2 or higher lives in its own module,
+  because layer 1 cannot import upward. That is rules' `PermissionClassifier` (`PreparedCall`),
+  settings' `SettingsSources` (`PolicyScope`), mods' ports (`PluginIssue`) and marketplace's
+  `SourceFetcher` (`FetchPlan`, `PluginIssue`).
+- Only the foundation owner edits `src/ports/index.ts`. A stream's own ports are exported through
+  its module barrel, so two streams never conflict on the shared one and `export type *` never
+  sees two ports with one name. Mods' port is `ModSettingsReader`, not `SettingsSources`.
 - A request that does I/O carries `signal: AbortSignal` (runner, http, model, mcp); a path-style
   read takes it as a trailing optional argument (`PluginFiles`, `Locations`).
 - An absent file or directory is `undefined`, not an error. An effect that did not happen is a
@@ -46,13 +54,48 @@ follows:
   shell), so the kit never builds a process line; timeouts are computed by the kit and enforced by
   the port.
 - Paths a `PluginFiles` takes are relative to the plugin folder and `/`-separated; the host's own
-  paths come from `Locations`, which also joins them.
+  paths come from `Locations`, which also joins them. A `TextFileReader` that reads outside a
+  plugin (an agent's memory folder) takes those host paths: absolute, built with `Locations`.
+- `HttpRequest.as` says whether the body comes back as decoded text (`body`) or raw `bytes`; an
+  archive is always `bytes`, and `maxBytes` counts bytes either way.
+
+## Homes shared between streams
+
+Decided once so two streams never build the same thing, and so no design asks for a layer it
+cannot have (`check:layers` rejects a module that has none):
+
+- Variable substitution lives in `loading/resolve`; skills (content) and hooks, both layer 4,
+  import it and write no placeholder code of their own. The planned `resolve` module is a folder of
+  `loading`, not a module.
+- `foundation` is layer 3: it may use `Clock` (layer 1) and `PluginIssue` (layer 2), and is used by
+  layer 4. Rules and settings, also layer 3, cannot import it.
+- Hooks owns two shared files: `rules/hook-matcher.ts` (`matchesMatcher`; skills, agents and mods
+  import it) and `format/hooks-settings.ts` (`readHooksFile`). No other stream writes them.
+- Hooks' own ports and fakes (`HookObserver`, `ModelCatalog`, the contracts file and its fake) live
+  in the `hooks` module and a file of their own under `tests/support`, not in `src/ports`.
+
+## Names the stream designs use
+
+The foundation's names win; a design that says otherwise means this:
+
+| A design says                                        | The code has                                                       |
+| ---------------------------------------------------- | ------------------------------------------------------------------ |
+| `parseFrontmatter` returning `{ data, body, problem }` | `parseFrontmatter` returning `{ state, present, fields, body, problem?, line?, column? }` |
+| `splitFrontmatter`                                   | `parseFrontmatter`                                                 |
+| `HostEnvironment`, `HookEnv`                         | `Environment`                                                      |
+| `PluginFiles.read`                                   | `PluginFiles.readText`                                             |
+| `Locations.pluginData(id): string`                   | `pluginData(id, signal?): Promise<string>`                         |
+| `HttpClient.post(...)`                               | `request({ method: 'POST', ... })`                                 |
+| `scriptedCommandRunner`, `recordingHttpClient`, `fakeModelRunner`, `fakeMcpCaller` | `scriptedRunner`, `recordingHttp`, `fakeModel`, `fakeMcp` |
+| `fakeLocations`, `fakeEnv`                           | `locations`, `fakeEnvironment`                                     |
+| `readList(key, value)`                               | `readList(key, value, { separators, braces? })`: pick the mode the docs give the field |
 
 ## Invariants
 
 - **L2** `@anthropic-ai/*` is imported only in `src/protocol/`, only as `import type`.
-- **L3** `src/` imports no `node:*` or `bun` module and reads no `Bun` or `process` global. Every
-  effect is a port call; the kit cannot tell a laptop from a cloud sandbox.
+- **L3** `src/` imports no `node:*` or `bun` module and uses no ambient effect: `Bun`, `process`,
+  `globalThis`, `Date`, `performance`, `crypto`, `fetch`, `setTimeout` and the other timers. Every
+  effect is a port call (`Clock`, `HttpClient`…); the kit cannot tell a laptop from a cloud sandbox.
 - **L4** `src/` never imports `tests/` or `scripts/`.
 - An error in a plugin is a `PluginIssue`, never a thrown exception; a thrown exception is a bug
   in the kit.

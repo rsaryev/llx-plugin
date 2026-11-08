@@ -48,6 +48,24 @@ describe('parseFrontmatter', () => {
     expect(result.problem).toBeString();
   });
 
+  test('a YAML problem is located in the file: the opening marker is line 1', () => {
+    const lines = ['---', 'a: 1', 'b: c: d', '---', ''];
+    for (const text of [lines.join('\n'), lines.join('\r\n'), `\uFEFF${lines.join('\n')}`]) {
+      const result = parseFrontmatter(text);
+      expect(result.problem).toBe('Nested mappings are not allowed in compact mappings');
+      expect([result.line, result.column]).toEqual([3, 4]);
+    }
+    const duplicate = parseFrontmatter('---\na: 1\na: 2\n---\n');
+    expect([duplicate.line, duplicate.column]).toEqual([3, 1]);
+  });
+
+  test('a list or scalar block points at the first line of the block; ok and none have no location', () => {
+    const list = parseFrontmatter('---\n- a\n---\n');
+    expect([list.state, list.line, list.column]).toEqual(['not-a-table', 2, 1]);
+    expect(parseFrontmatter('---\na: 1\n---\n').line).toBeUndefined();
+    expect(parseFrontmatter('plain').line).toBeUndefined();
+  });
+
   test('a duplicate key does not parse', () => {
     expect(parseFrontmatter('---\na: 1\na: 2\n---\n').state).toBe('invalid-yaml');
   });
@@ -110,7 +128,7 @@ describe('parseFrontmatter', () => {
   test('a key named __proto__ is data, not the prototype', () => {
     const { fields } = parseFrontmatter('---\n__proto__: {polluted: true}\n---\n');
     expect(Object.getPrototypeOf(fields)).toBe(Object.prototype);
-    expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
+    expect('polluted' in {}).toBe(false);
   });
 
   test('an empty file and a file of markers only do not throw', () => {

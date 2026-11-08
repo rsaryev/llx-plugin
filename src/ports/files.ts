@@ -1,7 +1,10 @@
 /**
- * Read access to one plugin folder (docs/API.md, "Ports"). Paths are relative to the folder, use
- * `/` and never leave it; `.` is the folder itself. A path that does not exist is `undefined`,
- * never an error: absence is an ordinary answer, a plugin is allowed to omit a file.
+ * Read access to files (docs/API.md, "Ports"). `PluginFiles` reads one plugin folder: its paths are
+ * relative to the folder, use `/` and never leave it; `.` is the folder itself. `TextFileReader`
+ * reads wherever the host says: its paths are host paths (absolute, built from `Locations`, such
+ * as `~/.claude/agent-memory/<agent>/`), and a `PluginFiles` satisfies it only with its own
+ * relative paths. A path that does not exist is `undefined`, never an error: absence is an
+ * ordinary answer, a plugin is allowed to omit a file.
  */
 
 /** What a host knows about one entry; booleans, so no code compares a kind to a string. */
@@ -20,7 +23,10 @@ export interface DirectoryEntry {
   readonly isDirectory: boolean;
 }
 
-/** The narrowest read: a text file, wherever it lives (an agent memory folder, a plugin file). */
+/**
+ * The narrowest read: a text file. Which paths it takes depends on who holds it: root-relative
+ * for a `PluginFiles`, host paths from `Locations` for a reader of an agent memory folder.
+ */
 export interface TextFileReader {
   /** The file's text decoded as UTF-8, or `undefined` when there is no such file. */
   readText(path: string, signal?: AbortSignal): Promise<string | undefined>;

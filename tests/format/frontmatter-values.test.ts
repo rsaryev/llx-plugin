@@ -7,6 +7,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   readEnum,
   readFlag,
+  readInteger,
   readList,
   readTable,
   readText,
@@ -26,7 +27,7 @@ describe('readFlag', () => {
     expect(readFlag('k', null)).toEqual({ value: undefined });
   });
   test('anything else is dropped with a problem naming the key', () => {
-    for (const wrong of ['maybe', 2, [], {}, '']) {
+    for (const wrong of ['maybe', 2, [], {}, '', 'constructor', '__proto__', 'toString']) {
       const read = readFlag('background', wrong);
       expect(read.value).toBeUndefined();
       expect(read.problem?.key).toBe('background');
@@ -48,40 +49,86 @@ describe('readText', () => {
   });
 });
 
+const BOTH = { separators: 'space-or-comma' } as const;
+const COMMA = { separators: 'comma' } as const;
+const GLOB = { separators: 'comma', braces: true } as const;
+const readListBoth = (key: string, value: unknown) => readList(key, value, BOTH);
+
 describe('readList', () => {
   test('splits a string on spaces and commas', () => {
-    expect(readList('k', 'Read Grep, Glob').value).toEqual(['Read', 'Grep', 'Glob']);
-    expect(readList('k', 'Read,Grep').value).toEqual(['Read', 'Grep']);
+    expect(readListBoth('k', 'Read Grep, Glob').value).toEqual(['Read', 'Grep', 'Glob']);
+    expect(readListBoth('k', 'Read,Grep').value).toEqual(['Read', 'Grep']);
   });
   test('spaces and commas inside parentheses do not split', () => {
-    expect(readList('k', 'Bash(git add *) Bash(git commit -m "a, b")').value).toEqual([
+    expect(readListBoth('k', 'Bash(git add *) Bash(git commit -m "a, b")').value).toEqual([
       'Bash(git add *)',
       'Bash(git commit -m "a, b")',
     ]);
-    expect(readList('k', 'Bash(npm run *) Read').value).toEqual(['Bash(npm run *)', 'Read']);
+    expect(readListBoth('k', 'Bash(npm run *) Read').value).toEqual(['Bash(npm run *)', 'Read']);
   });
   test('nested and unbalanced parentheses stay in one item', () => {
-    expect(readList('k', 'A(b (c d)) E').value).toEqual(['A(b (c d))', 'E']);
-    expect(readList('k', 'A(b c d').value).toEqual(['A(b c d']);
-    expect(readList('k', 'a) b').value).toEqual(['a)', 'b']);
+    expect(readListBoth('k', 'A(b (c d)) E').value).toEqual(['A(b (c d))', 'E']);
+    expect(readListBoth('k', 'A(b c d').value).toEqual(['A(b c d']);
+    expect(readListBoth('k', 'a) b').value).toEqual(['a)', 'b']);
   });
   test('keeps the items of a YAML list whole and trimmed', () => {
-    expect(readList('k', ['Read', ' Bash(git add *) ', '']).value).toEqual([
+    expect(readListBoth('k', ['Read', ' Bash(git add *) ', '']).value).toEqual([
       'Read',
       'Bash(git add *)',
     ]);
   });
   test('an empty string is an empty list; null is absent', () => {
-    expect(readList('k', '')).toEqual({ value: [] });
-    expect(readList('k', null)).toEqual({ value: undefined });
+    expect(readListBoth('k', '')).toEqual({ value: [] });
+    expect(readListBoth('k', null)).toEqual({ value: undefined });
   });
   test('an item that is not text is dropped with a problem; a table is dropped whole', () => {
-    expect(readList('tools', ['Read', 3, 'Grep'])).toEqual({
+    expect(readListBoth('tools', ['Read', 3, 'Grep'])).toEqual({
       value: ['Read', 'Grep'],
       problem: { key: 'tools', reason: 'has an item that is not text' },
     });
-    expect(readList('tools', { a: 1 }).value).toBeUndefined();
-    expect(readList('tools', 5).problem?.key).toBe('tools');
+    expect(readListBoth('tools', { a: 1 }).value).toBeUndefined();
+    expect(readListBoth('tools', 5).problem?.key).toBe('tools');
+  });
+  test('comma mode keeps spaces inside an item and trims the items', () => {
+    expect(readList('tools', 'Read, Grep Glob', COMMA).value).toEqual(['Read', 'Grep Glob']);
+    expect(readList('paths', 'my dir/**', COMMA).value).toEqual(['my dir/**']);
+  });
+  test('braces keep a glob alternation whole when asked', () => {
+    expect(readList('paths', 'src/**/*.{ts,tsx}, lib/**', GLOB).value).toEqual([
+      'src/**/*.{ts,tsx}',
+      'lib/**',
+    ]);
+    expect(readList('paths', 'a/{b,c', GLOB).value).toEqual(['a/{b,c']);
+    expect(readList('paths', 'a/{b,c}, d', COMMA).value).toEqual(['a/{b', 'c}', 'd']);
+  });
+});
+
+describe('readInteger', () => {
+  test('reads whole numbers, as numbers or strings of digits', () => {
+    expect(readInteger('maxTurns', 12)).toEqual({ value: 12 });
+    expect(readInteger('maxTurns', ' 12 ')).toEqual({ value: 12 });
+    expect(readInteger('maxTurns', -3)).toEqual({ value: -3 });
+  });
+  test('absent is absent, without a problem', () => {
+    expect(readInteger('k', undefined)).toEqual({ value: undefined });
+    expect(readInteger('k', null)).toEqual({ value: undefined });
+  });
+  test('a fraction, text, a boolean or a list is dropped with a problem', () => {
+    for (const wrong of [1.5, 'ten', '1.5', '', true, [1], {}, Number.NaN, 2 ** 60]) {
+      const read = readInteger('maxTurns', wrong);
+      expect(read.value).toBeUndefined();
+      expect(read.problem?.key).toBe('maxTurns');
+    }
+  });
+  test('bounds are inclusive and named in the problem', () => {
+    const bounds = { min: 100_000, max: 1_000_000 };
+    expect(readInteger('autoCompactWindow', 100_000, bounds).value).toBe(100_000);
+    expect(readInteger('autoCompactWindow', 1_000_000, bounds).value).toBe(1_000_000);
+    expect(readInteger('autoCompactWindow', 99_999, bounds).problem?.reason).toBe(
+      'must be at least 100000 and at most 1000000',
+    );
+    expect(readInteger('n', 11, { max: 10 }).problem?.reason).toBe('must be at most 10');
+    expect(readInteger('n', 0, { min: 1 }).problem?.reason).toBe('must be at least 1');
   });
 });
 

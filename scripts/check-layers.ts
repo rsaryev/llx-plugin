@@ -4,8 +4,9 @@
  * - L1 a module of `src/` imports only from its own folder and from lower layers.
  * - L2 `@anthropic-ai/*` is imported only in `src/protocol/`, and only as `import type`: the SDK's
  *   runtime starts the Claude Code program and must never load.
- * - L3 `src/` imports no `node:*`, `bun:*` or `bun` module and reads no `Bun` or `process`
- *   global: the kit knows nothing of the machine it runs on; every effect goes through a port.
+ * - L3 `src/` imports no `node:*`, `bun:*` or `bun` module and reads no ambient effect: `Bun`,
+ *   `process`, `globalThis`, `Date`, `performance`, `crypto`, `fetch` and the timers. The kit knows
+ *   nothing of the machine it runs on; every effect goes through a port (`Clock`, `HttpClient`…).
  * - L4 `src/` never imports `tests/` or `scripts/`.
  */
 import { join } from 'node:path';
@@ -21,6 +22,7 @@ const LAYERS: Readonly<Record<string, number>> = {
   settings: 3,
   marketplace: 3,
   loading: 3,
+  foundation: 3,
   agents: 4,
   hooks: 4,
   skills: 4,
@@ -32,7 +34,20 @@ const TOP = 99;
 
 const IMPORT = /(?:^|\n)\s*(import|export)\s+(type\s+)?[^'"]*?from\s+['"]([^'"]+)['"]/g;
 const SIDE_EFFECT = /(?:^|\n)\s*import\s+['"]([^'"]+)['"]/g;
-const GLOBALS = /\b(Bun|process)\s*\./;
+/** Ambient effects: a global that reads the machine, the clock, the network or the timers. */
+const GLOBALS: readonly { readonly name: string; readonly pattern: RegExp }[] = [
+  { name: 'Bun', pattern: /\bBun\s*[.[]/ },
+  { name: 'process', pattern: /\bprocess\s*[.[]/ },
+  { name: 'globalThis', pattern: /\bglobalThis\b/ },
+  { name: 'Date', pattern: /\bDate\s*[.(]|\bnew\s+Date\b/ },
+  { name: 'performance', pattern: /\bperformance\s*[.[]/ },
+  { name: 'crypto', pattern: /\bcrypto\s*[.[]/ },
+  { name: 'fetch', pattern: /\bfetch\s*\(/ },
+  {
+    name: 'a timer',
+    pattern: /\b(?:setTimeout|setInterval|setImmediate|clearTimeout|clearInterval)\s*\(/,
+  },
+];
 
 const moduleOf = (path: string): string => path.split('/')[1] ?? '';
 const layerOf = (path: string): number =>
@@ -76,8 +91,10 @@ for (const path of sources) {
   if (path.split('/').length > 2 && layerOf(path) < 0) {
     problems.push(`L1 ${path}: module "${moduleOf(path)}" has no layer in scripts/check-layers.ts`);
   }
-  if (GLOBALS.test(text.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, ''))) {
-    problems.push(`L3 ${path}: reads the Bun or process global`);
+  const code = text.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+  for (const { name, pattern } of GLOBALS) {
+    if (pattern.test(code))
+      problems.push(`L3 ${path}: uses ${name}, an effect only a port may have`);
   }
   problems.push(...importProblems(path, text));
 }

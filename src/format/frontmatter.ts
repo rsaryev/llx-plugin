@@ -1,4 +1,4 @@
-import { parseDocument } from 'yaml';
+import { LineCounter, parseDocument } from 'yaml';
 import { NOT_A_TABLE } from './frontmatter-values.ts';
 
 /**
@@ -22,10 +22,24 @@ export interface Frontmatter {
   readonly body: string;
   /** Why `state` is `invalid-yaml` or `not-a-table`, as the YAML parser or `readTable` words it, for a notice. */
   readonly problem?: string;
+  /**
+   * Where the problem is in the file, counted from 1 (the opening `---` is line 1): the first
+   * YAML line is 2. Present when `problem` is.
+   */
+  readonly line?: number;
+  readonly column?: number;
 }
 
+interface Where {
+  readonly line: number;
+  readonly column: number;
+}
+
+/** The first line after the opening marker. */
+const BLOCK_START: Where = { line: 2, column: 1 };
+
 const MARKER = /^---[ \t]*$/;
-const BOM = '﻿';
+const BOM = '\uFEFF';
 
 const isMarker = (line: string | undefined): boolean =>
   MARKER.test((line ?? '').replace(/\r$/, ''));
@@ -41,12 +55,15 @@ const failed = (
   state: 'invalid-yaml' | 'not-a-table',
   body: string,
   problem: string,
+  { line, column }: Where = BLOCK_START,
 ): Frontmatter => ({
   state,
   present: true,
   fields: {},
   body,
   problem,
+  line,
+  column,
 });
 
 /** The YAML text between the markers and the body after them, or `undefined` without a block. */
@@ -78,9 +95,13 @@ export function parseFrontmatter(text: string): Frontmatter {
   const source = text.startsWith(BOM) ? text.slice(1) : text;
   const block = splitBlock(source);
   if (!block) return none(text);
-  const document = parseDocument(block.yaml, { prettyErrors: false });
+  const lineCounter = new LineCounter();
+  const document = parseDocument(block.yaml, { prettyErrors: false, lineCounter });
   const [first] = document.errors;
-  if (first) return failed('invalid-yaml', block.body, first.message);
+  if (first) {
+    const { line, col } = lineCounter.linePos(first.pos[0]);
+    return failed('invalid-yaml', block.body, first.message, { line: line + 1, column: col });
+  }
   try {
     const value: unknown = document.toJS();
     if (value === null || value === undefined) {

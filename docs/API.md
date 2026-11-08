@@ -86,7 +86,7 @@ absent file is `undefined`; an effect that did not happen is a `PortFailure` val
 | ---------------- | ----------------------------------------------------------------- | ----------------------- | ------------------------------- |
 | `PluginFiles`    | reading a plugin's files (`TextFileReader` is its `readText`)     | the disk                | object storage                  |
 | `CommandRunner`  | `command` hooks, `` !`cmd` `` in skills, status lines             | `spawn`                 | exec in the sandbox             |
-| `HttpClient`     | `http` hooks, archive and marketplace downloads                   | `fetch`                 | `fetch` behind an egress policy |
+| `HttpClient`     | `http` hooks, archive and marketplace downloads (text or `bytes`) | `fetch`                 | `fetch` behind an egress policy |
 | `ModelRunner`    | `prompt` and `agent` hooks, a mod's `$.model`                     | the host's model        | the host's model                |
 | `McpCaller`      | `mcp_tool` hooks                                                  | the host's MCP client   | the host's MCP client           |
 | `Locations`      | `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_PROJECT_DIR`  | paths on the disk       | paths inside the sandbox        |
