@@ -81,6 +81,13 @@
   the allowlist, case-insensitive on the blocklist), `hostPattern` host extraction, `pathPattern`,
   canonical git URLs and `url` entries on the blocklist, `[]` as a lockdown, and the blocklist
   checked first.
+- Marketplace registry and command sources (`settings/marketplaces`):
+  `createMarketplaceRegistry(view, context).registrations()` plans `extraKnownMarketplaces` (whole-entry
+  replacement across files, workspace trust for project, local and `--add-dir` entries, the allowlist
+  and blocklist checked on the entry that wins, `settings` source rules, `headersHelper` ignored from
+  `--add-dir`, `autoUpdate` defaults, the official marketplace implied by `enabledPlugins`), and
+  `createCommandSourcePolicy(view)` answers `disableCommandPluginSources` (falling back to
+  `allowManagedHooksOnly`) for command-sourced plugins and marketplace `headersHelper` commands.
 
 ### Fixed
 
