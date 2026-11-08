@@ -210,6 +210,16 @@ describe('the other top-level keys (read as typed values; their rules belong to 
     expect(set?.renames).toEqual({ old: 'new', gone: null });
   });
 
+  test('renames keeps every key, including "__proto__" from parsed JSON', () => {
+    const raw: unknown = JSON.parse(
+      '{"name":"my-marketplace","owner":{"name":"x"},"plugins":[],"renames":{"__proto__":null,"old":"new"}}',
+    );
+    const renames = read(raw).marketplace?.renames;
+    expect(Object.keys(renames ?? {}).toSorted()).toEqual(['__proto__', 'old']);
+    expect(renames && Object.getOwnPropertyDescriptor(renames, '__proto__')?.value).toBeNull();
+    expect(renames && Object.getPrototypeOf(renames)).toBe(Object.prototype);
+  });
+
   test('a value of the wrong type is an error on its key', () => {
     for (const [key, value] of [
       ['forceRemoveDeletedPlugins', 'yes'],

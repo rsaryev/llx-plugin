@@ -69,6 +69,11 @@
 
 ### Fixed
 
+- Marketplace file and names: a name with a non-ASCII character impersonates an official
+  marketplace even when it spells a reserved name (`claude–code–plugins` with en dashes);
+  `renames` keeps a `"__proto__"` entry from parsed JSON instead of dropping it; the name tests
+  assert the exact reserved-name, Claude Desktop and non-anthropics `git` messages, and
+  `metadata.pluginRoot` has its own spec block.
 - Marketplace contracts: `ArchiveReader.stats` and `GitTags.list` report a corrupt zip, an
   unreachable git host or a fired signal as a `PortFailure` instead of a rejection (`stats` now
   takes a required `signal`); `MarketplaceSource` carries `skipLfs` on `github` and `git` and

@@ -100,7 +100,13 @@ spec('marketplace.field.name', () => {
     const name = 'a'.repeat(129);
     const result = read(withFields({ name }));
     expect(result.marketplace?.name).toBe(name);
-    expect(result.issues.map((found) => found.severity)).toEqual(['warning']);
+    expect(result.issues).toEqual([
+      {
+        severity: 'warning',
+        path: 'name',
+        message: `Marketplace name "${name}" is not accepted by Claude Desktop (letters, digits, ".", "_", "-"; must start alphanumeric; max 128 chars)`,
+      },
+    ]);
   });
 
   test('"inline" is reserved for --plugin-dir session plugins', () => {
@@ -114,21 +120,22 @@ spec('marketplace.field.name', () => {
   });
 
   test('builtin, skills-dir, synced, claude-plugin-test, npm, pip, uv, cargo, github and gh are errors on name', () => {
-    for (const name of [
-      'builtin',
-      'skills-dir',
-      'synced',
-      'claude-plugin-test',
-      'npm',
-      'pip',
-      'uv',
-      'cargo',
-      'github',
-      'gh',
-    ]) {
-      const issues = errorsOf(validate(withFields({ name })));
-      expect(issues.map((found) => found.path)).toContain('name');
-      expect(issues.map((found) => found.message).join('\n')).toContain(`"${name}"`);
+    const reserved: readonly (readonly [string, string])[] = [
+      ['builtin', 'is reserved for built-in plugins'],
+      ['skills-dir', 'is reserved for plugins auto-loaded from .claude/skills/'],
+      ['synced', 'is reserved for plugins synced from your claude.ai account'],
+      ['claude-plugin-test', 'is reserved for plugin tests'],
+      ['npm', 'is reserved'],
+      ['pip', 'is reserved'],
+      ['uv', 'is reserved'],
+      ['cargo', 'is reserved'],
+      ['github', 'is reserved'],
+      ['gh', 'is reserved'],
+    ];
+    for (const [name, reason] of reserved) {
+      expect(errorsOf(validate(withFields({ name })))).toEqual([
+        { severity: 'error', path: 'name', message: `Marketplace name "${name}" ${reason}` },
+      ]);
     }
   });
 

@@ -25,9 +25,9 @@ export const METADATA_KEYS = ['description', 'version', 'pluginRoot'] as const;
 export type MetadataKey = (typeof METADATA_KEYS)[number];
 
 const isMarketplaceKey = (key: string): key is MarketplaceKey =>
-  (MARKETPLACE_KEYS as readonly string[]).includes(key);
+  MARKETPLACE_KEYS.some((known) => known === key);
 const isMetadataKey = (key: string): key is MetadataKey =>
-  (METADATA_KEYS as readonly string[]).includes(key);
+  METADATA_KEYS.some((known) => known === key);
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -128,14 +128,15 @@ function readStringList(value: unknown, path: string): Read<readonly string[]> {
 function readRenames(value: unknown): Read<Readonly<Record<string, string | null>>> {
   if (value === undefined) return absent();
   if (!isRecord(value)) return fail(mismatch('renames', 'object', value));
-  const renames: Record<string, string | null> = {};
+  const entries: [string, string | null][] = [];
   for (const [old, target] of Object.entries(value)) {
     if (target !== null && !isString(target)) {
       return fail(mismatch(`renames.${old}`, 'string or null', target));
     }
-    renames[old] = target;
+    entries.push([old, target]);
   }
-  return ok(renames);
+  // `fromEntries` defines each key as data, so a parsed `"__proto__"` entry is kept, not a prototype.
+  return ok(Object.fromEntries(entries));
 }
 
 /** `name`: required; empty is "Marketplace must have a name"; the grammar is the caller's. */

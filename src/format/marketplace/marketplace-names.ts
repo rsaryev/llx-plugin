@@ -85,10 +85,10 @@ export function spellingOf(name: string): string | undefined {
 
 const NON_ASCII = /[^\p{ASCII}]/u;
 
-/** Names such as `official-claude-plugins` or `claude-plugins-v2`, and any non-ASCII name. */
+/** Names such as `official-claude-plugins` or `claude-plugins-v2`, and any non-ASCII name (even one that spells a reserved name). */
 function impersonates(name: string): boolean {
-  if (RESERVED_SPELLINGS.has(name) || spellingOf(name) !== undefined) return false;
   if (NON_ASCII.test(name)) return true;
+  if (RESERVED_SPELLINGS.has(name) || spellingOf(name) !== undefined) return false;
   const words = wordsOf(name);
   return besideOfficial(words) || leadsWithBrand(words);
 }

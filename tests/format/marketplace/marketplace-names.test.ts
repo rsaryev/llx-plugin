@@ -78,6 +78,13 @@ spec('marketplace.field.name', () => {
     expect(messages(loadNameIssues('claude-community', { origin }))).toEqual([
       "The name 'claude-community' is reserved for official Anthropic marketplaces. Only repositories from 'github.com/anthropics/' can use this name.",
     ]);
+    expect(
+      messages(
+        loadNameIssues('claude-community', { origin: git('https://gitlab.com/acme/plugins.git') }),
+      ),
+    ).toEqual([
+      "The name 'claude-community' is reserved for official Anthropic marketplaces. Only repositories from 'github.com/anthropics/' can use this name.",
+    ]);
   });
 
   test('any other source says "can only be used with GitHub sources from the \'anthropics\' organization"', () => {
@@ -138,9 +145,16 @@ spec('marketplace.field.name', () => {
     expect(messages(validationNameIssues('inline'))).toEqual([
       'Marketplace name "inline" is reserved for --plugin-dir session plugins',
     ]);
-    for (const name of ['builtin', 'skills-dir', 'synced', 'claude-plugin-test']) {
-      expect(validationNameIssues(name)).toHaveLength(1);
-      expect(validationNameIssues(name)[0]?.severity).toBe('error');
+    const reasons: readonly (readonly [string, string])[] = [
+      ['builtin', 'is reserved for built-in plugins'],
+      ['skills-dir', 'is reserved for plugins auto-loaded from .claude/skills/'],
+      ['synced', 'is reserved for plugins synced from your claude.ai account'],
+      ['claude-plugin-test', 'is reserved for plugin tests'],
+    ];
+    for (const [name, reason] of reasons) {
+      expect(validationNameIssues(name)).toEqual([
+        { severity: 'error', path: 'name', message: `Marketplace name "${name}" ${reason}` },
+      ]);
     }
   });
 
@@ -148,7 +162,9 @@ spec('marketplace.field.name', () => {
     expect([...ANY_CASING_NAMES].toSorted()).toEqual(['cargo', 'gh', 'github', 'npm', 'pip', 'uv']);
     for (const name of ANY_CASING_NAMES) {
       for (const spelled of [name, name.toUpperCase(), name[0]?.toUpperCase() + name.slice(1)]) {
-        expect(validationNameIssues(spelled)).toHaveLength(1);
+        expect(messages(validationNameIssues(spelled))).toEqual([
+          `Marketplace name "${spelled}" is reserved`,
+        ]);
       }
     }
     expect(validationNameIssues('npm-tools')).toEqual([]);

@@ -115,14 +115,32 @@ spec('marketplace.field.metadata.version', () => {
     ]);
   });
 
-  test('pluginRoot is read, not unknown', () => {
+  test('a metadata that is not an object, or a version that is not a string, is an error', () => {
+    expect(read(withFields({ metadata: 'x' })).marketplace).toBeUndefined();
+    expect(read(withFields({ metadata: { version: 1 } })).marketplace).toBeUndefined();
+  });
+});
+
+spec('marketplace.field.metadata.pluginRoot', () => {
+  test('is read, not unknown, and carried on metadata.pluginRoot', () => {
     const result = read(withFields({ metadata: { pluginRoot: './plugins' } }));
     expect(result.issues).toEqual([]);
     expect(result.marketplace?.metadata?.pluginRoot).toBe('./plugins');
   });
 
-  test('a metadata that is not an object, or a version that is not a string, is an error', () => {
-    expect(read(withFields({ metadata: 'x' })).marketplace).toBeUndefined();
-    expect(read(withFields({ metadata: { version: 1 } })).marketplace).toBeUndefined();
+  test('is absent when the file does not set it', () => {
+    expect(read(withFields({ metadata: { version: '1.0.0' } })).marketplace?.metadata).toEqual({
+      version: '1.0.0',
+    });
+  });
+
+  test('a pluginRoot that is not a string is an error on metadata.pluginRoot', () => {
+    const result = read(withFields({ metadata: { pluginRoot: 3 } }));
+    expect(result.marketplace).toBeUndefined();
+    expect(result.issues).toContainEqual({
+      severity: 'error',
+      path: 'metadata.pluginRoot',
+      message: 'Invalid input: expected string, received number',
+    });
   });
 });
