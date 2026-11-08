@@ -18,6 +18,9 @@
 
 ### Fixed
 
+- Corpus: the loading comparison leaves out what `plugin details` does not list (nested agents
+  and commands, single files a manifest path names, inline commands), which a runtime session
+  still loads.
 - Loading, as Claude Code 2.1.319 does (`bun run corpus:load`, whole-inventory agreement from
   82.7% to 96%): a guard hook that cannot be read, or an unreadable inline `mcpServers` entry of
   the manifest, keeps the plugin from loading; a plugin's hooks do not load an unknown event; a

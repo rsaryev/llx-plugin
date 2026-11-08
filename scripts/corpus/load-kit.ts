@@ -6,7 +6,8 @@
  */
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { classifyPluginFolder, loadPlugin } from '../../src/index.ts';
+import { z } from 'zod';
+import { classifyPluginFolder, loadPlugin, type PluginTextFile } from '../../src/index.ts';
 import { diskFiles } from './disk-files.ts';
 import type { LoadInventory } from './load-oracle.ts';
 
@@ -44,6 +45,38 @@ async function childNamed(dir: string, name: string): Promise<string | undefined
   return undefined;
 }
 
+/**
+ * `plugin details` lists only the top-level `.md` files of a commands or agents folder: not a
+ * nested file (`agents/review/security.md`), not a file a manifest path names on its own, not a
+ * command given inline in the manifest. Claude Code still loads those (a runtime session's `init`
+ * event names them: tests/loading/oracle-load.test.ts records the fixture), so the comparison
+ * leaves them out of the kit's side instead of calling them extra.
+ */
+const componentPaths = z
+  .object({ agents: z.unknown().optional(), commands: z.unknown().optional() })
+  .loose();
+
+/** The `.md` files a manifest's `agents` and `commands` name one by one. */
+const singleFiles = (value: unknown): string[] =>
+  (Array.isArray(value) ? value : [value]).flatMap((path) =>
+    typeof path === 'string' && path.endsWith('.md') ? [path.replace(/^\.\//, '')] : [],
+  );
+
+async function listedByDetails(dir: string): Promise<(file: PluginTextFile) => boolean> {
+  let singles = new Set<string>();
+  try {
+    const raw: unknown = JSON.parse(
+      await readFile(join(dir, '.claude-plugin', 'plugin.json'), 'utf8'),
+    );
+    const parsed = componentPaths.safeParse(raw);
+    if (parsed.success)
+      singles = new Set([...singleFiles(parsed.data.agents), ...singleFiles(parsed.data.commands)]);
+  } catch {
+    // no manifest, or one that does not parse: only the default folders
+  }
+  return (file) => file.path !== undefined && !file.name.includes(':') && !singles.has(file.path);
+}
+
 const DROPPED_SERVER = /MCP server(?: config for)? "(.*?)"/;
 
 export async function kitInventory(dir: string, name: string): Promise<LoadInventory> {
@@ -57,10 +90,16 @@ export async function kitInventory(dir: string, name: string): Promise<LoadInven
   if (plugin === undefined) return NOT_LOADED;
   // `plugin details` lists the servers a file declares before it reads their entries.
   const dropped = issues.flatMap((found) => DROPPED_SERVER.exec(found.message)?.[1] ?? []);
+  const listed = await listedByDetails(dir);
   return {
     loaded: true,
-    skills: [...plugin.skills, ...plugin.commands].map((file) => file.name).toSorted(),
-    agents: plugin.agents.map((file) => file.name).toSorted(),
+    skills: [...plugin.skills, ...plugin.commands.filter(listed)]
+      .map((file) => file.name)
+      .toSorted(),
+    agents: plugin.agents
+      .filter(listed)
+      .map((file) => file.name)
+      .toSorted(),
     hookEvents: Object.keys(plugin.hooks).toSorted(),
     mcpServers: [...new Set([...Object.keys(plugin.mcpServers), ...dropped])].toSorted(),
     lspServers: Object.keys(plugin.lspServers).toSorted(),
