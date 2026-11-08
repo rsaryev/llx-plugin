@@ -48,6 +48,10 @@
     "prepare": "lefthook install"
   },
   "dependencies": {
+    "acorn": "8.19.0",
+    "ignore": "7.0.14",
+    "semver": "7.8.6",
+    "yaml": "2.9.1",
     "zod": "4.4.3"
   },
   "devDependencies": {
@@ -55,6 +59,7 @@
     "@anthropic-ai/sdk": "1.6.0",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@types/bun": "1.4.4",
+    "@types/semver": "7.8.0",
     "eslint-plugin-sonarjs": "4.2.2",
     "knip": "6.44.1",
     "lefthook": "2.2.2",

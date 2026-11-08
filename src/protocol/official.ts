@@ -10,6 +10,7 @@ export type {
   AgentMcpServerSpec,
   AsyncHookJSONOutput,
   BaseHookInput,
+  EffortLevel,
   ExitReason,
   HookEvent,
   HookInput,
@@ -21,9 +22,11 @@ export type {
   PermissionBehavior,
   PermissionMode,
   PermissionUpdate,
+  ResolvedSettingSource,
   SdkPluginConfig,
   SettingSource,
   Settings,
+  SlashCommand,
   SyncHookJSONOutput,
 } from '@anthropic-ai/claude-agent-sdk';
 export type { ToolInputSchemas, ToolOutputSchemas } from '@anthropic-ai/claude-agent-sdk/sdk-tools';

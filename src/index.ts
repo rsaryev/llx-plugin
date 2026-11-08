@@ -5,6 +5,7 @@
  * runtime that reads and runs plugins through ports the host implements.
  */
 export * from './format/index.ts';
+export { EFFORT_LEVELS } from './protocol/effort.ts';
 export { HOOK_EVENTS } from './protocol/hook-events.ts';
 export type {
   EventWithSpecificOutput,
@@ -21,3 +22,4 @@ export type {
   HooksSettings,
 } from './protocol/hook-config.ts';
 export type * from './protocol/official.ts';
+export type * from './ports/index.ts';

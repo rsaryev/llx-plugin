@@ -11,16 +11,42 @@ agent, not a model client and not a sandbox. It runs anywhere JavaScript runs.
 `src/` is split into modules; a module imports only from its own folder and from lower layers
 (`bun run check:layers`, L1). `src/index.ts` is the public entry and may import anything.
 
-| Layer | Module     | Holds                                                                    |
-| ----- | ---------- | ------------------------------------------------------------------------ |
-| 0     | `protocol` | Official types re-exported; runtime lists asserted equal to them         |
-| 1     | `ports`    | The interfaces a host implements (planned)                               |
-| 2     | `format`   | Pure readers and validators of plugin files: manifest, components        |
-| 3     | `rules`    | Permission rule syntax: parse and match (planned)                        |
-| 4     | `hooks`    | The hook engine: select, run through ports, merge outputs (planned)      |
-| 4     | `skills`   | Skill and command expansion (planned)                                    |
-| 5     | `host`     | `createPluginHost`, sessions: composition of the modules above (planned) |
-| 6     | `testing`  | Fakes of every port for hosts' tests (planned)                           |
+| Layer | Module        | Holds                                                                         |
+| ----- | ------------- | ----------------------------------------------------------------------------- |
+| 0     | `protocol`    | Official types re-exported; runtime lists asserted equal to them              |
+| 1     | `ports`       | The interfaces a host implements, type-only: files, runner, http, model, mcp… |
+| 2     | `format`      | Pure readers and validators of plugin files: manifest, frontmatter            |
+| 3     | `rules`       | Permission rule syntax: parse and match, tool names, path globs (planned)     |
+| 3     | `settings`    | Settings layers and the policy keys, pure over data (planned)                 |
+| 3     | `marketplace` | Marketplace and plugin-entry reading, sources, dependencies (planned)         |
+| 3     | `loading`     | A plugin folder to a typed `Plugin`, variable substitution (planned)          |
+| 4     | `agents`      | Sub-agent definitions and their scoping (planned)                             |
+| 4     | `hooks`       | The hook engine: select, run through ports, merge outputs (planned)           |
+| 4     | `skills`      | Skill and command expansion (planned)                                         |
+| 4     | `mods`        | The mods runtime: events, guest hooks through a host runtime (planned)        |
+| 5     | `host`        | `createPluginHost`, sessions: composition of the modules above (planned)      |
+| 6     | `testing`     | Fakes of every port for hosts' tests (planned)                                |
+
+Modules of the same layer never import each other (L1): what two of them share lives in a lower
+layer. `tests/support/` holds the fakes of the ports until `testing` publishes them.
+
+## Ports
+
+`src/ports/` is one type-only file per port (`index.ts` is the barrel). Conventions every stream
+follows:
+
+- A port is minimal; a stream that needs more of one extends it in its own file, in its own module
+  or as `src/ports/<stream>.ts`, and never edits a shared port without its owner.
+- A request that does I/O carries `signal: AbortSignal` (runner, http, model, mcp); a path-style
+  read takes it as a trailing optional argument (`PluginFiles`, `Locations`).
+- An absent file or directory is `undefined`, not an error. An effect that did not happen is a
+  `PortFailure` value (`{ failure, message }`) in the result union, never a throw; a missing port is
+  a `PluginIssue` for the component that needed it.
+- `CommandRunner` takes the form it should run (`exec` with arguments, or `shell` with a named
+  shell), so the kit never builds a process line; timeouts are computed by the kit and enforced by
+  the port.
+- Paths a `PluginFiles` takes are relative to the plugin folder and `/`-separated; the host's own
+  paths come from `Locations`, which also joins them.
 
 ## Invariants
 

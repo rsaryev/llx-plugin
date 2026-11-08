@@ -18,8 +18,13 @@ const LAYERS: Readonly<Record<string, number>> = {
   ports: 1,
   format: 2,
   rules: 3,
+  settings: 3,
+  marketplace: 3,
+  loading: 3,
+  agents: 4,
   hooks: 4,
   skills: 4,
+  mods: 4,
   host: 5,
   testing: 6,
 };

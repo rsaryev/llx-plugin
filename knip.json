@@ -6,5 +6,13 @@
   },
   "entry": ["src/index.ts", "scripts/**/*.ts", "config/lint/kit-rules.js"],
   "project": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"],
-  "ignoreDependencies": ["oxlint-tsgolint", "eslint-plugin-sonarjs"]
+  // acorn, ignore and semver are added with the shared foundation so streams never touch bun.lock; each is removed from this list by the stream that first imports it (expected: mods acorn, rules ignore, marketplace and loading semver).
+  "ignoreDependencies": [
+    "oxlint-tsgolint",
+    "eslint-plugin-sonarjs",
+    "acorn",
+    "ignore",
+    "semver",
+    "@types/semver"
+  ]
 }

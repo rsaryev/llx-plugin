@@ -17,6 +17,15 @@ Tests touch no network, no real clock, no randomness and no files outside a temp
 make. The kit's ports make this natural: a test passes fakes. The pulled docs and the corpus are
 read only by `scripts/`, never by `bun test`.
 
+## Fakes of the ports
+
+`tests/support/ports.ts` exports an in-memory fake of every port (docs/API.md, "Ports"):
+`memoryFiles(record)`, `scriptedRunner(...replies)`, `recordingHttp(...replies)`,
+`fakeModel(...replies)`, `fakeMcp(options)`, `fixedClock(start)`, `locations(options)`,
+`fakeEnvironment(record)` and `memoryScratch()`. The scripted ones answer in order, record every
+call and throw when the script is spent, so a test never passes by accident. A stream tests
+through these and extends them in a file of its own, never by editing another stream's.
+
 ## What a good spec test looks like
 
 - One `spec(...)` block per requirement (or a small set the same behaviour proves together).

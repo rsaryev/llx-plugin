@@ -75,25 +75,56 @@ interface Plugin {
 }
 ```
 
-## Ports (planned)
+## Ports (done)
 
-Interfaces the host implements. Each is small, async, takes an `AbortSignal`, and is optional when
-the host supports no plugin that needs it (a missing port is reported per component, never a
-crash).
+Interfaces the host implements, in `src/ports/` (type-only, one file per port, all exported from the
+package). Each is small, takes an `AbortSignal` where it does I/O, and is optional when the host
+supports no plugin that needs it (a missing port is reported per component, never a crash). An
+absent file is `undefined`; an effect that did not happen is a `PortFailure` value, never a throw.
 
-| Port            | Used for                                                       | A local host                       | A cloud host                       |
-| --------------- | -------------------------------------------------------------- | ---------------------------------- | ---------------------------------- |
-| `PluginFiles`   | reading a plugin's files                                       | the disk                           | object storage                     |
-| `CommandRunner` | `command` hooks, `` !`cmd` `` in skills, status lines          | `spawn`                            | exec in the sandbox                |
-| `HttpClient`    | `http` hooks                                                   | `fetch`                            | `fetch` behind an egress policy    |
-| `ModelRunner`   | `prompt` and `agent` hooks                                     | the host's model                   | the host's model                   |
-| `McpCaller`     | `mcp_tool` hooks                                               | the host's MCP client              | the host's MCP client              |
-| `Locations`     | `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_PROJECT_DIR` | paths on the disk               | paths inside the sandbox           |
+| Port             | Used for                                                          | A local host            | A cloud host                    |
+| ---------------- | ----------------------------------------------------------------- | ----------------------- | ------------------------------- |
+| `PluginFiles`    | reading a plugin's files (`TextFileReader` is its `readText`)     | the disk                | object storage                  |
+| `CommandRunner`  | `command` hooks, `` !`cmd` `` in skills, status lines             | `spawn`                 | exec in the sandbox             |
+| `HttpClient`     | `http` hooks, archive and marketplace downloads                   | `fetch`                 | `fetch` behind an egress policy |
+| `ModelRunner`    | `prompt` and `agent` hooks, a mod's `$.model`                     | the host's model        | the host's model                |
+| `McpCaller`      | `mcp_tool` hooks                                                  | the host's MCP client   | the host's MCP client           |
+| `Locations`      | `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_PROJECT_DIR`  | paths on the disk       | paths inside the sandbox        |
+| `Environment`    | `${VAR}` in configs, `allowedEnvVars`, the inherited environment  | the process environment | the sandbox's environment       |
+| `Clock`          | timeouts and timers (no `Date`, no `setTimeout` in `src/`)        | the system clock        | the system clock                |
+| `ScratchFiles`   | spilling text over the hook output cap                            | the session directory   | object storage                  |
 
-`CommandRunner` is the shape of one run: `{ command, args?, cwd, env, stdin, timeoutMs, signal }`
-→ `{ exitCode, stdout, stderr, timedOut }`. Long-running processes (stdio MCP servers, LSP
-servers, monitors) stay the host's: the kit resolves their configs (variables substituted,
-user config applied) and the host starts them.
+```ts
+interface PluginFiles extends TextFileReader {
+  readBytes(path: string, signal?: AbortSignal): Promise<Uint8Array | undefined>;
+  list(path: string, signal?: AbortSignal): Promise<readonly DirectoryEntry[] | undefined>;
+  stat(path: string, signal?: AbortSignal): Promise<FileStat | undefined>;
+  exists(path: string, signal?: AbortSignal): Promise<boolean>;
+}
+interface CommandRunner {
+  run(run: CommandRun): Promise<CommandResult>;
+}
+interface HttpClient {
+  request(request: HttpRequest): Promise<HttpResponse | HttpFailure>;
+}
+interface ModelRunner {
+  evaluate(request: ModelRequest): Promise<ModelAnswer | PortFailure>; // one turn, no tools
+  runAgent(request: AgentRequest): Promise<ModelAnswer | PortFailure>; // a tool-using run
+}
+interface McpCaller {
+  ensureConnected(server: string, waitMs: number, signal: AbortSignal): Promise<McpAvailability>;
+  callTool(call: McpToolCall): Promise<McpToolResult | PortFailure>;
+}
+```
+
+`CommandRunner` is the shape of one run: `{ spec, cwd, env, stdin?, timeoutMs?, mergeStderr?,
+signal }` → `{ exitCode, stdout, stderr, timedOut, startError? }`, where `spec` is either
+`{ form: 'exec', command, args }` or `{ form: 'shell', command, shell: 'bash' | 'powershell' }`, so
+the kit never builds a process line. Long-running processes (stdio MCP servers, LSP servers,
+monitors) stay the host's: the kit resolves their configs (variables substituted, user config
+applied) and the host starts them. Tests use the fakes in `tests/support/ports.ts` (`memoryFiles`,
+`scriptedRunner`, `recordingHttp`, `fakeModel`, `fakeMcp`, `fixedClock`, `locations`,
+`fakeEnvironment`, `memoryScratch`).
 
 ## Host and sessions (planned)
 
