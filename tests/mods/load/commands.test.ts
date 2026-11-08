@@ -8,7 +8,7 @@
 import { expect, test } from 'bun:test';
 import { activeModsLine } from '../../../src/mods/load/index.ts';
 import { validateMod } from '../../../src/mods/load/commands/validate.ts';
-import { memoryFiles } from '../../support/files.ts';
+import { memoryFiles } from '../../support/ports.ts';
 import { inline, modPlugin, session } from '../../support/mods-load.ts';
 import { spec } from '../../support/spec.ts';
 

@@ -5,7 +5,7 @@ import { helperCache } from '../../src/marketplace/header-helper.ts';
 import type { PluginIssue } from '../../src/format/issues.ts';
 import type { HeaderMap, ResolvedHeaders } from '../../src/marketplace/types.ts';
 import { fixedClock, fakeEnvironment, locations, scriptedRunner } from './ports.ts';
-import type { RunnerReply } from './runner.ts';
+import type { RunnerReply } from './ports.ts';
 
 /** Helpers of the download-header tests: layers, settings and the ports a helper runs through. */
 const MARKETPLACE_URL = 'https://plugins.example.com/marketplace.json';

@@ -14,7 +14,7 @@ import type {
   RegisterTier,
   RegisteredHook,
 } from '../../src/mods/types.ts';
-import { fixedClock } from './clock.ts';
+import { fixedClock } from './ports.ts';
 
 /** An event in a test: plain data with whatever fields the test needs. */
 export type Ev = Record<string, unknown>;

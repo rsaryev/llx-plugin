@@ -39,6 +39,9 @@
 
 ### Added
 
+- Testing: `@rsaryev/claude-plugin-kit/testing` publishes the fakes of the ports (`memoryFiles`,
+  `scriptedRunner`, `recordingHttp`, `fakeModel`, `fakeMcp`, `fixedClock`, `locations`,
+  `fakeEnvironment`, `memoryScratch`); `tests/support/ports.ts` re-exports them, one copy.
 - Commands: `readCommand` reads a flat command file (the older skill format: the skill frontmatter
   except `name` and `paths`; the name is the path below `commands/` without the extension, folders
   joined by `:`, after the plugin prefix) and `readCommandEntry` builds a command from an entry of

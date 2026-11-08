@@ -1,4 +1,4 @@
-import type { Clock } from '../../src/ports/index.ts';
+import type { Clock } from '../../ports/index.ts';
 
 interface Timer {
   readonly at: number;

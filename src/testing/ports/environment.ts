@@ -1,4 +1,4 @@
-import type { Environment, ScratchFiles } from '../../src/ports/index.ts';
+import type { Environment, ScratchFiles } from '../../ports/index.ts';
 
 /** An `Environment` over a fixed record. */
 export function fakeEnvironment(variables: Readonly<Record<string, string>> = {}): Environment {

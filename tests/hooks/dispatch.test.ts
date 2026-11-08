@@ -9,7 +9,7 @@ import { expect, test } from 'bun:test';
 import type { HookHandler } from '../../src/protocol/hook-config.ts';
 import { entry } from '../support/hooks-select.ts';
 import { cmd, fire } from '../support/hooks-fire.ts';
-import type { RunnerReply } from '../support/runner.ts';
+import type { RunnerReply } from '../support/ports.ts';
 import { spec } from '../support/spec.ts';
 
 spec('hooks.exit2.PreToolUse', () => {

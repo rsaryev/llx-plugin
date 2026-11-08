@@ -1,4 +1,4 @@
-import type { HttpClient, HttpFailure, HttpRequest, HttpResponse } from '../../src/ports/index.ts';
+import type { HttpClient, HttpFailure, HttpRequest, HttpResponse } from '../../ports/index.ts';
 
 export type HttpReply = Partial<HttpResponse> | HttpFailure;
 

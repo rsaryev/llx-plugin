@@ -5,7 +5,7 @@
  * that holds no mod).
  */
 import { expect, test } from 'bun:test';
-import { fixedClock } from '../../support/clock.ts';
+import { fixedClock } from '../../support/ports.ts';
 import { policy, registerOf } from '../../support/mods-load.ts';
 import { runPluginTests, type TestFile } from '../../support/mods-testing.ts';
 import { spec } from '../../support/spec.ts';

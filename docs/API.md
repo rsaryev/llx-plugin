@@ -1106,8 +1106,25 @@ whether the folder is trusted (a parent folder's trust and a `-p` session do not
 skill content, connecting servers, creating the memory directory, the memory instructions for the
 system prompt and merging `addTools` into the tool pool are the host's.
 
-## Testing kit (planned)
+## Testing kit (done: `testing`)
 
-`@rsaryev/claude-plugin-kit/testing`: in-memory `PluginFiles`, a scripted `CommandRunner`, a
-recording `HttpClient`, fixtures of real plugin shapes. A host tests its integration without a
-disk, a shell or a network.
+`@rsaryev/claude-plugin-kit/testing`: one in-memory fake per port, so a host tests its integration
+without a disk, a shell or a network. The scripted ones answer in order, record every call and throw
+when the script is spent, so a test never passes by accident.
+
+```ts
+import {
+  fakeEnvironment, fakeMcp, fakeModel, fixedClock, locations,
+  memoryFiles, memoryScratch, recordingHttp, scriptedRunner,
+} from '@rsaryev/claude-plugin-kit/testing';
+
+const files = memoryFiles({ '.claude-plugin/plugin.json': '{"name":"demo"}' }); // PluginFiles
+const runner = scriptedRunner({ stdout: 'ok' }, { exitCode: 2, stderr: 'no' }); // CommandRunner, `calls`
+const web = recordingHttp({ status: 200, body: '{}' }); // HttpClient, `requests`
+```
+
+`memoryFiles(record)` is the `PluginFiles` of a plugin folder, so a test loads a plugin with
+`loadPlugin({ files })` and passes it to `createPluginHost`. `fakeModel(...)` answers `evaluate` and
+`runAgent`, `fakeMcp({ connected, tools })` an `McpCaller`, `fixedClock(start)` a `Clock` that moves
+only on `advance(ms)`, `locations(options)` fixed POSIX paths (`<plugins>/<id>`), `fakeEnvironment(record)`
+an `Environment`, `memoryScratch()` the `ScratchFiles`. The mods test kit stays `modsTesting`.

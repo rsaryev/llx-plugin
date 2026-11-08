@@ -11,7 +11,7 @@ import {
 import type { ShellCall, ShellPermission } from '../../src/skills/shell-run.ts';
 import { asks, covers, denies } from './bash-rules.ts';
 import { fakeEnvironment, locations } from './ports.ts';
-import { scriptedRunner, type RunnerReply } from './runner.ts';
+import { scriptedRunner, type RunnerReply } from './ports.ts';
 
 export const PLUGIN: SkillOrigin = { kind: 'plugin', plugin: 'my-plugin' };
 

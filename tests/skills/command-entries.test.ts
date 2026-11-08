@@ -17,7 +17,7 @@ import type { CommandEntry } from '../../src/format/manifest-schema.ts';
 import { loadCommandEntries } from '../../src/skills/command-entries.ts';
 import { menuEntries } from '../../src/skills/listing.ts';
 import { abortOf, expandWith, grantsOf, textOf } from '../support/expand.ts';
-import { memoryFiles } from '../support/files.ts';
+import { memoryFiles } from '../support/ports.ts';
 import { spec } from '../support/spec.ts';
 
 const PLUGIN: SkillOrigin = { kind: 'plugin', plugin: 'my-plugin' };

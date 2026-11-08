@@ -12,10 +12,10 @@ import type { HookHandler } from '../../src/protocol/hook-config.ts';
 import type { HookEvent } from '../../src/protocol/official.ts';
 import { FACTS, session } from './hooks-select.ts';
 import { fakeOutput } from './hooks-verdict.ts';
-import type { HttpReply } from './http.ts';
+import type { HttpReply } from './ports.ts';
 import { fakeEnvironment, locations, recordingHttp, scriptedRunner } from './ports.ts';
 import { matchContext } from './rule-context.ts';
-import type { RunnerReply } from './runner.ts';
+import type { RunnerReply } from './ports.ts';
 
 export const cmd = (more: object = {}): HookHandler => ({
   type: 'command',

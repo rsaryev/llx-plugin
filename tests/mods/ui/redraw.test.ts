@@ -10,7 +10,7 @@
  */
 import { expect, test } from 'bun:test';
 import { createRedrawGate, withUiRules } from '../../../src/mods/ui/index.ts';
-import { fixedClock } from '../../support/clock.ts';
+import { fixedClock } from '../../support/ports.ts';
 import { apiHarness } from '../../support/mods-api.ts';
 import { fn } from '../../support/mods-chain.ts';
 import { rejection } from '../../support/rejection.ts';

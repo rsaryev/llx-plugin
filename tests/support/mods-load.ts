@@ -16,7 +16,7 @@ import {
   moduleText,
   type RegisterFunction,
 } from '../../src/testing/mods/index.ts';
-import { memoryFiles } from './files.ts';
+import { memoryFiles } from './ports.ts';
 
 /** The settings a session with no policy has: no managed settings, an API key, a posix machine. */
 export function policy(overrides: Partial<ModsPolicyInput> = {}): ModsPolicyInput {

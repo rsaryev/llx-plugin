@@ -8,8 +8,8 @@ import {
   type TestKit,
   type TestRun,
 } from '../../src/testing/mods/index.ts';
-import { fixedClock } from './clock.ts';
-import { memoryFiles } from './files.ts';
+import { fixedClock } from './ports.ts';
+import { memoryFiles } from './ports.ts';
 import { policy as plainPolicy, runtimeOf, textCompiler } from './mods-load.ts';
 
 /** A test file, as the test declares it with the kit; the runner reads the tests the function registers. */

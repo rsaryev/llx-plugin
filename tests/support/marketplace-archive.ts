@@ -3,7 +3,7 @@ import { fetchArchive, type ArchivePorts } from '../../src/marketplace/archive-s
 import { ARCHIVE_LIMITS } from '../../src/marketplace/fetch-plan.ts';
 import type { ArchiveFetchPlan } from '../../src/marketplace/types.ts';
 import type { ArchiveFailure, ArchiveStats } from '../../src/ports/marketplace.ts';
-import type { HttpReply } from './http.ts';
+import type { HttpReply } from './ports.ts';
 import { fakeArchive, fakeSha256 } from './marketplace-ports.ts';
 import { recordingHttp } from './ports.ts';
 

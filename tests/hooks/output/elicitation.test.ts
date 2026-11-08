@@ -8,7 +8,7 @@ import { describe, expect, test } from 'bun:test';
 import { fire } from '../../support/hooks-fire.ts';
 import { stage, specific } from '../../support/hooks-output.ts';
 import { command, entry } from '../../support/hooks-select.ts';
-import type { RunnerReply } from '../../support/runner.ts';
+import type { RunnerReply } from '../../support/ports.ts';
 import { spec } from '../../support/spec.ts';
 
 type Event = 'Elicitation' | 'ElicitationResult';

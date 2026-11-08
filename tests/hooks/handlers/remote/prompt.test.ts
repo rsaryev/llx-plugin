@@ -14,7 +14,7 @@ import { runHandler } from '../../../../src/hooks/handlers/index.ts';
 import { composePrompt } from '../../../../src/hooks/handlers/remote/prompt-text.ts';
 import { AGENT_HOOK_TOOLS } from '../../../../src/hooks/handlers/remote/agent.ts';
 import { agentEntry, promptEntry, remoteContext } from '../../../support/hooks-remote.ts';
-import type { ModelReply } from '../../../support/model.ts';
+import type { ModelReply } from '../../../support/ports.ts';
 import { fakeModel } from '../../../support/ports.ts';
 import { spec } from '../../../support/spec.ts';
 

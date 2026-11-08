@@ -26,10 +26,11 @@ agent, not a model client and not a sandbox. It runs anywhere JavaScript runs.
 | 4     | `skills`      | `arguments.ts`, `substitute.ts` and `variables.ts` substitute arguments and `${CLAUDE_*}` in a skill's text (done, `${CLAUDE_*}` through `loading/resolve`); `invocation.ts`, `mention.ts`, `listing.ts`, `path-gate.ts` and `execution.ts` decide who may run a skill, what the model and the `/` menu list, when `paths` activate it and how it runs (done); `shell-scan.ts`, `shell-exit.ts`, `shell-run.ts`, `expand.ts`, `expand-policy.ts` and `hook-limits.ts` expand a skill: find and run the `` !`cmd` `` placeholders through the runner port, substitute, and return the text with the grants, execution, model and hooks (done); `command-entries.ts` loads the manifest `commands` object map through the files port (done); `output-style-select.ts` picks the active output style (done) |
 | 4     | `mods`        | The mods runtime: `mods/chain` (the middleware engine, done), `mods/events` (the event catalog and result semantics, done), `mods/api` (the `$` of a mod as ports, effects and their limits, done), `mods/ui` (elements, render sites, panes, controls and redraws; its port is `mods/ui/ports.ts`, done), `mods/load` (policy, order, the loader, the static scan, `claude plugin validate`, the host that wires it all; done); its ports live in `mods/ports.ts`, `mods/api/ports.ts` and `mods/ui/ports.ts` |
 | 5     | `host`        | `createPluginHost`, sessions: composition of the modules above (planned)      |
-| 6     | `testing`     | `testing/mods`: the mods test kit (`claude plugin test`, `claude-code/testing`) and the fakes a host tests its mods integration with (done); fakes of the other ports planned |
+| 6     | `testing`     | `testing/ports`: one in-memory fake per port, published as `@rsaryev/claude-plugin-kit/testing` (done); `testing/mods`: the mods test kit (`claude plugin test`, `claude-code/testing`) and the fakes a host tests its mods integration with (done) |
 
 Modules of the same layer never import each other (L1): what two of them share lives in a lower
-layer. `tests/support/` holds the fakes of the ports until `testing` publishes them.
+layer. The fakes of the ports are `src/testing/ports`; `tests/support/ports.ts` re-exports them, so
+there is one copy.
 
 ## Ports
 

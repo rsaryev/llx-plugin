@@ -13,7 +13,7 @@ import { WAITS_FOR_SERVER } from '../../../../src/hooks/handlers/remote/mcp-tool
 import { HOOK_EVENTS } from '../../../../src/protocol/hook-events.ts';
 import type { HookEvent } from '../../../../src/protocol/official.ts';
 import type { McpCaller, McpToolResult } from '../../../../src/ports/index.ts';
-import { fixedClock } from '../../../support/clock.ts';
+import { fixedClock } from '../../../support/ports.ts';
 import { mcpEntry, remoteContext } from '../../../support/hooks-remote.ts';
 import { fakeEnvironment, fakeMcp } from '../../../support/ports.ts';
 

@@ -14,7 +14,7 @@ import { readAgent } from '../../src/format/agent.ts';
 import { AGENT_MEMORY_SCOPES } from '../../src/format/agent-fields.ts';
 import { file, loaded, plugin } from '../support/agent-files.ts';
 import { reader } from '../support/agent-context.ts';
-import { locations } from '../support/locations.ts';
+import { locations } from '../support/ports.ts';
 import { agentWith, readWith } from '../support/launch.ts';
 import { spec } from '../support/spec.ts';
 

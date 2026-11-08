@@ -19,7 +19,8 @@ read only by `scripts/`, never by `bun test`.
 
 ## Fakes of the ports
 
-`tests/support/ports.ts` exports an in-memory fake of every port (docs/API.md, "Ports"):
+`src/testing/ports` holds an in-memory fake of every port (docs/API.md, "Testing kit"), published as
+`@rsaryev/claude-plugin-kit/testing`; `tests/support/ports.ts` re-exports it, one copy:
 `memoryFiles(record)`, `scriptedRunner(...replies)`, `recordingHttp(...replies)`,
 `fakeModel(...replies)`, `fakeMcp(options)`, `fixedClock(start)`, `locations(options)`,
 `fakeEnvironment(record)` and `memoryScratch()`. The scripted ones answer in order, record every

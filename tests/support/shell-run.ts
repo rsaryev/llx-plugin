@@ -6,7 +6,7 @@ import {
   type PlannedCommand,
   type ShellCall,
 } from '../../src/skills/shell-run.ts';
-import { scriptedRunner, type RunnerReply } from './runner.ts';
+import { scriptedRunner, type RunnerReply } from './ports.ts';
 
 export const base: InjectionContext = {
   name: '/pr-summary',

@@ -1,4 +1,4 @@
-import type { CommandResult, CommandRun, CommandRunner } from '../../src/ports/index.ts';
+import type { CommandResult, CommandRun, CommandRunner } from '../../ports/index.ts';
 
 /** What one scripted run answers: a result with defaults (exit 0, no output), or a function of the run. */
 export type RunnerReply = Partial<CommandResult> | ((run: CommandRun) => Partial<CommandResult>);

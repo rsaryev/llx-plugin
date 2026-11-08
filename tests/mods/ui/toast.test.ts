@@ -11,7 +11,7 @@
  */
 import { expect, test } from 'bun:test';
 import { createToastBoard, parseToast, withUiRules } from '../../../src/mods/ui/index.ts';
-import { fixedClock } from '../../support/clock.ts';
+import { fixedClock } from '../../support/ports.ts';
 import { apiHarness } from '../../support/mods-api.ts';
 import { rejection } from '../../support/rejection.ts';
 import { fakeInterface, uiOver } from '../../support/mods-ui.ts';

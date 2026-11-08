@@ -8,7 +8,7 @@ import type { CommandFetchPlan } from '../../src/marketplace/types.ts';
 import type { PluginFiles } from '../../src/ports/index.ts';
 import { directoriesAt } from './marketplace-ports.ts';
 import { fakeEnvironment, locations, memoryFiles, scriptedRunner } from './ports.ts';
-import type { RunnerReply } from './runner.ts';
+import type { RunnerReply } from './ports.ts';
 
 /** Helpers of the `command` source tests: a run through fakes of every port it takes. */
 export const PRINTED = '/opt/tool/out';

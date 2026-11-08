@@ -4,7 +4,7 @@ import type {
   ModelRequest,
   ModelRunner,
   PortFailure,
-} from '../../src/ports/index.ts';
+} from '../../ports/index.ts';
 
 export type ModelReply = ModelAnswer | PortFailure;
 

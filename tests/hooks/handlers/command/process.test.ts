@@ -14,7 +14,7 @@ import { describe, expect, test } from 'bun:test';
 import { HANDLERS, runHandler } from '../../../../src/hooks/handlers/index.ts';
 import { entry } from '../../../support/hooks-select.ts';
 import { pluginCommand, runContext, settingsCommand } from '../../../support/hooks-run.ts';
-import type { RunnerReply } from '../../../support/runner.ts';
+import type { RunnerReply } from '../../../support/ports.ts';
 import { fakeEnvironment, locations, scriptedRunner } from '../../../support/ports.ts';
 
 const where = async (

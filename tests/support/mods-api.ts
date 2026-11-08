@@ -23,7 +23,7 @@ import type {
   RegisteredHook,
 } from '../../src/mods/types.ts';
 import type { ModsUi } from '../../src/mods/ui/index.ts';
-import { fixedClock } from './clock.ts';
+import { fixedClock } from './ports.ts';
 
 /** A port call nobody scripted: the test fails at once instead of passing by accident. */
 const unscripted = (port: string) => (): never => {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { createBudget } from '../../src/foundation/index.ts';
-import { fixedClock } from '../support/clock.ts';
+import { fixedClock } from '../support/ports.ts';
 
 describe('createBudget', () => {
   test('runs from creation: remainingMs falls with the clock and expired resolves at the limit', async () => {

@@ -11,7 +11,7 @@
 import { describe, expect, test } from 'bun:test';
 import { runHandler } from '../../../../src/hooks/handlers/index.ts';
 import { httpEntry, remoteContext } from '../../../support/hooks-remote.ts';
-import type { HttpReply } from '../../../support/http.ts';
+import type { HttpReply } from '../../../support/ports.ts';
 import { fakeEnvironment, recordingHttp } from '../../../support/ports.ts';
 import { spec } from '../../../support/spec.ts';
 

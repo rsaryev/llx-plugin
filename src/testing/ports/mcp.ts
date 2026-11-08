@@ -4,7 +4,7 @@ import type {
   McpToolCall,
   McpToolResult,
   PortFailure,
-} from '../../src/ports/index.ts';
+} from '../../ports/index.ts';
 
 export interface FakeMcpOptions {
   /** Servers that are connected; any other is `unavailable`. */

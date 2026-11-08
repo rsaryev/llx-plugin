@@ -9,7 +9,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { PermissionBehavior, PermissionMode } from '../../src/protocol/official.ts';
 import { runInjections, type InjectionContext } from '../../src/skills/shell-run.ts';
-import { scriptedRunner } from '../support/runner.ts';
+import { scriptedRunner } from '../support/ports.ts';
 import { base, failure, plan, run } from '../support/shell-run.ts';
 
 const timeoutMessage = async (env: Record<string, string>): Promise<string> =>

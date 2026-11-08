@@ -1,4 +1,4 @@
-import type { Locations } from '../../src/ports/index.ts';
+import type { Locations } from '../../ports/index.ts';
 
 export interface LocationOptions {
   readonly home?: string;
