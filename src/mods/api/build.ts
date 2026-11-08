@@ -16,6 +16,8 @@ import type { ModHostPorts } from './ports.ts';
 import { processApi } from './exec.ts';
 import { promptApi } from './prompt.ts';
 import type { ModRegistries } from './registries.ts';
+import { openGate, type RunGate } from './gate.ts';
+import { createReplayLedger, type ReplayLedger } from './replay.ts';
 import { createScope, type Scope } from './scope.ts';
 import { sessionApi } from './session.ts';
 import { settingsApi } from './settings.ts';
@@ -31,6 +33,10 @@ export interface ModsApiOptions {
   readonly ports: ModHostPorts;
   readonly registries: ModRegistries;
   readonly state: StateStore;
+  /** The calls a fresh copy of a mod does not make again; without one, no call is replayed. */
+  readonly replay?: ReplayLedger;
+  /** Which calls the session refuses now; without one, none (`RunGate`). */
+  readonly gate?: RunGate;
   /** The scopes of the loaded mods, one entry for each; `createModsApi` adds and removes its own. */
   readonly scopes: ScopeBook;
   readonly report: (report: HookReport) => void;
@@ -104,6 +110,8 @@ export async function createModsApi(
     ports: options.ports,
     registries: options.registries,
     state: options.state,
+    replay: options.replay ?? createReplayLedger(() => undefined),
+    gate: options.gate ?? openGate,
     signal: background.signal,
     report: options.report,
     debug: options.debug,

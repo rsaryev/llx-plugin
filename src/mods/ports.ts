@@ -74,6 +74,22 @@ export interface ModRuntime {
     },
     signal: AbortSignal,
   ): Promise<{ readonly module?: GuestModule; readonly issues: readonly PluginIssue[] }>;
+  /**
+   * Installed mods share one worker (troubleshoot.md, "`it crashed the hooks worker`"). A runtime that
+   * has one calls every listener when the worker stopped responding or crashed and has been replaced:
+   * the modules it held are gone, and the kit loads each mod's module again in the new worker. The
+   * returned promise settles once the kit has done that, so the runtime can hold its events until then.
+   * Returns the function that removes the listener.
+   */
+  onCrash?(listener: (crash: WorkerCrash) => Promise<void>): () => void;
+}
+
+/** A stop of the hooks worker, as the host's runtime saw it. */
+export interface WorkerCrash {
+  /** What the runtime saw, for the debug log. */
+  readonly reason: string;
+  /** The mod the runtime traced the stop to (a hook that blocks the thread); absent when it could not. */
+  readonly culprit?: string;
 }
 
 /**

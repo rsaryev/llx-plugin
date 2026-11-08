@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { ModsNamespaceApi } from '../types.ts';
 import { call, parse, type Deps } from './call.ts';
+import { droppedPrompt, refusing, waitsInQueue } from './refusal.ts';
 
 /** `$.prompt.submit({ text, asUser })` (api.md, "Start a turn from a background job"). */
 const submit = z.looseObject({ text: z.string(), asUser: z.boolean().optional() });
@@ -24,10 +25,24 @@ export function promptApi(deps: Deps): ModsNamespaceApi<'prompt'> {
       if (lent !== undefined) {
         throw new Error(`$.prompt.submit: the turn is waiting on a hook of ${lent}`);
       }
-      return call(deps, 'prompt.submit', parse('$.prompt.submit', submit, args[0]), (e) => {
-        const { text, asUser } = parse('$.prompt.submit', submit, e);
-        return prompts.submit(asUser === true ? { text, asUser } : { text, from: deps.plugin });
-      });
+      const request = parse('$.prompt.submit', submit, args[0]);
+      // The `session.start` of a fresh copy does not submit what the first copy submitted.
+      return deps.replay.once(deps.plugin, 'prompt.submit', () =>
+        call(
+          deps,
+          'prompt.submit',
+          request,
+          refusing(deps, 'prompt.submit', async (e) => {
+            const { text, asUser } = parse('$.prompt.submit', submit, e);
+            const prompt = asUser === true ? { text, asUser } : { text, from: deps.plugin };
+            return waitsInQueue(
+              deps.gate.interrupted(),
+              (queue) => prompts.submit(prompt, queue),
+              droppedPrompt,
+            );
+          }),
+        ),
+      );
     },
     read: async () => call(deps, 'prompt.read', {}, () => prompts.read()),
     fill: async (...args) =>

@@ -222,6 +222,22 @@ export async function loadMod(
   return start(env, mod, prepared);
 }
 
+/**
+ * A fresh copy of a loaded mod's module after the hooks worker was replaced (troubleshoot.md, "`its
+ * session.start ran again in a fresh copy`"): the module it was loaded from is evaluated again, with
+ * no new read of its files. `current` is unloaded first, by `unload`, whatever the outcome.
+ */
+export async function restartMod(
+  env: LoaderEnv,
+  current: LoadedMod,
+  mod: OrderedMod,
+  unload: (mod: LoadedMod) => Promise<void>,
+): Promise<LoadOutcome> {
+  const prepared = preparedOf.get(current);
+  await unload(current);
+  return prepared ? start(env, mod, prepared) : {};
+}
+
 /** What reloading one mod came to. */
 export interface ReloadOutcome {
   /** The mod now loaded: the new version, or the previous one when the reload failed. */

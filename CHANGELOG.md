@@ -15,6 +15,20 @@
 
 ### Added
 
+- Mods, crash behaviour and refused calls (troubleshoot.md, api.md). `ModRuntime.onCrash` lets a
+  runtime that shares one worker tell the host the worker stopped: the mod it traced the stop to is
+  unloaded (`<mod> was unloaded: it crashed the hooks worker`), the others get a fresh copy of their
+  module, and the third stop that cannot be traced unloads every mod that is not built in
+  (`hooks: mods that run in the hooks worker are off for this session: it crashed 3 times`;
+  `reload()` turns them back on). The `$.prompt.submit`, `$.command.run` and `$.agent.spawn` calls a
+  fresh copy's `session.start` repeats resolve with the first copy's result and are not made again,
+  with the line `its session.start ran again in a fresh copy`. A registration from a module that is
+  no longer loaded rejects (`$.agent.register refused: the hooks module that made the call is no
+  longer loaded`). `createRunGate` and `ModsHost.input` model the session's input (`interrupt`,
+  `userInput`, `endInput`, `--max-turns`, `--max-budget-usd`): refused calls return what the page's
+  table says, and a prompt or command still queued when the user stops the turn is dropped.
+  `ModsHostOptions.onNotice` receives the lines that come outside a call to the host.
+
 - Mods, per-mod load and unload, and where mods run. `createModsHost` keys a mod by its name: `load`
   of a plugin already loaded replaces it and no longer adds a second copy. New `loadMod(plugin)` loads
   one plugin among the loaded ones (tier from policy, last in its tier, a note when the policy would

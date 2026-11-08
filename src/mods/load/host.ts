@@ -1,5 +1,5 @@
 import { type AnyModEventName, type StreamEventName } from '../../protocol/mods-events.ts';
-import type { ModHostPorts } from '../api/index.ts';
+import type { ModHostPorts, RunGate, RunLimits } from '../api/index.ts';
 import type { DenyRuleChecker, MatcherEngine, ModCompiler, ModRuntime } from '../ports.ts';
 import type {
   ChunkOf,
@@ -13,7 +13,9 @@ import type {
 import type { ModInterface, ModsUi } from '../ui/index.ts';
 import type { LoadedMod, ModPlugin, ReloadOutcome } from './loader.ts';
 import { announceSessionStart, dispatchOptionsFor, type FireSettings } from './host-support.ts';
-import { createModSet, type ModLoadReport } from './mod-set.ts';
+import { createModSet, type ModLoadReport, type ModNotice } from './mod-set.ts';
+import { modLineChannel } from './line-channel.ts';
+import { createReplayLedger, replayedLine } from '../api/replay.ts';
 import { pluginDirsOf, watchesPluginDirs } from './plugin-dirs.ts';
 import type { ModsPolicyInput } from './policy-input.ts';
 import { wire } from './wiring.ts';
@@ -64,6 +66,13 @@ export interface ModsHostOptions {
   readonly hotReload?: () => boolean;
   /** `claude -p --output-format`, for where a line about a mod is read (default text). */
   readonly outputFormat?: 'text' | 'json' | 'stream-json';
+  /**
+   * A line for people that comes outside a call to the host: the hooks worker stopped (`ModRuntime.onCrash`),
+   * or a fresh copy's `session.start` did not make a call again. `load` and `reload` return their own lines.
+   */
+  readonly onNotice?: (notice: ModNotice) => void;
+  /** The run's limits (`--max-turns`, `--max-budget-usd`): a call that would pass one is refused (`RunGate`). */
+  readonly limits?: RunLimits;
 }
 
 export type { ModLoadReport } from './mod-set.ts';
@@ -122,6 +131,12 @@ export interface ModsHost {
   pluginDirs(): readonly string[];
   /** Whether a save in a `--plugin-dir` directory reloads its mod (`reloadMod`): always interactively, otherwise with `CLAUDE_CODE_PLUGIN_DIR_WATCH=1`. */
   watchesPluginDirs(isInteractive: boolean): boolean;
+  /**
+   * Tells the session what happened to its input, which decides what its mods' calls return: after
+   * `interrupt` the calls that start new work are refused until `userInput`; after `endInput` they are
+   * refused for good.
+   */
+  readonly input: Pick<RunGate, 'interrupt' | 'userInput' | 'endInput'>;
   readonly ui: ModsUi;
   readonly chain: ModChain;
   active(): readonly LoadedMod[];
@@ -135,9 +150,22 @@ export function createModsHost(options: ModsHostOptions): ModsHost {
   const debug = options.debug ?? noop;
   const background = new AbortController();
   const signal = options.signal ?? background.signal;
-  const wired = wire({ ...options, debug, report: options.report ?? noop, signal });
-  const { chain, env } = wired;
   const { policy } = options;
+  const notify = options.onNotice ?? noop;
+  const sessionNow = () => ({
+    isInteractive: options.isInteractive ?? true,
+    pluginDir: pluginDirsOf(policy).length > 0,
+    ...(options.hotReload === undefined ? {} : { hotReload: options.hotReload() }),
+    ...(options.outputFormat === undefined ? {} : { outputFormat: options.outputFormat }),
+  });
+  /** The calls a fresh copy of a mod's `session.start` does not make again, with the line that says so. */
+  const replay = createReplayLedger((mod, kind) => {
+    const line = replayedLine(mod, kind);
+    debug(line);
+    notify({ line, channel: modLineChannel(sessionNow(), 'fresh-copy') });
+  });
+  const wired = wire({ ...options, debug, report: options.report ?? noop, signal, replay });
+  const { chain, env } = wired;
   /** What the host registered itself: a reload does not touch it. */
   const builtIns: LoadedMod[] = [];
   const dispatchOptions = dispatchOptionsFor({ env, debug, signal });
@@ -145,17 +173,15 @@ export function createModsHost(options: ModsHostOptions): ModsHost {
     wired,
     policy,
     debug,
-    announce: (started) =>
+    announce: (started, mode) =>
       options.firesSessionStart === false
         ? Promise.resolve()
-        : announceSessionStart({ options, chain, dispatchOptions }, started),
-    session: () => ({
-      isInteractive: options.isInteractive ?? true,
-      pluginDir: pluginDirsOf(policy).length > 0,
-      ...(options.hotReload === undefined ? {} : { hotReload: options.hotReload() }),
-      ...(options.outputFormat === undefined ? {} : { outputFormat: options.outputFormat }),
-    }),
+        : announceSessionStart({ options, chain, dispatchOptions, replay }, started, mode),
+    session: sessionNow,
+    notify,
   });
+  /** The worker's replacement is handled before the runtime goes on (`ModRuntime.onCrash`). */
+  const stopListening = options.runtime.onCrash?.((crash) => mods.crashed(crash));
 
   return {
     load: (given) => mods.load(given),
@@ -173,10 +199,12 @@ export function createModsHost(options: ModsHostOptions): ModsHost {
     },
     pluginDirs: () => pluginDirsOf(policy),
     watchesPluginDirs: (isInteractive) => watchesPluginDirs(policy, isInteractive),
+    input: wired.gate,
     ui: wired.ui,
     chain,
     active: () => [...builtIns, ...mods.loaded()],
     async dispose() {
+      stopListening?.();
       await mods.unloadAll();
       for (const mod of builtIns.toReversed()) await mod.unload();
       builtIns.length = 0;

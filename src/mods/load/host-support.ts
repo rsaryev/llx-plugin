@@ -12,6 +12,7 @@ import {
   type ReloadOutcome,
 } from './loader.ts';
 import type { OrderedMod } from './order.ts';
+import type { ReplayLedger, ReplayMode } from '../api/replay.ts';
 import type { Wired } from './wiring.ts';
 
 /** What the host passes the chain when it fires an event itself. */
@@ -91,8 +92,11 @@ export async function announceSessionStart(
     };
     readonly chain: ModChain;
     readonly dispatchOptions: (opts: FireSettings) => DispatchOptions;
+    /** Numbers the calls of each `session.start`, so a fresh copy's repeated calls are not made again. */
+    readonly replay: ReplayLedger;
   },
   mods: readonly LoadedMod[],
+  mode: ReplayMode,
 ): Promise<void> {
   const input = {
     surface: host.options.iface.surface(),
@@ -100,7 +104,9 @@ export async function announceSessionStart(
     cwd: await host.options.ports.session.cwd(),
   };
   for (const mod of mods) {
-    await host.chain.dispatch('session.start', input, host.dispatchOptions({ only: mod.name }));
+    await host.replay.window(mod.name, mode, () =>
+      host.chain.dispatch('session.start', input, host.dispatchOptions({ only: mod.name })),
+    );
   }
 }
 

@@ -1,10 +1,13 @@
 import {
   createModsApi,
   createRegistries,
+  createRunGate,
   createStateStore,
   withApiRules,
   type ModHostPorts,
   type ModsApiOptions,
+  type RunGate,
+  type RunLimits,
   type ScopeBook,
 } from '../api/index.ts';
 import { createModChain } from '../chain/index.ts';
@@ -12,6 +15,7 @@ import { createEventRules } from '../events/index.ts';
 import type { DenyRuleChecker, MatcherEngine, ModCompiler, ModRuntime } from '../ports.ts';
 import type { HookReport, ModChain, RegisteredHook, RegisterTier } from '../types.ts';
 import { createModsUi, withUiRules, type ModInterface, type ModsUi } from '../ui/index.ts';
+import type { ReplayLedger } from '../api/replay.ts';
 import { forgetMod, guardHooks, once, type ApprovalLedger } from './guard.ts';
 import type { LoaderEnv, LoadedMod } from './loader.ts';
 import { pluginOptions, type ModsPolicyInput } from './policy-input.ts';
@@ -35,9 +39,15 @@ export interface Wires {
   /** Where the regular expressions of matchers run (`createModChain`); in this thread without one. */
   readonly matcherEngine?: MatcherEngine;
   readonly matcherMs?: number;
+  /** The calls a fresh copy of a mod does not make again (`ReplayLedger`). */
+  readonly replay?: ReplayLedger;
+  /** The run's limits: `--max-turns` and `--max-budget-usd`, or the Agent SDK's turn and spend limits. */
+  readonly limits?: RunLimits;
 }
 
 export interface Wired {
+  /** What the session says about new work: the host tells it of interruptions and the end of input. */
+  readonly gate: RunGate;
   readonly chain: ModChain;
   readonly ui: ModsUi;
   /** What the loader needs to load one module. */
@@ -74,6 +84,22 @@ function chainOf(given: Wires, reports: SkipReports): ModChain {
   return chain;
 }
 
+/** What every mod's API shares: the chain it calls through, the state, the registries and the session's gate. */
+function sharedOptions(
+  given: Wires,
+  own: Pick<ModsApiOptions, 'chain' | 'state' | 'gate' | 'report' | 'ui'>,
+): Omit<ModsApiOptions, 'canWithhold'> {
+  const scopes: ScopeBook = new Map();
+  return {
+    ...own,
+    ports: given.ports,
+    registries: createRegistries(),
+    scopes,
+    ...(given.replay ? { replay: given.replay } : {}),
+    debug: given.debug,
+  };
+}
+
 /** The chain, the interface and the API of the mods runtime, wired over the ports the host gave. */
 export function wire(given: Wires): Wired {
   const { ports, policy, debug, signal } = given;
@@ -82,7 +108,7 @@ export function wire(given: Wires): Wired {
   const chain = chainOf(given, reports);
   const calls = given.unanswered ? withUnanswered(chain, given.unanswered) : chain;
   const state = createStateStore();
-  const scopes: ScopeBook = new Map();
+  const gate = createRunGate(ports.session, given.limits);
   const ui = createModsUi({
     chain: calls,
     clock: ports.clock,
@@ -92,16 +118,7 @@ export function wire(given: Wires): Wired {
     report,
     debug,
   });
-  const shared: Omit<ModsApiOptions, 'canWithhold'> = {
-    chain: calls,
-    ports,
-    registries: createRegistries(),
-    state,
-    scopes,
-    report,
-    debug,
-    ui: ui.api,
-  };
+  const shared = sharedOptions(given, { chain: calls, state, gate, report, ui: ui.api });
   const book: RefusalBook = { refusers: new Map() };
   const ledger: ApprovalLedger = { approvers: [] };
   const createApi: LoaderEnv['createApi'] = (ref) =>
@@ -143,6 +160,7 @@ export function wire(given: Wires): Wired {
     };
   }
   return {
+    gate,
     chain,
     ui,
     env,

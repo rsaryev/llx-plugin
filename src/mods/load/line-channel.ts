@@ -6,8 +6,17 @@
  * the transcript, as the guard table says, "in a session that hot-reloads a plugin directory".
  */
 
-/** The lines the page lists: a refused hooks module, one that did not load, a hook skipped, a refusal by another mod. */
-export type ModLineKind = 'not-loaded' | 'did-not-load' | 'hook-skipped' | 'refused-by-mod';
+/**
+ * The lines the page lists: a refused hooks module, one that did not load, a hook skipped, a refusal
+ * by another mod, a stop of the hooks worker, a call a fresh copy did not make again.
+ */
+export type ModLineKind =
+  | 'not-loaded'
+  | 'did-not-load'
+  | 'hook-skipped'
+  | 'refused-by-mod'
+  | 'worker-crash'
+  | 'fresh-copy';
 export type ModLineChannel = 'transcript' | 'stderr' | 'debug-log';
 
 export interface ModLineSession {
@@ -35,12 +44,23 @@ const hooksModuleChannel = (session: ModLineSession): ModLineChannel => {
   return session.pluginDir && isText(session) ? 'stderr' : 'debug-log';
 };
 
+/**
+ * "This line reaches the transcript in every interactive session" (troubleshoot.md, "`mods that run in
+ * the hooks worker are off for this session`"); the line of one mod unloaded has the same place
+ * (judgment), and a `claude -p` run reads it where it reads a module that did not load.
+ */
+const workerCrashChannel = (session: ModLineSession): ModLineChannel =>
+  session.isInteractive ? 'transcript' : hooksModuleChannel(session);
+
 /** What differs per kind: where the line goes in a session. */
 const CHANNELS: { readonly [K in ModLineKind]: (session: ModLineSession) => ModLineChannel } = {
   'not-loaded': hooksModuleChannel,
   'did-not-load': hooksModuleChannel,
   'hook-skipped': hooksModuleChannel,
   'refused-by-mod': refusalChannel,
+  'worker-crash': workerCrashChannel,
+  // Judgment: the page names no place for it; it is one line per mod, like a skipped hook.
+  'fresh-copy': hooksModuleChannel,
 };
 
 /** Where `kind` of line is read in `session`; a session with neither a plugin directory nor hot reloading has the debug log only (judgment for a non-interactive run in another format). */

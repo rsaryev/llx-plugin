@@ -15,6 +15,22 @@ export {
   type Registry,
   type ToolDef,
 } from './registries.ts';
+export {
+  createReplayLedger,
+  replayedLine,
+  REPLAYED_CALLS,
+  type ReplayedCall,
+  type ReplayLedger,
+  type ReplayMode,
+} from './replay.ts';
+export {
+  createRunGate,
+  openGate,
+  QUEUE_DROPS,
+  REFUSAL_REASONS,
+  type RunGate,
+  type RunLimits,
+} from './gate.ts';
 export { createScope, type CallContext, type Scope } from './scope.ts';
 export { createStateStore, type StateStore } from './state.ts';
 export { atom, read, update, type Atom, type AtomKey, type StateHost } from './state-library.ts';

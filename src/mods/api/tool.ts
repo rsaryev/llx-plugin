@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import type { ModsNamespaceApi } from '../types.ts';
-import { call, parse, type Deps } from './call.ts';
+import { assertLoaded, call, parse, type Deps } from './call.ts';
 import { nameProblem } from './names.ts';
+import { refusing } from './refusal.ts';
 import { toolFullName } from './registries.ts';
 
 /** The registration of `$.tool.register` (api.md, "Add a tool"). */
@@ -26,13 +27,20 @@ function register(deps: Deps, event: unknown): void {
 
 export function toolApi(deps: Deps): ModsNamespaceApi<'tool'> {
   return {
-    register: async (...args) =>
-      call(deps, 'tool.register', parse('$.tool.register', registration, args[0]), (e) =>
+    register: async (...args) => {
+      assertLoaded(deps, 'tool.register');
+      return call(deps, 'tool.register', parse('$.tool.register', registration, args[0]), (e) =>
         Promise.resolve(register(deps, e)),
-      ),
+      );
+    },
     call: async (...args) =>
-      call(deps, 'tool.call', parse('$.tool.call', toolCall, args[0]), (e) =>
-        deps.ports.tools.call(parse('$.tool.call', toolCall, e), deps.signal),
+      call(
+        deps,
+        'tool.call',
+        parse('$.tool.call', toolCall, args[0]),
+        refusing(deps, 'tool.call', (e) =>
+          deps.ports.tools.call(parse('$.tool.call', toolCall, e), deps.signal),
+        ),
       ),
     check: async (...args) =>
       call(deps, 'tool.check', parse('$.tool.check', toolCheck, args[0]), (e) =>

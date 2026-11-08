@@ -87,3 +87,11 @@ export {
   type WrittenModRefusal,
   type WrittenModSession,
 } from './written-mods.ts';
+export {
+  createWorkerHealth,
+  offLine,
+  unloadedLine,
+  WORKER_STOP_LIMIT,
+  type CrashPlan,
+  type WorkerHealth,
+} from './health.ts';

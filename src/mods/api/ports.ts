@@ -142,12 +142,19 @@ export interface ModSession {
 }
 
 export interface ModPrompts {
-  /** `from` names the mod that sends the text; it is absent for `asUser`, which sends the user's own words. */
-  submit(prompt: {
-    readonly text: string;
-    readonly asUser?: true;
-    readonly from?: string;
-  }): Promise<{ readonly drop?: string }>;
+  /**
+   * `from` names the mod that sends the text; it is absent for `asUser`, which sends the user's own
+   * words. It resolves when the turn starts. `queue` aborts when the user stops the turn first: the
+   * kit has then answered the call with a drop, and the host takes the prompt out of its queue.
+   */
+  submit(
+    prompt: {
+      readonly text: string;
+      readonly asUser?: true;
+      readonly from?: string;
+    },
+    queue?: AbortSignal,
+  ): Promise<{ readonly drop?: string }>;
   read(): Promise<{ readonly text: string; readonly cursor: number }>;
   fill(text: string): Promise<{ readonly isFilled: boolean }>;
   suggest(text: string): Promise<{ readonly isShown: boolean }>;
@@ -165,8 +172,14 @@ export interface ModAgents {
 export interface ModCommands {
   /** The names of Claude Code's own commands, which a mod's command cannot take. */
   builtIns(): readonly string[];
-  /** Runs a command; rejects with the reason when it is refused. */
-  run(command: { readonly command: string; readonly args: string }): Promise<unknown>;
+  /**
+   * Runs a command; rejects with the reason when it is refused. `queue` aborts when the user stops
+   * the turn before the command ran: the kit has then rejected the call, and the host drops the command.
+   */
+  run(
+    command: { readonly command: string; readonly args: string },
+    queue?: AbortSignal,
+  ): Promise<unknown>;
 }
 
 export interface ModTools {

@@ -14,6 +14,10 @@ import { guardLoads } from './policy.ts';
 import type { ModsPolicyInput } from './policy-input.ts';
 import { sideloadRefusal } from './plugin-dirs.ts';
 import type { Wired } from './wiring.ts';
+import { recoverFromCrash } from './crash-recovery.ts';
+import { createWorkerHealth, type WorkerHealth } from './health.ts';
+import type { ReplayMode } from '../api/replay.ts';
+import type { WorkerCrash } from '../ports.ts';
 
 /**
  * The mods a host holds: which plugins it was given, which of them are loaded, and how they come and
@@ -43,7 +47,9 @@ export interface ModSetDeps {
   readonly policy: ModsPolicyInput;
   readonly debug: (line: string) => void;
   /** `session.start` for the mods just loaded, or nothing where the host does not fire it. */
-  readonly announce: (mods: readonly LoadedMod[]) => Promise<void>;
+  readonly announce: (mods: readonly LoadedMod[], mode: ReplayMode) => Promise<void>;
+  /** A line for people that comes outside a call to the set: the worker stopped, a call was not made again. */
+  readonly notify: (notice: ModNotice) => void;
   /** The session as it is now: read for every line, as hot reloading can be turned on in the middle of it. */
   readonly session: () => ModLineSession;
 }
@@ -55,6 +61,8 @@ export interface ModSet {
   unloadMod(name: string): Promise<boolean>;
   reload(): Promise<ModLoadReport>;
   reloadMod(name: string): Promise<ReloadOutcome | undefined>;
+  /** The hooks worker stopped and was replaced (`ModRuntime.onCrash`). */
+  crashed(crash: WorkerCrash): Promise<void>;
   unloadAll(): Promise<void>;
 }
 
@@ -70,6 +78,8 @@ interface Ctx extends ModSetDeps {
   loaded: LoadedMod[];
   /** The plugins the host holds: `load` and `loadMod` add to them, `unloadMod` takes one away, `reload` loads them again. */
   known: ModPlugin[];
+  /** The stops of the hooks worker; `/reload-plugins` starts the count over. */
+  readonly health: WorkerHealth;
 }
 
 /** What one call collects. */
@@ -147,7 +157,7 @@ async function loadInto(ctx: Ctx, out: Out, target: Target): Promise<void> {
 
 async function finish(ctx: Ctx, out: Out): Promise<ModLoadReport> {
   for (const line of out.lines) ctx.debug(line);
-  await ctx.announce(out.mods);
+  await ctx.announce(out.mods, 'first');
   return { loaded: [...ctx.loaded], lines: out.lines, notices: out.notices };
 }
 
@@ -228,12 +238,12 @@ async function reloadModNamed(ctx: Ctx, name: string): Promise<ReloadOutcome | u
   if (!done) return undefined;
   ctx.loaded = byRunningOrder(done.loaded);
   ctx.debug(done.outcome.line);
-  if (done.replaced) await ctx.announce([done.replaced]);
+  if (done.replaced) await ctx.announce([done.replaced], 'first');
   return done.outcome;
 }
 
 export function createModSet(deps: ModSetDeps): ModSet {
-  const ctx: Ctx = { ...deps, loaded: [], known: [] };
+  const ctx: Ctx = { ...deps, loaded: [], known: [], health: createWorkerHealth() };
   return {
     loaded: () => ctx.loaded,
     load: (given) => load(ctx, given),
@@ -244,9 +254,11 @@ export function createModSet(deps: ModSetDeps): ModSet {
       return (await unloadNamed(ctx, names)).has(name);
     },
     async reload() {
+      ctx.health.reset();
       return loadAll(ctx, ctx.known, await unloadEverything(ctx));
     },
     reloadMod: (name) => reloadModNamed(ctx, name),
+    crashed: (crash) => recoverFromCrash(ctx, crash),
     unloadAll: async () => void (await unloadEverything(ctx)),
   };
 }
