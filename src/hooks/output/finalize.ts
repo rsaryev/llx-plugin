@@ -25,14 +25,22 @@ const denyTool: OnBlock = (effects, block) => {
   };
 };
 
-/** Only a failure that "denies" blocks a `PermissionRequest`; its text is the denial's `message`. */
-const denyRequest: OnBlock = (effects, block) => ({
-  ...effects,
-  permissionRequest: {
-    behavior: 'deny',
-    ...(hasText(block.reason) ? { message: block.reason } : {}),
-  },
-});
+/**
+ * Only a failure that "denies" blocks a `PermissionRequest`; its text is the denial's `message`. A
+ * deny a hook decided keeps its own `interrupt` ("if `true`, stops Claude").
+ */
+const denyRequest: OnBlock = (effects, block) => {
+  const decided = effects.permissionRequest;
+  const interrupt = decided?.behavior === 'deny' && decided.interrupt === true;
+  return {
+    ...effects,
+    permissionRequest: {
+      behavior: 'deny',
+      ...(hasText(block.reason) ? { message: block.reason } : {}),
+      ...(interrupt ? { interrupt } : {}),
+    },
+  };
+};
 
 const decline: OnBlock = (effects) => {
   const { elicitation: _answer, ...rest } = effects;

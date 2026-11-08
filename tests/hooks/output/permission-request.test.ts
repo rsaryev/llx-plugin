@@ -5,9 +5,11 @@
  * kit proves is the decision object it accepts, the fields each behavior may carry, and the merge.
  */
 import { expect, test } from 'bun:test';
-import { parseHookOutput } from '../../../src/hooks/index.ts';
+import { createOutputStage, parseHookOutput } from '../../../src/hooks/index.ts';
 import type { PermissionUpdate } from '../../../src/protocol/official.ts';
+import { cmd, fire } from '../../support/hooks-fire.ts';
 import { merged, specific } from '../../support/hooks-output.ts';
+import { entry } from '../../support/hooks-select.ts';
 import { spec } from '../../support/spec.ts';
 
 const decision = (body: object) => specific('PermissionRequest', { decision: body });
@@ -191,6 +193,23 @@ spec('hooks.output.PermissionRequest.interrupt', () => {
     expect(
       merge(decision({ behavior: 'allow', interrupt: true })).effects.permissionRequest,
     ).toEqual({ behavior: 'allow' });
+  });
+
+  test('it survives the dispatch: a deny a hook decided keeps its interrupt', async () => {
+    const said = specific('PermissionRequest', {
+      decision: { behavior: 'deny', message: 'no', interrupt: true },
+    });
+    const { outcome } = await fire(
+      'PermissionRequest',
+      [entry('PermissionRequest', { handler: cmd() })],
+      [{ stdout: JSON.stringify(said) }],
+      { output: createOutputStage() },
+    );
+    expect(outcome.effects.permissionRequest).toEqual({
+      behavior: 'deny',
+      message: 'no',
+      interrupt: true,
+    });
   });
 
   test('judgment: it counts when any denying hook sets it', () => {

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- A `PermissionRequest` deny keeps its `interrupt` through the dispatch.
+
 ### Added
 
 - `HookEngineOptions.shellPaths`: the engine's bash hooks keep their path variables as environment
