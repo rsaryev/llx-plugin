@@ -232,6 +232,15 @@ spec(['tools.tool.Glob', 'tools.tool.Grep'], () => {
       expect(resolve({ sessionTools, tools: ['Read'] }).tools).toEqual(['Read']);
     });
 
+    test('a glob in tools that covers Bash counts as listing it', () => {
+      expect(resolve({ sessionTools, tools: ['*'] }).tools).toEqual(['Read', 'Bash']);
+      expect(resolve({ sessionTools, tools: ['Glob', 'B*'] }).tools).toEqual(['Bash']);
+    });
+
+    test('a glob that does not cover Bash still restores the tools it covers', () => {
+      expect(resolve({ sessionTools, tools: ['G*'] }).tools).toEqual(['Glob', 'Grep']);
+    });
+
     test('a subagent with no tools field has what the session has', () => {
       expect(resolve({ sessionTools }).tools).toEqual(['Read', 'Bash']);
     });

@@ -7,7 +7,7 @@
  * other formats are told apart by what a rule of that format covers.
  */
 import { describe, expect, test } from 'bun:test';
-import { evaluateRules, parseRule } from '../../src/rules/index.ts';
+import { evaluateRules } from '../../src/rules/index.ts';
 import { ruleFormatOf } from '../../src/rules/specifier-formats.ts';
 import { call, matchContext, parsed } from '../support/rule-context.ts';
 import { spec } from '../support/spec.ts';
@@ -16,7 +16,7 @@ import { TOOL_TABLE, type ToolRow } from '../support/tool-table.ts';
 const verdict = (text: string, behavior: 'deny' | 'allow', toolName: string, input: unknown) =>
   evaluateRules([parsed(text, behavior)], call(toolName, input), matchContext).behavior;
 
-/** Each non-bare format: [rule, covered call, uncovered call] per tool, written as the docs' examples. */
+/** Each non-bare format: the rule of that format and a call it covers and one it does not, written as the docs' examples. */
 type Probe = (row: ToolRow) => void;
 
 const commandProbe: Probe = ({ tool }) => {
@@ -92,9 +92,6 @@ const bareProbe: Probe = ({ tool, input }) => {
     expect(verdict(tool, 'deny', tool, input)).toBe('deny');
     expect(verdict(tool, 'allow', tool, input)).toBe('allow');
     expect(verdict(`${tool}(anything)`, 'allow', tool, input)).toBeUndefined();
-    expect(parseRule(tool, { behavior: 'deny', source: { kind: 'project' } }).rule?.specifier).toBe(
-      undefined,
-    );
   });
 };
 

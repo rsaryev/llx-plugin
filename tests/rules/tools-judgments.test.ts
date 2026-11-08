@@ -33,3 +33,18 @@ describe('judgment: a name the table does not list', () => {
     }
   });
 });
+
+describe('judgment: an LSP call is treated as inside the working directories', () => {
+  test('its input shape is undocumented, so the No column holds and the call runs without a prompt', () => {
+    expect(catalogEntry('LSP')?.permissionRequired).toBe(false);
+    const call = decision(
+      'default',
+      'LSP',
+      { filePath: '/etc/hosts' },
+      {
+        requiresPermission: toolRequiresPermission,
+      },
+    );
+    expect(call.outcome).toBe('allow');
+  });
+});

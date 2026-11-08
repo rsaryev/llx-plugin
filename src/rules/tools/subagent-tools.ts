@@ -131,8 +131,9 @@ const SEARCH_TOOLS = ['Glob', 'Grep'];
  */
 function restoredSearchTools(request: SubagentRequest): readonly string[] {
   const { tools = [] } = request;
-  const namesBash = tools.some((entry) => toolNameOfEntry(entry) === 'Bash');
-  return namesBash ? [] : SEARCH_TOOLS.filter((tool) => covered(tools, 'allow', tool));
+  return covered(tools, 'allow', 'Bash')
+    ? []
+    : SEARCH_TOOLS.filter((tool) => covered(tools, 'allow', tool));
 }
 
 /** The three groups of the "zero tools" message, in the order errors.md lists them. */

@@ -20,7 +20,13 @@ for (const { tool, permissionRequired, input } of TOOL_TABLE) {
         expect(inManualMode(tool, input)).toEqual({ outcome: 'ask', reason: 'default-prompt' });
       });
     } else if (tool === 'AskUserQuestion') {
-      // The column says no permission; the tool is the question itself, which only the user answers.
+      // The column says no permission; permission-modes.md § Actions no mode auto-approves: "Tools
+      // that require user interaction: the built-in `AskUserQuestion` tool". The tool is the
+      // question itself, which only the user answers (spec/judgments.md).
+      test(`the catalog says ${tool} needs no permission`, () => {
+        expect(toolRequiresPermission(tool)).toBe(false);
+      });
+
       test(`Manual mode asks no permission for ${tool}, only the user's answer`, () => {
         expect(inManualMode(tool, input)).toEqual({
           outcome: 'ask',

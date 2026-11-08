@@ -98,6 +98,13 @@
   calls they make.
 - The layer check now rejects `Date`, timers, `fetch`, `crypto`, `performance` and `globalThis` in
   `src/`, as the docs state.
+- Tool availability: `--tools ""` removes `EndConversation` when no MCP tool remains, the `default`
+  entry of `--tools` means the default set, `--restricted` removes `PowerShell`, `Monitor` and
+  `WebFetch` as well as `Bash` unless `--tools` names them, a Bash deny rule turns `PowerShell` off
+  on Windows with Git Bash (`gitBash`, `powerShellOptIn`), and
+  `blockWritesOutsideWorkingDirectories` removes the worktree tools; a subagent whose `tools` glob
+  covers `Bash` no longer gets `Glob` and `Grep` back; the catalog test no longer reads the removed
+  tools from production data.
 - Path rules: an `Edit` rule now covers the legacy `MultiEdit` (and a `Read` deny rule blocks it),
   while `MultiEdit(docs/**)` is accepted and never matches; a `Read` deny or ask rule reaches every
   LSP call and no `!` carve-out reopens one; `Read(./.env)` names the `.env` of the current directory

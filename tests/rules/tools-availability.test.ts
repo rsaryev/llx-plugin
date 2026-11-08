@@ -89,6 +89,24 @@ spec('tools.tool.EndConversation', () => {
       expect(availableTools(CANDIDATES, denying('End*'))).toContain('EndConversation');
     });
 
+    test('--tools "" removes it when no MCP tool remains, and keeps it while one does', () => {
+      const none = session([], { toolsFlag: [] });
+      expect(availableTools(CANDIDATES, none)).toEqual([
+        'EndConversation',
+        'mcp__github__get_issue',
+        'mcp__slack__post',
+      ]);
+      const builtIn = ['Bash', 'Read', 'EndConversation'];
+      expect(availableTools(builtIn, none)).toEqual([]);
+      const mcpDenied = session([['mcp__*', 'deny']], { toolsFlag: [] });
+      expect(availableTools(CANDIDATES, mcpDenied)).toEqual([]);
+    });
+
+    test('--tools "" keeps it when an allow rule names it', () => {
+      const named = session([['EndConversation', 'allow']], { toolsFlag: [] });
+      expect(availableTools(['Bash', 'EndConversation'], named)).toEqual(['EndConversation']);
+    });
+
     test('a --tools list cannot remove it', () => {
       const kept = availableTools(CANDIDATES, session([], { toolsFlag: ['Read'] }));
       expect(kept).toContain('EndConversation');

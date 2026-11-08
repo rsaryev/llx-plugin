@@ -6,7 +6,7 @@
  * `tests/support/tool-table.ts`.
  */
 import { describe, expect, test } from 'bun:test';
-import { DOCUMENTED_TOOLS, REMOVED_TOOLS } from '../../src/protocol/tool-names.ts';
+import { DOCUMENTED_TOOLS } from '../../src/protocol/tool-names.ts';
 import { ruleIssues } from '../../src/rules/index.ts';
 import { isKnownTool, KNOWN_TOOLS } from '../../src/rules/tools/catalog.ts';
 import { parsed } from '../support/rule-context.ts';
@@ -25,7 +25,8 @@ describe('the table copied into the tests lists the documented tools', () => {
 
 for (const { tool } of TOOL_TABLE) {
   spec(`tools.tool.${tool}`, () => {
-    const removed = (REMOVED_TOOLS as readonly string[]).includes(tool);
+    // tools-reference.md: only TaskOutput is "Removed in v2.1.277".
+    const removed = tool === 'TaskOutput';
 
     test(`a deny or ask rule naming ${tool} is no typo`, () => {
       expect(warnings(tool)).toEqual([]);
