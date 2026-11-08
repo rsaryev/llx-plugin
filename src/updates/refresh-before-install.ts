@@ -26,7 +26,7 @@ export interface KnownMarketplace {
   /** Its resolved auto-update setting (`marketplaceAutoUpdate`). */
   readonly autoUpdate: boolean;
   /** A seed directory supplies it (`CLAUDE_CODE_PLUGIN_SEED_DIR`). */
-  readonly seeded: boolean;
+  readonly seeded?: boolean;
   /** When the host last refreshed it, in `Clock.now()` milliseconds. */
   readonly lastRefreshedAt?: number;
   /** The marketplace gate's message when managed settings block it ("is blocked by enterprise policy"). */
@@ -101,7 +101,7 @@ type RuleReason = Extract<
 /** The docs' list of skips after the managed block, in the docs' order. */
 const SKIP_RULES: readonly { readonly reason: RuleReason; readonly applies: SkipRule }[] = [
   { reason: 'local-or-inline-source', applies: (marketplace) => READ_IN_PLACE[marketplace.source] },
-  { reason: 'seed-directory', applies: (marketplace) => marketplace.seeded },
+  { reason: 'seed-directory', applies: (marketplace) => marketplace.seeded === true },
   {
     // Judgment: exactly 30 seconds ago is no longer "within the last 30 seconds".
     reason: 'refreshed-within-30-seconds',

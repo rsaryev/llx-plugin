@@ -14,16 +14,22 @@ import {
   afterBackgroundCheck,
   afterReclone,
   backgroundCheckAuthenticates,
+  backgroundCheckResult,
   type Credentials,
 } from '../../src/updates/private-marketplace.ts';
 import { fakeEnvironment } from '../support/ports.ts';
 import { spec } from '../support/spec.ts';
 
-const ssh = (keyInAgent: boolean): Credentials => ({ remote: 'ssh', keyInAgent });
-const https = (helper: 'supplies-stored-credential' | 'must-prompt' | 'none'): Credentials => ({
-  remote: 'https',
-  helper,
+const ssh = (keyInAgent: boolean, providerTokenInEnvironment = false): Credentials => ({
+  remote: 'ssh',
+  keyInAgent,
+  providerTokenInEnvironment,
 });
+const https = (
+  helper: 'supplies-stored-credential' | 'must-prompt' | 'none',
+  providerTokenInEnvironment = false,
+): Credentials => ({ remote: 'https', helper, providerTokenInEnvironment });
+const NEW_COMMITS = { reachable: true, hasNewCommits: true };
 
 spec('updates.guide.Auto-update from a private marketplace', () => {
   test('an SSH remote authenticates with a key loaded in ssh-agent', () => {
@@ -39,9 +45,26 @@ spec('updates.guide.Auto-update from a private marketplace', () => {
   });
 
   test('GITHUB_TOKEN or another provider token alone does not authenticate the check', () => {
-    // the credentials are what the helper and the agent hold; a token in the environment is not one
-    expect(backgroundCheckAuthenticates(https('none'))).toBe(false);
-    expect(backgroundCheckAuthenticates(ssh(false))).toBe(false);
+    expect(backgroundCheckAuthenticates(https('must-prompt', true))).toBe(false);
+    // and it changes nothing when a real credential is there
+    expect(backgroundCheckAuthenticates(https('supplies-stored-credential', true))).toBe(true);
+  });
+
+  test('a helper that must prompt fails quietly: the check cannot authenticate, and the existing checkout stays when the clone fails too', () => {
+    const result = backgroundCheckResult(https('must-prompt', true), NEW_COMMITS);
+    expect(result).toBe('cannot-reach-or-authenticate');
+    expect(afterBackgroundCheck(result, fakeEnvironment())).toBe('reclone');
+    expect(afterReclone(false)).toBe('keep-existing-checkout');
+  });
+
+  test('with a credential that authenticates the check finds new commits, or finds the checkout up to date', () => {
+    expect(backgroundCheckResult(ssh(true), NEW_COMMITS)).toBe('new-commits');
+    expect(backgroundCheckResult(ssh(true), { reachable: true, hasNewCommits: false })).toBe(
+      'up-to-date',
+    );
+    expect(backgroundCheckResult(ssh(true), { reachable: false, hasNewCommits: false })).toBe(
+      'cannot-reach-or-authenticate',
+    );
   });
 
   test('an up-to-date checkout is left as it is', () => {
@@ -75,5 +98,7 @@ describe('private marketplace, what the docs leave open (spec/judgments.md)', ()
   test('an SSH remote with no key in the agent, and an HTTPS remote with no helper, do not authenticate', () => {
     expect(backgroundCheckAuthenticates(ssh(false))).toBe(false);
     expect(backgroundCheckAuthenticates(https('none'))).toBe(false);
+    expect(backgroundCheckAuthenticates(https('none', true))).toBe(false);
+    expect(backgroundCheckAuthenticates(ssh(false, true))).toBe(false);
   });
 });

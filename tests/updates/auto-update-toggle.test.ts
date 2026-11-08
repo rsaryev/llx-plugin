@@ -22,8 +22,16 @@ const facts = (name: string, rest: Omit<AutoUpdateFacts, 'name'> = {}): AutoUpda
 
 spec('updates.guide.Turn auto-update on or off for a marketplace', () => {
   test('the Marketplaces tab offers Enable auto-update when it is off and Disable auto-update when it is on', () => {
-    expect(toggleLabel(false)).toBe('Enable auto-update');
-    expect(toggleLabel(true)).toBe('Disable auto-update');
+    // off by default, on once the toggle recorded it, and the settings entry that wins either way
+    expect(toggleLabel(facts('acme'))).toBe('Enable auto-update');
+    expect(toggleLabel(facts('acme', { recorded: true }))).toBe('Disable auto-update');
+    expect(toggleLabel(facts('acme', { recorded: true, settingsEntry: false }))).toBe(
+      'Enable auto-update',
+    );
+    expect(toggleLabel(facts('acme', { recorded: false, settingsEntry: true }))).toBe(
+      'Disable auto-update',
+    );
+    expect(toggleLabel(facts('claude-plugins-official'))).toBe('Disable auto-update');
   });
 
   test('choosing it writes autoUpdate to known_marketplaces.json', () => {

@@ -6,6 +6,7 @@
  * unknown channel, a floor that updates skip) is outside `spec(...)` and in spec/judgments.md.
  */
 import { describe, expect, test } from 'bun:test';
+import { readSettingsLayer } from '../../src/settings/index.ts';
 import { gate, layer, messageOf, pick, policyOf } from '../support/version-policy.ts';
 import { spec } from '../support/spec.ts';
 
@@ -133,9 +134,9 @@ spec('updates.key.requiredMinimumVersion', () => {
 
 describe('Claude Code version policy, what the docs leave open (spec/judgments.md)', () => {
   test('an unknown channel follows latest, like an unset key', () => {
-    expect(policyOf(layer('user', JSON.parse('{"autoUpdatesChannel":"nightly"}'))).channel).toBe(
-      'latest',
-    );
+    // read the way a settings file is, so a value outside the SDK's type reaches the policy as-is
+    const { layer: read } = readSettingsLayer('user', { autoUpdatesChannel: 'nightly' });
+    expect(policyOf(read).channel).toBe('latest');
   });
 
   test('the highest minimumVersion of the files wins, so a user can raise but never lower a managed floor', () => {
@@ -164,6 +165,13 @@ describe('Claude Code version policy, what the docs leave open (spec/judgments.m
       outcome: 'skip',
       reason: 'channel-version-unknown',
     });
+  });
+
+  test('a running version that is not a version starts: the range cannot be compared, so the gate fails open', () => {
+    const range = policyOf(
+      layer('managed', { requiredMinimumVersion: '2.1.100', requiredMaximumVersion: '2.1.150' }),
+    );
+    expect(gate(range, 'not-a-version')).toEqual({ allowed: true });
   });
 
   test('updates skip a version below requiredMinimumVersion, since it would not start', () => {

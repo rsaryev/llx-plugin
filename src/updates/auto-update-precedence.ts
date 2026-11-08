@@ -59,9 +59,15 @@ export function autoUpdatePassAllowed(env: Environment): boolean {
   return !off;
 }
 
-/** What the Marketplaces tab labels the toggle, from the current setting. */
-export const toggleLabel = (autoUpdate: boolean): string =>
-  autoUpdate ? 'Disable auto-update' : 'Enable auto-update';
+/** The labels of the toggle, by whether the marketplace auto-updates now. */
+const TOGGLE_LABELS: { readonly [On in 'on' | 'off']: string } = {
+  on: 'Disable auto-update',
+  off: 'Enable auto-update',
+};
+
+/** What the Marketplaces tab labels the toggle: "Enable auto-update" when it is off, "Disable auto-update" when it is on. */
+export const toggleLabel = (facts: AutoUpdateFacts): string =>
+  TOGGLE_LABELS[marketplaceAutoUpdate(facts) ? 'on' : 'off'];
 
 /** The settings file that declares the marketplace under `extraKnownMarketplaces`, as the registry plans it. */
 export interface Declaration {

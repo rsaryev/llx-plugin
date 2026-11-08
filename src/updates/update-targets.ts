@@ -86,7 +86,11 @@ type Handler<K extends Kind> = (
 ) => UpdatePlan;
 
 const HANDLERS: { readonly [K in Kind]: Handler<K> } = {
-  plugin: (request) => ({ refresh: [], update: [request.id], leftToUser: [] }),
+  plugin: (request, installed) => ({
+    refresh: [],
+    update: installed.some((plugin) => plugin.id === request.id) ? [request.id] : [],
+    leftToUser: [],
+  }),
   'marketplace-tab': (request, installed, registered) =>
     marketplaceTab(request.marketplace, installed, registered),
   'marketplace-listing': (request, _installed, registered) =>
@@ -103,7 +107,8 @@ function handle<K extends Kind>(
 
 /**
  * What `request` does. Judgments (spec/judgments.md): a single-plugin update names no marketplace
- * refresh; a marketplace that is not registered has nothing to refresh; a plugin with both a
+ * refresh; a plugin that is not installed has nothing to update; a marketplace that is not
+ * registered has nothing to refresh; a plugin with both a
  * `headersHelper` and a `command` source is reported as a `headersHelper` one.
  */
 export const planUpdate = (

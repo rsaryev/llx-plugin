@@ -6,7 +6,7 @@
  * depend on `autoUpdate` or `DISABLE_AUTOUPDATER`; a failed refresh installs from the cached catalog
  * and `claude plugin install` reports `marketplace not refreshed`; five conditions skip it, and a
  * managed block also refuses the install. What the docs leave open (the 30-second boundary, the
- * skip rules for a bare name, the `/plugin` report of a failure) is outside `spec(...)` and in
+ * skip rules for a bare name, the `/plugin` report of a failure, a managed block against the other skips, a marketplace never added) is outside `spec(...)` and in
  * spec/judgments.md.
  */
 import { describe, expect, test } from 'bun:test';
@@ -27,7 +27,6 @@ const marketplace = (name: string, extra: Partial<KnownMarketplace> = {}): Known
   name,
   source: 'github',
   autoUpdate: false,
-  seeded: false,
   ...extra,
 });
 
@@ -85,40 +84,42 @@ spec('updates.loading.When Claude Code refreshes a marketplace before an install
     });
   });
 
-  test('a /plugin install proceeds from the cache too and the docs name no report for it', () => {
-    expect(refreshFailed('/plugin install')).toEqual({ installFrom: 'cached catalog' });
-  });
-
-  test('a marketplace added from a local file or directory is not refreshed', () => {
-    for (const source of ['file', 'directory'] as const) {
-      expect(decide({ ref: 'fmt@acme', known: [marketplace('acme', { source })] })).toEqual({
-        outcome: 'skip',
-        reason: 'local-or-inline-source',
-      });
+  test('a marketplace added from a local file or directory is not refreshed, by either command', () => {
+    for (const command of COMMANDS) {
+      for (const source of ['file', 'directory'] as const) {
+        expect(
+          decide({ ref: 'fmt@acme', command, known: [marketplace('acme', { source })] }),
+        ).toEqual({ outcome: 'skip', reason: 'local-or-inline-source' });
+      }
     }
   });
 
-  test('a marketplace defined inline in settings is not refreshed', () => {
-    expect(
-      decide({ ref: 'fmt@acme', known: [marketplace('acme', { source: 'settings' })] }),
-    ).toEqual({ outcome: 'skip', reason: 'local-or-inline-source' });
+  test('a marketplace defined inline in settings is not refreshed, by either command', () => {
+    for (const command of COMMANDS) {
+      expect(
+        decide({ ref: 'fmt@acme', command, known: [marketplace('acme', { source: 'settings' })] }),
+      ).toEqual({ outcome: 'skip', reason: 'local-or-inline-source' });
+    }
   });
 
-  test('a marketplace a seed directory supplies is not refreshed', () => {
-    expect(decide({ ref: 'fmt@acme', known: [marketplace('acme', { seeded: true })] })).toEqual({
-      outcome: 'skip',
-      reason: 'seed-directory',
-    });
+  test('a marketplace a seed directory supplies is not refreshed, by either command', () => {
+    for (const command of COMMANDS) {
+      expect(
+        decide({ ref: 'fmt@acme', command, known: [marketplace('acme', { seeded: true })] }),
+      ).toEqual({ outcome: 'skip', reason: 'seed-directory' });
+    }
   });
 
-  test('a marketplace refreshed within the last 30 seconds is not refreshed again', () => {
-    const within = marketplace('acme', { lastRefreshedAt: NOW - 29_999 });
-    expect(decide({ ref: 'fmt@acme', known: [within] })).toEqual({
-      outcome: 'skip',
-      reason: 'refreshed-within-30-seconds',
-    });
-    const earlier = marketplace('acme', { lastRefreshedAt: NOW - 31_000 });
-    expect(decide({ ref: 'fmt@acme', known: [earlier] })).toEqual(refreshed('acme'));
+  test('a marketplace refreshed within the last 30 seconds is not refreshed again, by either command', () => {
+    for (const command of COMMANDS) {
+      const within = marketplace('acme', { lastRefreshedAt: NOW - 29_999 });
+      expect(decide({ ref: 'fmt@acme', command, known: [within] })).toEqual({
+        outcome: 'skip',
+        reason: 'refreshed-within-30-seconds',
+      });
+      const earlier = marketplace('acme', { lastRefreshedAt: NOW - 31_000 });
+      expect(decide({ ref: 'fmt@acme', command, known: [earlier] })).toEqual(refreshed('acme'));
+    }
   });
 
   test('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC skips the refresh', () => {
@@ -171,13 +172,6 @@ spec(
     test('only the named marketplace is refreshed, even with the lookup missed', () => {
       const known = [marketplace('acme'), marketplace('other', { autoUpdate: true })];
       expect(decide({ ref: 'fmt@acme', known, lookupMissed: true })).toEqual(refreshed('acme'));
-    });
-
-    test('a marketplace the user never added has nothing to refresh', () => {
-      expect(decide({ ref: 'fmt@nowhere' })).toEqual({
-        outcome: 'skip',
-        reason: 'marketplace-unknown',
-      });
     });
   },
 );
@@ -233,6 +227,38 @@ spec('updates.loading.When Claude Code refreshes a marketplace before an install
 });
 
 describe('refresh before install, what the docs leave open (spec/judgments.md)', () => {
+  test('a failed /plugin install refresh proceeds from the cache with no report', () => {
+    expect(refreshFailed('/plugin install')).toEqual({ installFrom: 'cached catalog' });
+  });
+
+  test('a marketplace the user never added has nothing to refresh', () => {
+    expect(decide({ ref: 'fmt@nowhere' })).toEqual({
+      outcome: 'skip',
+      reason: 'marketplace-unknown',
+    });
+  });
+
+  test('a managed block wins over the other skips: the install is refused, not merely skipped', () => {
+    const blocked = 'blocked by enterprise policy';
+    const flagged = [
+      marketplace('acme', { blocked, source: 'directory' }),
+      marketplace('acme', { blocked, seeded: true }),
+      marketplace('acme', { blocked, lastRefreshedAt: NOW - 1_000 }),
+    ];
+    for (const known of flagged) {
+      for (const command of COMMANDS) {
+        expect(
+          decide({
+            ref: 'fmt@acme',
+            command,
+            known: [known],
+            env: { CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' },
+          }),
+        ).toMatchObject({ outcome: 'refuse', reason: 'blocked-by-managed-settings' });
+      }
+    }
+  });
+
   test('the skip conditions of the named install apply to each marketplace a bare name would refresh', () => {
     const known = [
       marketplace('seeded', { autoUpdate: true, seeded: true }),

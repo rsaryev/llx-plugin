@@ -33,7 +33,7 @@ spec('updates.key.autoUpdatesChannel', () => {
   });
 
   test('any file may set it; managed settings enforce one channel for the organization', () => {
-    for (const scope of ['user', 'project', 'local', 'flag', 'managed'] as const) {
+    for (const scope of ['user', 'project', 'local', 'flag', 'managed', 'parent'] as const) {
       expect(policyOf(layer(scope, { autoUpdatesChannel: 'stable' })).channel).toBe('stable');
     }
     const enforced = policyOf(
@@ -43,24 +43,27 @@ spec('updates.key.autoUpdatesChannel', () => {
     expect(enforced.channel).toBe('stable');
   });
 
+  test('a --add-dir directory carries only enabledPlugins and extraKnownMarketplaces, so it cannot set the channel', () => {
+    const added = layer('addDir', { autoUpdatesChannel: 'stable' });
+    expect(policyOf(added).channel).toBe('latest');
+    expect(policyOf(layer('user', { autoUpdatesChannel: 'latest' }), added).channel).toBe('latest');
+  });
+
   test('switching from latest to stable in /config asks whether to allow a downgrade or stay; staying sets minimumVersion', () => {
-    expect(channelSwitch({ to: 'stable', currentVersion: '2.1.130' })).toEqual({
-      ask: 'downgrade-or-stay',
-    });
-    expect(channelSwitch({ to: 'stable', currentVersion: '2.1.130', answer: 'stay' })).toEqual({
+    const request = { from: 'latest', to: 'stable', currentVersion: '2.1.130' } as const;
+    expect(channelSwitch(request)).toEqual({ ask: 'downgrade-or-stay' });
+    expect(channelSwitch({ ...request, answer: 'stay' })).toEqual({
       set: { autoUpdatesChannel: 'stable', minimumVersion: '2.1.130' },
       remove: [],
     });
-    expect(channelSwitch({ to: 'stable', currentVersion: '2.1.130', answer: 'downgrade' })).toEqual(
-      {
-        set: { autoUpdatesChannel: 'stable' },
-        remove: [],
-      },
-    );
+    expect(channelSwitch({ ...request, answer: 'downgrade' })).toEqual({
+      set: { autoUpdatesChannel: 'stable' },
+      remove: [],
+    });
   });
 
   test('switching back to latest removes the key, and clears minimumVersion', () => {
-    expect(channelSwitch({ to: 'latest', currentVersion: '2.1.130' })).toEqual({
+    expect(channelSwitch({ from: 'stable', to: 'latest', currentVersion: '2.1.130' })).toEqual({
       set: {},
       remove: ['autoUpdatesChannel', 'minimumVersion'],
     });
@@ -111,6 +114,12 @@ spec('updates.key.minimumVersion', () => {
     expect(gate(onStable('2.1.100'), '2.1.50')).toEqual({ allowed: true });
   });
 
+  test('a --add-dir directory cannot freeze updates with it', () => {
+    const policy = policyOf(layer('addDir', { minimumVersion: '9.0.0' }));
+    expect(policy.minimumVersion).toBeUndefined();
+    expect(pick(policy)).toMatchObject({ outcome: 'install', version: '2.1.120' });
+  });
+
   test('in managed settings it is an organization-wide minimum that user and project settings cannot lower', () => {
     const policy = policyOf(
       layer('user', { minimumVersion: '2.1.50' }),
@@ -121,7 +130,9 @@ spec('updates.key.minimumVersion', () => {
   });
 
   test('switching back to latest clears it', () => {
-    expect(channelSwitch({ to: 'latest', currentVersion: '2.1.130' })).toMatchObject({
+    expect(
+      channelSwitch({ from: 'stable', to: 'latest', currentVersion: '2.1.130' }),
+    ).toMatchObject({
       remove: ['autoUpdatesChannel', 'minimumVersion'],
     });
   });

@@ -11,6 +11,15 @@
   `versionCacheSegment` replace per-host switches; the blank-version rule is one helper. The
   version, release-channel, renames and release tests assert what each docs section adds, and the
   host-side messages and negatives are recorded in `spec/judgments.md`.
+- Updates: the version policy ignores `autoUpdatesChannel` and `minimumVersion` from a `--add-dir`
+  directory (`scopeCarries`); `channelSwitch` takes `from` and asks only for `latest` to `stable`;
+  a command source's install or changed-command update is held until the user accepts
+  (`runsAfterAnswer`) and an in-place reload carries the reload notice; `backgroundCheckResult`
+  maps credentials and the remote to a check result, and a provider token never authenticates;
+  `toggleLabel` derives from `AutoUpdateFacts`; `planUpdate` updates only an installed plugin;
+  `KnownMarketplace.seeded` is optional. The tests assert each skip for both install commands, the
+  fleet-wide `DISABLE_AUTOUPDATER` against command sources, and the disabled-plugin runs, and
+  `spec/judgments.md` records the whitespace-tolerant flags and the failing-open start gate.
 
 ### Added
 

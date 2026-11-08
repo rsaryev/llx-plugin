@@ -106,6 +106,15 @@ describe('update targets, what the docs leave open (spec/judgments.md)', () => {
     expect(plan({ kind: 'plugin', id: 'a@acme' }).refresh).toEqual([]);
   });
 
+  test('a plugin that is not installed has nothing to update', () => {
+    expect(plan({ kind: 'plugin', id: 'ghost@acme' })).toEqual({
+      refresh: [],
+      update: [],
+      leftToUser: [],
+    });
+    expect(planUpdate({ kind: 'plugin', id: 'a@acme' }, [], REGISTERED).update).toEqual([]);
+  });
+
   test('a marketplace that is not registered refreshes nothing and updates nothing', () => {
     expect(plan({ kind: 'marketplace-listing', marketplace: 'nowhere' })).toEqual({
       refresh: [],

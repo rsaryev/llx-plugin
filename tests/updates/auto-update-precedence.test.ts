@@ -7,7 +7,7 @@
  * toggle or a managed `autoUpdate` does), plugins/org.md § Turn auto-update on or off per
  * marketplace (a managed entry that sets the field refuses the toggle) and § Turn updates off for
  * the whole fleet (`DISABLE_AUTOUPDATER` in the managed `env`, `FORCE_AUTOUPDATE_PLUGINS`; command
- * sources are not covered). What the docs leave open is outside `spec(...)` and in
+ * sources are not covered: each enabled one still re-runs every session). What the docs leave open is outside `spec(...)` and in
  * spec/judgments.md.
  */
 import { describe, expect, test } from 'bun:test';
@@ -18,7 +18,9 @@ import {
   toggleDecision,
   type AutoUpdateFacts,
 } from '../../src/updates/auto-update-precedence.ts';
+import { planAutoUpdatePass } from '../../src/updates/auto-update-pass.ts';
 import { pluginSkippedByAutoUpdate } from '../../src/updates/auto-update-skips.ts';
+import { commandSourceRuns, type CommandPlugin } from '../../src/updates/command-source-rerun.ts';
 import { planUpdate } from '../../src/updates/update-targets.ts';
 import { fakeEnvironment } from '../support/ports.ts';
 import { spec } from '../support/spec.ts';
@@ -130,6 +132,23 @@ spec('updates.hosting.Turn on auto-update', () => {
     });
     expect(marketplace).toBeDefined();
     expect(marketplace).not.toHaveProperty('autoUpdate');
+  });
+
+  test("the catalog's autoUpdate is reported as an unknown field Claude Code ignores", () => {
+    const { issues } = readMarketplace({
+      name: 'acme-tools',
+      owner: { name: 'Acme' },
+      autoUpdate: true,
+      plugins: [],
+    });
+    expect(issues).toContainEqual({
+      severity: 'warning',
+      path: 'autoUpdate',
+      message: "Unknown field 'autoUpdate'. Claude Code ignores it at load time.",
+    });
+  });
+
+  test('so a marketplace nobody turned on stays off', () => {
     expect(marketplaceAutoUpdate(facts('acme-tools'))).toBe(false);
   });
 
@@ -161,7 +180,11 @@ spec('updates.hosting.Turn on auto-update', () => {
       refresh: ['acme-tools'],
     });
     expect(
-      planUpdate({ kind: 'plugin', id: 'formatter@acme-tools' }, [], registered).update,
+      planUpdate(
+        { kind: 'plugin', id: 'formatter@acme-tools' },
+        [{ id: 'formatter@acme-tools', marketplace: 'acme-tools' }],
+        registered,
+      ).update,
     ).toEqual(['formatter@acme-tools']);
   });
 });
@@ -172,6 +195,30 @@ spec('updates.org.Turn updates off for the whole fleet', () => {
     expect(autoUpdatePassAllowed(managedEnv)).toBe(false);
     // the marketplace's own setting is untouched: it is the whole pass that is off
     expect(marketplaceAutoUpdate(facts('claude-plugins-official'))).toBe(true);
+  });
+
+  test('it does not cover plugins with a command source: each enabled one still re-runs every session', () => {
+    const managedEnv = fakeEnvironment({ DISABLE_AUTOUPDATER: '1' });
+    const command = { command: 'my-tool print-plugin', mode: 'copy' } as const;
+    const tool: CommandPlugin = {
+      id: 'tool@acme',
+      enabled: true,
+      installedVersionInCache: true,
+      declared: command,
+      accepted: command,
+    };
+    expect(commandSourceRuns('session-start', tool, managedEnv).runs).toEqual(['once-per-session']);
+    // the auto-update pass of the same environment does nothing, even for a marketplace that is on
+    const marketplace = {
+      name: 'acme',
+      autoUpdate: true,
+      plugins: [{ id: 'formatter@acme', candidate: {} }],
+    };
+    expect(planAutoUpdatePass([marketplace], managedEnv)).toEqual({
+      refresh: [],
+      update: [],
+      skipped: [],
+    });
   });
 
   test('FORCE_AUTOUPDATE_PLUGINS in the same block keeps plugin auto-update while Claude Code stays put', () => {

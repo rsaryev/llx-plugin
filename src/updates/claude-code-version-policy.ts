@@ -1,4 +1,5 @@
 import { compareVersions, normalizedVersion } from '../marketplace/semver.ts';
+import { scopeCarries } from '../settings/key-spec.ts';
 import { orderedLayers, type PolicyLayer, type PolicyScope } from '../settings/layers.ts';
 
 /**
@@ -63,8 +64,12 @@ const higher = (a: string, b: string): string => ((compareVersions(a, b) ?? 0) >
  */
 export function readVersionPolicy(layers: readonly PolicyLayer[]): VersionPolicy {
   const ordered = orderedLayers(layers);
-  const channel = ordered.map((layer) => layer.settings.autoUpdatesChannel).find(isChannel);
-  const minimum = ordered
+  // A `--add-dir` directory carries only `enabledPlugins` and `extraKnownMarketplaces` (permissions.md).
+  const carrying = (key: string) => ordered.filter((layer) => scopeCarries(layer.scope, key));
+  const channel = carrying('autoUpdatesChannel')
+    .map((layer) => layer.settings.autoUpdatesChannel)
+    .find(isChannel);
+  const minimum = carrying('minimumVersion')
     .map((layer) => validVersion(layer.settings.minimumVersion))
     .filter((version) => version !== undefined)
     .reduce<string | undefined>(
@@ -214,6 +219,8 @@ export function startGate(policy: VersionPolicy, request: StartRequest): StartVe
 export type DowngradeAnswer = 'downgrade' | 'stay';
 
 export interface ChannelSwitch {
+  /** The channel followed now; picking it again changes nothing. */
+  readonly from: Channel;
   readonly to: Channel;
   readonly currentVersion: string;
   /** Needed to leave `latest` for `stable`; without it the switch asks. */
@@ -226,6 +233,9 @@ export type SwitchPlan =
       readonly set: { readonly autoUpdatesChannel?: 'stable'; readonly minimumVersion?: string };
       readonly remove: readonly ('autoUpdatesChannel' | 'minimumVersion')[];
     };
+
+/** Judgment (spec/judgments.md): choosing the channel already followed writes nothing and asks nothing. */
+const NO_CHANGE: SwitchPlan = { set: {}, remove: [] };
 
 const TO_STABLE: { readonly [A in DowngradeAnswer]: (current: string) => SwitchPlan } = {
   downgrade: () => ({ set: { autoUpdatesChannel: 'stable' }, remove: [] }),
@@ -246,6 +256,8 @@ const SWITCH: { readonly [C in Channel]: (request: ChannelSwitch) => SwitchPlan 
 /**
  * What the user settings change when the channel is picked under **Auto-update channel** in
  * `/config`: "stable" is written (asking first about the downgrade, and staying sets
- * `minimumVersion`); switching back to latest removes the key and clears `minimumVersion`.
+ * `minimumVersion`); switching back to latest removes the key and clears `minimumVersion`. Only
+ * "from `latest` to `stable`" asks.
  */
-export const channelSwitch = (request: ChannelSwitch): SwitchPlan => SWITCH[request.to](request);
+export const channelSwitch = (request: ChannelSwitch): SwitchPlan =>
+  request.from === request.to ? NO_CHANGE : SWITCH[request.to](request);

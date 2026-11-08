@@ -51,7 +51,10 @@ export interface ErrorsTabEntry {
 }
 
 export interface RerunPlan {
+  /** The runs that start now. */
   readonly runs: readonly RunKind[];
+  /** The runs held until the user accepts the command shown by `acceptance`: "has to accept the new command before Claude Code runs it". */
+  readonly runsAfterAcceptance: readonly RunKind[];
   readonly skipped: readonly { readonly run: RunKind; readonly reason: RunSkip }[];
   /** Set for an install or update: whether the user must accept the command first. */
   readonly acceptance?: Acceptance;
@@ -147,8 +150,11 @@ export function commandSourceRuns(
   const verdicts = DUE[event](plugin).map((run) => verdict(run, plugin, env));
   const acceptance = ACCEPTANCE[event]?.(plugin);
   const showsEntry = SHOWS_ERRORS_TAB[event] && plugin.enabled && isChanged(plugin);
+  const due = verdicts.flatMap((each) => ('skip' in each ? [] : [each.run]));
+  const asks = acceptance?.ask === true;
   return {
-    runs: verdicts.flatMap((each) => ('skip' in each ? [] : [each.run])),
+    runs: asks ? [] : due,
+    runsAfterAcceptance: asks ? due : [],
     skipped: verdicts.flatMap((each) =>
       'skip' in each ? [{ run: each.run, reason: each.skip }] : [],
     ),
@@ -156,6 +162,10 @@ export function commandSourceRuns(
     ...(showsEntry ? { errorsTab: entryFor(plugin) } : {}),
   };
 }
+
+/** The runs that go ahead once the user has answered the question of `plan.acceptance`: a declined command never runs. */
+export const runsAfterAnswer = (plan: RerunPlan, accepted: boolean): readonly RunKind[] =>
+  accepted ? [...plan.runs, ...plan.runsAfterAcceptance] : plan.runs;
 
 /** What a finished run leaves to do with the version it produced. */
 export interface RunResult {
@@ -171,18 +181,24 @@ export interface RunResult {
 
 export type AfterRun =
   | { readonly install: false; readonly followUp: 'nothing' }
-  | { readonly install: true; readonly followUp: 'reload' | 'ask-reload-plugins' | 'next-launch' };
+  | {
+      readonly install: true;
+      readonly followUp: 'reload';
+      /** "You see a notification that the plugin was reloaded." The reload switches what `/reload-plugins` switches. */
+      readonly notice: 'plugin-reloaded';
+    }
+  | { readonly install: true; readonly followUp: 'ask-reload-plugins' | 'next-launch' };
 
 /** The follow-up of an installed new version, by the state of the session. */
 const FOLLOW_UP: {
   readonly [K in 'interactive-cache-safe' | 'interactive-cache-cost' | 'not-interactive']: Extract<
     AfterRun,
     { install: true }
-  >['followUp'];
+  >;
 } = {
-  'interactive-cache-safe': 'reload',
-  'interactive-cache-cost': 'ask-reload-plugins',
-  'not-interactive': 'next-launch',
+  'interactive-cache-safe': { install: true, followUp: 'reload', notice: 'plugin-reloaded' },
+  'interactive-cache-cost': { install: true, followUp: 'ask-reload-plugins' },
+  'not-interactive': { install: true, followUp: 'next-launch' },
 };
 
 const sessionState = (result: RunResult): keyof typeof FOLLOW_UP => {
@@ -200,5 +216,5 @@ export function afterCommandRun(result: RunResult): AfterRun {
   if (isUpdate(result.installedVersion, result.computedVersion) === 'unchanged') {
     return { install: false, followUp: 'nothing' };
   }
-  return { install: true, followUp: FOLLOW_UP[sessionState(result)] };
+  return FOLLOW_UP[sessionState(result)];
 }

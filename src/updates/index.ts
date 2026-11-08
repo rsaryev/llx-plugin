@@ -45,15 +45,18 @@ export {
   afterBackgroundCheck,
   afterReclone,
   backgroundCheckAuthenticates,
+  backgroundCheckResult,
   type CheckFollowUp,
   type CheckResult,
   type Credentials,
+  type RemoteState,
 } from './private-marketplace.ts';
 export {
   RERUN_EVENTS,
   RUN_KINDS,
   afterCommandRun,
   commandSourceRuns,
+  runsAfterAnswer,
   type Acceptance,
   type AfterRun,
   type CommandDeclaration,
