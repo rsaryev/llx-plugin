@@ -10,8 +10,29 @@ test('npm parses but fails to load in extraKnownMarketplaces; in a policy list i
   const loose = parse(raw, false);
   expect(loose.source).toMatchObject({ kind: 'npm', package: '@acme/claude-marketplace' });
   expect(loose.loadStatus).toBe('fails: NPM marketplace sources not yet implemented');
-  expect(warnings(loose.issues)).toHaveLength(1);
+  expect(warnings(loose.issues).map((i) => i.path)).toEqual(['source']);
+  expect(warnings(loose.issues)[0]?.message).toContain(
+    'NPM marketplace sources not yet implemented',
+  );
   expect(parse(raw, true).issues).toEqual([]);
+});
+
+// `version` and `registry` are the SDK's shape of an npm source; the docs' table lists `package` only.
+test('an npm source keeps version and registry without an unknown-field warning', () => {
+  const result = parse(
+    { source: 'npm', package: '@acme/m', version: '^1.0.0', registry: 'https://r.example' },
+    true,
+  );
+  expect(result.issues).toEqual([]);
+  expect(result.source).toEqual({
+    kind: 'npm',
+    package: '@acme/m',
+    version: '^1.0.0',
+    registry: 'https://r.example',
+  });
+  expect(warnings(parse({ source: 'npm', package: '@acme/m', tag: 'x' }, true).issues)).toEqual([
+    { severity: 'warning', path: 'tag', message: expect.stringContaining("Unknown field 'tag'") },
+  ]);
 });
 
 test('skills-dir, hostPattern and pathPattern are policy-list values; elsewhere they parse and fail to load', () => {
@@ -27,7 +48,8 @@ test('skills-dir, hostPattern and pathPattern are policy-list values; elsewhere 
     const loose = parse(raw, false);
     expect(loose.source?.kind).toBe(raw.source);
     expect(loose.loadStatus).toBe('fails: Unsupported marketplace source type');
-    expect(warnings(loose.issues)).toHaveLength(1);
+    expect(warnings(loose.issues).map((i) => i.path)).toEqual(['source']);
+    expect(warnings(loose.issues)[0]?.message).toContain('Unsupported marketplace source type');
   }
   expect(errors(parse({ source: 'hostPattern' }, true).issues).map((i) => i.path)).toEqual([
     'hostPattern',
@@ -78,9 +100,17 @@ test('a routing header on a settings entry draws no catalog warning: the filter 
 });
 
 test('settings entries are unique by name', () => {
-  const entry = { name: 'f', source: { source: 'github', repo: 'a/b' } };
-  const result = parse({ source: 'settings', name: 'team-tools', plugins: [entry, entry] });
-  expect(errors(result.issues).length).toBeGreaterThan(0);
+  const first = { name: 'f', source: { source: 'github', repo: 'a/b' } };
+  const second = { name: 'f', source: { source: 'github', repo: 'c/d' } };
+  const result = parse({ source: 'settings', name: 'team-tools', plugins: [first, second] });
+  expect(errors(result.issues)).toEqual([
+    {
+      severity: 'error',
+      path: 'plugins[1].name',
+      message: 'Duplicate plugin name "f" found in marketplace',
+    },
+  ]);
   if (result.source?.kind !== 'settings') throw new Error('not settings');
   expect(result.source.plugins).toHaveLength(1);
+  expect(result.source.plugins[0]).toMatchObject({ name: 'f', source: { repo: 'a/b' } });
 });

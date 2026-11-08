@@ -133,6 +133,16 @@
   unreachable git host or a fired signal as a `PortFailure` instead of a rejection (`stats` now
   takes a required `signal`); `MarketplaceSource` carries `skipLfs` on `github` and `git` and
   `version` and `registry` on `npm`, and a type-level test ties its kinds and fields to the SDK's.
+- Marketplace sources: a source object that does not parse (a missing or mistyped required field,
+  a `settings` name that differs from its key) reports the load status `Unsupported marketplace
+  source type` instead of `loads`; `marketplace add` clones a `/_git/` URL even with a query string;
+  the `http-file` plan carries the redirect rule of a `url` source (a different origin must use
+  `https`, blocked hosts are refused, no configured header is sent); a relative `file` path has a
+  root (`.` for fewer than two directories, the drive for `C:\m.json`); issue paths of a source
+  plan are relative to the source object; one GitHub `owner/repo` rule serves plugin sources,
+  marketplace sources and `marketplace add`; `--sparse`, `owner/*` and the `url` source's
+  relative-path refusal count under their requirement ids, and the settings duplicate, `strict`,
+  `npm` `version` and `registry`, and policy-warning tests assert their paths and messages.
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
   parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
   (and `skill`) read `name:value` as a parameter.

@@ -49,6 +49,7 @@ spec('marketplace.sourceField.url', () => {
       const result = parse(raw);
       expect(result.source).toBeUndefined();
       expect(errors(result.issues).map((i) => i.path)).toEqual(['url']);
+      expect(result.loadStatus).toBe('fails: Unsupported marketplace source type');
     }
     expect(parse({ source: 'url' }).issues[0]?.message).toBe('Invalid input');
   });
@@ -144,7 +145,7 @@ spec('marketplace.sourceField.repo', () => {
     const result = parse({ source: 'github', repo: 'your-org/*' }, false);
     expect(result.source).toMatchObject({ kind: 'github', repo: 'your-org/*' });
     expect(warnings(result.issues).map((i) => i.path)).toEqual(['repo']);
-    expect(result.loadStatus).not.toBe('loads');
+    expect(result.loadStatus).toBe('fails: The owner wildcard names no single repository to clone');
   });
 
   test('repo is required and a string; on a git source it is unknown', () => {
@@ -154,6 +155,9 @@ spec('marketplace.sourceField.repo', () => {
     expect(errors(parse({ source: 'github', repo: 1 }).issues).map((i) => i.path)).toEqual([
       'repo',
     ]);
+    expect(parse({ source: 'github' }).loadStatus).toBe(
+      'fails: Unsupported marketplace source type',
+    );
     expect(
       warnings(parse({ source: 'git', url: 'https://h.example/r.git', repo: 'a/b' }).issues).map(
         (i) => i.path,

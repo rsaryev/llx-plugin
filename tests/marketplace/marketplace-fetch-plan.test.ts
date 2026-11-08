@@ -1,12 +1,14 @@
 /**
  * marketplace-reference.md § Marketplace sources (the table), § Fields by type; plugins/
- * host-marketplace.md § Stay within the download limits for hosted files (5 MiB, 10 seconds for a
- * `marketplace.json` from a `url` source); plugins/host-marketplace.md § Keep plugin files out of
- * Git LFS; settings-reference.md § extraKnownMarketplaces.
+ * host-marketplace.md § Stay within the download limits for hosted files (5 MiB, 10 seconds and the
+ * redirect rule for a `marketplace.json` from a `url` source); plugins/host-marketplace.md § Keep
+ * plugin files out of Git LFS; marketplace-reference.md § Relative path plugin source (a `url`
+ * marketplace has only its marketplace.json); settings-reference.md § extraKnownMarketplaces.
  */
 import { expect, test } from 'bun:test';
 import { parseMarketplaceSource } from '../../src/format/marketplace/marketplace-source.ts';
 import type { MarketplaceSource } from '../../src/format/marketplace/types.ts';
+import { planPluginFetch } from '../../src/marketplace/fetch-plan.ts';
 import { planMarketplaceFetch } from '../../src/marketplace/marketplace-fetch-plan.ts';
 import { spec } from '../support/spec.ts';
 
@@ -26,8 +28,48 @@ spec('marketplace.sourceField.url', () => {
       url: 'https://plugins.example.com/marketplace.json',
       maxBytes: 5_242_880, // 5 MiB
       timeoutMs: 10_000,
+      redirects: {
+        crossOrigin: 'https-only',
+        blockedHosts: 'refused',
+        headersAcrossOrigins: 'none',
+      },
       headers: {},
     });
+  });
+
+  test('a redirect to a different origin must use https, avoids blocked hosts and carries no headers', () => {
+    const plan = planOf({
+      source: 'url',
+      url: 'https://plugins.example.com/marketplace.json',
+      headers: { Authorization: 'Bearer abc' },
+    });
+    expect(plan).toMatchObject({
+      headers: { authorization: 'Bearer abc' },
+      redirects: {
+        crossOrigin: 'https-only',
+        blockedHosts: 'refused',
+        headersAcrossOrigins: 'none',
+      },
+    });
+  });
+
+  test('its plugins cannot use relative-path sources: only marketplace.json is downloaded', () => {
+    const source = sourceFrom({
+      source: 'url',
+      url: 'https://plugins.example.com/marketplace.json',
+    });
+    const refused = planPluginFetch(
+      { kind: 'relative', path: 'plugins/formatter', bare: false },
+      { platform: 'posix', marketplaceOrigin: source },
+    );
+    expect(refused.plan).toBeUndefined();
+    expect(refused.issues[0]).toMatchObject({ severity: 'error', path: 'source' });
+    expect(refused.issues[0]?.message).toContain('marketplace added by URL');
+    const remote = planPluginFetch(
+      { kind: 'github', repo: 'acme/formatter' },
+      { platform: 'posix', marketplaceOrigin: source },
+    );
+    expect(remote.plan).toBeDefined();
   });
 
   test('a git source clones the repository at that url', () => {
@@ -67,8 +109,17 @@ spec('marketplace.sourceField.repo', () => {
 
   test('an owner wildcard names no repository: planning refuses, as the clone would fail', () => {
     const plan = planOf({ source: 'github', repo: 'your-org/*' });
-    expect(plan).toMatchObject({ severity: 'error', path: 'source.repo' });
+    expect(plan).toMatchObject({ severity: 'error', path: 'repo' });
     expect(plan).not.toHaveProperty('kind');
+  });
+
+  test('owner and repository follow GitHub naming rules, as in marketplace add', () => {
+    for (const repo of ['-acme/tools', 'acme-/tools', 'acme/..', 'acme/a/b', 'acme']) {
+      expect(planMarketplaceFetch({ kind: 'github', repo, path: MARKETPLACE_FILE })).toMatchObject({
+        severity: 'error',
+        path: 'repo',
+      });
+    }
   });
 });
 
@@ -106,6 +157,30 @@ spec('marketplace.sourceField.path', () => {
     expect(
       planOf({ source: 'file', path: 'C:\\plugins\\m\\.claude-plugin\\marketplace.json' }),
     ).toMatchObject({ root: 'C:\\plugins\\m' });
+  });
+
+  test('a relative file path with fewer than two directories stops at the current directory', () => {
+    for (const path of [
+      'marketplace.json',
+      './marketplace.json',
+      '.claude-plugin/marketplace.json',
+      './.claude-plugin/marketplace.json',
+    ]) {
+      expect(planOf({ source: 'file', path })).toMatchObject({ kind: 'read-file', root: '.' });
+    }
+    expect(planOf({ source: 'file', path: 'm/.claude-plugin/marketplace.json' })).toMatchObject({
+      root: 'm',
+    });
+    expect(planOf({ source: 'file', path: '../m/.claude-plugin/marketplace.json' })).toMatchObject({
+      root: '../m',
+    });
+  });
+
+  test('a file directly under the filesystem or drive root has that root', () => {
+    expect(planOf({ source: 'file', path: '/marketplace.json' })).toMatchObject({ root: '/' });
+    expect(planOf({ source: 'file', path: '/m/marketplace.json' })).toMatchObject({ root: '/' });
+    expect(planOf({ source: 'file', path: 'C:\\m.json' })).toMatchObject({ root: 'C:\\' });
+    expect(planOf({ source: 'file', path: 'C:\\a\\m.json' })).toMatchObject({ root: 'C:\\' });
   });
 
   test('a directory source is the marketplace root itself', () => {

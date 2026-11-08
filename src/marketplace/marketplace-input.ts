@@ -1,6 +1,7 @@
 import { error, type PluginIssue } from '../format/issues.ts';
 import { DEFAULT_MARKETPLACE_PATH } from '../format/marketplace/marketplace-source.ts';
 import type { MarketplaceSource, MarketplaceSourceOf } from '../format/marketplace/types.ts';
+import { isGitHubRepository } from './source-safety.ts';
 
 /**
  * The marketplace source `claude plugin marketplace add <source>` builds from the string you type
@@ -71,8 +72,14 @@ function isForgeRepository(host: string, path: string): boolean {
 }
 
 /** A URL that names a git repository, and whether its `.git` is still to be appended. */
-function cloneForm(host: string, path: string): 'as-is' | 'append-git' | undefined {
-  if (path.endsWith('.git') || path.includes('/_git/')) return 'as-is';
+function cloneForm(
+  host: string,
+  path: string,
+  hasQuery: boolean,
+): 'as-is' | 'append-git' | undefined {
+  if (path.includes('/_git/')) return 'as-is';
+  if (hasQuery) return undefined;
+  if (path.endsWith('.git')) return 'as-is';
   return isForgeRepository(host, path) ? 'append-git' : undefined;
 }
 
@@ -80,7 +87,7 @@ function fromHttp(text: string): Parsed | undefined {
   const parts = HTTP_URL.exec(text);
   if (parts === null) return undefined;
   const split = splitRef(text);
-  const form = parts[4] === undefined ? cloneForm(parts[2] ?? '', parts[3] ?? '') : undefined;
+  const form = cloneForm(parts[2] ?? '', parts[3] ?? '', parts[4] !== undefined);
   if (split === undefined || form === undefined) return { kind: 'url', url: text };
   const base = split.base.replace(/\/+$/, '');
   return git(form === 'append-git' ? `${base}.git` : base, split.ref);
@@ -96,8 +103,6 @@ function fromSsh(text: string): Parsed | undefined {
   return split === undefined ? refused(UNRECOGNIZED) : git(split.base, split.ref);
 }
 
-const OWNER = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
-const REPOSITORY = /^[A-Za-z0-9._-]{1,100}$/;
 const SHORTHAND_REF = /[#@]/;
 
 function fromShorthand(text: string): Parsed | undefined {
@@ -108,9 +113,7 @@ function fromShorthand(text: string): Parsed | undefined {
   const repo = cut < 0 ? rest : rest.slice(0, cut);
   const ref = cut < 0 ? undefined : rest.slice(cut + 1);
   const owner = text.slice(0, slash);
-  const valid =
-    OWNER.test(owner) && REPOSITORY.test(repo) && repo !== '.' && repo !== '..' && ref !== '';
-  if (!valid) {
+  if (!isGitHubRepository(owner, repo) || ref === '') {
     return refused(
       `"${text}" is not a valid owner/repo shorthand. Add https:// to use it as a URL, or give a local path`,
     );

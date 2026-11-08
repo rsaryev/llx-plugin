@@ -2,13 +2,15 @@
  * cli-reference.md § plugin marketplace add (the table of what you type and the source type it
  * becomes, the unrecognized-source and bare-host messages, `--sparse`); marketplace-reference.md §
  * Marketplace sources (the `marketplace add` input column) and § Fields by type (`repo`: `marketplace
- * add` rejects `owner/*`). No requirement id covers the input column on its own, so these tests sit
- * outside `spec(...)`; the judgments are in spec/judgments.md.
+ * add` rejects `owner/*`; `sparsePaths`: `--sparse` sets it, for `github` and `git` sources only).
+ * Those two behaviours are under their requirement ids; no id covers the input column as a whole,
+ * so the other tests sit outside `spec(...)`; the judgments are in spec/judgments.md.
  */
 import { describe, expect, test } from 'bun:test';
 import type { PluginIssue } from '../../src/format/issues.ts';
 import type { MarketplaceSource } from '../../src/format/marketplace/types.ts';
 import { parseMarketplaceInput } from '../../src/marketplace/marketplace-input.ts';
+import { spec } from '../support/spec.ts';
 
 const FILE = '.claude-plugin/marketplace.json';
 const sourceOf = (text: string, options = {}): MarketplaceSource => {
@@ -40,10 +42,12 @@ describe('GitHub shorthand', () => {
     expect(sourceOf('acme/tools@release')).toMatchObject({ repo: 'acme/tools', ref: 'release' });
   });
 
-  test('owner/* is rejected as not a valid owner/repo shorthand', () => {
-    const found = issueOf('your-org/*');
-    expect(found.severity).toBe('error');
-    expect(found.message).toContain('not a valid owner/repo shorthand');
+  spec('marketplace.sourceField.repo', () => {
+    test('owner/* is rejected as not a valid owner/repo shorthand', () => {
+      const found = issueOf('your-org/*');
+      expect(found.severity).toBe('error');
+      expect(found.message).toContain('not a valid owner/repo shorthand');
+    });
   });
 
   test('owner and repo follow GitHub naming rules', () => {
@@ -87,6 +91,24 @@ describe('git URLs', () => {
       kind: 'git',
       url: 'https://dev.azure.com/org/project/_git/repo',
     });
+  });
+
+  test('a /_git/ path is cloned even with a query string, which stays in the URL', () => {
+    expect(sourceOf('https://dev.azure.com/o/p/_git/r?version=GBmain')).toEqual({
+      kind: 'git',
+      url: 'https://dev.azure.com/o/p/_git/r?version=GBmain',
+      path: FILE,
+    });
+    expect(sourceOf('https://dev.azure.com/o/p/_git/r?version=GBmain#v2')).toMatchObject({
+      kind: 'git',
+      url: 'https://dev.azure.com/o/p/_git/r?version=GBmain',
+      ref: 'v2',
+    });
+  });
+
+  test('a query string defeats the .git ending and the github.com form: the URL is fetched', () => {
+    expect(sourceOf('https://example.com/repo.git?x=1')).toMatchObject({ kind: 'url' });
+    expect(sourceOf('https://github.com/acme/tools?tab=readme')).toMatchObject({ kind: 'url' });
   });
 
   test('a github.com or gitlab.com repository URL is cloned with .git appended, over http too', () => {
@@ -154,22 +176,34 @@ describe('what is not a source', () => {
 });
 
 describe('--sparse', () => {
-  test('sets sparsePaths on a github or git source', () => {
-    expect(sourceOf('acme/mono', { sparse: ['.claude-plugin', 'plugins'] })).toMatchObject({
-      kind: 'github',
-      sparsePaths: ['.claude-plugin', 'plugins'],
+  spec('marketplace.sourceField.sparsePaths', () => {
+    test('sets sparsePaths on a github or git source', () => {
+      expect(sourceOf('acme/mono', { sparse: ['.claude-plugin', 'plugins'] })).toMatchObject({
+        kind: 'github',
+        sparsePaths: ['.claude-plugin', 'plugins'],
+      });
+      expect(sourceOf('https://h.example/r.git', { sparse: ['plugins'] })).toMatchObject({
+        kind: 'git',
+        sparsePaths: ['plugins'],
+      });
+      expect(sourceOf('git@h.example:team/r.git', { sparse: ['plugins'] })).toMatchObject({
+        kind: 'git',
+        sparsePaths: ['plugins'],
+      });
     });
-    expect(sourceOf('https://h.example/r.git', { sparse: ['plugins'] })).toMatchObject({
-      kind: 'git',
-      sparsePaths: ['plugins'],
-    });
-  });
 
-  test('is refused for the other types: github and git sources only', () => {
-    for (const text of ['https://x.example/m.json', './dir']) {
-      const found = issueOf(text, { sparse: ['a'] });
-      expect(found.message).toContain('github and git sources only');
-    }
+    test('is refused for the other types: github and git sources only', () => {
+      for (const text of [
+        'https://x.example/m.json',
+        './dir',
+        './m/.claude-plugin/marketplace.json',
+      ]) {
+        const found = issueOf(text, { sparse: ['a'] });
+        expect(found.severity).toBe('error');
+        expect(found.path).toBe('source');
+        expect(found.message).toContain('github and git sources only');
+      }
+    });
   });
 
   test('an empty list sets nothing', () => {

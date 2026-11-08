@@ -174,6 +174,7 @@ const READERS: { readonly [K in MarketplaceSourceKind]: Reader } = {
       ...defined({ ref: fields.ref, sparsePaths: fields.sparsePaths, skipLfs: fields.skipLfs }),
     },
   })),
+  // `version` and `registry` are the SDK's shape of an npm source, not the docs' table (spec/judgments.md).
   npm: reader(
     z.object({ package: Text, version: Text.optional(), registry: Text.optional() }),
     ({ package: name, version, registry }) => ({
@@ -245,7 +246,8 @@ const INVALID: SourceParseResult = {
 
 /**
  * The marketplace source an object describes. `loadStatus` is what `extraKnownMarketplaces` does
- * with it, whichever key it is in: a type Claude Code parses can still fail to load. Never throws.
+ * with it, whichever key it is in: a type Claude Code parses can still fail to load, and an object
+ * that matches no source type (`source` is undefined) loads nothing. Never throws.
  */
 export function parseMarketplaceSource(
   raw: unknown,
@@ -262,6 +264,6 @@ export function parseMarketplaceSource(
   return {
     source: read.source,
     issues,
-    loadStatus: read.status ?? LOAD_STATUS[kind],
+    loadStatus: read.source === undefined ? INVALID.loadStatus : (read.status ?? LOAD_STATUS[kind]),
   };
 }

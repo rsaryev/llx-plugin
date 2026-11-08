@@ -24,6 +24,7 @@ spec('marketplace.sourceField.name', () => {
     expect(found[0]?.path).toBe('name');
     expect(found[0]?.message).toContain('"team-tools"');
     expect(found[0]?.message).toContain('"other-tools"');
+    expect(result.loadStatus).toBe('fails: Unsupported marketplace source type');
   });
 
   test('a reserved name is refused', () => {
@@ -108,6 +109,24 @@ spec('marketplace.sourceField.plugins', () => {
     );
     expect(errors(result.issues)).toEqual([]);
     expect(result.source).toBeDefined();
+  });
+
+  test('an item keeps the strict it declared: false stays false, with or without a headersHelper', () => {
+    const plain = { name: 'plain', source: { source: 'github', repo: 'a/b' }, strict: false };
+    const helped = {
+      name: 'helped',
+      source: { source: 'archive', url: 'https://r.example/h.zip', sha256: 'a'.repeat(64) },
+      strict: false,
+      headersHelper: 'mint-token',
+    };
+    const result = parse(inline(plain, helped));
+    expect(errors(result.issues)).toEqual([]);
+    if (result.source?.kind !== 'settings') throw new Error('not settings');
+    expect(result.source.plugins.map((p) => [p.name, p.strict])).toEqual([
+      ['plain', false],
+      ['helped', false],
+    ]);
+    expect(result.source.plugins[1]).toMatchObject({ headersHelper: 'mint-token' });
   });
 
   test('a relative path source is refused: there is no repository to resolve against', () => {

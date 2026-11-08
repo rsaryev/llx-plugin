@@ -18,8 +18,21 @@ import type { MarketplaceFetchPlan } from './types.ts';
 type Planned = MarketplaceFetchPlan | PluginIssue;
 type Planner<K extends MarketplaceSourceKind> = (source: MarketplaceSourceOf<K>) => Planned;
 
-/** The limits of a `marketplace.json` downloaded from a `url` source: 5 MiB, 10 seconds. */
-const MARKETPLACE_DOWNLOAD = { maxBytes: 5_242_880, timeoutMs: 10_000 } as const;
+/**
+ * The limits of a `marketplace.json` downloaded from a `url` source: 5 MiB, 10 seconds, and the
+ * redirect rule of "Stay within the download limits for hosted files": a redirect to a different
+ * origin must use `https://` and can't point at a loopback, link-local or cloud-metadata host
+ * (`isBlockedHost`), and the request it sends carries none of the configured headers.
+ */
+const MARKETPLACE_DOWNLOAD = {
+  maxBytes: 5_242_880,
+  timeoutMs: 10_000,
+  redirects: {
+    crossOrigin: 'https-only',
+    blockedHosts: 'refused',
+    headersAcrossOrigins: 'none',
+  },
+} as const;
 
 function planUrl(source: MarketplaceSourceOf<'url'>): Planned {
   return {
@@ -45,7 +58,7 @@ const cloneOf = (
 
 /** `repo` names one repository: an owner wildcard is taken literally and the clone fails. */
 function planGithub(source: MarketplaceSourceOf<'github'>): Planned {
-  const refused = githubRepoIssues(source.repo, 'source.repo');
+  const refused = githubRepoIssues(source.repo, 'repo');
   return refused[0] ?? cloneOf({ shorthand: source.repo }, source);
 }
 
@@ -56,12 +69,22 @@ const planGit = (source: MarketplaceSourceOf<'git'>): Planned =>
 const lastSeparator = (path: string): number =>
   Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
 
-/** The directory two levels above the file: `<root>/.claude-plugin/marketplace.json` gives `<root>`. */
-function twoLevelsUp(path: string): string {
-  const parent = path.slice(0, Math.max(lastSeparator(path), 0));
-  const root = parent.slice(0, Math.max(lastSeparator(parent), 0));
-  return root === '' && /^[\\/]/.test(path) ? path.slice(0, 1) : root;
+/**
+ * The directory that holds a path, as `dirname` gives it: `.` for a bare name, the separator for a
+ * file at the root, and the drive with its separator (`C:\`) for a file directly under a drive.
+ */
+function directoryOf(path: string): string {
+  const at = lastSeparator(path);
+  if (at < 0) return '.';
+  if (at === 0) return path.slice(0, 1);
+  return /^[A-Za-z]:$/.test(path.slice(0, at)) ? path.slice(0, at + 1) : path.slice(0, at);
 }
+
+/**
+ * The directory two levels above the file: `<root>/.claude-plugin/marketplace.json` gives `<root>`.
+ * A relative path with fewer directories stops at `.` (spec/judgments.md).
+ */
+const twoLevelsUp = (path: string): string => directoryOf(directoryOf(path));
 
 const planFile = (source: MarketplaceSourceOf<'file'>): Planned => ({
   kind: 'read-file',

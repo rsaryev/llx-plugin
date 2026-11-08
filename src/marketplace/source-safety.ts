@@ -49,9 +49,18 @@ const refused = (path: string, message: string): GitReading => ({
   issues: [error(path, message)],
 });
 
-/** `github` takes `owner/repo`. */
+const GITHUB_OWNER = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
+const GITHUB_REPOSITORY = /^[A-Za-z0-9._-]{1,100}$/;
+
+/** GitHub naming rules for an owner and a repository ("Owner and repo must follow GitHub naming rules"). */
+export function isGitHubRepository(owner: string, repo: string): boolean {
+  return GITHUB_OWNER.test(owner) && GITHUB_REPOSITORY.test(repo) && repo !== '.' && repo !== '..';
+}
+
+/** `github` takes `owner/repo`: one rule for a plugin source, a marketplace source and `marketplace add`. */
 export function githubRepoIssues(repo: string, path: string): PluginIssue[] {
-  return SHORTHAND.test(repo)
+  const [owner = '', name = '', ...rest] = repo.split('/');
+  return rest.length === 0 && isGitHubRepository(owner, name)
     ? []
     : [error(path, `"${repo}" is not a GitHub repository in owner/repo form`)];
 }

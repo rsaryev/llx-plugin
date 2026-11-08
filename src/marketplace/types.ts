@@ -116,6 +116,12 @@ export type MarketplaceFetchPlan =
       readonly url: string;
       readonly maxBytes: 5242880;
       readonly timeoutMs: 10000;
+      /** A redirect to a different origin: `https://` only, never a blocked host, no configured headers sent. */
+      readonly redirects: {
+        readonly crossOrigin: 'https-only';
+        readonly blockedHosts: 'refused';
+        readonly headersAcrossOrigins: 'none';
+      };
       readonly headers: HeaderMap;
       readonly helper?: string;
     }
