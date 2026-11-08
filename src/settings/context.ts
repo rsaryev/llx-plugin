@@ -18,6 +18,12 @@ export interface PolicyContext {
   readonly parentMerge: boolean;
   /** Whether the user accepted the workspace trust dialog for the folder of that kind of settings file. */
   readonly isFolderTrusted: (scope: 'project' | 'local' | 'addDir') => boolean;
+  /**
+   * Git tracks `.claude/settings.local.json`, or `.claude` is a symlink: the file is then
+   * repository-supplied and its allow rules and directories wait for the trust dialog (permissions.md,
+   * "When your local settings file needs trust"). Defaults to `false`.
+   */
+  readonly localSettingsTracked?: boolean;
   /** The host's environment: `CLAUDE_CODE_DISABLE_BUNDLED_SKILLS`, `CLAUDE_CODE_DISABLE_WORKFLOWS` (env-vars.md). */
   readonly env: Readonly<Record<string, string | undefined>>;
   /** Anthropic's default channel allowlist; "the channel plugins in claude-plugins-official" (channels.md), not listed in the docs. */

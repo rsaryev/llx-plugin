@@ -45,6 +45,12 @@ export interface DecideContext {
   readonly useAutoModeDuringPlan?: boolean;
   readonly hook?: PreToolUseHookOutcome;
   readonly mod?: ModOutcome;
+  /**
+   * Directories only repository settings add (`.claude/settings.json`, and `.claude/settings.local.json`
+   * when git tracks it): working directories for the permission checks, but not for the read and write
+   * blocks (settings-reference.md, `permissions.blockReadsOutsideWorkingDirectories`).
+   */
+  readonly repositoryDirectories?: readonly string[];
   readonly blockReadsOutsideWorkingDirectories?: boolean;
   readonly blockWritesOutsideWorkingDirectories?: boolean;
   /**
@@ -65,8 +71,25 @@ export interface DecideContext {
    * (`rules/tools`) is the kit's own.
    */
   readonly requiresPermission?: (toolName: string) => boolean;
+  /**
+   * Whether a host name is in WebFetch's "built-in set of preapproved documentation domains" that
+   * "fetch without a prompt" (tools-reference.md, "WebFetch tool behavior"; permissions.md,
+   * "Permission system"). The docs do not list the domains, so the host knows them; an explicit
+   * `WebFetch(domain:...)` rule still takes precedence.
+   */
+  readonly preapprovedFetchDomain?: (hostname: string) => boolean;
   /** MCP tools marked `requiresUserInteraction`; `AskUserQuestion` always requires it. */
   readonly requiresUserInteraction?: ReadonlySet<string>;
+  /**
+   * Connector tools the organization set to `ask`, "in sessions where that setting reaches Claude
+   * Code" (permission-modes.md, "Actions no mode auto-approves"): no mode, rule, hook or mod approves them.
+   */
+  readonly connectorToolsSetToAsk?: ReadonlySet<string>;
+  /**
+   * Nobody can answer a prompt: `claude -p` and an Agent SDK run with no permission callback. "Calls
+   * needing approval are denied" there (permission-modes.md, "Tool calls denied in `claude -p` and Agent SDK runs").
+   */
+  readonly cannotPrompt?: boolean;
   /** A `--permission-prompt-tool` or SDK `canUseTool` callback decides what the kit calls `ask`. */
   readonly permissionCallback?: boolean;
   /** `CLAUDE_CODE_EVEN_MORE_DANGEROUSLY_SKIP_PERMISSIONS`: critical-path removals run in bypass mode. */

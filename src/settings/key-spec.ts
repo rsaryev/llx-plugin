@@ -32,6 +32,7 @@ export const SCOPE_RULES = [
   'managedAndParent',
   'userOrManaged',
   'userLocalManagedFlag',
+  'userFlagOrManaged',
 ] as const;
 export type ScopeRule = (typeof SCOPE_RULES)[number];
 
@@ -58,6 +59,7 @@ const ADMITS: { readonly [R in ScopeRule]: Admits } = {
   managedAndParent: inScopes('managed', 'parent'),
   userOrManaged: inScopes('user', 'managed'),
   userLocalManagedFlag: inScopes('user', 'local', 'managed', 'flag'),
+  userFlagOrManaged: inScopes('user', 'flag', 'managed'),
 };
 
 /**
@@ -78,6 +80,11 @@ export const admits = (key: PolicyKey, scope: PolicyScope, value: unknown): bool
 
 export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
   allowManagedHooksOnly: { scopes: 'managed', merge: MERGES.highestWins, repair: 'lockBoolean' },
+  allowManagedPermissionRulesOnly: {
+    scopes: 'managed',
+    merge: MERGES.highestWins,
+    repair: 'lockBoolean',
+  },
   allowedChannelPlugins: {
     scopes: 'managed',
     merge: MERGES.highestWins,
@@ -89,6 +96,7 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     repair: 'closedStringList',
   },
   appendPlugins: { scopes: 'userOrManaged', merge: MERGES.highestWins, repair: 'stringList' },
+  autoMode: { scopes: 'userFlagOrManaged', merge: MERGES.autoModeBlocks, repair: 'autoMode' },
   blockedMarketplaces: {
     scopes: 'managedAndParent',
     merge: MERGES.unionArrays,
@@ -96,6 +104,7 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
   },
   channelsEnabled: { scopes: 'managed', merge: MERGES.highestWins, repair: 'boolean' },
   disableAllHooks: { scopes: 'anyAndParent', merge: MERGES.highestWins, repair: 'hooksSwitch' },
+  disableAutoMode: { scopes: 'any', merge: MERGES.highestWins, repair: 'disableMode' },
   disableBundledSkills: { scopes: 'any', merge: MERGES.highestWins, repair: 'lockBoolean' },
   disableCommandPluginSources: {
     scopes: 'managed',
@@ -121,6 +130,7 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     merge: MERGES.unionArrays,
     repair: 'closedStringList',
   },
+  permissions: { scopes: 'anyAndParent', merge: MERGES.permissionBlocks, repair: 'permissions' },
   pluginConfigs: { scopes: 'userOrManaged', merge: MERGES.perKeyHighestWins, repair: 'record' },
   pluginSuggestionMarketplaces: {
     scopes: 'managed',
@@ -130,6 +140,16 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
   pluginTrustMessage: { scopes: 'managed', merge: MERGES.highestWins, repair: 'string' },
   prependPlugins: { scopes: 'userOrManaged', merge: MERGES.highestWins, repair: 'stringList' },
   skillOverrides: { scopes: 'any', merge: MERGES.perKeyHighestWins, repair: 'skillOverrides' },
+  skipAutoPermissionPrompt: {
+    scopes: 'userOrManaged',
+    merge: MERGES.anyTrue,
+    repair: 'consentBoolean',
+  },
+  skipDangerousModePermissionPrompt: {
+    scopes: 'userLocalManagedFlag',
+    merge: MERGES.anyTrue,
+    repair: 'consentBoolean',
+  },
   strictKnownMarketplaces: {
     scopes: 'managedAndParent',
     merge: MERGES.highestWins,
@@ -149,6 +169,11 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     scopes: 'userLocalManagedFlag',
     merge: MERGES.highestWins,
     repair: 'boolean',
+  },
+  useAutoModeDuringPlan: {
+    scopes: 'userLocalManagedFlag',
+    merge: MERGES.anyFalse,
+    repair: 'consentBoolean',
   },
   workflowKeywordTriggerEnabled: { scopes: 'any', merge: MERGES.highestWins, repair: 'boolean' },
   workflowSizeGuideline: { scopes: 'any', merge: MERGES.highestWins, repair: 'workflowSize' },

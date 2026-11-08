@@ -1163,8 +1163,10 @@ mergeSettingsHooks(view.layers); // every file's hooks, managed ones never remov
 | `createChannelSettingsPolicy(view, context)` | done | `channelsEnabled` and `allowedChannelPlugins` as one `ChannelSettingsPolicy`: `gate()` (`ChannelGate`: closed on claude.ai Team and Enterprise until managed `true`, and on Console once managed settings exist (a managed layer counts); open by default on Console without them and on Pro, Max and Ultra without an organization, which skip both keys; `false` is unset; `startupWarning` names the admin warning), `allowlist()` (the managed `allowedChannelPlugins` taken whole from the highest managed source, replacing the host's `defaultChannelAllowlist` even when empty; an unusable value is an empty list, an invalid entry is stripped, the string `plugin@marketplace` is the equivalent object) and `allowed(entry)` (`ChannelVerdict { allowed, reason }` for a `ChannelEntry` that carries its `origin`: `channels` with a `plugin`, or `development` with `interactive` and, for `plugin:<name>@<marketplace>`, the `plugin`; a bare `server:<name>` is a development entry with none. A closed gate blocks everything, the development flag included; otherwise a development entry, in an interactive session only, skips the list and a `--channels` entry needs both names on it; the bypass is per entry, so a mixed session is answered entry by entry). `ChannelPolicyContext` is `account` (`claudeaiTeamEnterprise`, `claudeaiPersonal`, `console`), `hasManagedSettings` and `defaultChannelAllowlist` (the Anthropic list is not in the docs). The kit starts no channel server: a closed gate carries `serverConnects: true` (the MCP server stays connected and its tools work, only channel messages stop), and the verdict only says whether it may register as a channel; refusing a server that negotiates protocol revision 2026-07-28 on the v2 MCP client runtime is the host's concern (spec/judgments.md). The pieces are exported alone: `channelGate`, `effectiveChannelAllowlist`, `channelVerdict` |
 | `suggestionMarketplaces(view, registered)` | done | `pluginSuggestionMarketplaces`: the listed names that take effect, managed settings only; each must be registered and its registered source declared in the same managed settings, as the `extraKnownMarketplaces` entry of that name or an entry of `strictKnownMarketplaces` that admits it; the official marketplace needs its name alone; also `PluginSettingsPolicy.suggestionMarketplaces` |
 | `createCustomizationPolicy(view, context)`, `readSurfaceLocks(value)` | done | `strictPluginOnlyCustomization`: `locked` (`true` all four, an array the kinds it names, an unreadable value `true`, an unknown name locks nothing and is counted in `unknownSurfaceNames`), `loads(surface, origin)` per surface (skills: user, project, commands, added directory and claude.ai sync stop, bundled, managed directory and plugins load; agents; hooks: asked of the hook policy's origin table; mcp: `~/.claude.json` and `.mcp.json` stop, managed files and plugin servers load), `skillsDirPlugins()` (stopped by a lock on any surface or the marketplace lists), `skillAllowedToolsPreapproved(skill)` (a personal or project skill with `hooks` loses it unless `context: fork`) and `mcpAddRefusal` (the documented message while `mcp` is locked) |
+| `createPermissionsPolicy(view, context)` | done | `permissions`, `allowManagedPermissionRulesOnly`, `autoMode`, `disableAutoMode`, `skipAutoPermissionPrompt`, `skipDangerousModePermissionPrompt` and `useAutoModeDuringPlan` as one `PermissionsPolicy`: `rules` (`SettingsRule`: `behavior`, `text`, `scope`; the lock, the parent settings and workspace trust applied), `additionalDirectories` (`SettingsDirectory`, with `repositoryOnly`), `managedRulesOnly`, the two block flags, the two locks, `skipDangerousModePermissionPrompt`, `autoMode` (`AutoModeSettings`) and `startingMode(input)` |
+| `settingsLocations(input)` | done | where Claude Code reads `~/.claude/settings.json` (or `$CLAUDE_CONFIG_DIR`), the project file (the primary working directory's, no parent fallback), the local file (the repository root unless outside git, home as root, Windows or a root another user owns) and which folders hold output styles (the working directory and its parents, then the user's) |
 | `PolicyContext` | done | the facts a host copies in: account, plan, managed-settings presence, `parentSettingsBehavior`, folder trust, environment values, the default channel allowlist, the official marketplace names, the organization's workflow toggle, safe mode, the `/config` workflow size and the ultracode state; each field names its docs page |
-| `resolvePolicy({ layers, context, issues? })` | done | every area behind one `ResolvedPolicy`: `plugins`, `marketplaces` (`gate`, `registry`, `commandSources`), `hooks`, `skills`, `workflows`, `channels`, `customization`, the `view`, and `issues` (the reader's, then the registry's); parent settings are dropped where an administrator deploys managed settings without opting in, and the `hooks` lock comes from the customization policy |
+| `resolvePolicy({ layers, context, issues? })` | done | every area behind one `ResolvedPolicy`: `plugins`, `marketplaces` (`gate`, `registry`, `commandSources`), `hooks`, `skills`, `workflows`, `channels`, `permissions`, `customization`, the `view`, and `issues` (the reader's, then the registry's); parent settings are dropped where an administrator deploys managed settings without opting in, and the `hooks` lock comes from the customization policy |
 
 Scopes, highest first: `managed`, `parent` (the SDK `managedSettings`), `flag` (`--settings`),
 `local`, `project`, `addDir`, `user`. A key a scope may not carry is dropped with a warning (its
@@ -1173,6 +1175,58 @@ Scopes, highest first: `managed`, `parent` (the SDK `managedSettings`), `flag` (
 an empty one, an unreadable lock reads as `true`, and `strictPluginOnlyCustomization` as `true`;
 elsewhere the value or entry is dropped. The aliases `allowedMarketplaces` and
 `additionalMarketplaces` are rewritten to their canonical keys, so a resolver sees only those.
+
+### Permission settings (done: `settings/permissions`, `settings/locations`, `host/permission-session`)
+
+```ts
+import { resolvePolicy, startPermissions } from '@rsaryev/claude-plugin-kit';
+import { decide } from '@rsaryev/claude-plugin-kit';
+
+const { permissions } = resolvePolicy({ layers, context });
+permissions.rules; // [{ behavior: 'deny', text: 'Read(./.env)', scope: 'managed' }, ...]
+const started = startPermissions({
+  policy: permissions,
+  start: { surface: 'terminal', autoAvailable: true, permissionMode: undefined },
+  paths, // the PathContext of the session
+  commandLine: { allowed: ['Bash(npm test)'] }, // --allowedTools; --disallowedTools is `disallowed`
+});
+if (started.outcome === 'started') decide(call, started.context); // started.mode, started.issues
+```
+
+`permissions` is read per field in every file. In the policy tier (`managed`, `parent`) a lock reads as
+its restrictive value, an invalid `defaultMode` as `default`, an unreadable `permissions` object turns the
+write block on, and while a `deny` or `ask` list cannot be read `allow` and `additionalDirectories` are
+withheld (the report names each grant); the same holds for the `soft_deny` and `hard_deny` lists of
+`autoMode`. Lists unite across files; a `true` of `blockReadsOutsideWorkingDirectories`,
+`blockWritesOutsideWorkingDirectories` or `autoMode.classifyAllShell` and a `"disable"` lock hold from any
+file; a `false` of `useAutoModeDuringPlan` from managed settings, `--settings`, user or local settings turns
+it off; a `true` of a `skip*Prompt` key from any file that carries it applies.
+
+`allowManagedPermissionRulesOnly` drops the `allow`, `ask` and `deny` rules of user, project, local and
+`--settings` files and the command line's `--allowedTools` (`--disallowedTools` stays); the parent
+settings lose their `allow` rules and directories, and a `Read` or `Edit` rule of a host that starts with
+`!` is never kept. A project file's `allow` rules and `additionalDirectories` wait for workspace trust
+(`PolicyContext.isFolderTrusted`), the local file's only when git tracks it
+(`PolicyContext.localSettingsTracked`); `deny` and `ask` rules never wait.
+
+`startingMode(input)` answers "Which mode a session starts in": the flag (`permissionMode`,
+`dangerouslySkipPermissions`), then `permissions.defaultMode` (an `auto` or `bypassPermissions` from a
+project or local file is no value; the VS Code surface reads user, managed and `--settings` files only), then
+the built-in default (`auto` in a terminal, `default` under `-p`, the SDK, the HIPAA configuration or
+`disableAutoMode`). `auto` becomes `default` when `autoAvailable` is false or `disableAutoMode` is set;
+`disableBypassPermissionsMode` refuses the flag; `--restricted` and root outside a sandbox refuse
+`bypassPermissions`; a background session honors a bypass request only with `skipDangerousModePermissionPrompt`
+in user or managed settings (a `local` or `--settings` acceptance ignores the request with the documented
+notice, none refuses it). The result carries `bypassAvailable`, `autoAvailable` and `bypassWarning`.
+`startPermissions` turns the policy and the start into the `DecideContext` `decide` takes: the parsed rules
+with their sources, the mode, the facts the settings decide, `cannotPrompt` for a `-p` or SDK run with no
+callback (an `ask` is then denied with the reason `prompt-unavailable`) and `repositoryDirectories`
+(directories only repository settings add, which the read and write blocks do not count).
+
+`decide` also takes `connectorToolsSetToAsk` (never approved by a mode, rule, hook or mod; reason
+`organization-ask`) and `preapprovedFetchDomain` (WebFetch's built-in set of documentation domains, which
+the host knows), and `approvalMemory(tool)` says what "Yes, and don't ask again" remembers per tool type.
+The cross-session messaging safeguards of the bypass section are not modelled: the kit sends no message.
 
 ### The `env` block (done: `settings/env`)
 

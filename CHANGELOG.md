@@ -4,6 +4,15 @@
 
 ### Added
 
+- Permissions: the settings keys and the starting mode. `permissions`, `allowManagedPermissionRulesOnly`,
+  `autoMode`, `disableAutoMode`, `skipAutoPermissionPrompt`, `skipDangerousModePermissionPrompt` and
+  `useAutoModeDuringPlan` are policy keys (per-field repair, fail-closed in the policy tier, the merge and
+  scope of each) behind `resolvePolicy(...).permissions`, with `startingMode` (flag, `defaultMode`, built-in
+  default, the locks, the background bypass notice), `settingsLocations`, and `startPermissions`, which
+  builds the `DecideContext`. `decide` gains `cannotPrompt` (a `-p` run denies what would prompt),
+  `connectorToolsSetToAsk`, `preapprovedFetchDomain` and `repositoryDirectories`; `approvalMemory` tabulates
+  "don't ask again".
+
 - Hooks: the per-event contracts. Every `<Event> input` section, the decision-control table, the
   response schema of prompt hooks and the context, interaction, elicitation, defer and terminal sections
   of hooks.md are proven by tests against the docs' own examples and scripts. New: `resolveWorktreePath`

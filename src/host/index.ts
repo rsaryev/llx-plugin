@@ -16,3 +16,10 @@ export type {
   Resolved,
   SessionOptions,
 } from './types.ts';
+export {
+  startPermissions,
+  type CommandLineRules,
+  type PermissionSession,
+  type PermissionSessionInput,
+  type StartedPermissions,
+} from './permission-session.ts';

@@ -62,6 +62,22 @@ function readableUnderBlock(path: string, ctx: DecideContext): boolean {
 const writableUnderBlock = (path: string, ctx: DecideContext): boolean =>
   isOwnFile(path, ctx.match.paths, ctx.protectedPaths ?? {}) || inSessionDirectory(path, ctx);
 
+/**
+ * The working directories as the blocks count them: a directory that only repository settings add
+ * "doesn't count" (settings-reference.md, `permissions.blockReadsOutsideWorkingDirectories`).
+ */
+export function blockPaths(ctx: DecideContext): PathContext {
+  const { paths } = ctx.match;
+  const excluded = (ctx.repositoryDirectories ?? []).map((directory) => posixOf(directory, paths));
+  if (excluded.length === 0) return paths;
+  return {
+    ...paths,
+    additionalDirectories: paths.additionalDirectories.filter(
+      (directory) => !excluded.includes(posixOf(directory, paths)),
+    ),
+  };
+}
+
 /** Why the write block refuses `paths`, or `undefined` when it lets them through. */
 export function writeBlockReason(
   paths: readonly string[],
@@ -69,13 +85,12 @@ export function writeBlockReason(
 ): 'settings-file' | 'outside-working-directory' | undefined {
   if (ctx.blockWritesOutsideWorkingDirectories !== true) return undefined;
   if (paths.some((path) => isSettingsFile(path, ctx.match.paths, ctx))) return 'settings-file';
-  const outside = paths.some(
-    (path) => !inScope(path, ctx.match.paths) && !writableUnderBlock(path, ctx),
-  );
+  const counted = blockPaths(ctx);
+  const outside = paths.some((path) => !inScope(path, counted) && !writableUnderBlock(path, ctx));
   return outside ? 'outside-working-directory' : undefined;
 }
 
 /** Whether the read block refuses a read of `paths`. */
 export const readBlocked = (paths: readonly string[], ctx: DecideContext): boolean =>
   ctx.blockReadsOutsideWorkingDirectories === true &&
-  paths.some((path) => !inScope(path, ctx.match.paths) && !readableUnderBlock(path, ctx));
+  paths.some((path) => !inScope(path, blockPaths(ctx)) && !readableUnderBlock(path, ctx));

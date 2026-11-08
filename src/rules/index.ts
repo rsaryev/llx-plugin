@@ -45,6 +45,15 @@ export type {
   ModOutcome,
   ProtectedPathOptions,
 } from './decide/context.ts';
+export {
+  APPROVAL_MEMORY,
+  TOOL_TYPES,
+  approvalMemory,
+  toolTypeOf,
+  type ApprovalLifetime,
+  type ApprovalMemory,
+  type ToolType,
+} from './decide/approval-memory.ts';
 export { decide } from './decide/decide.ts';
 export {
   catalogEntry,

@@ -30,3 +30,26 @@ export {
   type SettingsEnv,
   type SettingsEnvContext,
 } from './env.ts';
+export {
+  AUTO_MODE_LISTS,
+  BYPASS_AS_ROOT,
+  BYPASS_IGNORED_NOTICE,
+  SURFACES,
+  bypassAcceptance,
+  createPermissionsPolicy,
+  type Acceptance,
+  type AutoModeList,
+  type AutoModeSettings,
+  type PermissionsPolicy,
+  type SettingsDirectory,
+  type SettingsRule,
+  type StartInput,
+  type StartSource,
+  type StartingMode,
+  type Surface,
+} from './permissions/index.ts';
+export {
+  settingsLocations,
+  type SettingsLocations,
+  type SettingsLocationsInput,
+} from './locations.ts';

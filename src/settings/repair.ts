@@ -6,6 +6,8 @@ import {
   strictSources,
 } from './repair-lists.ts';
 import { hooks } from './repair-hooks.ts';
+import { autoModeBlock, consentBoolean } from './permissions/auto-mode.ts';
+import { disableValue, permissionsBlock } from './permissions/read.ts';
 import type { Repair } from './repair-support.ts';
 import {
   boolean,
@@ -43,6 +45,10 @@ export const REPAIR_KINDS = [
   'workflowSize',
   'pluginOnly',
   'hooks',
+  'permissions',
+  'autoMode',
+  'disableMode',
+  'consentBoolean',
 ] as const;
 export type RepairKind = (typeof REPAIR_KINDS)[number];
 
@@ -63,4 +69,8 @@ export const REPAIRS: { readonly [R in RepairKind]: Repair } = {
   workflowSize,
   pluginOnly,
   hooks,
+  permissions: permissionsBlock,
+  autoMode: autoModeBlock,
+  disableMode: disableValue,
+  consentBoolean,
 };

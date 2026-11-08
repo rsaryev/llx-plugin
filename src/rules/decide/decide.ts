@@ -43,6 +43,17 @@ const VIA_LINK: { readonly [O in Decision['outcome']]: (decision: Decision) => D
 
 const DENIED: Decision = { outcome: 'deny', reason: 'deny-rule' };
 
+/** Where no one can answer a prompt, an `ask` is a denial; the other outcomes stand. */
+const UNANSWERED: { readonly [O in Decision['outcome']]: (decision: Decision) => Decision } = {
+  allow: (decision) => decision,
+  ask: () => ({ outcome: 'deny', reason: 'prompt-unavailable' }),
+  deny: (decision) => decision,
+  classify: (decision) => decision,
+};
+
+const settle = (decision: Decision, ctx: DecideContext): Decision =>
+  ctx.cannotPrompt === true ? UNANSWERED[decision.outcome](decision) : decision;
+
 /** Each gate is one rule of the docs; the first that answers decides, in the order of the docs. */
 const GATES: readonly Gate[] = [
   // "The tool never prompts for permission, and PreToolUse hooks don't run for it."
@@ -80,6 +91,9 @@ const GATES: readonly Gate[] = [
       'never',
     );
   },
+  // "Connector tools your organization set to `ask`": no mode, hook or mod approves them.
+  ({ facts, strategy }) =>
+    facts.connectorAsk ? pending(strategy.prompt('organization-ask'), 'never') : undefined,
   // "A read from a network path prompts you even when an allow rule matches."
   ({ facts, ctx, strategy }) =>
     facts.network ? pending(strategy.networkRead(ctx), 'never') : undefined,
@@ -125,8 +139,9 @@ export function decide(call: PreparedCall, ctx: DecideContext): Decision {
   const step: Step = { call, ctx, facts, strategy, verdict };
   for (const gate of GATES) {
     const answer = gate(step);
-    if (answer !== undefined) return applyMod(answer, facts, ctx, strategy);
+    if (answer !== undefined) return settle(applyMod(answer, facts, ctx, strategy), ctx);
   }
   const baseline = strategy.baseline(facts, ctx);
-  return applyMod(pending(baseline, BASELINE_REACH[baseline.outcome]), facts, ctx, strategy);
+  const last = pending(baseline, BASELINE_REACH[baseline.outcome]);
+  return settle(applyMod(last, facts, ctx, strategy), ctx);
 }

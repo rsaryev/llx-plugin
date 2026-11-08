@@ -1,5 +1,11 @@
 import type { HooksSettings } from '../protocol/hook-config.ts';
 import { isHooksSettings, mergeHookSettings } from './hooks-merge.ts';
+import {
+  anyFalse,
+  anyTrue,
+  mergeAutoModeBlocks,
+  mergePermissionBlocks,
+} from './permissions/merge.ts';
 import { isRecord } from './record.ts';
 
 /**
@@ -13,6 +19,10 @@ export const MERGE_KINDS = [
   'unionArrays',
   'perKeyHighestWins',
   'hookGroups',
+  'permissionBlocks',
+  'autoModeBlocks',
+  'anyTrue',
+  'anyFalse',
 ] as const;
 export type MergeKind = (typeof MERGE_KINDS)[number];
 
@@ -60,4 +70,36 @@ const hookGroups = {
     mergeHookSettings(values.filter(isHooksSettings)),
 } as const satisfies AnyMerge;
 
-export const MERGES = { highestWins, unionArrays, perKeyHighestWins, hookGroups } as const;
+/** The `permissions` object: lists unite, locks and block flags hold when any file sets them (permissions/merge.ts). */
+const permissionBlocks = {
+  kind: 'permissionBlocks',
+  combine: mergePermissionBlocks,
+} as const satisfies AnyMerge;
+
+const autoModeBlocks = {
+  kind: 'autoModeBlocks',
+  combine: mergeAutoModeBlocks,
+} as const satisfies AnyMerge;
+
+/** A Boolean on when any file sets `true`: `skipDangerousModePermissionPrompt`, `skipAutoPermissionPrompt`. */
+const anyTrueMerge = {
+  kind: 'anyTrue',
+  combine: (values: readonly boolean[]): boolean | undefined => anyTrue(values),
+} as const satisfies AnyMerge;
+
+/** A Boolean off when any file sets `false`: `useAutoModeDuringPlan`. */
+const anyFalseMerge = {
+  kind: 'anyFalse',
+  combine: (values: readonly boolean[]): boolean | undefined => anyFalse(values),
+} as const satisfies AnyMerge;
+
+export const MERGES = {
+  highestWins,
+  unionArrays,
+  perKeyHighestWins,
+  hookGroups,
+  permissionBlocks,
+  autoModeBlocks,
+  anyTrue: anyTrueMerge,
+  anyFalse: anyFalseMerge,
+} as const;

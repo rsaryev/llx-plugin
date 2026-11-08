@@ -18,12 +18,15 @@ import { issuesOf, layerOf, plain } from '../support/settings-layers.ts';
 /** A valid value for each key: one the key's repair keeps as it is. */
 const VALID: Readonly<Record<PolicyKey, unknown>> = {
   allowManagedHooksOnly: true,
+  allowManagedPermissionRulesOnly: true,
   allowedChannelPlugins: [{ marketplace: 'claude-plugins-official', plugin: 'telegram' }],
   allowedHttpHookUrls: ['https://hooks.example.com/*'],
   appendPlugins: ['audit@acme'],
+  autoMode: { environment: ['Trusted: github.com/acme'] },
   blockedMarketplaces: [{ source: 'github', repo: 'evil/plugins' }],
   channelsEnabled: true,
   disableAllHooks: true,
+  disableAutoMode: 'disable',
   disableBundledSkills: true,
   disableCommandPluginSources: true,
   disableSkillShellExecution: true,
@@ -33,15 +36,19 @@ const VALID: Readonly<Record<PolicyKey, unknown>> = {
   extraKnownMarketplaces: { acme: { source: { source: 'github', repo: 'acme/plugins' } } },
   hooks: { Stop: [{ hooks: [{ type: 'command', command: 'x.sh' }] }] },
   httpHookAllowedEnvVars: ['MY_TOKEN'],
+  permissions: { allow: ['Bash(npm run *)'] },
   pluginConfigs: { 'formatter@team-tools': { options: { style: 'tabs' } } },
   pluginSuggestionMarketplaces: ['acme'],
   pluginTrustMessage: 'Plugins here are reviewed by security.',
   prependPlugins: ['guard@acme'],
   skillOverrides: { deploy: 'off' },
+  skipAutoPermissionPrompt: true,
+  skipDangerousModePermissionPrompt: true,
   strictKnownMarketplaces: [{ source: 'github', repo: 'acme/plugins' }],
   strictPluginOnlyCustomization: ['hooks'],
   syncClaudeAiPlugins: false,
   syncClaudeAiSkills: false,
+  useAutoModeDuringPlan: false,
   workflowKeywordTriggerEnabled: false,
   workflowSizeGuideline: 'small',
 };
@@ -52,6 +59,7 @@ const FILES: readonly PolicyScope[] = ['managed', 'flag', 'local', 'project', 'u
 const ANY: readonly PolicyKey[] = [
   'allowedHttpHookUrls',
   'disableAllHooks',
+  'disableAutoMode',
   'disableBundledSkills',
   'disableSkillShellExecution',
   'disableWorkflows',
@@ -60,6 +68,7 @@ const ANY: readonly PolicyKey[] = [
   'extraKnownMarketplaces',
   'hooks',
   'httpHookAllowedEnvVars',
+  'permissions',
   'skillOverrides',
   'workflowKeywordTriggerEnabled',
   'workflowSizeGuideline',
@@ -67,6 +76,7 @@ const ANY: readonly PolicyKey[] = [
 const MANAGED: readonly PolicyKey[] = [
   'allowedChannelPlugins',
   'allowManagedHooksOnly',
+  'allowManagedPermissionRulesOnly',
   'blockedMarketplaces',
   'channelsEnabled',
   'disableCommandPluginSources',
@@ -75,8 +85,20 @@ const MANAGED: readonly PolicyKey[] = [
   'strictKnownMarketplaces',
   'strictPluginOnlyCustomization',
 ];
-const USER_OR_MANAGED: readonly PolicyKey[] = ['appendPlugins', 'pluginConfigs', 'prependPlugins'];
-const USER_LOCAL_MANAGED_FLAG: readonly PolicyKey[] = ['syncClaudeAiPlugins', 'syncClaudeAiSkills'];
+const USER_OR_MANAGED: readonly PolicyKey[] = [
+  'appendPlugins',
+  'pluginConfigs',
+  'prependPlugins',
+  'skipAutoPermissionPrompt',
+];
+/** `autoMode`: "User or managed", and read from `--settings` too (auto-mode-config.md, "Where the classifier reads configuration"). */
+const USER_FLAG_MANAGED: readonly PolicyKey[] = ['autoMode'];
+const USER_LOCAL_MANAGED_FLAG: readonly PolicyKey[] = [
+  'skipDangerousModePermissionPrompt',
+  'syncClaudeAiPlugins',
+  'syncClaudeAiSkills',
+  'useAutoModeDuringPlan',
+];
 
 /** Where a parent (the SDK `managedSettings`) is documented to pass a key. */
 const PARENT_KEYS: readonly PolicyKey[] = [
@@ -85,6 +107,7 @@ const PARENT_KEYS: readonly PolicyKey[] = [
   'strictKnownMarketplaces',
   'blockedMarketplaces',
   'strictPluginOnlyCustomization',
+  'permissions',
 ];
 
 /** The only keys a `--add-dir` directory's settings carry (permissions.md). */
@@ -94,6 +117,7 @@ const scopesOf = (key: PolicyKey): readonly PolicyScope[] => {
   if (ANY.includes(key)) return ADD_DIR_KEYS.includes(key) ? [...FILES, 'addDir'] : FILES;
   if (MANAGED.includes(key)) return ['managed'];
   if (USER_OR_MANAGED.includes(key)) return ['user', 'managed'];
+  if (USER_FLAG_MANAGED.includes(key)) return ['user', 'flag', 'managed'];
   return ['user', 'local', 'managed', 'flag'];
 };
 
@@ -102,7 +126,13 @@ const carried = (scope: PolicyScope, key: PolicyKey): boolean =>
 
 describe('the scope of every key', () => {
   test('the four tables above cover every key once', () => {
-    const all = [...ANY, ...MANAGED, ...USER_OR_MANAGED, ...USER_LOCAL_MANAGED_FLAG];
+    const all = [
+      ...ANY,
+      ...MANAGED,
+      ...USER_OR_MANAGED,
+      ...USER_FLAG_MANAGED,
+      ...USER_LOCAL_MANAGED_FLAG,
+    ];
     expect(all.toSorted()).toEqual([...POLICY_KEYS].toSorted());
   });
 
