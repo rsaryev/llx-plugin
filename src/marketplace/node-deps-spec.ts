@@ -103,14 +103,17 @@ export const isDefaultRegistry = (registry: string, defaultRegistry: string | un
   defaultRegistry !== undefined &&
   trailingSlash(registry).toLowerCase() === trailingSlash(defaultRegistry).toLowerCase();
 
-/** The refusal of a download link: `https` is required "unless it points at the installing user's own default npm registry". */
+/**
+ * The refusal of a download link: it "must use `https`, unless it points at the installing user's
+ * own default npm registry". Any other scheme (`ftp:`, `file:`) and a link with none is refused too.
+ */
 export function downloadLinkRefusal(
   link: string,
   defaultRegistry: string | undefined,
 ): string | undefined {
-  return /^http:\/\//i.test(link) && !isDefaultRegistryLink(link, defaultRegistry)
-    ? `the download link ${link} does not use https`
-    : undefined;
+  return /^https:\/\//i.test(link) || isDefaultRegistryLink(link, defaultRegistry)
+    ? undefined
+    : `the download link ${link} does not use https`;
 }
 
 // ---- what each kind means ----
@@ -181,13 +184,30 @@ export function dependencyRefusal(specifier: string): string | undefined {
   return KIND_RULES[classifySpecifier(specifier)].dependency;
 }
 
-/** Whether a locked package's origin (a lockfile `resolved` value or id) is a registry package. */
-export const isRegistryOrigin = (origin: string): boolean => {
-  const kind = classifySpecifier(origin);
-  return (
-    kind === 'registry' || kind === 'alias' || kind === 'tarball-http' || kind === 'tarball-https'
-  );
+/** Which kinds a lockfile entry may have and still be a registry package, by where the value is read. */
+const REGISTRY_KINDS: {
+  readonly [K in SpecifierKind]: { readonly resolved: boolean; readonly id: boolean };
+} = {
+  registry: { resolved: true, id: true },
+  alias: { resolved: true, id: true },
+  folder: { resolved: false, id: false },
+  'git-scheme': { resolved: false, id: false },
+  'git-address': { resolved: false, id: false },
+  workspace: { resolved: false, id: false },
+  linked: { resolved: false, id: false },
+  'tarball-host': { resolved: false, id: false },
+  // A `resolved` link is how npm records a registry download; a bun id with a link is a tarball dependency.
+  'tarball-http': { resolved: true, id: false },
+  'tarball-https': { resolved: true, id: false },
 };
+
+/** Whether an npm lockfile `resolved` value is a registry download (its scheme is checked as a download link). */
+export const isRegistryOrigin = (resolved: string): boolean =>
+  REGISTRY_KINDS[classifySpecifier(resolved)].resolved;
+
+/** Whether the specifier of a `bun.lock` entry id (`name@spec`) is a registry package. */
+export const isRegistryId = (specifier: string): boolean =>
+  REGISTRY_KINDS[classifySpecifier(specifier)].id;
 
 // ---- package.json ----
 
@@ -226,9 +246,12 @@ export function readDependencyMap(value: unknown): DependencyMap {
   );
 }
 
-/** A parsed `package.json` value narrowed to the parts the install reads. */
-export function readPackageJson(value: unknown): PackageJson {
-  if (!isRecord(value)) return {};
+/** A `package.json` that is there but is not a JSON object. */
+export type ReadPackageJson = PackageJson | 'unreadable';
+
+/** A parsed `package.json` value narrowed to the parts the install reads; `'unreadable'` for a value that is not an object. */
+export function readPackageJson(value: unknown): ReadPackageJson {
+  if (!isRecord(value)) return 'unreadable';
   const sections = DEPENDENCY_SECTIONS.flatMap((section) => {
     const map = readDependencyMap(value[section]);
     return Object.keys(map).length === 0 ? [] : [[section, map]];

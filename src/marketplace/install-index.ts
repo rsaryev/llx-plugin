@@ -121,13 +121,16 @@ export {
   type NodeDepsResult,
   type NodeDepsSkip,
   type PackageManager,
+  type SkipOf as NodeDepsSkipOf,
   type SkipReason as NodeDepsSkipReason,
   type StagedFile,
   type UnsupportedLockfile,
+  UNSUPPORTED_LOCKFILES,
 } from './node-deps-types.ts';
 export {
   installOutcome,
   nodeDepsNote,
+  skipReasonText,
   updateRetriesInstall,
   type CachedCopy,
   type FailureCause,
@@ -136,6 +139,7 @@ export {
   type NoteKind,
 } from './node-deps-failure.ts';
 export {
+  LOCKFILE_NAMES,
   readLockfile,
   type LockedOrigin,
   type LockfileFacts,
@@ -151,6 +155,7 @@ export {
   type DependencyMap,
   type DependencySection,
   type PackageJson,
+  type ReadPackageJson,
   type SpecifierKind,
   type SpecifierRefusal,
 } from './node-deps-spec.ts';

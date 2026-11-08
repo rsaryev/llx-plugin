@@ -49,12 +49,12 @@ export const planned = (over: Override = {}): NodeDepsPlan => planNodeDepsInstal
 
 export function installed(over: Override = {}): NodeDepsInstall {
   const plan = planned(over);
-  if ('detail' in plan) throw new Error(`expected an install, got ${JSON.stringify(plan)}`);
+  if (plan.action === 'skip') throw new Error(`expected an install, got ${JSON.stringify(plan)}`);
   return plan;
 }
 
 export function skipped(over: Override = {}): NodeDepsSkip {
   const plan = planned(over);
-  if (!('detail' in plan)) throw new Error(`expected a skip, got ${JSON.stringify(plan)}`);
+  if (plan.action === 'install') throw new Error(`expected a skip, got ${JSON.stringify(plan)}`);
   return plan;
 }

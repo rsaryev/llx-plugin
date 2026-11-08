@@ -4,12 +4,19 @@
  * source. The plan is pure: it decides whether the install runs and what the host runs through
  * `CommandRunner`; nothing is read or written here.
  */
-import { expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import type { PluginSource } from '../../src/format/marketplace/types.ts';
+import { planPluginFetch } from '../../src/marketplace/fetch-plan.ts';
 import { decideInstallMode, type InstallOrigin } from '../../src/marketplace/install-mode.ts';
-import { DEPS_ORIGIN_OF_MODE } from '../../src/marketplace/node-deps-types.ts';
+import { nodeDepsNote } from '../../src/marketplace/node-deps-failure.ts';
+import { LOCKFILE_NAMES } from '../../src/marketplace/node-deps-lockfile.ts';
+import { readPackageJson } from '../../src/marketplace/node-deps-spec.ts';
+import {
+  DEPS_ORIGIN_OF_MODE,
+  UNSUPPORTED_LOCKFILES,
+} from '../../src/marketplace/node-deps-types.ts';
 import { bunLock, npmLock } from '../support/node-deps-fixtures.ts';
-import { installed, planned, ROOT, skipped } from '../support/node-deps-plan.ts';
+import { PACKAGE, planned, installed, ROOT, skipped } from '../support/node-deps-plan.ts';
 import { spec } from '../support/spec.ts';
 
 const RUNS = 'install.loading.When the dependency install runs';
@@ -50,7 +57,7 @@ spec(RUNS, () => {
     for (const name of ['bun.lockb', 'yarn.lock', 'pnpm-lock.yaml'] as const) {
       expect(skipped({ lockfiles: {}, otherLockfiles: [name] })).toMatchObject({
         reason: 'unsupported-lockfile',
-        detail: [name],
+        lockfiles: [name],
       });
     }
   });
@@ -59,19 +66,28 @@ spec(RUNS, () => {
     for (const version of [1, 4]) {
       expect(skipped({ lockfiles: { 'package-lock.json': npmLock({ version }) } })).toMatchObject({
         reason: 'lockfile-format',
-        detail: ['package-lock.json', String(version)],
+        lockfile: 'package-lock.json',
+        version,
       });
     }
     expect(
       installed({ lockfiles: { 'package-lock.json': npmLock({ version: 2 }) } }),
-    ).toBeDefined();
-    expect(installed({ lockfiles: { 'bun.lock': bunLock({ version: 2 }) } })).toBeDefined();
+    ).toMatchObject({
+      lockfile: 'package-lock.json',
+      packageManager: 'npm',
+    });
+    expect(installed({ lockfiles: { 'bun.lock': bunLock({ version: 2 }) } })).toMatchObject({
+      lockfile: 'bun.lock',
+      packageManager: 'bun',
+    });
     expect(skipped({ lockfiles: { 'bun.lock': bunLock({ version: 3 }) } }).reason).toBe(
       'lockfile-format',
     );
-    expect(skipped({ lockfiles: { 'package-lock.json': 'not json' } }).reason).toBe(
-      'lockfile-format',
-    );
+    expect(skipped({ lockfiles: { 'package-lock.json': 'not json' } })).toMatchObject({
+      reason: 'lockfile-format',
+      lockfile: 'package-lock.json',
+      version: undefined,
+    });
   });
 
   test("the matched lockfile's package manager is run from the PATH; if it is missing the other is not tried", () => {
@@ -80,10 +96,10 @@ spec(RUNS, () => {
         lockfiles: { 'bun.lock': bunLock(), 'package-lock.json': npmLock() },
         available: ['npm'],
       }),
-    ).toMatchObject({ reason: 'package-manager-missing', detail: ['bun'] });
+    ).toMatchObject({ reason: 'package-manager-missing', manager: 'bun' });
     expect(skipped({ available: [] })).toMatchObject({
       reason: 'package-manager-missing',
-      detail: ['npm'],
+      manager: 'npm',
     });
   });
 
@@ -122,18 +138,73 @@ spec(RUNS, () => {
   });
 });
 
+// marketplace-reference.md: "Claude Code skips the Node.js package dependency install for a link-mode
+// plugin, so print a directory that already contains the packages the plugin needs."
 spec('marketplace.rule.Copy mode and link mode.Include node_modules', () => {
-  test('Claude Code skips the Node.js package dependency install for a link-mode plugin', () => {
-    expect(skipped({ origin: 'linked' })).toMatchObject({ reason: 'link-mode' });
+  test('Claude Code skips the Node.js package dependency install for a link-mode plugin, so the directory it links to has to contain the packages already', () => {
+    expect(skipped({ origin: 'linked' })).toEqual({ action: 'skip', reason: 'link-mode' });
+    const note = nodeDepsNote(
+      { enabled: true, hasLockfile: true, packageJson: PACKAGE, hasNodeModules: false },
+      planned({ origin: 'linked' }),
+      'formatter@my-marketplace',
+    );
+    expect(note?.text).toBe(
+      'The packages it lists were not installed, because a link-mode plugin gets no install; the directory it links to has to contain the packages in node_modules already.',
+    );
+  });
+
+  test('a link-mode plugin gets no install whatever its lockfile holds', () => {
+    expect(skipped({ origin: 'linked', lockfiles: { 'bun.lock': bunLock() } }).reason).toBe(
+      'link-mode',
+    );
   });
 });
 
-// marketplace-reference.md: "If the package has a supported lockfile beside its package.json, Claude
-// Code installs those Node.js package dependencies in a separate step, also with scripts disabled."
+// marketplace-reference.md: "Claude Code fetches the package with your npm client. The package's install
+// scripts ... never run, and its dependencies aren't installed during the fetch. If the package has a
+// supported lockfile beside its package.json, Claude Code installs those Node.js package dependencies in
+// a separate step, also with scripts disabled."
 spec('marketplace.rule.npm plugin source', () => {
-  test('an npm-source plugin with npm-shrinkwrap.json gets the dependency install as a separate step with scripts disabled', () => {
+  test('an npm-source fetch installs no dependencies; its npm-shrinkwrap.json then gets a separate install step with scripts disabled', () => {
+    const fetched = planPluginFetch(
+      { kind: 'npm', package: '@your-org/formatter' },
+      { platform: 'posix' },
+    ).plan;
+    expect(fetched).toMatchObject({ installDependencies: false, runInstallScripts: false });
+
     const plan = installed({ lockfiles: { 'npm-shrinkwrap.json': npmLock() } });
-    expect(plan.run.spec).toMatchObject({ args: ['ci', '--ignore-scripts'] });
-    expect(plan.stage.moveBack.to).toBe(`${ROOT}/node_modules`);
+    expect(plan).toMatchObject({
+      lockfile: 'npm-shrinkwrap.json',
+      packageManager: 'npm',
+      ignoreScripts: true,
+    });
+    expect(plan.run.spec).toEqual({
+      form: 'exec',
+      command: 'npm',
+      args: ['ci', '--ignore-scripts'],
+    });
+    expect(plan.run.cwd).not.toBe(ROOT);
+  });
+});
+
+describe('judgments: the dependency install plan', () => {
+  // loading.md lists three triggers (an install, an update to a new version, a session start for an
+  // uncached enabled plugin); they are the host's moments, not data of the plan.
+  test('the host decides when to plan: the plan depends on the facts alone, never on what triggered it', () => {
+    expect(planned()).toEqual(planned());
+    expect(planned({ origin: 'in-place' })).toEqual(planned({ origin: 'in-place' }));
+  });
+
+  test('a package.json that is there but not a JSON object is its own reason, not a missing file', () => {
+    expect(skipped({ packageJson: readPackageJson([]) })).toEqual({
+      action: 'skip',
+      reason: 'package-json-unreadable',
+    });
+    expect(skipped({ packageJson: undefined }).reason).toBe('no-package-json');
+  });
+
+  test('the lockfile names are exported in the order Claude Code checks them, with the unsupported ones', () => {
+    expect(LOCKFILE_NAMES).toEqual(['bun.lock', 'npm-shrinkwrap.json', 'package-lock.json']);
+    expect(UNSUPPORTED_LOCKFILES).toEqual(['bun.lockb', 'yarn.lock', 'pnpm-lock.yaml']);
   });
 });

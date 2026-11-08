@@ -14,6 +14,7 @@ describe('readLockfile: an npm lockfile', () => {
       root: { dependencies: { 'left-pad': '^1.3.0' } },
       locked: [],
       downloads: [REGISTRY_TARBALL],
+      unpinned: [],
     });
   });
 
@@ -38,6 +39,39 @@ describe('readLockfile: an npm lockfile', () => {
     expect(facts.downloads).toContain('http://registry.internal/c-1.0.0.tgz');
   });
 
+  test('every resolved link that is not a locked origin is a download link, whatever its scheme', () => {
+    const facts = readLockfile(
+      'package-lock.json',
+      npmLock({
+        packages: {
+          'node_modules/f': { version: '1.0.0', resolved: 'ftp://example.com/f-1.0.0.tgz' },
+          'node_modules/n': { version: '1.0.0', resolved: 'registry.example.com:4873/n.tgz' },
+        },
+      }),
+    );
+    expect(facts.downloads).toEqual([
+      REGISTRY_TARBALL,
+      'ftp://example.com/f-1.0.0.tgz',
+      'registry.example.com:4873/n.tgz',
+    ]);
+    expect(facts.locked).toEqual([]);
+  });
+
+  test('an entry whose version is not exact is unpinned; a link or the root is not read for a version', () => {
+    const facts = readLockfile(
+      'package-lock.json',
+      npmLock({
+        packages: {
+          'node_modules/a': { version: '^1.0.0', resolved: REGISTRY_TARBALL },
+          'node_modules/b': { resolved: REGISTRY_TARBALL },
+          'node_modules/c': { version: '2.0.0-beta.1+build.5', resolved: REGISTRY_TARBALL },
+          'node_modules/d': { resolved: '../d', link: true },
+        },
+      }),
+    );
+    expect(facts.unpinned).toEqual(['a@^1.0.0', 'b']);
+  });
+
   test('text that is not JSON has no version', () => {
     expect(readLockfile('package-lock.json', '{ nope').version).toBeUndefined();
     expect(readLockfile('package-lock.json', '[]').version).toBeUndefined();
@@ -52,6 +86,7 @@ describe('readLockfile: a bun.lock', () => {
       root: { dependencies: { 'left-pad': '^1.3.0' } },
       locked: [],
       downloads: [],
+      unpinned: [],
     });
   });
 
@@ -72,6 +107,37 @@ describe('readLockfile: a bun.lock', () => {
       { name: 'f', origin: 'file:../f' },
     ]);
     expect(facts.downloads).toEqual(['https://registry.internal/']);
+  });
+
+  test('an id with a link is a tarball dependency, a locked origin; only the entry registry URL is a download link', () => {
+    const facts = readLockfile(
+      'bun.lock',
+      bunLock({
+        packages: `
+    "x": ["x@https://example.com/x.tgz", {}],
+    "y": ["y@http://example.com/y.tgz", {}],
+    "z": ["z@1.0.0", "http://registry.example.com/", {}],`,
+      }),
+    );
+    expect(facts.locked).toEqual([
+      { name: 'x', origin: 'https://example.com/x.tgz' },
+      { name: 'y', origin: 'http://example.com/y.tgz' },
+    ]);
+    expect(facts.downloads).toEqual(['http://registry.example.com/']);
+  });
+
+  test('an id whose specifier is not an exact version is unpinned; an npm: alias is read by its version', () => {
+    const facts = readLockfile(
+      'bun.lock',
+      bunLock({
+        packages: `
+    "a": ["a@^1.0.0", {}],
+    "b": ["b@npm:c@2.0.0", {}],
+    "d": ["d@npm:@s/e@^2.0.0", {}],
+    "w": ["w@workspace:packages/w"],`,
+      }),
+    );
+    expect(facts.unpinned).toEqual(['a@^1.0.0', 'd@npm:@s/e@^2.0.0']);
   });
 
   test('a lockfileVersion that is not a number, or an empty file, has no version', () => {

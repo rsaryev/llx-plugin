@@ -2,11 +2,14 @@ import { warning, type PluginIssue } from '../format/issues.ts';
 import type { CommandResult } from '../ports/command-runner.ts';
 import {
   INSTALL_TIMEOUT_MS,
+  isSkip,
   type NodeDepsPlan,
   type NodeDepsSkip,
+  type SkipOf,
   type SkipReason,
+  type UnsupportedLockfile,
 } from './node-deps-types.ts';
-import type { PackageJson } from './node-deps-spec.ts';
+import type { ReadPackageJson } from './node-deps-spec.ts';
 
 /**
  * What the user sees when the dependency install fails or cannot run, and that the plugin still
@@ -19,15 +22,8 @@ import type { PackageJson } from './node-deps-spec.ts';
 
 // ---- the reasons an install cannot run ----
 
-interface ReasonRule {
-  /** The clause after "because". */
-  readonly because: (skip: NodeDepsSkip) => string;
-  /** Whether the plugin has a cached copy that could show the note (a plugin loaded in place has none). */
-  readonly cached: boolean;
-}
-
 /** What to do about each unsupported lockfile: "Ship a text `bun.lock` or an npm lockfile instead" / "replace it with an npm lockfile". */
-const LOCKFILE_ADVICE: Readonly<Record<string, string>> = {
+const LOCKFILE_ADVICE: { readonly [N in UnsupportedLockfile]: string } = {
   'bun.lockb':
     "it has a bun.lockb lockfile, Bun's binary format, which Claude Code cannot check; the plugin's author has to ship a text bun.lock or an npm lockfile instead",
   'yarn.lock':
@@ -36,70 +32,64 @@ const LOCKFILE_ADVICE: Readonly<Record<string, string>> = {
     'it has a pnpm-lock.yaml lockfile, which Claude Code does not install from; the plugin’s author has to replace it with an npm lockfile',
 };
 
-const listed = (detail: readonly string[]): string => detail.join('; ');
+const listed = (names: readonly string[]): string => names.join('; ');
 
-const REASONS: { readonly [R in SkipReason]: ReasonRule } = {
-  'loaded-in-place': {
-    because: () =>
-      'it loads in place and Claude Code does not install packages into a source directory',
-    cached: false,
-  },
-  'link-mode': {
-    because: () =>
-      'a link-mode plugin gets no install; the directory it links to has to contain the packages in node_modules already',
-    cached: true,
-  },
-  'no-package-json': { because: () => 'it has no package.json', cached: true },
-  'no-lockfile': {
-    because: () => 'it has no bun.lock, npm-shrinkwrap.json or package-lock.json lockfile',
-    cached: true,
-  },
-  'unsupported-lockfile': {
-    because: (skip) =>
-      skip.detail
-        .map((name) => LOCKFILE_ADVICE[name] ?? `it has a ${name} lockfile`)
-        .join('; and '),
-    cached: true,
-  },
-  'lockfile-format': {
-    because: (skip) =>
-      `its ${skip.detail[0] ?? 'lockfile'} has a lockfileVersion of ${skip.detail[1] ?? 'none'} that Claude Code does not read (npm needs 2 or 3, bun.lock no higher than 2)`,
-    cached: true,
-  },
-  'package-manager-missing': {
-    because: (skip) =>
-      `its lockfile needs ${skip.detail[0] ?? 'a package manager'}, and ${skip.detail[0] ?? 'it'} is not installed on this computer; install it, then update the plugin`,
-    cached: true,
-  },
-  overrides: {
-    because: () => 'its package.json sets npm overrides, which the install does not apply',
-    cached: true,
-  },
-  'patched-dependencies': {
-    because: () =>
-      'its package.json sets Bun patchedDependencies, which the install does not apply',
-    cached: true,
-  },
-  'non-registry-dependency': {
-    because: (skip) =>
-      `it has dependencies that are not registry packages (${listed(skip.detail)}); only registry packages pinned to an exact version are installed`,
-    cached: true,
-  },
-  'insecure-download': {
-    because: (skip) =>
-      `its lockfile has a download link that is not https (${listed(skip.detail)})`,
-    cached: true,
-  },
-  'lockfile-mismatch': {
-    because: (skip) =>
-      `its package.json and its lockfile do not list the same dependencies (${listed(skip.detail)})`,
-    cached: true,
-  },
-  'install-folder': {
-    because: (skip) => `the install folder ${skip.detail[0] ?? ''} lies inside the plugin`,
-    cached: true,
-  },
+/** The clause after "because", per reason, over the fields that reason carries. */
+const CLAUSES: { readonly [R in SkipReason]: (skip: SkipOf<R>) => string } = {
+  'loaded-in-place': () =>
+    'it loads in place and Claude Code does not install packages into a source directory',
+  'link-mode': () =>
+    'a link-mode plugin gets no install; the directory it links to has to contain the packages in node_modules already',
+  'no-package-json': () => 'it has no package.json',
+  'package-json-unreadable': () => 'its package.json is not a readable JSON object',
+  'no-lockfile': () => 'it has no bun.lock, npm-shrinkwrap.json or package-lock.json lockfile',
+  'unsupported-lockfile': (skip) =>
+    skip.lockfiles.map((name) => LOCKFILE_ADVICE[name]).join('; and '),
+  'lockfile-format': (skip) =>
+    `its ${skip.lockfile} has a lockfileVersion of ${skip.version ?? 'none'} that Claude Code does not read (npm needs 2 or 3, bun.lock no higher than 2)`,
+  'package-manager-missing': (skip) =>
+    `its lockfile needs ${skip.manager}, and ${skip.manager} is not installed on this computer; install it, then update the plugin`,
+  overrides: () => 'its package.json sets npm overrides, which the install does not apply',
+  'patched-dependencies': () =>
+    'its package.json sets Bun patchedDependencies, which the install does not apply',
+  'non-registry-dependency': (skip) =>
+    `it has dependencies that are not registry packages (${listed(skip.dependencies)}); only registry packages pinned to an exact version are installed`,
+  'unpinned-dependency': (skip) =>
+    `it has packages that are not pinned to an exact version in its lockfile (${listed(skip.packages)}); only registry packages pinned to an exact version are installed`,
+  'insecure-download': (skip) =>
+    `its lockfile has a download link that is not https (${listed(skip.links)})`,
+  'lockfile-mismatch': (skip) =>
+    `its package.json and its lockfile do not list the same dependencies (${listed(skip.differences)})`,
+  'install-folder': (skip) => `the install folder ${skip.installDir} lies inside the plugin`,
 };
+
+/** Whether the plugin has a cached copy that could show the note (a plugin loaded in place has none). */
+const CACHED: { readonly [R in SkipReason]: boolean } = {
+  'loaded-in-place': false,
+  'link-mode': true,
+  'no-package-json': true,
+  'package-json-unreadable': true,
+  'no-lockfile': true,
+  'unsupported-lockfile': true,
+  'lockfile-format': true,
+  'package-manager-missing': true,
+  overrides: true,
+  'patched-dependencies': true,
+  'non-registry-dependency': true,
+  'unpinned-dependency': true,
+  'insecure-download': true,
+  'lockfile-mismatch': true,
+  'install-folder': true,
+};
+
+/**
+ * Why an install cannot run, as the clause that follows "because" in the note (`it has no
+ * package.json`): for a host that words its own message, such as `Node.js packages were not
+ * installed: <clause>`.
+ */
+export function skipReasonText<R extends SkipReason>(skip: SkipOf<R>): string {
+  return CLAUSES[skip.reason](skip);
+}
 
 // ---- the note ----
 
@@ -122,7 +112,7 @@ export interface CachedCopy {
   readonly enabled: boolean;
   /** Any lockfile is at the plugin root, supported or not. */
   readonly hasLockfile: boolean;
-  readonly packageJson: PackageJson | undefined;
+  readonly packageJson: ReadPackageJson | undefined;
   readonly hasNodeModules: boolean;
 }
 
@@ -130,14 +120,13 @@ const nonEmpty = (map: Readonly<Record<string, string>> | undefined): boolean =>
   map !== undefined && Object.keys(map).length > 0;
 
 /** "a `package.json` that lists runtime dependencies": `dependencies` and `optionalDependencies`, not dev ones (judgment). */
-const listsRuntimeDependencies = (packageJson: PackageJson | undefined): boolean =>
+const listsRuntimeDependencies = (packageJson: ReadPackageJson | undefined): boolean =>
   packageJson !== undefined &&
+  typeof packageJson !== 'string' &&
   (nonEmpty(packageJson.dependencies) || nonEmpty(packageJson.optionalDependencies));
 
 const FALLBACK =
   'Install them from a hook into ${CLAUDE_PLUGIN_DATA}: packages that need their lifecycle scripts to build, Python dependencies, plugins locked with Yarn or pnpm and dependencies that are not registry packages are all out of reach of the automatic install.';
-
-const isSkip = (plan: NodeDepsPlan): plan is NodeDepsSkip => 'detail' in plan;
 
 const note = (id: string, fields: Omit<NodeDepsNote, 'issues'>): NodeDepsNote => ({
   ...fields,
@@ -156,7 +145,7 @@ function unfinished(id: string): NodeDepsNote {
 function cannotRun(id: string, skip: NodeDepsSkip): NodeDepsNote {
   return note(id, {
     kind: 'not-installed-because',
-    text: `The packages it lists were not installed, because ${REASONS[skip.reason].because(skip)}.`,
+    text: `The packages it lists were not installed, because ${skipReasonText(skip)}.`,
     advice: FALLBACK,
   });
 }
@@ -179,7 +168,7 @@ export function nodeDepsNote(
     !copy.hasNodeModules;
   if (!shown) return undefined;
   if (!isSkip(plan)) return unfinished(id);
-  return REASONS[plan.reason].cached ? cannotRun(id, plan) : undefined;
+  return CACHED[plan.reason] ? cannotRun(id, plan) : undefined;
 }
 
 /** Whether `claude plugin update` retries the install for this note. */

@@ -4,7 +4,6 @@ import type { CommandRun } from '../ports/command-runner.ts';
 import { ARGUMENTS, CHECKS, isReady, prepare, type Ready } from './node-deps-checks.ts';
 import {
   INSTALL_TIMEOUT_MS,
-  skip,
   type NodeDepsInput,
   type NodeDepsInstall,
   type NodeDepsResult,
@@ -37,10 +36,18 @@ function installOf(ready: Ready, input: NodeDepsInput): NodeDepsInstall {
       moveBack: {
         from: join(installDir, 'node_modules'),
         to: join(pluginRoot, 'node_modules'),
+        replaceExisting: true,
       },
     },
   };
 }
+
+/**
+ * Paths of the host, as `PathJoin` makes them: a Windows path (`C:\p\.deps`) and a path in another
+ * case name the same folder. The guard errs toward refusing (judgment): a refusal costs a folder
+ * with another name, a miss lets the package manager read `.npmrc`, `.env` and `bunfig.toml`.
+ */
+const comparable = (path: string): string => path.replaceAll('\\', '/').toLowerCase();
 
 /**
  * The install folder must be a folder of its own: "the package manager runs in a folder of its own
@@ -48,7 +55,7 @@ function installOf(ready: Ready, input: NodeDepsInput): NodeDepsInstall {
  * `.npmrc`, `.env`, or `bunfig.toml`". A folder that is the plugin or inside it would read them.
  */
 const folderIssues = (input: NodeDepsInput): PluginIssue[] =>
-  isWithin(input.pluginRoot, input.installDir)
+  isWithin(comparable(input.pluginRoot), comparable(input.installDir))
     ? [
         error(
           'installDir',
@@ -65,7 +72,7 @@ export function planNodeDepsInstall(input: NodeDepsInput): NodeDepsResult {
   if (refused !== undefined) return { plan: refused, issues: [] };
   const issues = folderIssues(input);
   return issues.length > 0
-    ? { plan: skip('install-folder', [input.installDir]), issues }
+    ? { plan: { action: 'skip', reason: 'install-folder', installDir: input.installDir }, issues }
     : { plan: installOf(ready, input), issues: [] };
 }
 

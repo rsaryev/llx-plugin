@@ -1,7 +1,7 @@
 import type { PluginIssue } from '../format/issues.ts';
 import type { CommandSpec } from '../ports/command-runner.ts';
 import type { LockfileFacts, LockfileName } from './node-deps-lockfile.ts';
-import type { PackageJson } from './node-deps-spec.ts';
+import type { ReadPackageJson } from './node-deps-spec.ts';
 import type { InstallMode } from './install-mode.ts';
 import type { PathJoin } from './store-layout.ts';
 
@@ -26,8 +26,9 @@ export const DEPS_ORIGIN_OF_MODE: { readonly [M in InstallMode]: DepsOrigin } = 
   'link-in-cache': 'linked',
 };
 
-/** Lockfiles Claude Code recognises and skips the install for. */
-export type UnsupportedLockfile = 'bun.lockb' | 'yarn.lock' | 'pnpm-lock.yaml';
+/** The lockfiles Claude Code recognises and skips the install for. */
+export const UNSUPPORTED_LOCKFILES = ['bun.lockb', 'yarn.lock', 'pnpm-lock.yaml'] as const;
+export type UnsupportedLockfile = (typeof UNSUPPORTED_LOCKFILES)[number];
 
 /** "Claude Code stops an install that runs longer and treats it as failed." */
 export const INSTALL_TIMEOUT_MS = 60_000;
@@ -39,8 +40,8 @@ export interface NodeDepsInput {
   /** A folder of its own for the package manager, outside the plugin. */
   readonly installDir: string;
   readonly join: PathJoin;
-  /** The root `package.json`; absent when the plugin has none. */
-  readonly packageJson: PackageJson | undefined;
+  /** The root `package.json`: `undefined` when the plugin has none, `'unreadable'` when it is there but is not a JSON object. */
+  readonly packageJson: ReadPackageJson | undefined;
   /** The supported lockfiles found at the plugin root, read. */
   readonly lockfiles: { readonly [N in LockfileName]?: LockfileFacts };
   /** The lockfiles Claude Code does not install from, found at the plugin root. */
@@ -51,29 +52,44 @@ export interface NodeDepsInput {
   readonly defaultRegistry?: string;
 }
 
-export type SkipReason =
-  | 'loaded-in-place'
-  | 'link-mode'
-  | 'no-package-json'
-  | 'no-lockfile'
-  | 'unsupported-lockfile'
-  | 'lockfile-format'
-  | 'package-manager-missing'
-  | 'overrides'
-  | 'patched-dependencies'
-  | 'non-registry-dependency'
-  | 'insecure-download'
-  | 'lockfile-mismatch'
-  | 'install-folder';
-
-export interface NodeDepsSkip {
-  readonly action: 'skip';
-  readonly reason: SkipReason;
-  /** The names the reason is about: lockfiles, packages, links, a package manager. */
-  readonly detail: readonly string[];
+/** What each reason carries: the names it is about (lockfiles, packages, links, a package manager). */
+interface SkipFields {
   /** A plugin loaded in place: its dependencies resolve against this source directory. */
-  readonly resolvesFrom?: string;
+  'loaded-in-place': { readonly resolvesFrom: string };
+  'link-mode': unknown;
+  'no-package-json': unknown;
+  'package-json-unreadable': unknown;
+  'no-lockfile': unknown;
+  'unsupported-lockfile': { readonly lockfiles: readonly UnsupportedLockfile[] };
+  /** `version` is `undefined` when the lockfile has no readable `lockfileVersion`. */
+  'lockfile-format': { readonly lockfile: LockfileName; readonly version: number | undefined };
+  'package-manager-missing': { readonly manager: PackageManager };
+  overrides: unknown;
+  'patched-dependencies': unknown;
+  /** Each as `name: reason`. */
+  'non-registry-dependency': { readonly dependencies: readonly string[] };
+  /** Each as `name@version`, or the name alone when the lockfile gives no version. */
+  'unpinned-dependency': { readonly packages: readonly string[] };
+  'insecure-download': { readonly links: readonly string[] };
+  /** Each as `section: names`. */
+  'lockfile-mismatch': { readonly differences: readonly string[] };
+  'install-folder': { readonly installDir: string };
 }
+
+export type SkipReason = keyof SkipFields;
+
+/** The skip of one reason, with the fields that reason carries. */
+export type SkipOf<R extends SkipReason> = {
+  readonly action: 'skip';
+  readonly reason: R;
+} & SkipFields[R];
+
+export type NodeDepsSkip = { readonly [R in SkipReason]: SkipOf<R> }[SkipReason];
+
+/** The reasons that carry nothing. */
+export type BareReason = {
+  readonly [R in SkipReason]: SkipFields[R] extends object ? never : R;
+}[SkipReason];
 
 export interface StagedFile {
   readonly from: string;
@@ -99,8 +115,8 @@ export interface NodeDepsInstall {
     readonly directory: string;
     /** The only files the install folder holds: the dependency list and its lockfile. */
     readonly copy: readonly StagedFile[];
-    /** On success, `node_modules` moves from the install folder into the plugin. */
-    readonly moveBack: StagedFile;
+    /** On success, `node_modules` moves from the install folder into the plugin and replaces one already there (judgment). */
+    readonly moveBack: StagedFile & { readonly replaceExisting: true };
   };
 }
 
@@ -111,8 +127,9 @@ export interface NodeDepsResult {
   readonly issues: readonly PluginIssue[];
 }
 
-export const skip = (
-  reason: SkipReason,
-  detail: readonly string[] = [],
-  extra: Partial<NodeDepsSkip> = {},
-): NodeDepsSkip => ({ action: 'skip', reason, detail, ...extra });
+/** A skip that carries nothing but its reason. */
+export const skipFor = (reason: BareReason): NodeDepsSkip => ({ action: 'skip', reason });
+
+const IS_SKIP: { readonly [A in NodeDepsPlan['action']]: boolean } = { skip: true, install: false };
+
+export const isSkip = (plan: NodeDepsPlan): plan is NodeDepsSkip => IS_SKIP[plan.action];

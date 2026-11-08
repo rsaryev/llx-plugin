@@ -3,7 +3,7 @@
  * package manager (registry packages only, https downloads, no overrides or patches, frozen
  * resolution, no lifecycle scripts, a separate install folder, the 60-second timeout).
  */
-import { expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { nodeDepsRun, planNodeDepsInstall } from '../../src/marketplace/node-deps.ts';
 import { readPackageJson } from '../../src/marketplace/node-deps-spec.ts';
 import { bunLock, npmLock } from '../support/node-deps-fixtures.ts';
@@ -14,75 +14,6 @@ const changed = (dependencies: Record<string, string>) =>
   skipped({ packageJson: readPackageJson({ dependencies }) });
 
 const LIMITS = 'install.loading.Limits on the dependency install';
-
-spec(`${LIMITS}.Registry packages only`, () => {
-  test('a git, GitHub, folder, workspace or linked dependency gets no install, and each is named', () => {
-    const plan = skipped({
-      packageJson: readPackageJson({
-        dependencies: { a: 'github:acme/a', 'left-pad': '^1.3.0' },
-        devDependencies: { b: 'file:../b' },
-      }),
-    });
-    expect(plan.reason).toBe('non-registry-dependency');
-    expect(plan.detail).toEqual([
-      'a: it is a git or GitHub dependency',
-      'b: it is a folder dependency',
-    ]);
-  });
-
-  test('a lockfile that pins a package to a link or a git origin gets no install either', () => {
-    const plan = skipped({
-      lockfiles: {
-        'package-lock.json': npmLock({
-          packages: {
-            'node_modules/x': {
-              version: '1.0.0',
-              resolved: 'git+ssh://git@github.com/a/x.git#abc',
-            },
-          },
-        }),
-      },
-    });
-    expect(plan).toMatchObject({ reason: 'non-registry-dependency' });
-    expect(plan.detail[0]).toStartWith('x: ');
-  });
-
-  test('a workspace entry of bun.lock gets no install', () => {
-    const plan = skipped({
-      lockfiles: { 'bun.lock': bunLock({ packages: '\n    "w": ["w@workspace:packages/w"],' }) },
-    });
-    expect(plan.reason).toBe('non-registry-dependency');
-  });
-});
-
-spec(`${LIMITS}.https downloads`, () => {
-  const http = {
-    'package-lock.json': npmLock({
-      packages: {
-        'node_modules/y': {
-          version: '1.0.0',
-          resolved: 'http://registry.example.com/y/-/y-1.0.0.tgz',
-        },
-      },
-    }),
-  };
-
-  test('a download link in the lockfile that is not https gets no install', () => {
-    expect(skipped({ lockfiles: http })).toMatchObject({
-      reason: 'insecure-download',
-      detail: ['the download link http://registry.example.com/y/-/y-1.0.0.tgz does not use https'],
-    });
-  });
-
-  test("an http link at the installing user's own default npm registry is allowed", () => {
-    expect(
-      installed({ lockfiles: http, defaultRegistry: 'http://registry.example.com' }),
-    ).toBeDefined();
-    expect(skipped({ lockfiles: http, defaultRegistry: 'http://other.example.com' }).reason).toBe(
-      'insecure-download',
-    );
-  });
-});
 
 spec(`${LIMITS}.No overrides or patches`, () => {
   test('npm overrides give no install from an npm lockfile', () => {
@@ -126,7 +57,7 @@ spec(`${LIMITS}.No overrides or patches`, () => {
       installed({
         packageJson: readPackageJson({ dependencies: { 'left-pad': '^1.3.0' }, overrides: {} }),
       }),
-    ).toBeDefined();
+    ).toMatchObject({ action: 'install', packageManager: 'npm' });
   });
 });
 
@@ -146,12 +77,12 @@ spec(`${LIMITS}.Frozen resolution`, () => {
   test('it is skipped when package.json and the lockfile do not list the same dependencies', () => {
     expect(changed({ 'left-pad': '^1.4.0' })).toMatchObject({
       reason: 'lockfile-mismatch',
-      detail: ['dependencies: left-pad'],
+      differences: ['dependencies: left-pad'],
     });
-    expect(changed({ 'left-pad': '^1.3.0', extra: '1.0.0' }).detail).toEqual([
-      'dependencies: extra',
-    ]);
-    expect(changed({}).detail).toEqual(['dependencies: left-pad']);
+    expect(changed({ 'left-pad': '^1.3.0', extra: '1.0.0' })).toMatchObject({
+      differences: ['dependencies: extra'],
+    });
+    expect(changed({})).toMatchObject({ differences: ['dependencies: left-pad'] });
   });
 
   test('a dev dependency added to package.json alone is a mismatch too; one both list is not', () => {
@@ -159,9 +90,9 @@ spec(`${LIMITS}.Frozen resolution`, () => {
       dependencies: { 'left-pad': '^1.3.0' },
       devDependencies: { typescript: '5.0.0' },
     };
-    expect(skipped({ packageJson: readPackageJson(dev) }).detail).toEqual([
-      'devDependencies: typescript',
-    ]);
+    expect(skipped({ packageJson: readPackageJson(dev) })).toMatchObject({
+      differences: ['devDependencies: typescript'],
+    });
     expect(
       installed({
         packageJson: readPackageJson(dev),
@@ -169,7 +100,7 @@ spec(`${LIMITS}.Frozen resolution`, () => {
           'package-lock.json': npmLock({ root: { devDependencies: { typescript: '5.0.0' } } }),
         },
       }),
-    ).toBeDefined();
+    ).toMatchObject({ action: 'install' });
   });
 
   test('bun.lock is compared the same way', () => {
@@ -212,7 +143,7 @@ spec(`${LIMITS}.A separate install folder`, () => {
   });
 
   test('when the install succeeds the resulting node_modules is moved into the plugin', () => {
-    expect(installed().stage.moveBack).toEqual({
+    expect(installed().stage.moveBack).toMatchObject({
       from: '/tmp/kit-deps-1/node_modules',
       to: `${ROOT}/node_modules`,
     });
@@ -225,6 +156,17 @@ spec(`${LIMITS}.A separate install folder`, () => {
       expect(result.issues).toHaveLength(1);
       expect(result.issues[0]).toMatchObject({ severity: 'error', path: 'installDir' });
     }
+  });
+
+  test('a Windows folder is told apart by its backslashes: C:\\p\\.deps lies inside C:\\p, C:\\pp does not', () => {
+    const windows = { pluginRoot: 'C:\\p', join: (base: string, rel: string) => `${base}\\${rel}` };
+    for (const installDir of ['C:\\p', 'C:\\p\\.deps', 'C:\\p\\']) {
+      const result = planNodeDepsInstall(input({ ...windows, installDir }));
+      expect(result.plan).toMatchObject({ reason: 'install-folder', installDir });
+      expect(result.issues[0]).toMatchObject({ severity: 'error', path: 'installDir' });
+    }
+    const outside = planNodeDepsInstall(input({ ...windows, installDir: 'C:\\pp\\deps' }));
+    expect(outside.plan.action).toBe('install');
   });
 });
 
@@ -246,5 +188,20 @@ spec(`${LIMITS}.60-second timeout`, () => {
       mergeStderr: true,
       signal,
     });
+  });
+});
+
+describe('judgments: the dependency install', () => {
+  test('the node_modules moved back replaces one the plugin already has', () => {
+    expect(installed().stage.moveBack).toEqual({
+      from: '/tmp/kit-deps-1/node_modules',
+      to: `${ROOT}/node_modules`,
+      replaceExisting: true,
+    });
+  });
+
+  test('a folder differing only in case from the plugin is refused too: a missed match costs more than a refusal', () => {
+    const result = planNodeDepsInstall(input({ installDir: `${ROOT.toUpperCase()}/.deps` }));
+    expect(result.plan).toMatchObject({ reason: 'install-folder' });
   });
 });

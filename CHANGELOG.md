@@ -34,6 +34,17 @@
 
 ### Fixed
 
+- Node.js package dependencies (review fixes): a lockfile download link that does not use `https`
+  (`ftp:`, another scheme, none) is refused, not only `http`; a `bun.lock` id with a link is a
+  tarball dependency and so no registry package; a registry package that is not pinned to an exact
+  version in the lockfile gets no install (`unpinned-dependency`); the install-folder guard compares
+  Windows paths and ignores case; a `package.json` that is not a JSON object is its own reason
+  (`package-json-unreadable`). A skip is now a union over its reason with typed fields instead of a
+  `detail` list, `skipReasonText` gives its clause, `LOCKFILE_NAMES` and `UNSUPPORTED_LOCKFILES` are
+  exported, and `stage.moveBack.replaceExisting` says an existing `node_modules` is replaced. Tests
+  assert the documented link-mode and npm-source sentences, every reason's whole clause, and the
+  plan-level cases for workspace, linked and git dependencies.
+
 - Install and cache lifecycle (review fixes): an install of a source kind the kit cannot fetch is
   refused with `This plugin uses a source type your Claude Code version does not support...`; a
   link-mode install without the printed directory or its entries, or with an entry name that is

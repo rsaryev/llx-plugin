@@ -1,4 +1,9 @@
-import type { LockfileFacts, LockfileName, RootDependencies } from './node-deps-lockfile.ts';
+import {
+  LOCKFILE_NAMES,
+  type LockfileFacts,
+  type LockfileName,
+  type RootDependencies,
+} from './node-deps-lockfile.ts';
 import {
   DEPENDENCY_SECTIONS,
   dependencyRefusal,
@@ -7,7 +12,7 @@ import {
   type PackageJson,
 } from './node-deps-spec.ts';
 import {
-  skip,
+  skipFor,
   type DepsOrigin,
   type NodeDepsInput,
   type NodeDepsSkip,
@@ -19,11 +24,7 @@ import {
 // ---- lockfiles: which one counts, and what each means ----
 
 /** "If a plugin contains more than one of these lockfiles, Claude Code uses the first match." */
-const LOCKFILE_ORDER: readonly LockfileName[] = [
-  'bun.lock',
-  'npm-shrinkwrap.json',
-  'package-lock.json',
-];
+const LOCKFILE_ORDER: readonly LockfileName[] = LOCKFILE_NAMES;
 
 const MANAGER_OF: { readonly [N in LockfileName]: PackageManager } = {
   'bun.lock': 'bun',
@@ -62,20 +63,25 @@ const hasEntries = (value: unknown): boolean =>
 const MANAGER_REFUSALS: {
   readonly [P in PackageManager]: (packageJson: PackageJson) => NodeDepsSkip | undefined;
 } = {
-  npm: (packageJson) => (hasEntries(packageJson.overrides) ? skip('overrides') : undefined),
+  npm: (packageJson) => (hasEntries(packageJson.overrides) ? skipFor('overrides') : undefined),
   bun: (packageJson) =>
-    hasEntries(packageJson.patchedDependencies) ? skip('patched-dependencies') : undefined,
+    hasEntries(packageJson.patchedDependencies) ? skipFor('patched-dependencies') : undefined,
 };
 
 const unreadableFormat: Check = (ready) =>
   ready.facts.version !== undefined && READABLE_VERSION[ready.lockfile](ready.facts.version)
     ? undefined
-    : skip('lockfile-format', [ready.lockfile, String(ready.facts.version)]);
+    : {
+        action: 'skip',
+        reason: 'lockfile-format',
+        lockfile: ready.lockfile,
+        version: ready.facts.version,
+      };
 
 const managerMissing: Check = (ready, input) =>
   input.available.includes(ready.manager)
     ? undefined
-    : skip('package-manager-missing', [ready.manager]);
+    : { action: 'skip', reason: 'package-manager-missing', manager: ready.manager };
 
 const setsOverrides: Check = (ready) => MANAGER_REFUSALS[ready.manager](ready.packageJson);
 
@@ -87,15 +93,21 @@ const notRegistry: Check = (ready) => {
       return reason === undefined ? [] : [`${entry.name}: ${reason}`];
     }),
   ];
-  return named.length === 0 ? undefined : skip('non-registry-dependency', [...new Set(named)]);
+  return named.length === 0
+    ? undefined
+    : { action: 'skip', reason: 'non-registry-dependency', dependencies: [...new Set(named)] };
 };
 
+const notPinned: Check = (ready) =>
+  ready.facts.unpinned.length === 0
+    ? undefined
+    : { action: 'skip', reason: 'unpinned-dependency', packages: ready.facts.unpinned };
+
 const insecureDownload: Check = (ready, input) => {
-  const refused = ready.facts.downloads.flatMap((link) => {
-    const reason = downloadLinkRefusal(link, input.defaultRegistry);
-    return reason === undefined ? [] : [reason];
-  });
-  return refused.length === 0 ? undefined : skip('insecure-download', refused);
+  const links = ready.facts.downloads.filter(
+    (link) => downloadLinkRefusal(link, input.defaultRegistry) !== undefined,
+  );
+  return links.length === 0 ? undefined : { action: 'skip', reason: 'insecure-download', links };
 };
 
 /** The dependency names that `package.json` and the lockfile do not list the same way. */
@@ -108,11 +120,13 @@ function differing(
 }
 
 const outOfDate: Check = (ready) => {
-  const detail = DEPENDENCY_SECTIONS.flatMap((section) => {
+  const differences = DEPENDENCY_SECTIONS.flatMap((section) => {
     const names = differing(ready.packageJson[section], ready.facts.root[section]);
     return names.length === 0 ? [] : [`${section}: ${names.join(', ')}`];
   });
-  return detail.length === 0 ? undefined : skip('lockfile-mismatch', detail);
+  return differences.length === 0
+    ? undefined
+    : { action: 'skip', reason: 'lockfile-mismatch', differences };
 };
 
 export const CHECKS: readonly Check[] = [
@@ -120,6 +134,7 @@ export const CHECKS: readonly Check[] = [
   managerMissing,
   setsOverrides,
   notRegistry,
+  notPinned,
   insecureDownload,
   outOfDate,
 ];
@@ -131,10 +146,18 @@ const BY_ORIGIN: {
 } = {
   copied: () => undefined,
   // "Claude Code doesn't install the dependencies into the source directory"; they resolve there.
-  'in-place': (input) => skip('loaded-in-place', [], { resolvesFrom: input.pluginRoot }),
-  inline: (input) => skip('loaded-in-place', [], { resolvesFrom: input.pluginRoot }),
+  'in-place': (input) => ({
+    action: 'skip',
+    reason: 'loaded-in-place',
+    resolvesFrom: input.pluginRoot,
+  }),
+  inline: (input) => ({
+    action: 'skip',
+    reason: 'loaded-in-place',
+    resolvesFrom: input.pluginRoot,
+  }),
   // "Claude Code skips the Node.js package dependency install for a link-mode plugin"
-  linked: () => skip('link-mode'),
+  linked: () => skipFor('link-mode'),
 };
 
 function selectLockfile(input: NodeDepsInput): LockfileName | undefined {
@@ -146,13 +169,14 @@ export function prepare(input: NodeDepsInput): Ready | NodeDepsSkip {
   const early = BY_ORIGIN[input.origin](input);
   if (early !== undefined) return early;
   const { packageJson } = input;
-  if (packageJson === undefined) return skip('no-package-json');
+  if (packageJson === undefined) return skipFor('no-package-json');
+  if (typeof packageJson === 'string') return skipFor('package-json-unreadable');
   const lockfile = selectLockfile(input);
   const facts = lockfile === undefined ? undefined : input.lockfiles[lockfile];
   if (lockfile === undefined || facts === undefined) {
     return input.otherLockfiles.length > 0
-      ? skip('unsupported-lockfile', input.otherLockfiles)
-      : skip('no-lockfile');
+      ? { action: 'skip', reason: 'unsupported-lockfile', lockfiles: input.otherLockfiles }
+      : skipFor('no-lockfile');
   }
   return { packageJson, lockfile, facts, manager: MANAGER_OF[lockfile] };
 }

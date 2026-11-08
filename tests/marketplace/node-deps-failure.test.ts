@@ -9,14 +9,16 @@ import { blocksLoading } from '../../src/format/issues.ts';
 import {
   installOutcome,
   nodeDepsNote,
+  skipReasonText,
   updateRetriesInstall,
   type CachedCopy,
 } from '../../src/marketplace/node-deps-failure.ts';
 import type { NodeDepsPlan } from '../../src/marketplace/node-deps-types.ts';
 import { readPackageJson } from '../../src/marketplace/node-deps-spec.ts';
 import type { CommandResult } from '../../src/ports/command-runner.ts';
-import { bunLock, npmLock } from '../support/node-deps-fixtures.ts';
-import { PACKAGE, planned, type Override } from '../support/node-deps-plan.ts';
+import { bunLock } from '../support/node-deps-fixtures.ts';
+import { CLAUSES } from '../support/node-deps-clauses.ts';
+import { PACKAGE, planned, skipped, type Override } from '../support/node-deps-plan.ts';
 import { spec } from '../support/spec.ts';
 
 const FAILS = 'install.loading.When the dependency install fails or is skipped';
@@ -92,30 +94,17 @@ spec(NOTES, () => {
     expect(note?.text).toContain('install it, then update the plugin');
   });
 
-  test('every reason that cannot run names itself in words, none is empty', () => {
-    const cases: Override[] = [
-      { lockfiles: { 'package-lock.json': npmLock({ version: 1 }) } },
-      { packageJson: readPackageJson({ dependencies: { a: 'file:../a', 'left-pad': '^1.3.0' } }) },
-      {
-        packageJson: readPackageJson({
-          dependencies: { 'left-pad': '^1.3.0' },
-          overrides: { x: '1' },
-        }),
-      },
-      { packageJson: readPackageJson({ dependencies: { 'left-pad': '^1.0.0' } }) },
-      { origin: 'linked' },
-      {
-        lockfiles: {
-          'package-lock.json': npmLock({
-            packages: { 'node_modules/y': { version: '1', resolved: 'http://example.com/y.tgz' } },
-          }),
-        },
-      },
-    ];
-    for (const over of cases) {
-      const note = nodeDepsNote(copy(), plan(over), ID);
-      expect(note?.kind).toBe('not-installed-because');
-      expect(note?.text.length).toBeGreaterThan(60);
+  test('every reason names itself in words: its clause is the note after "because", and it is shown for a cached copy only', () => {
+    for (const [reason, found] of Object.entries(CLAUSES)) {
+      const skip = skipped(found.over);
+      expect(skip).toMatchObject({ reason });
+      expect(skipReasonText(skip)).toBe(found.clause);
+      const note = nodeDepsNote(copy(), skip, ID);
+      expect(note?.text).toBe(
+        found.cached
+          ? `The packages it lists were not installed, because ${found.clause}.`
+          : undefined,
+      );
     }
   });
 
@@ -168,9 +157,11 @@ spec(FAILS, () => {
     expect(nodeDepsNote(copy(), plan(), ID)?.advice).toBeUndefined();
   });
 
-  test('a link-mode plugin without node_modules is told to print a directory that holds the packages', () => {
+  test('a link-mode plugin without node_modules is told the directory it links to has to hold the packages', () => {
     const note = nodeDepsNote(copy(), plan({ origin: 'linked' }), ID);
-    expect(note?.text).toContain('node_modules');
+    expect(note?.text).toBe(
+      'The packages it lists were not installed, because a link-mode plugin gets no install; the directory it links to has to contain the packages in node_modules already.',
+    );
   });
 
   test('an install that exits non-zero failed, and its output gives the cause', () => {

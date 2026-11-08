@@ -9,6 +9,8 @@ import {
   classifySpecifier,
   dependencyRefusal,
   downloadLinkRefusal,
+  isRegistryId,
+  isRegistryOrigin,
   readPackageJson,
   specifierRefusals,
 } from '../../src/marketplace/node-deps-spec.ts';
@@ -51,12 +53,6 @@ spec(`${LIMITS}.Registry packages only`, () => {
     ).toEqual([]);
   });
 
-  test('a tarball link is no registry package either: the registry is the only source', () => {
-    expect(
-      refusals({ a: 'https://example.com/a-1.0.0.tgz', b: 'http://example.com/b.tgz' }),
-    ).toEqual(['a', 'b']);
-  });
-
   test('every dependency section is checked, and each refusal names the package and the reason', () => {
     const refused = specifierRefusals({
       dependencies: { a: '1.0.0' },
@@ -88,7 +84,7 @@ spec(`${LIMITS}.Registry packages only`, () => {
     expect(readPackageJson({ dependencies: ['a'], devDependencies: { a: 1, b: '2.0.0' } })).toEqual(
       { devDependencies: { b: '2.0.0' } },
     );
-    expect(readPackageJson('nonsense')).toEqual({});
+    expect(readPackageJson({ name: 'x' })).toEqual({});
   });
 });
 
@@ -104,6 +100,14 @@ spec(`${LIMITS}.https downloads`, () => {
     );
   });
 
+  test('a link with another scheme, or with none, does not use https either', () => {
+    for (const link of ['ftp://registry.npmjs.org/a.tgz', 'registry.npmjs.org:443/a.tgz']) {
+      expect(downloadLinkRefusal(link, undefined)).toBe(
+        `the download link ${link} does not use https`,
+      );
+    }
+  });
+
   test("an http link is allowed only when it points at the installing user's own default npm registry", () => {
     expect(downloadLinkRefusal(`${own}/a/-/a-1.0.0.tgz`, own)).toBe(undefined);
     expect(downloadLinkRefusal(`${own}/a/-/a-1.0.0.tgz`, `${own}/`)).toBe(undefined);
@@ -113,6 +117,28 @@ spec(`${LIMITS}.https downloads`, () => {
 });
 
 describe('judgments: the package.json specifier rules', () => {
+  test('a tarball link is no registry package either: the registry is the only source', () => {
+    expect(
+      refusals({ a: 'https://example.com/a-1.0.0.tgz', b: 'http://example.com/b.tgz' }),
+    ).toEqual(['a', 'b']);
+  });
+
+  test('a lockfile resolved link is a registry download when it is a link, a bun id with a link is a tarball dependency', () => {
+    expect(isRegistryOrigin('https://registry.npmjs.org/a/-/a-1.0.0.tgz')).toBe(true);
+    expect(isRegistryOrigin('http://registry.internal/a-1.0.0.tgz')).toBe(true);
+    expect(isRegistryOrigin('git+ssh://git@github.com/a/a.git#abc')).toBe(false);
+    expect(isRegistryId('1.0.0')).toBe(true);
+    expect(isRegistryId('npm:b@1.0.0')).toBe(true);
+    expect(isRegistryId('https://example.com/a.tgz')).toBe(false);
+    expect(isRegistryId('workspace:packages/a')).toBe(false);
+  });
+
+  test('a package.json that is not a JSON object is unreadable, not an empty list', () => {
+    expect(readPackageJson([])).toBe('unreadable');
+    expect(readPackageJson(null)).toBe('unreadable');
+    expect(readPackageJson({})).toEqual({});
+  });
+
   test('an npm: alias is a registry package for a dependency (the docs refuse it only as an npm source value)', () => {
     expect(dependencyRefusal('npm:other@^1')).toBeUndefined();
     expect(
