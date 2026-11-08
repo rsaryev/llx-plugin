@@ -59,6 +59,16 @@
   describes (events, matcher groups, the five handler types and their fields), into the official
   `HooksSettings`; and `matchesMatcher`, the matcher grammar of hooks.md (match-all, exact list,
   unanchored regular expression, the narrower set of `FileChanged` and `StopFailure`).
+- Settings layers (`settings`): `readSettingsLayer` turns the JSON of one source (managed, parent,
+  `--settings`, local, project, `--add-dir`, user) into a layer: marketplace key aliases read as
+  their canonical key, a key its Scope line does not allow dropped with a warning, an unreadable
+  value repaired as managed-settings.md says (empty allowlists, `true` locks, `strictPluginOnlyCustomization`
+  as `true`, invalid entries stripped). `createPolicyView` answers `get`, `winner` and
+  `eachFromHighest` over the ordered layers with one merge rule per key (`KEY_SPECS`), and
+  `loadSettingsLayers` reads layers from a host's `SettingsSources`. `mergeHooks` combines the
+  `hooks` of every file without letting a file remove a managed hook, and runs a handler defined in
+  two files once. `POLICY_KEYS`, `PLUGIN_ONLY_SURFACES`, `SKILL_OVERRIDE_STATES`, `WORKFLOW_SIZES`,
+  `MARKETPLACE_SOURCE_KINDS` and `MarketplaceSource` are asserted equal to the SDK's types.
 
 ### Fixed
 

@@ -252,6 +252,40 @@ out of the rules before it in the same source and list; `evaluateRules` applies 
 `Glob(...)`, `Grep(...)` and `NotebookEdit(...)` rules with a path never match; write `Edit(...)` or
 `Read(...)`. A host asks `readsNetworkPath` before it trusts any allow rule, hook or classifier.
 
+## Settings (in progress: layers, merge, the `hooks` key)
+
+The policy keys of settings files, pure over data (`src/settings`). A host hands over the JSON of
+each source it has; the kit never knows a file path, an MDM profile or a server-managed fetch, and
+choosing among managed sources (`managedSourcesBehavior`, `policyHelper`) stays the host's.
+
+```ts
+import { createPolicyView, loadSettingsLayers, mergeHooks, readSettingsLayer } from '@rsaryev/claude-plugin-kit';
+
+const { layer, issues } = readSettingsLayer('managed', JSON.parse(text));
+const view = createPolicyView([layer, ...other]);
+view.get('allowedHttpHookUrls'); // the lists of every file combined
+view.winner('enableWorkflows'); // { scope, position, value } of the highest file that sets it
+mergeHooks(view.layers); // every file's hooks, managed ones never removable
+```
+
+| Name                                    | Status  | Does                                                                                      |
+| --------------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| `readSettingsLayer(scope, raw)`         | done    | one source's JSON to a `SettingsLayer`: aliases, scope filter, repairs; issues, never a throw |
+| `SettingsSources`, `loadSettingsLayers` | done    | the host's optional port for its sources (an object or JSON text per scope) and the helper that reads them all |
+| `createPolicyView(layers)`              | done    | `get`, `winner`, `eachFromHighest` over the layers, one merge rule per key               |
+| `KEY_SPECS`, `admits`                   | done    | per key: its scope rule, merge kind and repair kind, from the key's entry in settings-reference.md |
+| `mergeHooks(layers)`                    | done    | the `hooks` key: groups concatenated per event, the same handler in two files once        |
+| `PolicyContext`                         | done    | the account, plan and trust facts a host supplies as data (type)                          |
+| `resolvePolicy` and the per-area resolvers (plugins, marketplaces, hooks, skills, workflows, channels, customization) | planned | read their keys through the view |
+
+Scopes, highest first: `managed`, `parent` (the SDK `managedSettings`), `flag` (`--settings`),
+`local`, `project`, `addDir`, `user`. A key a scope may not carry is dropped with a warning (its
+**Scope** line); a `--add-dir` directory's settings carry `enabledPlugins` and
+`extraKnownMarketplaces` only. In the policy tier (`managed`, `parent`) an unreadable allowlist is
+an empty one, an unreadable lock reads as `true`, and `strictPluginOnlyCustomization` as `true`;
+elsewhere the value or entry is dropped. The aliases `allowedMarketplaces` and
+`additionalMarketplaces` are rewritten to their canonical keys, so a resolver sees only those.
+
 ## Testing kit (planned)
 
 `@rsaryev/claude-plugin-kit/testing`: in-memory `PluginFiles`, a scripted `CommandRunner`, a

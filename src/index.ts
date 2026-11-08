@@ -39,3 +39,14 @@ export {
   type SdkOnlyTool,
 } from './protocol/tool-names.ts';
 export type * from './protocol/official-tools.ts';
+export {
+  MARKETPLACE_KEY_ALIASES,
+  MARKETPLACE_SOURCE_KINDS,
+  PLUGIN_ONLY_SURFACES,
+  POLICY_KEYS,
+  SKILL_OVERRIDE_STATES,
+  WORKFLOW_SIZES,
+  type PluginOnlySurface,
+  type PolicyKey,
+} from './protocol/settings-keys.ts';
+export * from './settings/index.ts';

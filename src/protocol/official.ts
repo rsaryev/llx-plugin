@@ -43,3 +43,10 @@ type Declared<T> = T extends unknown ? (string extends keyof T ? never : T) : ne
 export type UserConfigValue = NonNullable<
   Declared<NonNullable<Settings['pluginConfigs']>[string]>['options']
 >[string];
+
+/**
+ * One marketplace source object, as the SDK types the entries of `strictKnownMarketplaces`
+ * (`github`, `git`, `url`, `hostPattern`, `skills-dir`…); `blockedMarketplaces` and
+ * `extraKnownMarketplaces` use the same forms.
+ */
+export type MarketplaceSource = NonNullable<Settings['strictKnownMarketplaces']>[number];
