@@ -15,6 +15,12 @@ export interface HooksRead {
   /** Official shape. Empty when an error keeps the file from loading. */
   readonly hooks: HooksSettings;
   readonly issues: readonly PluginIssue[];
+  /**
+   * Whether the plugin holding these hooks does not load at all (oracle 2.1.319, read `lenient`
+   * only): a guard hook that cannot load "may be what guards the permissions declared beside it,
+   * so nothing it sits in is applied".
+   */
+  readonly rejectsPlugin?: boolean;
 }
 
 const EVENTS: ReadonlySet<string> = new Set(HOOK_EVENTS);
@@ -90,6 +96,9 @@ function entryIssues(
   );
 }
 
+const guardFailure = (event: string, options: HooksReadOptions): { rejectsPlugin?: true } =>
+  options.lenient === true && GUARDED_EVENTS.has(event) ? { rejectsPlugin: true } : {};
+
 function readGroup(
   raw: unknown,
   path: string,
@@ -117,28 +126,37 @@ function readGroup(
   return { group, issues };
 }
 
-function readEvent(
-  event: string,
-  raw: unknown,
-  options: HooksReadOptions,
-): { groups?: HookMatcherGroup[]; issues: PluginIssue[] } {
+interface EventRead {
+  readonly groups?: HookMatcherGroup[];
+  readonly issues: PluginIssue[];
+  /** A guard event that could not be read: under `lenient`, the plugin does not load. */
+  readonly rejectsPlugin?: boolean;
+}
+
+function readEvent(event: string, raw: unknown, options: HooksReadOptions): EventRead {
   const path = `hooks.${event}`;
-  // Judgment (spec/judgments.md): an unknown event name is kept and warned about, not an error.
-  const issues = EVENTS.has(event) ? [] : [warning(path, `"${event}" is not a hook event`)];
+  const known = EVENTS.has(event);
+  // Judgment (spec/judgments.md): an unknown event name is warned about, not an error; a plugin's
+  // hooks do not load it (oracle 2.1.319), `settings.json` keeps it as written.
+  const issues = known ? [] : [warning(path, `"${event}" is not a hook event`)];
+  if (options.lenient === true && !known) return { issues };
+  if (options.lenient === true && raw === null) return { issues };
   if (!Array.isArray(raw)) {
     const invalid = error(path, `Invalid "${event}": expected an array of matcher groups`);
-    return { issues: [...issues, ...entryIssues(event, [invalid], options)] };
+    return {
+      issues: [...issues, ...entryIssues(event, [invalid], options)],
+      ...guardFailure(event, options),
+    };
   }
   const ignoresMatcher = NO_MATCHER_EVENTS.has(event);
   const read = raw.map((group, index) => readGroup(group, `${path}[${index}]`, ignoresMatcher));
-  issues.push(
-    ...entryIssues(
-      event,
-      read.flatMap((one) => one.issues),
-      options,
-    ),
-  );
-  return { groups: read.flatMap((one) => (one.group === undefined ? [] : [one.group])), issues };
+  const found = read.flatMap((one) => one.issues);
+  issues.push(...entryIssues(event, found, options));
+  return {
+    groups: read.flatMap((one) => (one.group === undefined ? [] : [one.group])),
+    issues,
+    ...(blocksLoading(found) ? guardFailure(event, options) : {}),
+  };
 }
 
 /** Reads an event map: the `hooks` object of `settings.json`, or an inline `hooks` object. */
@@ -148,15 +166,37 @@ export function readHooksSettings(raw: unknown, options: HooksReadOptions = {}):
   }
   const entries: [string, HookMatcherGroup[]][] = [];
   const issues: PluginIssue[] = [];
+  let rejectsPlugin = false;
   for (const [event, value] of Object.entries(raw)) {
     const read = readEvent(event, value, options);
     issues.push(...read.issues);
+    rejectsPlugin ||= read.rejectsPlugin === true;
     if (read.groups !== undefined) entries.push([event, read.groups]);
   }
   // `Object.fromEntries` defines own properties, so a JSON-parsed `__proto__` event stays a key.
-  return blocksLoading(issues)
-    ? { hooks: {}, issues }
-    : { hooks: Object.fromEntries(entries), issues };
+  const hooks = blocksLoading(issues) ? {} : Object.fromEntries(entries);
+  return { hooks, issues, ...(rejectsPlugin && { rejectsPlugin }) };
+}
+
+/** Top-level keys of a hooks file that are not event maps. */
+const FILE_KEYS: ReadonlySet<string> = new Set(['hooks', 'description', 'modules']);
+
+/** A matcher group with handlers: an object whose `hooks` is a non-empty list. */
+const holdsHandlers = (group: unknown): boolean =>
+  isRecord(group) && Array.isArray(group.hooks) && group.hooks.length > 0;
+
+/**
+ * Whether a hooks file holds, outside its `hooks` object, what may be a guard (oracle 2.1.319): a
+ * `PreToolUse` or `PermissionRequest` key that is anything but null or an empty list, or a key that
+ * is no hook event holding a matcher group with handlers (`_comment: ["text"]` is harmless). Another known event there is ignored.
+ */
+function strayGuard(raw: Record<string, unknown>): boolean {
+  return Object.entries(raw).some(([key, value]) => {
+    if (FILE_KEYS.has(key)) return false;
+    if (GUARDED_EVENTS.has(key))
+      return value !== null && !(Array.isArray(value) && value.length === 0);
+    return !EVENTS.has(key) && Array.isArray(value) && value.some(holdsHandlers);
+  });
 }
 
 /**
@@ -168,18 +208,31 @@ export function readHooksFile(raw: unknown, options: HooksReadOptions = {}): Hoo
   if (!isRecord(raw)) {
     return { hooks: {}, issues: [error('hooks', 'The hooks file must be a JSON object')] };
   }
+  const rejects = options.lenient === true && strayGuard(raw);
+  if ('hooks' in raw) return readWrapped(raw.hooks, rejects, options);
   // A mod-only file (`modules` with no `hooks`) is valid (mods/reference.md, "Files"): no hooks.
-  if (!('hooks' in raw) && 'modules' in raw) return { hooks: {}, issues: [] };
-  if (!('hooks' in raw)) {
-    return {
-      hooks: {},
-      issues: [
-        error(
-          'hooks',
-          'The hooks file has no top-level "hooks" key: a file with only the event map, without that wrapper, fails to load',
-        ),
-      ],
-    };
-  }
-  return readHooksSettings(raw.hooks, options);
+  if ('modules' in raw && !rejects) return { hooks: {}, issues: [] };
+  return {
+    hooks: {},
+    ...(rejects && { rejectsPlugin: true }),
+    issues: [
+      error(
+        'hooks',
+        'The hooks file has no top-level "hooks" key: a file with only the event map, without that wrapper, fails to load',
+      ),
+    ],
+  };
+}
+
+/** The `hooks` object of a hooks file; `rejects`: the file also holds a stray list outside it. */
+function readWrapped(wrapped: unknown, rejects: boolean, options: HooksReadOptions): HooksRead {
+  const lenient = options.lenient === true;
+  const read = readHooksSettings(wrapped === null && lenient ? {} : wrapped, options);
+  const stray = rejects
+    ? [error('hooks', 'An event list is declared at the top level, outside the "hooks" object')]
+    : [];
+  const wrongShape = lenient && wrapped !== null && !isRecord(wrapped);
+  return rejects || wrongShape || read.rejectsPlugin === true
+    ? { ...read, issues: [...stray, ...read.issues], rejectsPlugin: true }
+    : read;
 }

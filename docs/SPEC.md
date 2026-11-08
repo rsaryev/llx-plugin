@@ -28,6 +28,26 @@ taken from the oracle is a row in `spec/judgments.md` marked `oracle 2.1.319` (t
 input that shows it written by hand (never a third party's file copied); moving to a new release
 means re-running the corpus and re-checking those rows.
 
+## Where Claude Code differs from its docs
+
+The docs are the first source (E1). Where the docs and the observed behaviour of the release the kit
+tracks disagree on a loading outcome, the kit follows the observed behaviour, because that is what
+a user gets (E5a); where the docs are silent the oracle decides. Each such conflict has a row
+"oracle 2.1.319 overrides docs" in `spec/judgments.md` with the page and section, and a minimal
+input. The spec test of the documented behaviour, if one exists, asserts the observed behaviour with
+a comment citing both; a test of an oracle-only rule lives outside `spec(...)`
+(`tests/loading/oracle-load.test.ts`).
+
+| Docs | Observed (`claude --plugin-dir <d> plugin details`, 2.1.319) | The kit |
+| --- | --- | --- |
+| plugins/troubleshooting.md, "`Failed to load hooks from <path>`": a hooks file that fails the schema is a load failure of the hooks | A guard hook (`PreToolUse`, `PermissionRequest`) that cannot be read, or a stray guard or handler list outside `hooks`, keeps the whole plugin from loading | `loadPlugin` returns no plugin |
+| mcp.md, "Option 2": Claude Code skips a server whose entry cannot be read | An unreadable entry in the manifest's inline `mcpServers` keeps the whole plugin from loading (the same entry in `.mcp.json` is dropped) | `loadPlugin` returns no plugin |
+
+The corpus run (`bun run corpus:load`, docs/TESTING.md, "Loading oracle") also shows what the
+oracle does not settle: `plugin details` lists a shallow inventory, so the kit does not follow it
+where it contradicts several pages of the docs (nested and listed agents and commands); that row
+is in `spec/judgments.md` too.
+
 ## Requirements
 
 `bun run docs:pull` downloads the docs (`scripts/docs/pull.ts`). `bun run spec:extract` reads

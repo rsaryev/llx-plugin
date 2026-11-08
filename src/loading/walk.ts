@@ -18,7 +18,13 @@ export const LISTED_KINDS = [
 ] as const;
 export type ListedKind = (typeof LISTED_KINDS)[number];
 
-type Walker = (context: DiscoverContext, path: string, stat: FileStat) => Promise<DiscoveredFile[]>;
+/** `declared`: the location comes from a manifest path rather than from the standard layout. */
+type Walker = (
+  context: DiscoverContext,
+  path: string,
+  stat: FileStat,
+  declared: boolean,
+) => Promise<DiscoveredFile[]>;
 
 const SKILL_FILE = 'SKILL.md';
 /** A folder tree deeper than this is not scanned further: a symlink loop must end somewhere (judgment). */
@@ -82,12 +88,13 @@ async function scanNested(
  * (the plugin root, named after the plugin: judgment, the frontmatter `name` decides the rest);
  * otherwise each child folder with a `SKILL.md` is a skill.
  */
-const skills: Walker = async (context, path, stat) => {
+const skills: Walker = async (context, path, stat, declared) => {
   if (!stat.isDirectory) return [];
   const own = await context.files.exists(childPath(path, SKILL_FILE), context.signal);
-  if (own) {
+  // Oracle 2.1.319: the default `skills/` folder is only a parent, a `SKILL.md` directly in it is no skill.
+  if (own && (declared || path === '.')) {
     const name = path === '.' ? context.pluginName : baseName(path);
-    return [{ path: childPath(path, SKILL_FILE), name, directory: path }];
+    return [{ path: childPath(path, SKILL_FILE), name, directory: path, alone: true }];
   }
   const entries = await entriesOf(context, path);
   const checked = await Promise.all(

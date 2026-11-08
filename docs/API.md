@@ -292,8 +292,9 @@ object store, a sandbox, an archive in memory). `loadPlugin` finds every compone
 standard layout and the manifest's paths (plugins/manifest-reference.md, "Standard layout", "How
 each key combines with its default location") and returns a `Plugin`. It never throws: `plugin` is
 `undefined` only when the plugin does not load at all (a `plugin.json` that is not JSON or fails
-validation, or no manifest and no `fallbackName`); any other problem is an issue and skips that
-component while the rest loads.
+validation, no manifest and no `fallbackName`, a guard hook that cannot be read, or an inline
+`mcpServers` entry of the manifest that cannot be read: spec/judgments.md, "oracle 2.1.319 overrides
+docs"); any other problem is an issue and skips that component while the rest loads.
 
 ```ts
 interface Plugin {
@@ -319,6 +320,7 @@ interface Plugin {
 | API | What it does |
 | --- | --- |
 | `loadPlugin({ files, fallbackName?, bundles?, bundleSettings?, signal? })` | the optional manifest, discovery, every reader; all issues collected |
+| `classifyPluginFolder({ files, signal? })` | `'plugin'` or `'folder-of-plugins'` for a folder a host was given as a whole (`--plugin-dir`): a folder of plugins loads none of itself, only its children with a `.claude-plugin/plugin.json` (plugins/create.md, "Load a folder of plugins") |
 | `discoverComponents(files, manifest, pluginName, signal?)` | paths and names only (no file parsed): the default location and the manifest's paths per kind, containment (`..`, a symlink that leaves the plugin) and existence (`<component> path escapes plugin directory: <path>`, `<component> path not found: <path>`) checked |
 | `STANDARD_LAYOUT`, `COMPONENT_KINDS`, `declaredKey(manifest, kind)` | the registry typed over the component kinds: default location, manifest keys, combine rule, extension; the first manifest key set wins (`experimental.themes` over `themes`) |
 | `COMBINE` | `replace` (`commands`, `agents`, `outputStyles`, `workflows`, `experimental.themes`, `experimental.monitors`: the default is not scanned, with the warning `Default <folder>/ folder is ignored because the manifest sets "<key>"` unless a declared path is inside the folder), `add` (`skills`), `merge` (`hooks`, `mcpServers`, `lspServers`: the default first) |

@@ -89,7 +89,25 @@ async function walkOne(
   }
   const wrong = written === undefined ? undefined : DECLARED_SHAPE[kind](located.stat, written);
   if (wrong !== undefined) return { found: [], issues: [error(kind, wrong)] };
-  return { found: await WALKERS[kind](context, path, located.stat), issues: [] };
+  return {
+    found: await WALKERS[kind](context, path, located.stat, written !== undefined),
+    issues: [],
+  };
+}
+
+/**
+ * A file reached by two locations loads once, under the name its first location gave it (oracle
+ * 2.1.319): a folder listed in the manifest that is also inside the default `skills/` folder. Inline
+ * commands have no path and all stay.
+ */
+function firstOfEach(found: readonly DiscoveredFile[]): DiscoveredFile[] {
+  const seen = new Set<string>();
+  return found.filter((file) => {
+    if (file.path === undefined) return true;
+    const first = !seen.has(file.path);
+    seen.add(file.path);
+    return first;
+  });
 }
 
 /**
@@ -121,7 +139,7 @@ export async function discoverListed(
     order.map((path) => walkOne(kind, path, written.get(path), context)),
   );
   return {
-    found: walked.flatMap((one) => one.found),
+    found: firstOfEach(walked.flatMap((one) => one.found)),
     issues: [...defaults.issues, ...warnings, ...walked.flatMap((one) => one.issues)],
   };
 }

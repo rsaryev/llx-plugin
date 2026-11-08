@@ -108,3 +108,16 @@ hook events, MCP servers and LSP servers. Claude Code's side comes from
 model. Results are cached per Claude Code version in `.cache/corpus/oracle-load/<version>/`; every
 difference is written to `.cache/corpus/load-report.json`. `validatePlugin` agreeing with
 `claude plugin validate` says nothing about loading; this does.
+
+What the comparison reads: the kit's side is `loadPlugin` itself (`scripts/corpus/load-kit.ts`), not
+a session, because `plugin details` lists what a plugin declares: a skill by the name it has inside
+its plugin, the servers a file names before their entries are read, the hook events whose value is a
+list. A `--plugin-dir` folder is classified first (`classifyPluginFolder`); a folder of plugins
+answers for its child with the plugin's name.
+
+What stays different, and why (spec/judgments.md, the last row): `plugin details` lists only the
+top-level `.md` files of a `commands/` or `agents/` folder, never nested ones, never a manifest
+path to a file or a `commands` object map (its debug log reports `ENOTDIR`); the docs say the
+opposite (plugins/components.md, "Commands" and "Agents"), and the kit keeps the docs until a
+session shows otherwise. `bun run corpus:load` prints the agreement per field; that residual is
+all of the remaining `skills` and `agents` differences.
