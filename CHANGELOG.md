@@ -4,6 +4,7 @@
 
 ### Added
 
+- `locationsWithoutPlugin`: the scope a host gives `resolveHookCommand` for a settings hook.
 - `prepareSubstituter` and `prepareContentSubstitution`: synchronous substitution for a host
   that reads a body lazily, with the path variables asked for once when it prepares.
 - Export `substituteArgumentPieces` from the package root, for a host that renders a skill's

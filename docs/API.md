@@ -729,6 +729,7 @@ const { text } = await substituteContent(skillBody, scope); // Markdown body of 
 | `HOOK_GUARD` | the shell-form hook message for `rejectUserConfigInShell` |
 | `substituteContent(body, scope, path?)` | the three path variables, `scope.extra` (a skill's `CLAUDE_SKILL_DIR`, `CLAUDE_SESSION_ID`), non-sensitive `${user_config.KEY}`; a sensitive one becomes `SENSITIVE_PLACEHOLDER`; `${VAR}` stays; nothing is exported |
 | `prepareContentSubstitution(scope)`     | `substituteContent` made synchronous: the three path variables are asked for once (the data folder is created then), and the returned function substitutes a body with the same rules |
+| `locationsWithoutPlugin(locations)`     | the `Locations` of a hook of no plugin (a settings file's): `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PLUGIN_DATA}` stay as written, the rest delegates |
 
 A PowerShell shell-form command gets `${env:NAME}` for the placeholders, and a bare `$CLAUDE_PROJECT_DIR`
 (or the other two) stays and is a warning; an exec-form `command` that is a bare name with whitespace

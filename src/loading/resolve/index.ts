@@ -27,6 +27,7 @@ export {
 export { resolveChannel, type ChannelResolution, type ResolvedChannel } from './channel.ts';
 export { prepareContentSubstitution, substituteContent } from './content.ts';
 export { prepareSubstituter, type PreparedSubstituter } from './prepared.ts';
+export { locationsWithoutPlugin } from './without-plugin.ts';
 export { exportedEnvironment } from './exported-environment.ts';
 export {
   resolveHookCommand,

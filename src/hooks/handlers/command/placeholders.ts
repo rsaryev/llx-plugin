@@ -1,4 +1,5 @@
 import {
+  locationsWithoutPlugin,
   SURFACE_POLICY,
   substituter,
   type FieldPolicy,
@@ -7,7 +8,6 @@ import {
   type Surface,
   type SubstitutionScope,
 } from '../../../loading/resolve/index.ts';
-import type { Locations } from '../../../ports/index.ts';
 import type { RegisteredHandler } from '../../contracts.ts';
 import type { RunContext } from '../context.ts';
 
@@ -19,23 +19,6 @@ import type { RunContext } from '../context.ts';
 
 const NO_OPTIONS: ResolvedUserConfig = { declared: {}, values: {} };
 
-/**
- * Judgment (spec/judgments.md): a handler of no plugin (a settings file's) has no plugin folder
- * and no data folder, so the two plugin variables stay as written instead of naming the folder of
- * a plugin that is not there. The docs show these two only in plugin hooks. Every method
- * delegates, since a host's `Locations` may be a class instance.
- */
-function withoutPlugin(locations: Locations): Locations {
-  return {
-    homeDir: () => locations.homeDir(),
-    projectDir: () => locations.projectDir(),
-    pluginRoot: () => '${CLAUDE_PLUGIN_ROOT}',
-    pluginData: () => Promise.resolve('${CLAUDE_PLUGIN_DATA}'),
-    joinPath: (base, relativePath) => locations.joinPath(base, relativePath),
-    existingDirectory: (candidates, signal) => locations.existingDirectory(candidates, signal),
-  };
-}
-
 /** What `${...}` in this handler's `command` and `args` resolve against. */
 export function substitutionScope(
   entry: RegisteredHandler,
@@ -45,7 +28,7 @@ export function substitutionScope(
   const { locations, environment } = context.ports;
   return {
     pluginId: pluginId ?? '',
-    locations: pluginId === undefined ? withoutPlugin(locations) : locations,
+    locations: pluginId === undefined ? locationsWithoutPlugin(locations) : locations,
     environment,
     userConfig:
       pluginId === undefined ? NO_OPTIONS : (context.userConfigOf?.(pluginId) ?? NO_OPTIONS),
