@@ -1,3 +1,4 @@
+import { parseFrontmatter } from '../format/frontmatter.ts';
 import { error } from '../format/issues.ts';
 import { pathNotFound } from '../format/messages.ts';
 import type { PluginIssue } from '../format/issues.ts';
@@ -6,6 +7,17 @@ import type { PluginPath, PluginTextFile } from './plugin-model.ts';
 import type { ComponentRead, ReaderContext, ReadKind } from './reader-types.ts';
 
 const qualify = (plugin: string, name: string): string => `${plugin}:${name}`;
+
+/**
+ * A skill named by itself (the plugin root, or a manifest path to its folder): the frontmatter
+ * `name` names it and the discovered name is the fallback. For the root, "`name` supplies the whole
+ * final segment. Without a `name` field, Claude Code falls back to the plugin's directory name"
+ * (skills.md, "How a skill gets its command name"); for a listed folder the oracle 2.1.319 does the same.
+ */
+function aloneSkillName(text: string, fallback: string): string {
+  const { name } = parseFrontmatter(text).fields;
+  return typeof name === 'string' && name.trim() !== '' ? name.trim() : fallback;
+}
 
 /** The text of one discovered file, or an inline command's `content`; `undefined` when it cannot be read. */
 async function textOf(context: ReaderContext, file: DiscoveredFile): Promise<string | undefined> {
@@ -29,8 +41,13 @@ export const textFiles =
           issues.push(error(kind, pathNotFound(kind, file.path ?? file.name)));
           return [];
         }
-        const base = { path: file.path, name: file.name, text };
-        const named = { ...base, qualifiedName: qualify(context.pluginName, file.name) };
+        const name = file.alone === true ? aloneSkillName(text, file.name) : file.name;
+        const named = {
+          path: file.path,
+          name,
+          text,
+          qualifiedName: qualify(context.pluginName, name),
+        };
         return [
           {
             ...named,

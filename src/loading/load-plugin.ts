@@ -68,9 +68,12 @@ function nameOf(
 }
 
 /** Runs every reader over what discovery found. */
-async function readComponents(
-  context: ReaderContext,
-): Promise<{ readonly values: ComponentValues; readonly issues: readonly PluginIssue[] }> {
+async function readComponents(context: ReaderContext): Promise<{
+  readonly values: ComponentValues;
+  readonly issues: readonly PluginIssue[];
+  /** A component failed so that the plugin does not load (oracle 2.1.319). */
+  readonly rejected: boolean;
+}> {
   const run = COMPONENT_READERS;
   const [skills, commands, agents, hooks, mcpServers, lspServers] = await Promise.all([
     run.skills(context),
@@ -103,6 +106,7 @@ async function readComponents(
       bin: bin.value,
       settings: settings.value,
     },
+    rejected: [hooks, mcpServers].some((read) => read.rejectsPlugin === true),
     issues: [
       skills,
       commands,
@@ -120,11 +124,19 @@ async function readComponents(
   };
 }
 
+/** The host's MCP bundle capabilities, as the readers take them. */
+const mcpOptions = (input: LoadPluginInput): CollectOptions => ({
+  ...(input.bundles && { bundles: input.bundles }),
+  ...(input.bundleSettings && { bundleSettings: input.bundleSettings }),
+  ...(input.signal && { signal: input.signal }),
+});
+
 /**
  * Loads a plugin folder into a typed `Plugin` (docs/API.md, "Loading"): the optional manifest, every
  * component in the standard layout and the manifest's paths, each reader's issues collected. Never
  * throws. The plugin is `undefined` only when it does not load at all: a manifest that is not valid
- * JSON or fails validation, or no name to load it under. Any other problem (a path that is missing or
+ * JSON or fails validation, no name to load it under, a guard hook that cannot be read or an inline
+ * MCP server of the manifest that cannot be read (oracle 2.1.319, spec/judgments.md). Any other problem (a path that is missing or
  * escapes the plugin, a file Claude Code would skip) is an issue and skips that component, as the
  * docs say for paths ("the plugin loads without that component"); the rest loads (spec/judgments.md).
  */
@@ -141,14 +153,13 @@ export async function loadPlugin(input: LoadPluginInput): Promise<LoadedPlugin> 
     manifest: step.manifest,
     pluginName: named.name,
     discovered,
-    mcp: {
-      ...(input.bundles && { bundles: input.bundles }),
-      ...(input.bundleSettings && { bundleSettings: input.bundleSettings }),
-      ...(signal && { signal }),
-    },
+    mcp: mcpOptions(input),
     ...(signal && { signal }),
   };
   const read = await readComponents(context);
+  if (read.rejected) {
+    return { plugin: undefined, issues: [...issues, ...discovered.issues, ...read.issues] };
+  }
   const plugin: Plugin = {
     name: named.name,
     manifest: step.manifest,

@@ -16,6 +16,11 @@ export interface DiscoveredFile {
   readonly name: string;
   /** A skill's folder, which also holds its supporting files. */
   readonly directory?: string;
+  /**
+   * A skill folder named by itself (a manifest path or the plugin root) rather than found among the
+   * folders of a parent: its frontmatter `name` names it (oracle 2.1.319, spec/judgments.md).
+   */
+  readonly alone?: true;
   /** A command declared in the manifest's object map. */
   readonly entry?: CommandEntry;
 }

@@ -47,7 +47,7 @@ const LENIENT = { lenient: true } as const;
 const hooksFile = (raw: unknown, path: string): HooksRead => {
   const read = readHooksFile(raw, LENIENT);
   return {
-    hooks: read.hooks,
+    ...read,
     issues: read.issues.map((found) =>
       found.severity === 'error'
         ? error(path, `Failed to load hooks from ${path}: ${found.message}`)
@@ -72,6 +72,7 @@ export async function readHooks(
   return {
     value: mergeHooks(reads.map((read) => read.hooks)),
     issues: reads.flatMap((read) => [...read.issues]),
+    ...(reads.some((read) => read.rejectsPlugin === true) && { rejectsPlugin: true }),
   };
 }
 
@@ -124,7 +125,11 @@ export async function readMcpServers(
     context.manifest?.mcpServers,
     context.mcp,
   );
-  return { value: collected.servers, issues: collected.issues };
+  return {
+    value: collected.servers,
+    issues: collected.issues,
+    ...(collected.rejectsPlugin === true && { rejectsPlugin: true }),
+  };
 }
 
 /** `settings.json` as read, with the issue its parse failure raised. */

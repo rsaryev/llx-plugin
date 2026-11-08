@@ -1,7 +1,12 @@
 import type { PluginFiles } from '../ports/index.ts';
 import { error, type PluginIssue } from './issues.ts';
 import { loadBundle, type McpLoadContext } from './mcp-bundles.ts';
-import { readMcpConfig, type McpConfigRead, type PluginMcpServer } from './mcp-config.ts';
+import {
+  readMcpConfig,
+  rejectsManifest,
+  type McpConfigRead,
+  type PluginMcpServer,
+} from './mcp-config.ts';
 
 export { MCPB_CACHE_DIR } from './mcp-bundles.ts';
 
@@ -95,7 +100,11 @@ const STRATEGIES: { readonly [K in McpSourceKind]: (value: unknown) => McpSource
     isRecord(value)
       ? {
           kind: 'inline-map',
-          load: () => Promise.resolve(readMcpConfig(value, FIELD)),
+          load: () =>
+            Promise.resolve({
+              ...readMcpConfig(value, FIELD),
+              ...(Object.values(value).some(rejectsManifest) && { rejectsPlugin: true }),
+            }),
         }
       : undefined,
 };
@@ -123,6 +132,8 @@ export type CollectOptions = Omit<McpLoadContext, 'files'>;
 export interface CollectedMcpServers {
   readonly servers: Record<string, PluginMcpServer>;
   readonly issues: PluginIssue[];
+  /** An inline manifest entry could not be read: the plugin does not load (oracle 2.1.319). */
+  readonly rejectsPlugin?: boolean;
 }
 
 const unknownSource = (value: unknown): McpConfigRead =>
@@ -157,5 +168,6 @@ export async function collectMcpServers(
   return {
     servers: Object.fromEntries(loaded.flatMap(({ servers }) => Object.entries(servers))),
     issues: loaded.flatMap(({ issues }) => issues),
+    ...(loaded.some((one) => one.rejectsPlugin === true) && { rejectsPlugin: true }),
   };
 }

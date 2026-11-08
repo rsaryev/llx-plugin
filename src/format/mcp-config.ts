@@ -156,9 +156,21 @@ export function readMcpServer(name: string, raw: unknown, origin: string): McpSe
     : { server: undefined, issues: [dropped(name, origin, reason(parsed.error))] };
 }
 
+/**
+ * Whether an entry of the manifest's inline `mcpServers` keeps the plugin from loading (oracle
+ * 2.1.319): the manifest is validated, so any entry that cannot be read fails it, `type: "sdk"`
+ * excepted. The same entry in a `.mcp.json` is only dropped.
+ */
+export function rejectsManifest(raw: unknown): boolean {
+  if (isRecord(raw) && isHostOnly(raw.type)) return false;
+  return readMcpServer('', raw, '').server === undefined;
+}
+
 export interface McpConfigRead {
   readonly servers: Record<string, PluginMcpServer>;
   readonly issues: PluginIssue[];
+  /** The plugin does not load: an inline manifest entry that cannot be read. */
+  readonly rejectsPlugin?: boolean;
 }
 
 /**

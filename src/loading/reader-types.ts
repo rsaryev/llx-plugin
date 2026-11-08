@@ -24,6 +24,8 @@ export interface ReaderContext {
 export interface ComponentRead<T> {
   readonly value: T;
   readonly issues: readonly PluginIssue[];
+  /** Reading this component failed in a way that keeps the whole plugin from loading (oracle 2.1.319). */
+  readonly rejectsPlugin?: boolean;
 }
 
 /** What each component kind loads into. */

@@ -11,7 +11,18 @@
 - `bun run bench`: times `loadPlugin` (from disk and from memory), host assembly, the skill
   listing and `PreToolUse` dispatch over the real plugins of the corpus.
 
+### Added (loading parity)
+
+- `classifyPluginFolder`: whether a `--plugin-dir` folder is one plugin or a folder of plugins,
+  with the edges Claude Code 2.1.319 applies.
+
 ### Fixed
+
+- Loading, as Claude Code 2.1.319 does (`bun run corpus:load`, whole-inventory agreement from
+  82.7% to 96%): a guard hook that cannot be read, or an unreadable inline `mcpServers` entry of
+  the manifest, keeps the plugin from loading; a plugin's hooks do not load an unknown event; a
+  skill folder reached twice loads once; a skill folder named by a manifest path or the plugin
+  root takes its frontmatter `name`; a `SKILL.md` directly in `skills/` is no skill.
 
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
   short label and the amounts of each row of the Limits table, not the page's sentences, so the
