@@ -41,6 +41,8 @@
     "docs:pull": "bun scripts/docs/pull.ts",
     "spec:extract": "bun scripts/spec/extract.ts",
     "compat": "bun scripts/compat/report.ts",
+    "corpus:fetch": "bun scripts/corpus/fetch.ts",
+    "corpus": "bun scripts/corpus/run.ts",
     "check": "bun run check:static && bun run compat --check",
     "check:static": "bun run format:check && bun run lint && bun run check:size && bun run check:layers && bun run check:test-layout && bun run check:tests && bun run check:spec && bun run check:docs && bun run check:deadcode && bun run typecheck",
     "check:size": "bun scripts/check-file-size.ts",

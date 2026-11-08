@@ -35,6 +35,19 @@ through these and extends them in a file of its own, never by editing another st
 - Messages the docs quote verbatim are asserted verbatim.
 - No assertion on behaviour the docs do not state; a judgment is tested outside `spec(...)`.
 
+## Corpus
+
+The spec proves the kit against the docs; the corpus checks it against real plugins and the real
+validator. `bun run corpus:fetch` clones the official and community marketplaces into
+`.cache/corpus/`, reads them with the kit's own `readMarketplace`, and runs each entry's
+`planPluginFetch` as a host would (a shallow git clone pinned to the entry's `sha` or `ref`, sparse
+for a subdirectory). `bun run corpus` runs the kit over every fetched plugin and compares it with
+the oracle, `claude plugin validate --json` of the same Claude Code release (SP3), run as a program
+and never read (`scripts/corpus/oracle.ts`, cached per release). It prints the verdict agreement
+(an error exactly when the oracle reports one), the share of the oracle's findings the kit reports
+with the same severity and message, and the most frequent differences; `.cache/corpus/report.json`
+holds every plugin's. Nothing of the corpus is committed, and `bun test` never reads it.
+
 ## Commands
 
 | Task                           | Command                                |
@@ -43,3 +56,4 @@ through these and extends them in a file of its own, never by editing another st
 | One file                       | `bun test tests/format/manifest-fields.test.ts` |
 | Tests and the report           | `bun run compat`                       |
 | Everything CI and pre-push run | `bun run check`                        |
+| Real plugins against the oracle | `bun run corpus:fetch`, then `bun run corpus` |

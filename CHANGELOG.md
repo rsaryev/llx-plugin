@@ -39,6 +39,10 @@
 
 ### Added
 
+- The corpus: `corpus:fetch` fetches every plugin of the official and community marketplaces
+  through the kit's own marketplace reader and fetch plans; `corpus` compares the kit with
+  `claude plugin validate --json` plugin by plugin.
+
 - Host: `createPluginHost({ plugins, ports, settings?, userConfig? })` and `host.openSession(...)`,
   the public entry that composes the loaded plugins, the skills, hooks, agents, settings and ports. A
   session lists skills and commands as `<plugin>:<name>` (invocation flags, budget), expands them
