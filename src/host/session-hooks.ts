@@ -14,6 +14,13 @@ import type { HookEvent } from '../protocol/official.ts';
 import type { HookSessionGates } from '../settings/hooks/index.ts';
 import type { PolicyScope } from '../settings/index.ts';
 import type { SessionCore } from './session-core.ts';
+import {
+  createHookScope,
+  recordOutcome,
+  registerEntries,
+  type HookScope,
+  type TurnScope,
+} from './session-hook-scope.ts';
 import type { SessionOptions } from './session-types.ts';
 import type { ActivePlugin, HostState } from './state.ts';
 
@@ -102,13 +109,14 @@ export interface HookPart {
  * The hooks of one turn over the session's core: the engine and the `if` path context are made from
  * the turn's options (cheap), the registry is the core's, so a skill's hooks and the `once` hooks
  * already consumed are the same in every turn. A skill's `once` hook that ran is dropped after the
- * dispatch.
+ * dispatch, which also leaves its `watchPaths` and background promises in the core.
  */
 export function createHookPart(
   state: HostState,
   core: SessionCore,
   options: SessionOptions,
-): HookPart & SkillHooksRegistrar {
+  turn?: TurnScope,
+): { readonly part: HookPart & HookScope; readonly skills: SkillHooksRegistrar } {
   const { ports } = state.options;
   const { gates, registry } = core;
   const session = sessionOf(state, gates, options);
@@ -129,19 +137,19 @@ export function createHookPart(
     httpPolicy: gates.httpPolicy,
   });
   return {
-    registerSkillHooks(prefix, entries) {
-      const previous = registry.get().entries.filter((entry) => entry.id.startsWith(`${prefix}:`));
-      registry.set(
-        registry
-          .get()
-          .without(previous.map((entry) => entry.id))
-          .with(entries),
-      );
+    skills: {
+      registerSkillHooks(prefix, entries) {
+        registerEntries(core, prefix, entries);
+      },
     },
-    async dispatch(event, facts, { signal }) {
-      const outcome = await engine.dispatch(registry.get(), { event, facts, session, signal });
-      registry.set(registry.get().without(outcome.consumedOnce));
-      return outcome;
+    part: {
+      ...createHookScope(core, session, turn),
+      async dispatch(event, facts, { signal }) {
+        const outcome = await engine.dispatch(registry.get(), { event, facts, session, signal });
+        registry.set(registry.get().without(outcome.consumedOnce));
+        recordOutcome(core, outcome);
+        return outcome;
+      },
     },
   };
 }

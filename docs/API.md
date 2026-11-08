@@ -590,6 +590,9 @@ const { selected, issues, monitor } = selectHandlers(registry, {
 | `canonicalMatcherModel(toModel, catalog)`  | done    | the canonical name a model-switch matcher is tested against, `[1m]` stripped; none means every hook runs |
 | `ifEvaluatorFor(context)`                  | done    | an `if` reader over `evaluateIf`; a handler with `if` never runs on a non-tool event |
 | `fileChangedWatchList(entries, session)`   | done    | the literal file names the `FileChanged` matchers of handlers that can run register to watch |
+| `mergeWatchPaths(current, effect)`         | done    | the dynamic watch list after one output: its `watchPaths` replace the list (each once), `[]` clears it, an output without the field leaves it |
+| `hasRunnableHandler(entries, session, event)` | done | whether a registered handler of the event passes the gates and has a type the event supports (matchers and `if` are not read) |
+| `settleDeliveries(background)`, `groupDeliveries(deliveries)` | done | `HookOutcome.background` as `{ additionalContext[], systemMessages[], wake? }`: the first awaits the promises (a rejected one delivers nothing), the second groups deliveries already in hand |
 | `consumedByRun(entry, succeeded)`          | done    | whether `once: true` removes the handler: skill frontmatter and a successful run only |
 | `buildHookInput(event, facts, session)`    | done    | the input of an event as `{ input, issues }`: the common fields from the session, then the event's facts checked against the official input type; `input` is `undefined` when a fact has the wrong type or value |
 | `serializeHookInput(input)`                | done    | the one JSON text a command hook reads on stdin and an HTTP hook receives as its body |
@@ -761,6 +764,11 @@ The session:
 | `mcpServers(options?)`, `lspServers(options?)`, `monitors(options?)` | `Resolved<ResolvedMcpServer>`, `Resolved<ResolvedLspServer>`, `Resolved<ResolvedMonitor>`: the substituted configs, with `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}` and `${user_config.*}` resolved. A server that cannot start is left out and its issue is in `issues`. |
 | `outputStyles()` | The `OutputStyle` of each enabled plugin, `id` `<plugin>:<name>`. |
 | `withTurn(turn)` | The same session for one turn: a `PluginSession` that shares the session's state and replaces only the fields `turn` names (see "Turns"). |
+| `runScoped(turn, run)` | `withTurn` for one run: `run` gets the view of the turn, and the hooks added with `lifetime: 'turn'` through it are dropped when `run` settles (see "Scoped hooks"). |
+| `addHooks(prefix, hooks, source, options?)`, `removeHooks(prefix)` | Hooks of a run, an agent or a skill added to and removed from the session; `addHooks` returns `{ remove() }` (see "Scoped hooks"). |
+| `hasHooks(event)` | Whether a handler that passes this turn's gates would run for the event. |
+| `fileChangedWatchList()` | The literal names of the `FileChanged` matchers, then the dynamic `watchPaths` of the last SessionStart, CwdChanged or FileChanged output that returned the field. |
+| `takeBackground()` | The background deliveries that settled since the last call, as `{ additionalContext[], systemMessages[], wake? }` (see "Background hooks"). |
 
 `SessionOptions.promptId`, `scratchpadDir`, `agent` and `folderTrustAccepted` are the common fields
 `prompt_id`, `scratchpad_dir`, `agent_id` and `agent_type` of every hook input, and the workspace trust
@@ -796,6 +804,65 @@ A turn replaces the fields it names and keeps the others; `agent` replaces whole
 field given as `undefined` is ignored: a turn replaces a field but cannot unset it. The session
 `withTurn` is called on does not change, and `withTurn` on a view builds on that view's fields. Views
 of one session are one session for hooks: a skill expanded through one view fires through any other.
+
+### Scoped hooks
+
+An agent's frontmatter hooks or a host's own run need hooks that are neither a plugin's nor a skill's.
+`addHooks(prefix, hooks, source, options?)` registers a `hooks` object (the shape of the `hooks` key
+of settings) under `prefix`; the ids of its entries begin with it, and a prefix names one
+registration: adding it again replaces what it registered ("replaces, never stacks", as a skill
+invoked again does) and the handle of the replaced registration no longer removes anything.
+`removeHooks(prefix)` removes by prefix; an unknown prefix does nothing. `source` is
+`{ kind: 'agent' | 'session' | 'skill'; label; scope?; pluginName?; managed? }`: it decides the gates,
+as in hooks.md, "Hooks in skills and agents" (a project agent's hooks wait for `folderTrustAccepted`,
+a project skill's for workspace trust). `options.pluginId` names the plugin a skill or agent belongs to.
+
+```ts
+const handle = session.addHooks(
+  `agent:${agent.id}`,
+  { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: './guard.sh' }] }] },
+  { kind: 'agent', label: '[agent]', scope: 'user' },
+);
+await session.dispatch('PreToolUse', facts, { signal }); // runs ./guard.sh
+handle.remove();
+
+await session.runScoped({ promptId, agent: { id: agent.id, type: agent.type } }, async (turn) => {
+  turn.addHooks(`run:${promptId}`, hooks, { kind: 'session', label: '[run]' }, { lifetime: 'turn' });
+  return runAgent(turn); // the hooks are gone when this settles, even when it throws
+});
+```
+
+Lifetime: `session` (the default) lasts until removed, like a skill's hooks. `turn` ends with
+`runScoped`: the one end signal is that callback settling, whether it returns or throws; there is no
+separate `end()`. `lifetime: 'turn'` on a view that did not come from `runScoped` throws, since
+nothing would end it; the views `withTurn` makes from a scoped view stay scoped. Registrations belong
+to the session, not to a view: every view of the session fires them while they last, so concurrent
+turns use distinct prefixes. `hasHooks(event)` is true when a registered handler of the event passes
+the gates of the turn and has a type the event supports; the matcher and `if` are not read, since
+they need the occurrence. `fileChangedWatchList()` lists the static names first, then the dynamic
+paths, each once; the dynamic slot is the session's and each SessionStart, CwdChanged or FileChanged
+output that returns `watchPaths` replaces it (`[]` clears it; an output without the field leaves it).
+
+### Background hooks
+
+`session.dispatch` is unchanged: an `async` or `asyncRewake` hook returns at once and its promise is
+in `outcome.background`. A host takes the deliveries one of two ways:
+
+```ts
+// 1. wait for the promises of one dispatch
+const outcome = await session.dispatch('PostToolUse', facts, { signal });
+const late = await settleDeliveries(outcome.background); // { additionalContext, systemMessages, wake? }
+
+// 2. ask the session at a turn boundary, whatever dispatch started the hook
+const { additionalContext, systemMessages, wake } = session.takeBackground();
+```
+
+`additionalContext` and `systemMessages` are for Claude on the next turn (hooks.md, "How async hooks
+execute"). `wake` is the stderr (stdout when empty) of an `asyncRewake` hook that exited 2: the host
+opens a turn with it, which is why it is apart from the context; several wakes join with a newline.
+`takeBackground()` returns what settled since its last call, in the order it settled, and forgets
+it; it never waits, and a hook that has not ended appears in a later call. A background process the
+runner lost delivers nothing.
 
 `Resolved<T>` is `{ resolved: readonly T[]; issues: readonly PluginIssue[] }`. The saved options
 of a plugin are the `pluginConfigs` of the settings with the host's `userConfig` over them.

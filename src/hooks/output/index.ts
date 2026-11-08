@@ -12,3 +12,5 @@ export { limitOutputs } from './limit.ts';
 export { PREVIEW_LENGTH, TEXT_CAP } from './text-cap.ts';
 export { CHECKED_TOOL_OUTPUTS } from './tool-output.ts';
 export { finalizeEffects } from './finalize.ts';
+export { groupDeliveries, settleDeliveries } from './background.ts';
+export type { SettledDeliveries } from './background.ts';

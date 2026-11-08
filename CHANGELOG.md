@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Added
+
+- Host: scoped hooks, `hasHooks`, the watch list and background deliveries. `session.addHooks(prefix,
+  hooks, source, options?)` and `removeHooks(prefix)` register hooks of a run, an agent or a skill
+  (replacing by prefix, never stacking; the handle's `remove()`); `lifetime: 'turn'` ends when
+  `session.runScoped(turn, run)` settles. `session.hasHooks(event)` is true when a handler that
+  passes the gates would run. `session.fileChangedWatchList()` joins the matchers' literal names with
+  the `watchPaths` of SessionStart, CwdChanged and FileChanged outputs (replaced by each, `[]` clears
+  it). `session.takeBackground()` and the pure `settleDeliveries` turn `HookOutcome.background` into
+  `{ additionalContext, systemMessages, wake? }`, a wake surfaced apart for `asyncRewake` exit 2.
+  `mergeWatchPaths` and `hasRunnableHandler` belong to the hooks module.
+
 ### Fixed
 
 - Host: review fixes of `withTurn`. The session core no longer carries an unused watch-list slot

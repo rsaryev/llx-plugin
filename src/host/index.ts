@@ -4,6 +4,13 @@ export type { PluginSession, TurnPart } from './session.ts';
 export type { SessionOptions } from './session-types.ts';
 export type { TurnOptions } from './turn.ts';
 export type {
+  AddHooksOptions,
+  HookHandle,
+  HookLifetime,
+  HookScope,
+  ScopedHookSource,
+} from './session-hook-scope.ts';
+export type {
   ExpandOptions,
   SkillInvoker,
   SkillsListing,

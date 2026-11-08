@@ -6,13 +6,8 @@
  * `spec()`.
  */
 import { describe, expect, test } from 'bun:test';
-import { registerHooks } from '../../src/hooks/index.ts';
-import { createSessionCore } from '../../src/host/session-core.ts';
-import { viewOf } from '../../src/host/session.ts';
 import type { SessionOptions } from '../../src/host/session-types.ts';
-import { createHostState } from '../../src/host/state.ts';
 import type { TurnOptions } from '../../src/host/turn.ts';
-import { fakeEnvironment, locations, recordingHttp, scriptedRunner } from '../support/ports.ts';
 import { hostOf, SESSION, signal } from '../support/host.ts';
 
 const write = {
@@ -89,40 +84,20 @@ describe('promptId, scratchpadDir and agent reach the hook input', () => {
 });
 
 async function agentHookRuns(options: SessionOptions, turn: TurnOptions = {}): Promise<number> {
-  const runner = scriptedRunner({});
-  const state = createHostState({
-    plugins: [],
-    ports: {
-      commands: runner,
-      http: recordingHttp(),
-      locations: locations(),
-      environment: fakeEnvironment(),
-    },
-  });
-  const core = createSessionCore(state);
-  core.registry.set(
-    core.registry.get().with(
-      registerHooks(
-        { PreToolUse: [{ hooks: [{ type: 'command', command: './agent.sh' }] }] },
-        {
-          idPrefix: 'agent:reviewer',
-          source: { kind: 'agent', label: '[agent]', scope: 'project' },
-        },
-      ),
-    ),
+  const { host, runner } = await hostOf({ plugins: [], runs: [{}] });
+  const session = host.openSession(options);
+  session.addHooks(
+    'agent:reviewer',
+    { PreToolUse: [{ hooks: [{ type: 'command', command: './agent.sh' }] }] },
+    { kind: 'agent', label: '[agent]', scope: 'project' },
   );
-  await viewOf(state, core, options)
-    .withTurn(turn)
-    .dispatch('PreToolUse', write, { signal: signal() });
+  await session.withTurn(turn).dispatch('PreToolUse', write, { signal: signal() });
   return runner.calls.length;
 }
 
 /**
- * `folderTrustAccepted` gates the frontmatter hooks of a project subagent. The session API has no
- * way to register one yet, so the hooks go into the core's registry, as an agent registers them.
- * This proves the gate only, not that a turn view sees what a session registered. Follow-up for
- * the sub-package that adds `session.addHooks`: register through it here and drop the direct
- * `createSessionCore` and `viewOf` use.
+ * `folderTrustAccepted` gates the frontmatter hooks of a project subagent, registered here through
+ * `session.addHooks`; the turn view sees what the session registered.
  */
 describe('folderTrustAccepted reaches the hook gates', () => {
   test('a project subagent hook does not run without it, not even in a trusted `-p` session', async () => {

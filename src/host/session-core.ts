@@ -1,6 +1,7 @@
 import type { HookRegistry } from '../hooks/index.ts';
 import { hookSessionGates, type HookSessionGates } from '../settings/hooks/index.ts';
 import type { HookUsage } from '../skills/index.ts';
+import { createBackgroundQueue, type BackgroundQueue } from './background-queue.ts';
 import { initialRegistry } from './session-hooks.ts';
 import type { HostState } from './state.ts';
 
@@ -32,14 +33,21 @@ export interface SkillHookLedger {
 /**
  * The state of a session that must outlive a turn, made once by `openSession` and shared by every
  * view `withTurn` makes: the hooks registered so far, with the skills' (a `once` hook that ran is
- * gone from the cell for every later turn), and what skill hooks have used of their limits. The turn
- * view holds nothing of its own beyond the options of the turn.
+ * gone from the cell for every later turn), what skill hooks have used of their limits, what each
+ * prefix of `addHooks` registered, the dynamic watch list and the background queue. The turn view
+ * holds nothing of its own beyond the options of the turn.
  */
 export interface SessionCore {
   /** The policy of the settings, read once for the session. */
   readonly gates: HookSessionGates;
   readonly registry: Cell<HookRegistry>;
   readonly skillHooks: SkillHookLedger;
+  /** What each prefix registered through `addHooks` or a skill: the ids to remove, by prefix. */
+  readonly registrations: Map<string, { readonly ids: readonly string[] }>;
+  /** The dynamic part of the FileChanged watch list: the last `watchPaths` an output returned. */
+  readonly watchPaths: Cell<readonly string[]>;
+  /** The background deliveries of every dispatch of the session, for `takeBackground`. */
+  readonly background: BackgroundQueue;
 }
 
 export function createSessionCore(state: HostState): SessionCore {
@@ -48,5 +56,8 @@ export function createSessionCore(state: HostState): SessionCore {
     gates,
     registry: cellOf(initialRegistry(state, gates)),
     skillHooks: { used: new Map(), counted: new Map() },
+    registrations: new Map(),
+    watchPaths: cellOf<readonly string[]>([]),
+    background: createBackgroundQueue(),
   };
 }

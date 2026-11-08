@@ -1,3 +1,4 @@
+import type { HookEvent } from '../../protocol/official.ts';
 import type { HookSession, RegisteredHandler } from '../contracts.ts';
 import { supportsHandlerType } from './event-catalog.ts';
 import { passesGates } from './gates.ts';
@@ -24,4 +25,38 @@ export function fileChangedWatchList(
     .flatMap((entry) => (entry.matcher ?? '').split('|'))
     .filter((name) => name !== '');
   return [...new Set(names)];
+}
+
+/**
+ * hooks.md, "CwdChanged" and "FileChanged" output: `watchPaths` "Replaces the current dynamic watch
+ * list ... Returning an empty array clears the dynamic list" (`SessionStart` seeds it the same way).
+ * The dynamic list after one more output: the output's paths, each once, when the output returned
+ * the field (`[]` empties it), else the list as it was. Judgment (spec/judgments.md): an output that
+ * names no `watchPaths` leaves the list alone, since only a returned field replaces it.
+ */
+export function mergeWatchPaths(
+  current: readonly string[],
+  effect: readonly string[] | undefined,
+): readonly string[] {
+  return effect === undefined ? current : [...new Set(effect)];
+}
+
+/**
+ * Whether some registered handler of the event could run in this session: it passes the gates
+ * (`disableAllHooks`, trust, plugin enablement, the managed locks) and its type is one the event
+ * supports. Judgment (spec/judgments.md): the matcher and `if` are not read, since they need the
+ * occurrence the question is asked before; a handler gated off or of an unsupported type never
+ * counts, as no run would follow.
+ */
+export function hasRunnableHandler(
+  entries: readonly RegisteredHandler[],
+  session: HookSession,
+  event: HookEvent,
+): boolean {
+  return entries.some(
+    (entry) =>
+      entry.event === event &&
+      supportsHandlerType(event, entry.handler.type) &&
+      passesGates(entry, session),
+  );
 }

@@ -14,4 +14,4 @@ export { canonicalMatcherModel } from './model-switch.ts';
 export { consumedByRun } from './once.ts';
 export { selectHandlers } from './select.ts';
 export type { SelectRequest } from './select.ts';
-export { fileChangedWatchList } from './watch-list.ts';
+export { fileChangedWatchList, hasRunnableHandler, mergeWatchPaths } from './watch-list.ts';
