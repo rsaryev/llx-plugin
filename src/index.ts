@@ -116,3 +116,138 @@ export * from './settings/skills/index.ts';
 export * from './settings/workflows/index.ts';
 export * from './settings/channels/index.ts';
 export * from './settings/customization/index.ts';
+export {
+  readOutputStyle,
+  type OutputStyle,
+  type OutputStyleContext,
+  type OutputStyleRead,
+} from './format/output-style.ts';
+export {
+  BUILTIN_OUTPUT_STYLES,
+  DEFAULT_OUTPUT_STYLE_ID,
+  includeCodingInstructions,
+  listOutputStyles,
+  resolveOutputStyle,
+  type OutputStyleChoice,
+  type OutputStyleRequest,
+  type PromptKind,
+  type StyleSelection,
+} from './skills/output-style-select.ts';
+export { readSkill, type SkillRead } from './format/skill.ts';
+export { resolveSkillName, type SkillName } from './format/skill-name.ts';
+export {
+  readCommand,
+  readCommandEntry,
+  type CommandEntryContext,
+  type CommandLayout,
+  type CommandRead,
+} from './format/command.ts';
+export {
+  FIELD_READERS,
+  SKILL_FIELDS,
+  escapeAngleBrackets,
+  firstContentLine,
+  readInvocable,
+  readSkillFields,
+  type InvocableRead,
+  type SkillField,
+} from './format/skill-fields.ts';
+export type { FieldOutcome, FieldReader, SkillFieldValues } from './format/skill-field-readers.ts';
+export {
+  ORIGIN_TRAITS,
+  SKILL_SHELLS,
+  type Command,
+  type InvocableFrontmatter,
+  type OriginTraits,
+  type Skill,
+  type SkillLayout,
+  type SkillOrigin,
+  type SkillOriginKind,
+  type SkillShell,
+} from './format/skill-types.ts';
+export {
+  INVOKERS,
+  OVERRIDE_STATES,
+  checkInvocation,
+  invocationPolicy,
+  overrideState,
+  type DenialReason,
+  type InvocationPolicy,
+  type InvocationVerdict,
+  type Invocable,
+  type Invoker,
+  type ModelListing,
+  type OverrideState,
+  type SkillOverrides,
+} from './skills/invocation.ts';
+export { loadCommandEntries, type CommandEntriesLoaded } from './skills/command-entries.ts';
+export { readSkillMentions, type SkillMention } from './skills/mention.ts';
+export {
+  listingLine,
+  menuEntries,
+  modelListing,
+  type ListingBudget,
+  type ListingEntry,
+  type ListingOptions,
+  type MenuOptions,
+  type ModelListingResult,
+} from './skills/listing.ts';
+export { skillActivatesFor, type PathGateOptions } from './skills/path-gate.ts';
+export {
+  readExecutionEnvironment,
+  resolveExecution,
+  resolveShell,
+  resolveTurnOverrides,
+  type EffortChoice,
+  type Execution,
+  type ExecutionContext,
+  type ExecutionEnvironment,
+  type ModelAvailability,
+  type ModelKept,
+  type ShellAvailability,
+  type ShellResolution,
+  type Trigger,
+  type TurnOverrides,
+  type TurnSession,
+  type WaitReason,
+} from './skills/execution.ts';
+export { parseArguments } from './skills/arguments.ts';
+export {
+  substitute,
+  substituteArguments,
+  type ArgumentInput,
+  type Substitution,
+  type SubstitutionInput,
+} from './skills/substitute.ts';
+export {
+  buildVariables,
+  substituteAllowedTools,
+  substituteVariables,
+  type AllowedToolsSubstituted,
+  type SkillSession,
+  type SkillVariablePorts,
+  type SkillVariables,
+  type VariableSource,
+  type VariablesSubstituted,
+} from './skills/variables.ts';
+export {
+  expandSkill,
+  type ExpandPolicy,
+  type ExpandPorts,
+  type ExpandRequest,
+  type ExpandSession,
+  type PluginSource,
+  type Expansion,
+  type SessionLimits,
+  type ShellCall,
+  type ShellPermission,
+} from './skills/expand.ts';
+export {
+  admitSkillHooks,
+  countSkillHooks,
+  hookSourceOf,
+  NO_HOOKS_YET,
+  SKILL_HOOK_LIMITS,
+  type HooksAdmission,
+  type HookUsage,
+} from './skills/hook-limits.ts';

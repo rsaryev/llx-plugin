@@ -37,14 +37,181 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `readManifest(raw)`                 | done    | `plugin.json` as loaded: unknown keys stripped, any error blocks load |
 | `validateManifest(raw)`             | done    | plus the validator: reserved names, kebab-case, missing metadata      |
 | `readMarketplace(raw)`              | done    | `marketplace.json`: top level, names, entries, plugin sources (see Marketplace) |
-| `readSkill(path, text)`             | planned | `SKILL.md` frontmatter and body                                       |
-| `readCommand(path, text)`           | planned | a command file (the older skill format)                               |
+| `readSkill(path, text, layout)`     | done    | `SKILL.md` into a `Skill`: the 19 documented fields (defaults applied, a bad value dropped with a warning), the body, the folder; a YAML error loads the skill with no fields; the name and command come from `resolveSkillName`; a refused name is an error issue |
+| `resolveSkillName(layout, declared)` | done    | the command name of a skill: directory or `name`, the plugin prefix (not doubled), the plugin-root fallback, `anthropic-skills:` for a synced skill; a name with a zero-width, control, private-use, unassigned, bidi or blank character or `<` `>` is refused outside a plugin and hyphenated in a plugin skill folder |
+| `readCommand(path, text, layout)`   | done    | a flat command file (the older skill format) into a `Command`: the skill frontmatter except `name` and `paths`; the name is the path below `commands/` without the extension, folders joined by `:`, after the plugin prefix; a refused character or (outside a plugin) `anthropic-skills` refuses the file |
+| `readCommandEntry(key, entry, sourceText, ctx)` | done | one entry of the manifest `commands` map: `source` text or inline `content` (the body as written), `description`, `argumentHint`, `model` and `allowedTools` replace the same fields of the file; both or neither of `source` and `content`, and a missing source file, are errors for that entry |
 | `readAgent(path, text)`             | planned | an agent file → official `AgentDefinition`                            |
 | `readHooksFile(raw)`                | done    | `hooks/hooks.json` → official `HooksSettings`: events, matcher groups, every handler field; an error leaves no hooks, as Claude Code does |
 | `readHooksSettings(raw)`            | done    | the bare event map (inline `hooks`, skill frontmatter, `settings.json`) |
 | `matchesMatcher(matcher, value, mode?)` | done | a hook `matcher` against the field its event filters on: match-all, exact list, unanchored regex; `'narrow'` for FileChanged and StopFailure |
 | `readMcpConfig(raw)`                | planned | `.mcp.json` → official `McpServerConfig` map                          |
-| `readLspConfig(raw)`, `readMonitors(raw)`, `readOutputStyle(...)` | planned | the remaining component files |
+| `readOutputStyle(path, text, { plugin? })` | done | an output style file: `name` (default the file name; `<plugin>:<name>` for a plugin), `description`, `keep-coding-instructions`, `force-for-plugin` (plugin styles only); a YAML error loads the style with no fields and a warning |
+| `readLspConfig(raw)`, `readMonitors(raw)` | planned | the remaining component files |
+
+### Skills (done: `format/skill*`, the field readers; planned: command name, commands, expansion)
+
+```ts
+import { readSkill } from '@rsaryev/claude-plugin-kit';
+
+const { skill, issues } = readSkill('skills/review/SKILL.md', text, {
+  origin: { kind: 'plugin', plugin: 'my-plugin' },
+  dirName: 'review',
+});
+skill.allowedTools; // ['Bash(git add *)', ...] as written: `${CLAUDE_*}` is substituted at expansion
+skill.userInvocable; // true unless `user-invocable: false`
+```
+
+`Skill` and `Command` share `InvocableFrontmatter`. Defaults are the documented ones
+(`disable-model-invocation` false, `user-invocable` true, `background` true, `shell` bash). The
+`description` falls back to the first non-empty body line. The model keeps `<` and `>` as written;
+`escapeAngleBrackets` is what a listing or menu shows. `allowedTools` rules are raw strings:
+parsing them is `rules`' (layer 3), and substitution is the expansion's. `SKILL_FIELDS` is the
+closed list of documented keys, `FIELD_READERS` the reader of each; any other key is ignored
+without an issue. Whatever a host does with a field (forking, the model override, matching
+`paths`) is decided by the runtime functions that read the same `Skill`.
+
+### Commands (done: `format/command`, `skills/command-entries`)
+
+A command is the older skill format: a flat Markdown file (`commands/db/migrate.md` is
+`/my-plugin:db:migrate`) with the skill frontmatter except `name` and `paths`, or an entry of the
+manifest's `commands` object map. `loadCommandEntries` reads the entries through the files port; the
+result is a `Command` that `expandSkill` and `menuEntries` take like a skill:
+
+```ts
+const { commands, issues } = await loadCommandEntries(
+  manifest.commands, // { status: { source: './commands/status.md', argumentHint: '[env]' }, about: { content: '...' } }
+  files, // PluginFiles
+  { origin: { kind: 'plugin', plugin: 'my-plugin' } },
+  signal,
+);
+commands.map((command) => command.command); // ['my-plugin:status', 'my-plugin:about']
+```
+
+An entry sets exactly one of `source` and `content`; `content` is the body as written (never read
+for frontmatter). `description`, `argumentHint`, `model` and `allowedTools` of an entry replace the
+same fields of its source file. Each failure (both or neither of `source` and `content`, a missing
+or out-of-folder `source`, a refused name) is an error issue for that entry, and the other entries
+still load; an `allowedTools` rule that does not parse is dropped with a warning.
+
+### Skill substitution (done: `skills/arguments`, `skills/substitute`, `skills/variables`)
+
+What a skill's text becomes before the model reads it (skills.md, "Available string
+substitutions"). Arguments first, then `${CLAUDE_*}` over the result, so a variable inside an
+argument value is replaced too:
+
+```ts
+import { buildVariables, substitute } from '@rsaryev/claude-plugin-kit';
+
+const vars = buildVariables(skill, { sessionId, effort: 'high' }, { locations, environment });
+const { text, issues } = await substitute(skill.body, {
+  rawArguments: '"hello world" second', // as typed after the command name
+  names: skill.arguments,
+  vars,
+});
+```
+
+| Name                                        | Does                                                                                   |
+| ------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `parseArguments(raw)`                       | shell-style split: `"hello world" second` is two arguments                             |
+| `substituteArguments(content, input)`       | `$ARGUMENTS`, `$ARGUMENTS[N]`, `$N` (0-based), `$name`; one pass over the original text, so a value is never expanded; `\$` before a token escapes it (a doubled backslash does not) and an escaped token receives nothing; an index with no argument stays, a named one becomes empty; `ARGUMENTS: <value>` is appended when arguments were typed and no placeholder received one |
+| `buildVariables(skill, session, ports)`     | the `SubstitutionScope` of `loading/resolve` plus the names this skill leaves as written: `CLAUDE_SESSION_ID`, `CLAUDE_EFFORT` and `CLAUDE_SKILL_DIR` travel as `scope.extra` |
+| `substituteVariables(text, vars)`           | the six `${CLAUDE_*}` variables through `loading/resolve` (the `markdown-content` surface) |
+| `substituteAllowedTools(skill, vars)`       | the same for the Bash rules of `allowed-tools` (other rules kept as written); the host matches the result with the rules matcher against the substituted command |
+| `substitute(content, { rawArguments, names, vars })` | both stages                                                               |
+
+`${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PLUGIN_DATA}` are substituted only for a plugin skill and stay
+as written elsewhere, without asking the host for a folder. A synced skill keeps
+`${CLAUDE_PROJECT_DIR}` and `${CLAUDE_SESSION_ID}` as literal text unless the host says the session
+is isolated (`isolatedSession`, a cloud or Cowork session). `${CLAUDE_SKILL_DIR}` is the folder of
+the `SKILL.md` (for a plugin skill its subfolder, not the plugin root), built from `Skill.dir` and
+the origin's root through `Locations`. `effort` is the level in force while the skill runs: when the
+skill sets its own, pass the one `resolveTurnOverrides` chose.
+
+### Skill invocation, listing and execution (done: `skills/invocation`, `mention`, `listing`, `path-gate`, `execution`)
+
+Who may run a skill, what the model and the `/` menu are told, when `paths` activate it and how it
+runs once invoked (skills.md, "Control who invokes a skill", "Override skill visibility from
+settings", "Skill descriptions are cut short", "Run skills in a subagent"). All pure: the host passes
+the settings, the usage counts and what it knows of the session.
+
+```ts
+import { checkInvocation, modelListing, menuEntries, resolveExecution } from '@rsaryev/claude-plugin-kit';
+
+checkInvocation(skill, 'model', settings.skillOverrides); // { allowed: false, reason, message } for `disable-model-invocation`
+modelListing(skills, { overrides, budget: { contextWindow: 200_000 }, usage, activated });
+resolveExecution(skill, { interactive: true, backgroundTasksDisabled: false, trigger: 'user' });
+```
+
+| Name                                          | Does                                                                                 |
+| --------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `invocationPolicy(skill, overrides?)`         | the matrix: user, model, what the model is told (`description`, `name`, `hidden`), menu, preload, scheduled prompt; `skillOverrides` does not reach a plugin skill |
+| `checkInvocation(skill, by, overrides?, options?)` | `by` is `user`, `model`, `preload` or `scheduled-task`; a refusal carries the reason and the text to give back (a scheduled fire's says the prompt reaches Claude as plain text); `options.permittedByMention` lets the model run a `disable-model-invocation` skill the user named in this message |
+| `readSkillMentions(message, options?)`        | `/name` at the start runs directly (with its arguments); more names right after it are `stacked` (the first plus five more, each with the shared trailing arguments, until a name `options.stackable` rejects; only the first with `interactive: false`); after plain text, as a separate word with no punctuation, a name only names a permission |
+| `modelListing(skills, options)`               | what the model reads: `description` plus `when_to_use` cut at 1,536 characters (`maxDescChars`), `<` `>` escaped, a character budget (8,000 characters when the host gives no window or count) that drops the descriptions of the least used skills first and never a name, `skillOverrides`, path-scoped skills by name until `activated` |
+| `menuEntries(skills, options)`                | the official `SlashCommand[]` of the `/` menu: skills a user may type |
+| `skillActivatesFor(skill, file, cwd, options?)` | `paths` globs (gitignore syntax and `{a,b}` expansion within the list's budget of 1,000 patterns and 4 MiB) relative to `cwd`; a file outside `cwd` never matches; no `paths` is always active |
+| `resolveExecution(skill, ctx)`                | inline, or a fork: `agent` (default `general-purpose`), background or waiting (`background: false`, non-interactive, background tasks disabled, the same skill running, a scheduled task, a workflow agent) |
+| `resolveTurnOverrides(skill, session)`        | the `model` and `effort` for the rest of the turn or for the forked subagent: `inherit` and an excluded model keep the session's, `CLAUDE_CODE_EFFORT_LEVEL` wins, a cap lowers, `supportedEfforts` falls back to the highest level the model supports at or below |
+| `resolveShell(skill, tools)`                  | the tool that runs `` !`command` ``: PowerShell when asked and enabled, else bash, else PowerShell; an explicit `shell: bash` without bash fails with the documented message |
+| `readExecutionEnvironment(environment)`       | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` and `CLAUDE_CODE_EFFORT_LEVEL` through the `Environment` port |
+
+`Skill.shellDeclared` tells an explicit `shell` from the default, which `resolveShell` needs. The
+model catalogue (`availableModels`, the family substitution, auto mode support) is the host's:
+`ModelAvailability` is the three questions the kit asks.
+
+### Skill expansion (done: `skills/shell-scan`, `shell-exit`, `shell-run`, `expand`, `expand-policy`, `hook-limits`)
+
+What a skill becomes when it is invoked: the text the model receives and what the host must apply
+for the turn (skills.md, "Inject dynamic context", "How injected commands run", "Pre-approve tools
+for a skill", "Run skills in a subagent"; hooks.md, "Hooks in skills and agents"). The placeholders
+are found in the original text, arguments and `${CLAUDE_*}` are substituted, the commands run
+through the `CommandRunner` port, and their output is never scanned again.
+
+```ts
+import { expandSkill } from '@rsaryev/claude-plugin-kit';
+
+const out = await expandSkill(skill, {
+  arguments: '123', sessionId, effort: 'high', permissionMode, disableShellExecution: false,
+  shells: { bash: true, powershell: false },
+  context: { interactive: true, trigger: 'user' }, signal,
+}, { runner, locations, environment, permissions });
+if (out.ok) { out.text; out.grants; out.disallowed; out.execution; out.turn; out.hooks; }
+else out.issues; // the invocation aborted: Claude never sees the skill
+```
+
+| Name                                   | Does                                                                                           |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `expandSkill(skill, request, ports)`   | `text` with commands replaced by their output; `grants` (`allowed-tools`, Bash rules with `${CLAUDE_*}` substituted) and `disallowed` for this turn; `execution` and `turn` from `resolveExecution` and `resolveTurnOverrides` (the environment variables are read through `Environment`); `hooks` to register for the session, present only when the skill declares them; warnings in `issues`. A failed command, a refused permission check, a refused character or a missing shell returns `{ ok: false, issues }` and no text |
+| `ExpandRequest`                        | the typed arguments, the session id and effort, `permissionMode` (auto mode turns an unapproved command into an instruction to run it first, except in a forked skill that sets `agent`), `disableShellExecution` (every command becomes `[shell command execution disabled by policy]`), the shell tools available, `cwd`, `limits` (model allowlist, effort cap), `session` (plugin id, `userConfig`, `isolatedSession`, `pluginSource` for a skills-directory or managed `@inline` plugin...) and `policy` (`hooksLockedToPlugins`, `managedPermissionRulesOnly`) |
+| `ShellPermission`                      | the host's answer for one command, `(call: { tool, command, grants }) => 'allow' \| 'deny' \| 'ask'`: its rules (deny and ask beat the grants), then the skill's `grants`, then the mode. Tests build it from `matchRule`; the kit holds no rule engine here |
+| `countSkillHooks`, `admitSkillHooks`, `hookSourceOf` | the hook limits per source and session (1,024 hooks, 16,384 matcher characters, a matcher counted once per hook); a skill past a limit registers none of its hooks |
+
+Behaviour worth knowing: the inline form is recognized only at the start of a line or after
+whitespace (`KEY=!`cmd`` stays literal); with bash a non-zero exit fails except exit 1 of `grep`,
+`rg`, `egrep`, `fgrep`, `find`, `diff`, `test`, `[`, `git diff` and `git grep` (PowerShell: no `find`
+or `diff`, plus `findstr`); each command runs under the `BASH_DEFAULT_TIMEOUT_MS` timeout (2 minutes by default) with stderr merged for bash;
+a synced skill's commands are not run on the owner's machine (`isolatedSession` says otherwise).
+The host owns registering and firing the hooks, the process, the working directory after a `cd`,
+moving a long command to the background, saving output past the inline ceiling to a file, and
+keeping `EndConversation` out of `disallowed` while another tool remains.
+
+### Output styles (done: `format/output-style`, `skills/output-style-select`)
+
+```ts
+import { readOutputStyle, resolveOutputStyle, includeCodingInstructions } from '@rsaryev/claude-plugin-kit';
+
+const { style } = readOutputStyle('output-styles/terse.md', text, { plugin: 'my-plugin' });
+const active = resolveOutputStyle({ setting: 'Concise', command, styles: [style] });
+includeCodingInstructions(active, 'full'); // false for a custom style without keep-coding-instructions
+```
+
+`resolveOutputStyle` takes the `outputStyle` setting (case-sensitive, unknown gives Default), the
+argument of `/output-style` (case-insensitive) and the custom styles in precedence order; a
+`force-for-plugin` style wins over both and the first one loaded wins. `includeCodingInstructions`
+says whether Claude Code's software engineering section stays in the prompt: only the full prompt has
+it. `listOutputStyles` is the `/output-style` list. The host writes the setting and injects the
+`instructions` of `active.style`; the kit never sends a prompt.
 
 ## Marketplace
 

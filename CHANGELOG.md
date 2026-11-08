@@ -2,8 +2,98 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Commands: review fixes. The judgments the kit makes about commands (blank entry fields, a source
+  that is never read, `${CLAUDE_PLUGIN_ROOT}` in an entry's `allowedTools`, `name` and `paths`
+  dropped silently, trimming, only a `.md` extension stripped from a file name, no extension rule
+  for a `source`) are recorded in spec/judgments.md and tested outside `spec()`, so they no longer
+  count toward the compatibility percentage; the "exactly one of `source` or `content`" message is
+  shared between the manifest schema and `readCommandEntry`.
+- Skills: review fixes for invocation, listing and execution. A skill named after plain text now
+  permits the model's run of a `disable-model-invocation` skill (`permittedByMention`);
+  `readSkillMentions` stacks up to six skills at the start of a message with the shared trailing
+  arguments (`stacked`, the host's `stackable` stop rule, `interactive: false` for `-p`); the
+  listing budget falls back to 8,000 characters instead of no limit, and a path-scoped skill is
+  listed by name until its paths activate it; `paths` brace expansion shares the documented budget of
+  1,000 patterns and 4 MiB (a pattern over it is used unexpanded) and an uncompilable pattern matches
+  nothing instead of throwing; `TurnSession.supportedEfforts` clamps the effort to the highest
+  supported level at or below; a scheduled fire and a preload get their own refusal text.
+- Skills: a refused name or folder is reported once by field (`folder name has ...`, not `folder
+  folder name has ...`); outside a plugin a name or folder `anthropic-skills` or
+  `anthropic-skills:<name>`, and a user or project folder `synced` (any case), refuse the skill.
+- Skills: `substituteArguments` no longer expands a `$` inside a declared argument name a second
+  time (`$a$b $b` with `a$b` and `b` declared gave `xy y`, now `x y`). `substituteAllowedTools`
+  substitutes the Bash rules of `allowed-tools` (the docs' "same variable in both places"), where
+  `substituteVariables` was only documented to; the judgments record the escaped-placeholder
+  append, three backslashes, `$ARGUMENTS[x]` and `${user_config.*}` in typed arguments.
+- Skills: review fixes for `expandSkill`. A skill that declares hooks under the hooks lock keeps
+  its `allowed-tools` pre-approval when it runs through `context: fork`; the plugin sources the
+  managed settings treat like folders are modelled (`ExpandSession.pluginSource`:
+  `skills-directory` loses hooks under the lock and its grant under `allowManagedPermissionRulesOnly`,
+  `inline-managed-session` loses its grant); an injected command's timeout is
+  `BASH_DEFAULT_TIMEOUT_MS` (default 2 minutes) and the timeout message names it; the permission
+  check receives the same CRLF-normalised command the shell runs. The judgments record who owns
+  `EndConversation` in `disallowed`, output past the inline ceiling, and the bundled and managed
+  skills `disableSkillShellExecution` leaves alone.
+
 ### Added
 
+- Commands: `readCommand` reads a flat command file (the older skill format: the skill frontmatter
+  except `name` and `paths`; the name is the path below `commands/` without the extension, folders
+  joined by `:`, after the plugin prefix) and `readCommandEntry` builds a command from an entry of
+  the manifest's `commands` object map (`source` or inline `content`, `description`, `argumentHint`,
+  `model`, `allowedTools`); `loadCommandEntries` reads each `source` through the `PluginFiles` port.
+  A missing source file, an entry with both or neither of `source` and `content`, a refused name
+  and a `source` outside the plugin folder are error issues for that entry only; an `allowedTools`
+  rule that does not parse is dropped with a warning. The loaded commands expand through
+  `expandSkill` and list through `menuEntries` like a skill.
+- Skills: dynamic context and `expandSkill`. `expandSkill` turns a skill or command into the text
+  the model receives plus its grants (`allowed-tools` with `${CLAUDE_*}` substituted in the Bash
+  rules, the docs' same-variable pattern), `disallowed-tools`, execution (inline or fork), model and
+  effort overrides (and `${CLAUDE_EFFORT}` as the level the skill runs at) and hooks. `!`cmd`` and
+  ```` ```! ```` placeholders are found in the original text and run through the `CommandRunner` port
+  (the `shell` field picks the tool, exit 1 of search and comparison commands is a result, a failure
+  or a refused permission check aborts the invocation, auto mode and forked skills as documented),
+  `disableSkillShellExecution` and synced skills replace or keep them as literal text, and output is
+  never re-scanned. `countSkillHooks`, `admitSkillHooks` and `hookSourceOf` apply the documented
+  limits on skill hooks. `substituteArgumentPieces` backs the expansion.
+- Skills: invocation, listing and execution. `invocationPolicy` and `checkInvocation` give the
+  default / `disable-model-invocation` / `user-invocable: false` matrix (who may run a skill, what
+  the model is told, the `/` menu, subagent preloading, a scheduled-task prompt) and apply
+  `skillOverrides` (not to plugin skills); `readSkillMentions` tells a leading `/name` from one
+  named in plain text. `modelListing` and `menuEntries` build the skill listing (description plus
+  `when_to_use` cut at 1,536 characters, `<` and `>` escaped, a budget that drops the least used
+  descriptions first) and the official `SlashCommand` rows. `skillActivatesFor` matches `paths`
+  (gitignore syntax and brace expansion, relative to the current directory, nothing outside it).
+  `resolveExecution`, `resolveTurnOverrides` and `resolveShell` decide inline or fork (agent,
+  background and the cases that wait for the result), the model and effort override of a turn or of
+  the forked subagent, and the shell tool of injected commands. `Skill.shellDeclared` and
+  `OriginTraits.honoursSkillOverrides` support them.
+- Skills: substitution in a skill's text. `substituteArguments` expands `$ARGUMENTS`,
+  `$ARGUMENTS[N]`, `$N` and `$name` over the original text in one pass (shell-style quoting through
+  `parseArguments`, `\$` escapes, an index with no argument stays as written, a named one becomes
+  empty, an argument value is never expanded, `ARGUMENTS: <value>` is appended when nothing
+  received the arguments). `buildVariables` and `substituteVariables` substitute `${CLAUDE_SESSION_ID}`,
+  `${CLAUDE_EFFORT}`, `${CLAUDE_SKILL_DIR}`, `${CLAUDE_PROJECT_DIR}`, `${CLAUDE_PLUGIN_ROOT}` and
+  `${CLAUDE_PLUGIN_DATA}` through `loading/resolve` (the plugin pair for plugin skills only), for the
+  body and for the Bash rules of `allowed-tools`; `substitute` does both, arguments first.
+  `ORIGIN_TRAITS.substitutesSessionVariables`.
+- Skills: `readSkill` reads a `SKILL.md` into a `Skill` (the shared `InvocableFrontmatter` of
+  skills and commands): `description` (else the first non-empty body line), `when_to_use`,
+  `argument-hint`, `arguments`, `disable-model-invocation`, `user-invocable`, `allowed-tools`,
+  `disallowed-tools`, `model`, `effort`, `context`, `agent`, `background`, `hooks` (through the
+  hooks reader), `paths`, `shell`, `metadata`, `license` and `compatibility`, with the documented
+  defaults; a YAML error loads the skill with its body and no fields, an unknown key is ignored.
+  `SKILL_FIELDS` and the `FIELD_READERS` registry, `ORIGIN_TRAITS`, `escapeAngleBrackets`.
+- Skills: `resolveSkillName` gives a skill its command name: the directory or `name`, the plugin
+  prefix (not doubled when `name` carries it, the plugin-root `SKILL.md` falls back to the plugin
+  directory), `anthropic-skills:` for a synced skill, and the characters a name can't hold
+  (refused outside a plugin, hyphens in a plugin skill folder); `readSkill` uses it.
+- Output styles: `readOutputStyle` (`name`, `description`, `keep-coding-instructions`,
+  `force-for-plugin`, `<plugin>:<name>` ids, a YAML error loads the style under its file name),
+  `resolveOutputStyle` (case-sensitive setting, case-insensitive `/output-style`, a forced plugin
+  style overrides both), `includeCodingInstructions` (full prompt only) and `listOutputStyles`.
 - The evidence pipeline: `docs:pull` mirrors the official Claude Code docs, `spec:extract` turns
   them into `spec/requirements.json`, and `compat` reports the share each test run proves.
 - Official types re-exported from `@anthropic-ai/claude-agent-sdk`, with `HOOK_EVENTS` and
@@ -546,6 +636,13 @@
   the whole field; the same handler under two matchers is recorded as an open requirement of the
   hooks engine instead of being presented as proven; the unused `PolicyContext` type is removed
   until the resolvers need it; one shared `isRecord` guard.
+- Skills: an unquoted `argument-hint: [topic: foo | bar]` is written back as that text instead of
+  being dropped; the unknown-event warning of a skill's `hooks` no longer repeats the `hooks.`
+  prefix; the shell list is checked against the host's `ShellKind`; the judgments cover an
+  unbalanced list delimiter, an unknown hook event kept with a warning, the comma split of
+  `arguments` and the skill folder of a Windows path.
+- `listOutputStyles` marks one row current: a custom style that reuses a built-in id or an earlier
+  style's id is no longer listed, matching what `resolveOutputStyle` selects.
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
   parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
   (and `skill`) read `name:value` as a parameter.
