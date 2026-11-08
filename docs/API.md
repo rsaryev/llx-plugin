@@ -37,7 +37,8 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `readManifest(raw)`                 | done    | `plugin.json` as loaded: unknown keys stripped, any error blocks load |
 | `validateManifest(raw)`             | done    | plus the validator: reserved names, kebab-case, missing metadata      |
 | `readMarketplace(raw)`              | planned | `marketplace.json`: entries, sources, strict mode                     |
-| `readSkill(path, text, layout)`     | done    | `SKILL.md` into a `Skill`: the 19 documented fields (defaults applied, a bad value dropped with a warning), the body, the folder; a YAML error loads the skill with no fields; the command name is minimal until `resolveSkillName` lands |
+| `readSkill(path, text, layout)`     | done    | `SKILL.md` into a `Skill`: the 19 documented fields (defaults applied, a bad value dropped with a warning), the body, the folder; a YAML error loads the skill with no fields; the name and command come from `resolveSkillName`; a refused name is an error issue |
+| `resolveSkillName(layout, declared)` | done    | the command name of a skill: directory or `name`, the plugin prefix (not doubled), the plugin-root fallback, `anthropic-skills:` for a synced skill; a name with a zero-width, control, private-use, unassigned, bidi or blank character or `<` `>` is refused outside a plugin and hyphenated in a plugin skill folder |
 | `readCommand(path, text)`           | planned | a command file (the older skill format)                               |
 | `readAgent(path, text)`             | planned | an agent file → official `AgentDefinition`                            |
 | `readHooksFile(raw)`                | done    | `hooks/hooks.json` → official `HooksSettings`: events, matcher groups, every handler field; an error leaves no hooks, as Claude Code does |

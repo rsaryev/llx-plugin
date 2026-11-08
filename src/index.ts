@@ -57,6 +57,7 @@ export {
   type StyleSelection,
 } from './skills/output-style-select.ts';
 export { readSkill, type SkillRead } from './format/skill.ts';
+export { resolveSkillName, type SkillName } from './format/skill-name.ts';
 export {
   FIELD_READERS,
   SKILL_FIELDS,

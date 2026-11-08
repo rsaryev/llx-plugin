@@ -1,6 +1,7 @@
 import { parseFrontmatter } from './frontmatter.ts';
 import { warning, type PluginIssue } from './issues.ts';
 import { readInvocable } from './skill-fields.ts';
+import { resolveSkillName } from './skill-name.ts';
 import type { Skill, SkillLayout } from './skill-types.ts';
 
 export interface SkillRead {
@@ -20,10 +21,8 @@ function directoryOf(path: string): string {
  * ignored "without reporting an error"). What the docs leave open is in spec/judgments.md: a YAML
  * error and a value of the wrong shape are warnings naming the file.
  *
- * The command name is the declared `name`, else the folder's name, behind the plugin's prefix for
- * a plugin skill. That is the minimum a skill needs to be named; the full rules of "How a skill
- * gets its command name" (no doubled prefix, the root `SKILL.md`, characters a name cannot hold)
- * are `resolveSkillName`'s.
+ * The name and the command come from `resolveSkillName`; its issues are reported against the file
+ * (an error means the skill is refused: a name Claude Code does not load).
  */
 export function readSkill(path: string, text: string, layout: SkillLayout): SkillRead {
   const parsed = parseFrontmatter(text);
@@ -39,9 +38,16 @@ export function readSkill(path: string, text: string, layout: SkillLayout): Skil
   }
   const { frontmatter, declaredName, problems } = readInvocable(parsed.fields, parsed.body);
   issues.push(...problems.map((found) => warning(path, `${found.key} ${found.reason}`)));
-  const name = declaredName ?? layout.dirName;
+  const resolved = resolveSkillName(layout, declaredName);
+  issues.push(
+    ...resolved.issues.map((found) => ({
+      severity: found.severity,
+      path,
+      message: `${found.path} ${found.message}`,
+    })),
+  );
+  const { name, command } = resolved;
   const { origin } = layout;
-  const command = 'plugin' in origin ? `${origin.plugin}:${name}` : name;
   return {
     skill: {
       ...frontmatter,

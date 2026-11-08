@@ -11,6 +11,10 @@
   hooks reader), `paths`, `shell`, `metadata`, `license` and `compatibility`, with the documented
   defaults; a YAML error loads the skill with its body and no fields, an unknown key is ignored.
   `SKILL_FIELDS` and the `FIELD_READERS` registry, `ORIGIN_TRAITS`, `escapeAngleBrackets`.
+- Skills: `resolveSkillName` gives a skill its command name: the directory or `name`, the plugin
+  prefix (not doubled when `name` carries it, the plugin-root `SKILL.md` falls back to the plugin
+  directory), `anthropic-skills:` for a synced skill, and the characters a name can't hold
+  (refused outside a plugin, hyphens in a plugin skill folder); `readSkill` uses it.
 - Output styles: `readOutputStyle` (`name`, `description`, `keep-coding-instructions`,
   `force-for-plugin`, `<plugin>:<name>` ids, a YAML error loads the style under its file name),
   `resolveOutputStyle` (case-sensitive setting, case-insensitive `/output-style`, a forced plugin
