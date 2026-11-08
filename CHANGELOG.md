@@ -4,6 +4,11 @@
 
 ### Added
 
+- `readAgent` for agent files (`name` and `description`): the files Claude Code skips (no name is
+  documentation, a bad name, no description or YAML that does not parse), the plugin fallbacks
+  (file name, `Agent from <plugin> plugin`), `<plugin>:<subfolder>:<name>` scoped names
+  (`scopedAgentName`), the name rules (`validAgentName`) and the `agent_type` hooks receive
+  (`hookAgentType`).
 - The evidence pipeline: `docs:pull` mirrors the official Claude Code docs, `spec:extract` turns
   them into `spec/requirements.json`, and `compat` reports the share each test run proves.
 - Official types re-exported from `@anthropic-ai/claude-agent-sdk`, with `HOOK_EVENTS` and

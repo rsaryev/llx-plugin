@@ -39,7 +39,8 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `readMarketplace(raw)`              | planned | `marketplace.json`: entries, sources, strict mode                     |
 | `readSkill(path, text)`             | planned | `SKILL.md` frontmatter and body                                       |
 | `readCommand(path, text)`           | planned | a command file (the older skill format)                               |
-| `readAgent(path, text)`             | planned | an agent file → official `AgentDefinition`                            |
+| `readAgent(text, origin)`           | done (name, description) | an agent file → `AgentRecord` (official `AgentDefinition` + scoped name, source): a project, user or managed file without a name is documentation and a bad name, no description or unparseable YAML skips it; a plugin agent always loads (file-name fallback, `Agent from <plugin> plugin`); the other fields follow |
+| `scopedAgentName`, `hookAgentType`, `validAgentName` | done | `my-plugin:review:security` (frontmatter `name` replaces the file segment, a manifest-listed file drops subfolders); the `agent_type` hooks receive; the name rules |
 | `readHooksFile(raw)`                | done    | `hooks/hooks.json` → official `HooksSettings`: events, matcher groups, every handler field; an error leaves no hooks, as Claude Code does |
 | `readHooksSettings(raw)`            | done    | the bare event map (inline `hooks`, skill frontmatter, `settings.json`) |
 | `matchesMatcher(matcher, value, mode?)` | done | a hook `matcher` against the field its event filters on: match-all, exact list, unanchored regex; `'narrow'` for FileChanged and StopFailure |

@@ -23,3 +23,20 @@ export {
   type ListOptions,
 } from './frontmatter-values.ts';
 export { readHooksFile, readHooksSettings, type HooksRead } from './hooks-settings.ts';
+export { readAgent } from './agent.ts';
+export {
+  agentFileName,
+  agentNameProblem,
+  hookAgentType,
+  scopedAgentName,
+  validAgentName,
+} from './agent-name.ts';
+export {
+  AGENT_SOURCES,
+  type AgentExtras,
+  type AgentOrigin,
+  type AgentReadResult,
+  type AgentRecord,
+  type AgentSource,
+  type UnrecognizedField,
+} from './agent-record.ts';
