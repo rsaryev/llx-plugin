@@ -104,6 +104,38 @@ the `SKILL.md` (for a plugin skill its subfolder, not the plugin root), built fr
 the origin's root through `Locations`. `effort` is the level in force while the skill runs: when the
 skill sets its own, pass the one `resolveTurnOverrides` chose.
 
+### Skill invocation, listing and execution (done: `skills/invocation`, `mention`, `listing`, `path-gate`, `execution`)
+
+Who may run a skill, what the model and the `/` menu are told, when `paths` activate it and how it
+runs once invoked (skills.md, "Control who invokes a skill", "Override skill visibility from
+settings", "Skill descriptions are cut short", "Run skills in a subagent"). All pure: the host passes
+the settings, the usage counts and what it knows of the session.
+
+```ts
+import { checkInvocation, modelListing, menuEntries, resolveExecution } from '@rsaryev/claude-plugin-kit';
+
+checkInvocation(skill, 'model', settings.skillOverrides); // { allowed: false, reason, message } for `disable-model-invocation`
+modelListing(skills, { overrides, budget: { contextWindow: 200_000 }, usage, activated });
+resolveExecution(skill, { interactive: true, backgroundTasksDisabled: false, trigger: 'user' });
+```
+
+| Name                                          | Does                                                                                 |
+| --------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `invocationPolicy(skill, overrides?)`         | the matrix: user, model, what the model is told (`description`, `name`, `hidden`), menu, preload, scheduled prompt; `skillOverrides` does not reach a plugin skill |
+| `checkInvocation(skill, by, overrides?)`      | `by` is `user`, `model`, `preload` or `scheduled-task`; a refusal carries the reason and the text to give back |
+| `readSkillMentions(message)`                  | `/name` at the start runs directly (with its arguments); after plain text, as a separate word with no punctuation, it only names a permission |
+| `modelListing(skills, options)`               | what the model reads: `description` plus `when_to_use` cut at 1,536 characters (`maxDescChars`), `<` `>` escaped, a character budget that drops the descriptions of the least used skills first and never a name, `skillOverrides`, path-scoped skills once `activated` |
+| `menuEntries(skills, options)`                | the official `SlashCommand[]` of the `/` menu: skills a user may type |
+| `skillActivatesFor(skill, file, cwd, options?)` | `paths` globs (gitignore syntax and `{a,b}` expansion) relative to `cwd`; a file outside `cwd` never matches; no `paths` is always active |
+| `resolveExecution(skill, ctx)`                | inline, or a fork: `agent` (default `general-purpose`), background or waiting (`background: false`, non-interactive, background tasks disabled, the same skill running, a scheduled task, a workflow agent) |
+| `resolveTurnOverrides(skill, session)`        | the `model` and `effort` for the rest of the turn or for the forked subagent: `inherit` and an excluded model keep the session's, `CLAUDE_CODE_EFFORT_LEVEL` wins, a cap lowers |
+| `resolveShell(skill, tools)`                  | the tool that runs `` !`command` ``: PowerShell when asked and enabled, else bash, else PowerShell; an explicit `shell: bash` without bash fails with the documented message |
+| `readExecutionEnvironment(environment)`       | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` and `CLAUDE_CODE_EFFORT_LEVEL` through the `Environment` port |
+
+`Skill.shellDeclared` tells an explicit `shell` from the default, which `resolveShell` needs. The
+model catalogue (`availableModels`, the family substitution, auto mode support) is the host's:
+`ModelAvailability` is the three questions the kit asks.
+
 ### Output styles (done: `format/output-style`, `skills/output-style-select`)
 
 ```ts

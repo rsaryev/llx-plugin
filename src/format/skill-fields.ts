@@ -146,6 +146,7 @@ export function readInvocable(
       paths: [],
       shell: 'bash',
       ...rest,
+      ...(rest.shell === undefined ? {} : { shellDeclared: true as const }),
       ...(description === undefined ? {} : { description }),
     },
     ...(name === undefined ? {} : { declaredName: name }),

@@ -196,4 +196,11 @@ describe('what an origin allows (skills.md § Available string substitutions, §
       expect(ORIGIN_TRAITS[kind].runsShell).toBe(true);
     }
   });
+
+  test('skillOverrides does not reach plugin skills; the other origins honour it', () => {
+    expect(ORIGIN_TRAITS.plugin.honoursSkillOverrides).toBe(false);
+    for (const kind of ['user', 'project', 'synced'] as const) {
+      expect(ORIGIN_TRAITS[kind].honoursSkillOverrides).toBe(true);
+    }
+  });
 });

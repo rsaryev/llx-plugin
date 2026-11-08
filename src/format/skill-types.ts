@@ -47,20 +47,37 @@ export interface OriginTraits {
    * skill"); a cloud or Cowork session is the host's decision, not an origin's.
    */
   readonly runsShell: boolean;
+  /**
+   * Whether `skillOverrides` applies: "Plugin skills are not affected by `skillOverrides`. Manage
+   * those through `/plugin` instead" (skills.md, "Override skill visibility from settings").
+   */
+  readonly honoursSkillOverrides: boolean;
 }
 
 export const ORIGIN_TRAITS: { readonly [K in SkillOriginKind]: OriginTraits } = {
-  plugin: { substitutesPluginVariables: true, substitutesSessionVariables: true, runsShell: true },
-  user: { substitutesPluginVariables: false, substitutesSessionVariables: true, runsShell: true },
+  plugin: {
+    substitutesPluginVariables: true,
+    substitutesSessionVariables: true,
+    runsShell: true,
+    honoursSkillOverrides: false,
+  },
+  user: {
+    substitutesPluginVariables: false,
+    substitutesSessionVariables: true,
+    runsShell: true,
+    honoursSkillOverrides: true,
+  },
   project: {
     substitutesPluginVariables: false,
     substitutesSessionVariables: true,
     runsShell: true,
+    honoursSkillOverrides: true,
   },
   synced: {
     substitutesPluginVariables: false,
     substitutesSessionVariables: false,
     runsShell: false,
+    honoursSkillOverrides: true,
   },
 };
 
@@ -98,6 +115,11 @@ export interface InvocableFrontmatter {
   readonly paths: readonly string[];
   /** `shell`, default `bash`. */
   readonly shell: SkillShell;
+  /**
+   * Whether the frontmatter set `shell`: an explicit `shell: bash` fails the invocation when bash is
+   * missing, while the default falls back to PowerShell (skills.md, "How injected commands run").
+   */
+  readonly shellDeclared?: true;
   /** `metadata`: a free-form map the kit keeps and never reads. */
   readonly metadata?: Readonly<Record<string, unknown>>;
   /** `license`: kept, never acted on. */

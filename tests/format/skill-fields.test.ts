@@ -282,3 +282,11 @@ spec('skills.frontmatter.shell', () => {
     expect(readFields('shell: powershell').skill.shell).toBe('powershell');
   });
 });
+
+describe('whether `shell` was set (a judgment about the model, not a documented field)', () => {
+  test('only a frontmatter that sets `shell` marks it declared', () => {
+    expect(readFields('description: d').skill.shellDeclared).toBeUndefined();
+    expect(readFields('shell: bash').skill.shellDeclared).toBe(true);
+    expect(readFields('shell: powershell').skill.shellDeclared).toBe(true);
+  });
+});

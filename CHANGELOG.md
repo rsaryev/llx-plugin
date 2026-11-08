@@ -15,6 +15,18 @@
 
 ### Added
 
+- Skills: invocation, listing and execution. `invocationPolicy` and `checkInvocation` give the
+  default / `disable-model-invocation` / `user-invocable: false` matrix (who may run a skill, what
+  the model is told, the `/` menu, subagent preloading, a scheduled-task prompt) and apply
+  `skillOverrides` (not to plugin skills); `readSkillMentions` tells a leading `/name` from one
+  named in plain text. `modelListing` and `menuEntries` build the skill listing (description plus
+  `when_to_use` cut at 1,536 characters, `<` and `>` escaped, a budget that drops the least used
+  descriptions first) and the official `SlashCommand` rows. `skillActivatesFor` matches `paths`
+  (gitignore syntax and brace expansion, relative to the current directory, nothing outside it).
+  `resolveExecution`, `resolveTurnOverrides` and `resolveShell` decide inline or fork (agent,
+  background and the cases that wait for the result), the model and effort override of a turn or of
+  the forked subagent, and the shell tool of injected commands. `Skill.shellDeclared` and
+  `OriginTraits.honoursSkillOverrides` support them.
 - Skills: substitution in a skill's text. `substituteArguments` expands `$ARGUMENTS`,
   `$ARGUMENTS[N]`, `$N` and `$name` over the original text in one pass (shell-style quoting through
   `parseArguments`, `\$` escapes, an index with no argument stays as written, a named one becomes
