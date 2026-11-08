@@ -10,6 +10,7 @@
 
 ### Added
 
+- `readsAsEmptyInRemoteMcp(name)`: whether a remote MCP server's `url` or `headers` reads `${name}` as empty, for a host that expands its own MCP configs.
 - `bun run oracle:runtime`: what a Claude Code session registers from a plugin (`init` event of
   `claude -p --plugin-dir`, no model call) against the kit's session, for 32 fixtures
   (`tests/fixtures/runtime`); each fixture's `expected.json` is committed, so `bun test` checks it

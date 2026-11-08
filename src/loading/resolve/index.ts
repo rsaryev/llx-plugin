@@ -39,6 +39,7 @@ export {
   type McpResolution,
   type ResolvedMcpServer,
 } from './mcp.ts';
+export { readsAsEmptyInRemoteMcp } from './remote-mcp-credentials.ts';
 export { resolveProcesses, type ResolvedProcesses } from './processes.ts';
 export { monitorsToStart, type MonitorEvent, type MonitorMode } from './monitor-trigger.ts';
 export { resolveMonitor, type MonitorResolution, type ResolvedMonitor } from './monitor.ts';
