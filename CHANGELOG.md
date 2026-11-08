@@ -232,6 +232,66 @@
   lives in `src/protocol/exit-reasons.ts`, tied to the SDK's `ExitReason`; tests prove that a hook's
   `next(e)` rejects when a session message is not delivered, and the ordering, resumed-run and
   input-shape assertions moved out of `spec(...)` into judgments (new rows in `spec/judgments.md`).
+- The tool catalog (`TOOL_CATALOG`, `isKnownTool`, `KNOWN_TOOLS`, `toolRequiresPermission`): the
+  "Permission required" column and the rule format of each of the 46 documented tools, now the
+  source of `ruleFormatOf`; `availableTools` (bare deny rules and globs remove a tool, the
+  `EndConversation` exception, Glob and Grep absent by default on posix) and `resolveSubagentTools`
+  (`tools`, `disallowedTools`, the filters of the tools available to subagents, the zero-tools
+  refusal as an issue).
+- Tool inputs (`rules/tools/inputs`): `parseToolInput` reads a hook's `tool_input` against the
+  hooks.md table of its tool (Bash, PowerShell, Write, Edit, Read, Glob, Grep, WebFetch, WebSearch,
+  Agent, AskUserQuestion, ExitPlanMode) and reports a wrong type or a missing required field as an
+  issue at `tool_input.<field>`; `TOOL_INPUT_FIELDS` gives each field its type, optionality, role
+  (primary, subject, param, structured) and source (SDK or docs only), and the roles now decide
+  which parameter rules are ignored; `answerQuestions` answers AskUserQuestion for `updatedInput`
+  (labels joined with commas); `effectiveExitPlanModeInput` drops the ignored `allowedPrompts`;
+  `effectiveSearchMode` (an absent `mode` is the full search); `expandToolPath` and
+  `expandToolInputPath` give `Write`, `Edit` and `Read` the absolute `file_path` a hook receives
+  (backslashes on Windows).
+- Tool semantics (`rules/tools/semantics`): pure functions for the behaviour tools-reference.md
+  states exactly. `applyEdit` (exact replacement, one occurrence unless `replace_all`, `$&` kept
+  literal, refusals as issues), `editEncodingIssue` and `writeEncodingIssue` (the non-UTF-8 and
+  `U+FFFD` guards, the documented message verbatim), `effectiveBashTimeout` (120000 default, 600000
+  ceiling, the larger of the two variables), `backgroundTimeLimit`, `bashOutputLimits` and
+  `windowBashOutput` (30,000 inline, 10,000 for a failure, `bashOutputMaxChars`), `classifyBashExit`
+  (exit 1 is valid only for `grep`, `rg`, `egrep`, `fgrep`, `find`, `diff`, `test`, `[`, `git diff`,
+  `git grep`), `readWindow` (offset, limit, the empty-file and past-the-end notices),
+  `checkWebFetchUrl` (localhost and dotless hosts refused with the documented message, `http`
+  upgraded) and `sliceFetched` (100,000-character window, unread count, next offset),
+  `validateWebSearchDomains` (the two lists cannot be combined), `effectiveGrepOutputMode` and
+  `capGlobMatches` (100 files and a truncation flag).
+- Tool responses (`rules/tools/responses`): `parseAgentResponse` reads the `tool_response` of an
+  Agent call as the `completed` or `async_launched` member of a union typed from the SDK's
+  `AgentOutput` (a launch exposes no usage fields, `modelsUsed` is set only after a swap and its
+  repeats are collapsed, `resolvedModel` may differ from the request). `parseBashEditDiff` reads
+  `tool_response.bashEditDiff` (at most 200 `changedFiles`, at most 5 `files`, `moreFiles`,
+  `unavailable`, `skipped`, `shared`) with warnings for broken limits, and `bashEditDiffTrust` says
+  whether a list is complete and attributable.
+
+### Fixed
+
+- Tool responses: `parseAgentResponse` keeps `modelsUsed` as received instead of collapsing repeats
+  and dropping short lists; `parseBashEditDiff` no longer warns on a file marked both created and
+  deleted, and accepts a `hunks` of any shape. Agent tests now cover non-text content blocks and each
+  launch field, and the two judgments moved out of `spec()`.
+- Tool semantics: the limits tools-reference.md states are decided by pure functions instead of
+  only the empty-file and default cases. Read: `classifyReadTarget` (binary extensions, images over
+  128 MB, notebooks over 100 MB), `classifyReadSize` and `readTokenLimit` (256 KB whole-file
+  refusal, 25,000 tokens or `CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS`, `PARTIAL view`, `allow_large`).
+  Glob: `validateGlobInput` (null byte) and `globRespectsIgnore`. Grep: `windowGrepContent`
+  (`No entries at this offset`), `windowGrepCounts` and `totalGrepCount`, `effectiveGrepMultiline`,
+  with `GREP_OUTPUT_MODES` declared once in `rules/tools/inputs`. Bash: `shouldMoveToBackground`
+  and the moved, cwd and stop notices, `BASH_DEFAULT_TIMEOUT_MS` for a moved command, and
+  `classifyPowerShellExit` (`findstr`); `! grep` at exit 1 is now a failure and the `!`, assignment,
+  `&` and subshell cases are recorded as judgments. WebSearch: `webSearchLimits` and
+  `webSearchAllowance`. WebFetch: `webFetchTimings` and `redirectNotice`. The Edit tests assert
+  which refusal (not found or found N times) they expect.
+- Tool inputs: the optionality of Bash and PowerShell `run_in_background`, Edit `replace_all` and
+  Grep `-i` and `multiline` (the tables mark none optional) is recorded as a judgment and tested
+  outside the spec; `answerQuestions` derives its input type from the SDK's `AskUserQuestionInput`
+  (`multiSelect` stays optional, as hooks.md says); WebSearch domain lists reject non-string
+  elements at `tool_input.<field>.<index>` and ExitPlanMode `allowedPrompts` must be an array,
+  both recorded as judgments.
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
   parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
   (and `skill`) read `name:value` as a parameter.
@@ -262,6 +322,13 @@
   calls they make.
 - The layer check now rejects `Date`, timers, `fetch`, `crypto`, `performance` and `globalThis` in
   `src/`, as the docs state.
+- Tool availability: `--tools ""` removes `EndConversation` when no MCP tool remains, the `default`
+  entry of `--tools` means the default set, `--restricted` removes `PowerShell`, `Monitor` and
+  `WebFetch` as well as `Bash` unless `--tools` names them, a Bash deny rule turns `PowerShell` off
+  on Windows with Git Bash (`gitBash`, `powerShellOptIn`), and
+  `blockWritesOutsideWorkingDirectories` removes the worktree tools; a subagent whose `tools` glob
+  covers `Bash` no longer gets `Glob` and `Grep` back; the catalog test no longer reads the removed
+  tools from production data.
 - Path rules: an `Edit` rule now covers the legacy `MultiEdit` (and a `Read` deny rule blocks it),
   while `MultiEdit(docs/**)` is accepted and never matches; a `Read` deny or ask rule reaches every
   LSP call and no `!` carve-out reopens one; `Read(./.env)` names the `.env` of the current directory
@@ -318,3 +385,29 @@
   longer events (`API_EVENT_NAMES`, `ApiEventName`); `register` no longer takes the `core` tier.
   The speculative ports `ModSurface`, `ModEnv`, `ModWatcher`, `ModTurnPort` are removed, and the
   mods name and limit tables are compared with the pulled reference.
+- Permission modes (`rules/decide`), review fixes: a double-quoted `sh -c` script (also after
+  `find -exec`) is read after the invoking shell expands it, a single-quoted one binds `$1` only
+  when an argument follows; `cd logs && rm -rf a/*`, a backslash-only target, a volume-GUID path,
+  the `\\?\C:\`, `\\localhost\C$` and 8.3 home spellings are critical paths; a command that does
+  not parse gets the critical-path outcome in every mode. `ps`, `file` and `docker` join the
+  read-only set with their documented prompt cases, a UNC argument on Windows and a write to a
+  special shell variable (`for IFS in`, `unset PATH`) prompt. Under
+  `blockReadsOutsideWorkingDirectories` a Bash command that reads outside the working directories,
+  or that the parser cannot trace, prompts in every mode; under `blockWritesOutsideWorkingDirectories`
+  settings files are refused inside the working directories too and plan files, the scratchpad and
+  auto-memory Markdown stay writable. `--restricted` makes a classified protected-path write ask,
+  the target of a symlinked settings file is its own option and asks in auto and plan, `dev-mods` and
+  `CLAUDE_CONFIG_DIR` are protected, Bash `rm`, `mv` and `cp` go through the symlink check, and
+  `acceptEdits` approves `Set-Content`, `Add-Content`, `Clear-Content` and `Remove-Item` in scope.
+  `HookPermissionDecision` is re-exported from the SDK, and hook decisions and rule behaviors are
+  read through registries.
+- Permission modes (`rules/decide`): `decide(call, context)` answers allow, ask, deny or classify
+  for one call in `default`, `acceptEdits`, `plan`, `auto`, `dontAsk` and `bypassPermissions`: deny,
+  then ask, then allow with a compound Bash command allowed subcommand by subcommand, a PreToolUse
+  hook's block, deny, ask and allow, a mod's block and approval (with managed settings or a Team or
+  Enterprise login a mod cannot undo a deny rule, an ask rule or a hook's block), the read-only
+  command set, `acceptEdits` filesystem commands in scope, protected paths and their exceptions per
+  mode, critical-path `rm` and `rmdir` removals per mode, network-path reads, tools that require user
+  interaction, `permissions.block{Reads,Writes}OutsideWorkingDirectories`, plan mode's bypass and
+  auto-during-plan cases, and the broad allow rules auto mode drops. The `PermissionClassifier` port
+  and `settleClassification` carry a `classify` decision to the host's reviewer.

@@ -1,46 +1,19 @@
 import type { AgentInput, BashInput, MonitorInput } from '../protocol/official-tools.ts';
 import type { Assert, Equal } from '../protocol/type-equality.ts';
 
-/**
- * How a tool reads what follows its name inside the parentheses of a rule: the "Rule format" table
- * of tools-reference.md ("Configure tools with permission rules and hooks"). One id per format;
- * every part that differs per format (matching, syntax details) is a registry typed over
- * `RuleFormatId`, so a format added here fails the typecheck until each registry handles it.
- */
-export const RULE_FORMATS = [
-  'command',
-  'powershell-command',
-  'read-path',
-  'edit-path',
-  'skill-name',
-  'subagent-type',
-  'domain',
-  'bare',
-] as const;
+import { catalogEntry } from './tools/catalog.ts';
+import { RULE_FORMATS, type RuleFormatId } from './tools/rule-formats.ts';
 
-export type RuleFormatId = (typeof RULE_FORMATS)[number];
+export { RULE_FORMATS, type RuleFormatId };
 
-/** The table's "Applies to" column. A tool it does not list takes only its bare name. */
-const FORMAT_OF_TOOL: ReadonlyMap<string, RuleFormatId> = new Map<string, RuleFormatId>([
-  ['Bash', 'command'],
-  ['Monitor', 'command'],
-  ['PowerShell', 'powershell-command'],
-  ['Read', 'read-path'],
-  ['Grep', 'read-path'],
-  ['Glob', 'read-path'],
-  ['LSP', 'read-path'],
-  ['Edit', 'edit-path'],
-  ['Write', 'edit-path'],
-  ['NotebookEdit', 'edit-path'],
+/** The tools the SDK no longer lists but a rule may still name: the legacy `MultiEdit` edits files like `Edit` (spec/judgments.md). */
+const LEGACY_FORMAT_OF_TOOL: ReadonlyMap<string, RuleFormatId> = new Map<string, RuleFormatId>([
   ['MultiEdit', 'edit-path'],
-  ['Skill', 'skill-name'],
-  ['Agent', 'subagent-type'],
-  ['WebFetch', 'domain'],
-  ['WebSearch', 'bare'],
 ]);
 
+/** The format of a tool's rule specifier: its catalog entry (`tools/catalog.ts`); any other tool takes only its bare name. */
 export const ruleFormatOf = (toolName: string): RuleFormatId =>
-  FORMAT_OF_TOOL.get(toolName) ?? 'bare';
+  catalogEntry(toolName)?.ruleFormat ?? LEGACY_FORMAT_OF_TOOL.get(toolName) ?? 'bare';
 
 /**
  * The input fields of the command tools: a `name:value` specifier of a command rule is a parameter
