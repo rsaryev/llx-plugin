@@ -1,4 +1,4 @@
-import type { HostState } from './state.ts';
+import type { HostStateCell } from './state.ts';
 import { createComponentPart, type ComponentPart } from './session-components.ts';
 import { createSessionCore, type SessionCore } from './session-core.ts';
 import { createTurnScope, type HookScope, type TurnScope } from './session-hook-scope.ts';
@@ -35,25 +35,23 @@ export type PluginSession = SkillPart &
   ComponentPart &
   TurnPart;
 
-/** The session over a core for the given options: `openSession` makes the core, `withTurn` reuses it. */
-function viewOf(
-  state: HostState,
-  core: SessionCore,
-  options: SessionOptions,
-  scope?: TurnScope,
-): PluginSession {
-  const { part, skills } = createHookPart(state, core, options, scope);
-  const skillPart = createSkillPart(state, core, options, skills);
+/**
+ * The session over a core for the given options: `openSession` makes the core, `withTurn` reuses
+ * it. A view holds the core, never a state: what the host holds now is read at each use.
+ */
+function viewOf(core: SessionCore, options: SessionOptions, scope?: TurnScope): PluginSession {
+  const { part, skills } = createHookPart(core, options, scope);
+  const skillPart = createSkillPart(core, options, skills);
   return {
     ...skillPart,
-    ...createMentionPart(state, options, skillPart),
+    ...createMentionPart(core, options, skillPart),
     ...part,
-    ...createComponentPart(state),
-    withTurn: (turn) => viewOf(state, core, applyTurn(options, turn), scope),
+    ...createComponentPart(core),
+    withTurn: (turn) => viewOf(core, applyTurn(options, turn), scope),
     async runScoped(turn, run) {
       const own = createTurnScope();
       try {
-        return await run(viewOf(state, core, applyTurn(options, turn), own));
+        return await run(viewOf(core, applyTurn(options, turn), own));
       } finally {
         own.end();
       }
@@ -61,6 +59,6 @@ function viewOf(
   };
 }
 
-export function openSession(state: HostState, options: SessionOptions): PluginSession {
-  return viewOf(state, createSessionCore(state), options);
+export function openSession(cell: HostStateCell, options: SessionOptions): PluginSession {
+  return viewOf(createSessionCore(cell), options);
 }

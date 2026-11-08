@@ -38,6 +38,17 @@ export interface PluginHostOptions {
   readonly shells?: { readonly bash: boolean; readonly powershell: boolean };
 }
 
+/**
+ * What `host.update` replaces: each part given (and not `undefined`) replaces the host's own whole;
+ * a part left out stays. The ports, `windows` and `shells` are the host's for good. To clear the
+ * settings give `createPolicyView([])`; `userConfig` replaces the saved values of every plugin.
+ */
+export type HostUpdate = {
+  readonly [K in 'plugins' | 'settings' | 'parentSettings' | 'userConfig']?:
+    | PluginHostOptions[K]
+    | undefined;
+};
+
 /** A resolved list and what was found wrong while resolving it. */
 export interface Resolved<T> {
   readonly resolved: readonly T[];

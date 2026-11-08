@@ -1,19 +1,14 @@
 import {
   createHookEngine,
-  createHookRegistry,
   ifEvaluatorFor,
-  registerHooks,
   type EventFactsOf,
   type HookOutcome,
-  type HookRegistry,
   type HookSession,
-  type HookSource,
   type RegisteredHandler,
 } from '../hooks/index.ts';
 import type { HookEvent } from '../protocol/official.ts';
 import type { HookSessionGates } from '../settings/hooks/index.ts';
-import type { PolicyScope } from '../settings/index.ts';
-import type { SessionCore } from './session-core.ts';
+import { currentOf, type SessionCore } from './session-core.ts';
 import {
   createHookScope,
   recordOutcome,
@@ -22,38 +17,7 @@ import {
   type TurnScope,
 } from './session-hook-scope.ts';
 import type { SessionOptions } from './session-types.ts';
-import type { ActivePlugin, HostState } from './state.ts';
-
-/** Where the hooks of a settings file of each scope are declared (hooks.md, "Hook locations"). */
-const SETTINGS_SOURCE: { readonly [S in PolicyScope]: HookSource } = {
-  managed: { kind: 'settings', label: '[settings]', managed: true },
-  parent: { kind: 'settings', label: '[settings]' },
-  flag: { kind: 'settings', label: '[settings]' },
-  local: { kind: 'settings', label: '[settings]', scope: 'local' },
-  project: { kind: 'settings', label: '[settings]', scope: 'project' },
-  user: { kind: 'settings', label: '[settings]', scope: 'user' },
-  addDir: { kind: 'settings', label: '[settings]' },
-};
-
-const pluginEntries = (plugin: ActivePlugin): readonly RegisteredHandler[] =>
-  registerHooks(plugin.plugin.hooks, {
-    idPrefix: plugin.id,
-    source: {
-      kind: 'plugin',
-      label: `[plugin:${plugin.plugin.name}]`,
-      pluginName: plugin.plugin.name,
-    },
-    pluginId: plugin.id,
-  });
-
-const settingsEntries = (gates: HookSessionGates): readonly RegisteredHandler[] =>
-  gates.settingsHooks.flatMap(({ scope, hooks }) =>
-    registerHooks(hooks, { idPrefix: `settings:${scope}`, source: SETTINGS_SOURCE[scope] }),
-  );
-
-/** The hooks a session starts with: every enabled plugin's, then the settings files'. */
-export const initialRegistry = (state: HostState, gates: HookSessionGates): HookRegistry =>
-  createHookRegistry([...state.active.flatMap(pluginEntries), ...settingsEntries(gates)]);
+import type { HostState } from './state.ts';
 
 /**
  * The hook session of one turn: the common input fields and the gates. `promptId`, `scratchpadDir`,
@@ -105,23 +69,11 @@ export interface HookPart {
   ): Promise<HookOutcome<E>>;
 }
 
-/**
- * The hooks of one turn over the session's core: the engine and the `if` path context are made from
- * the turn's options (cheap), the registry is the core's, so a skill's hooks and the `once` hooks
- * already consumed are the same in every turn. A skill's `once` hook that ran is dropped after the
- * dispatch, which also leaves its `watchPaths` and background promises in the core.
- */
-export function createHookPart(
-  state: HostState,
-  core: SessionCore,
-  options: SessionOptions,
-  turn?: TurnScope,
-): { readonly part: HookPart & HookScope; readonly skills: SkillHooksRegistrar } {
+/** The engine of one dispatch: the `if` path context is the turn's, the policy and options the settings'. */
+function engineOf(state: HostState, gates: HookSessionGates, options: SessionOptions) {
   const { ports } = state.options;
-  const { gates, registry } = core;
-  const session = sessionOf(state, gates, options);
   const windows = state.options.windows ?? false;
-  const engine = createHookEngine(ports, {
+  return createHookEngine(ports, {
     windows,
     ifEvaluator: ifEvaluatorFor({
       paths: {
@@ -136,6 +88,24 @@ export function createHookPart(
       state.active.find((plugin) => plugin.id === id)?.userConfig ?? { declared: {}, values: {} },
     httpPolicy: gates.httpPolicy,
   });
+}
+
+/**
+ * The hooks of one turn over the session's core: the engine and the `if` path context are made at
+ * each dispatch from the turn's options and the current settings (cheap), the registry is the
+ * core's, so a skill's hooks and the `once` hooks already consumed are the same in every turn. A
+ * skill's `once` hook that ran is dropped after the dispatch, which also leaves its `watchPaths`
+ * and background promises in the core.
+ */
+export function createHookPart(
+  core: SessionCore,
+  options: SessionOptions,
+  turn?: TurnScope,
+): { readonly part: HookPart & HookScope; readonly skills: SkillHooksRegistrar } {
+  const sessionNow = (): HookSession => {
+    const { state, gates } = currentOf(core);
+    return sessionOf(state, gates, options);
+  };
   return {
     skills: {
       registerSkillHooks(prefix, entries) {
@@ -143,10 +113,17 @@ export function createHookPart(
       },
     },
     part: {
-      ...createHookScope(core, session, turn),
+      ...createHookScope(core, sessionNow, turn),
       async dispatch(event, facts, { signal }) {
-        const outcome = await engine.dispatch(registry.get(), { event, facts, session, signal });
-        registry.set(registry.get().without(outcome.consumedOnce));
+        const { state, gates } = currentOf(core);
+        const session = sessionOf(state, gates, options);
+        const outcome = await engineOf(state, gates, options).dispatch(core.registry.get(), {
+          event,
+          facts,
+          session,
+          signal,
+        });
+        core.registry.set(core.registry.get().without(outcome.consumedOnce));
         recordOutcome(core, outcome);
         return outcome;
       },

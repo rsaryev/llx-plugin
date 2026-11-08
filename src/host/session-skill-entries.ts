@@ -8,13 +8,21 @@ export interface Entry {
   readonly invocable: Skill | Command;
 }
 
-export const entriesOf = (state: HostState): readonly Entry[] =>
-  state.active.flatMap((plugin) =>
+const ENTRIES = new WeakMap<HostState, readonly Entry[]>();
+
+/** The entries of one state, made once: a state is immutable, and a new one comes with each update. */
+export function entriesOf(state: HostState): readonly Entry[] {
+  const cached = ENTRIES.get(state);
+  if (cached !== undefined) return cached;
+  const entries = state.active.flatMap((plugin) =>
     [...plugin.catalog.skills, ...plugin.catalog.commands].map((invocable) => ({
       plugin,
       invocable,
     })),
   );
+  ENTRIES.set(state, entries);
+  return entries;
+}
 
 export const invocablesOf = (entries: readonly Entry[]): readonly Invocable[] =>
   entries.map((entry) => entry.invocable);

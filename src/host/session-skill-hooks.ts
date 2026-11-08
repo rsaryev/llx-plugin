@@ -37,6 +37,8 @@ export function skillHookRegistration(registrar: SkillHooksRegistrar, ledger: Sk
     }
     used.set(source, admission.used);
     counted.set(prefix, {
+      source,
+      pluginId: entry.plugin.id,
       hooks: admission.used.hooks - base.hooks,
       matcherChars: admission.used.matcherChars - base.matcherChars,
     });

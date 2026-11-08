@@ -4,6 +4,16 @@
 
 ### Added
 
+- Host: an update path. `host.update({ plugins?, settings?, parentSettings?, userConfig? })` replaces
+  those parts, re-runs the pure `createHostState` over the merged options (`mergeHostOptions`) and
+  returns the new `{ plugins, issues }`; `host.plugins` and `host.issues` are live getters and
+  `host.generation` counts the updates. Sessions and their `withTurn` and `runScoped` views read a
+  `HostStateCell` at each use instead of a state captured at open: the plugin and settings hooks are
+  rebuilt, the skill, agent and session hooks stay unless their plugin no longer runs or the new
+  plugin-only lock silences them (`pluginOnlyAllows`, exported by the hooks module), the gates, skill
+  list, policies and catalogs are read per call, the skill-hook limit ledger is summed again from the
+  survivors, consumed `once` keys stay consumed and the dynamic watch list is kept. `readCatalog`
+  caches by `Plugin` identity, so an unchanged plugin is not read again.
 - Host: model limits and message expansion. `SessionOptions.limits` and `TurnOptions.limits`
   (`SessionLimits`: model allowlist, `maxEffort`, `supportedEfforts`) reach `session.expandSkill`,
   so `Expansion.turn` carries the allowlisted model and the capped effort. `session.expandMessage`

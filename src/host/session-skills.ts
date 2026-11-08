@@ -6,16 +6,16 @@ import {
   expandSkill,
   menuEntries,
   modelListing,
-  type ExpandPorts,
   type Expansion,
   type Invoker,
   type ListingOptions,
   type ModelListingResult,
   type ShellPermission,
 } from '../skills/index.ts';
-import type { SessionCore } from './session-core.ts';
+import type { HookSessionGates } from '../settings/hooks/index.ts';
+import { currentOf, type SessionCore } from './session-core.ts';
 import type { SkillHooksRegistrar } from './session-hooks.ts';
-import { entriesOf, invocablesOf } from './session-skill-entries.ts';
+import { entriesOf, invocablesOf, type Entry } from './session-skill-entries.ts';
 import { skillHookRegistration, withHooks } from './session-skill-hooks.ts';
 import type { SessionOptions } from './session-types.ts';
 import type { HostState } from './state.ts';
@@ -82,68 +82,85 @@ function shellDisabled(state: HostState): boolean {
   return !policy.shell('plugin').run;
 }
 
+/** What one use of the skill part reads: the current state and gates, and the turn's options. */
+interface Use {
+  readonly state: HostState;
+  readonly gates: HookSessionGates;
+  readonly options: SessionOptions;
+}
+
+function expansionOf(use: Use, entry: Entry, request: ExpandOptions): Promise<Expansion> {
+  const { state, gates, options } = use;
+  const { ports } = state.options;
+  const windows = state.options.windows ?? false;
+  const invoker = request.invoker ?? 'user';
+  return expandSkill(
+    entry.invocable,
+    {
+      arguments: request.arguments ?? '',
+      sessionId: options.sessionId,
+      ...turnLimits(options),
+      permissionMode: options.permissionMode,
+      disableShellExecution: shellDisabled(state),
+      shells: state.options.shells ?? { bash: true, powershell: windows },
+      context: { interactive: options.interactive ?? true, trigger: invoker },
+      session: {
+        pluginId: entry.plugin.id,
+        userConfig: entry.plugin.userConfig,
+        windows,
+        ...(entry.plugin.source === undefined ? {} : { pluginSource: entry.plugin.source }),
+      },
+      policy: {
+        hooksLockedToPlugins: gates.pluginOnlyHooks,
+        managedPermissionRulesOnly: managedPermissionRulesOnly(state),
+      },
+      cwd: options.cwd,
+      signal: request.signal,
+    },
+    {
+      runner: ports.commands,
+      locations: ports.locations,
+      environment: ports.environment,
+      permissions: options.permissions ?? ASKS,
+    },
+  );
+}
+
 /**
  * The skills of one turn: the cwd, effort, mode, interactivity and shell answer are the turn's, the
  * limits on skill hooks are the session's (`core`), so a skill invoked in an earlier turn still
- * counts and a later turn cannot register past them.
+ * counts and a later turn cannot register past them. The catalog, `skillOverrides`, the shell policy
+ * and the plugin-only lock are read from the current state at each call, so `host.update` reaches a
+ * session that is open.
  */
 export function createSkillPart(
-  state: HostState,
   core: SessionCore,
   options: SessionOptions,
   registrar: SkillHooksRegistrar,
 ): SkillPart {
   const addHooks = skillHookRegistration(registrar, core.skillHooks);
-  const { ports } = state.options;
-  const windows = state.options.windows ?? false;
-  const entries = entriesOf(state);
-  const overrides = state.view.get('skillOverrides');
-  const hooksLocked = core.gates.pluginOnlyHooks;
-  const invocables = invocablesOf(entries);
-  const expandPorts: ExpandPorts = {
-    runner: ports.commands,
-    locations: ports.locations,
-    environment: ports.environment,
-    permissions: options.permissions ?? ASKS,
-  };
   return {
-    skills: (listing = {}) => ({
-      model: modelListing(invocables, { ...listing, ...(overrides && { overrides }) }),
-      menu: menuEntries(invocables, overrides === undefined ? {} : { overrides }),
-    }),
+    skills: (listing = {}) => {
+      const { state } = currentOf(core);
+      const invocables = invocablesOf(entriesOf(state));
+      const overrides = state.view.get('skillOverrides');
+      return {
+        model: modelListing(invocables, { ...listing, ...(overrides && { overrides }) }),
+        menu: menuEntries(invocables, overrides === undefined ? {} : { overrides }),
+      };
+    },
     async expandSkill(name, request) {
-      const entry = entries.find((each) => each.invocable.command === name);
+      const { state, gates } = currentOf(core);
+      const entry = entriesOf(state).find((each) => each.invocable.command === name);
       if (entry === undefined) return failed(name, `Unknown skill: ${name}`);
-      const invoker = request.invoker ?? 'user';
-      const verdict = checkInvocation(entry.invocable, invoker, overrides, {
-        permittedByMention: request.permittedByMention === true,
-      });
-      if (!verdict.allowed) return failed(name, verdict.message);
-      const expansion = await expandSkill(
+      const verdict = checkInvocation(
         entry.invocable,
-        {
-          arguments: request.arguments ?? '',
-          sessionId: options.sessionId,
-          ...turnLimits(options),
-          permissionMode: options.permissionMode,
-          disableShellExecution: shellDisabled(state),
-          shells: state.options.shells ?? { bash: true, powershell: windows },
-          context: { interactive: options.interactive ?? true, trigger: invoker },
-          session: {
-            pluginId: entry.plugin.id,
-            userConfig: entry.plugin.userConfig,
-            windows,
-            ...(entry.plugin.source === undefined ? {} : { pluginSource: entry.plugin.source }),
-          },
-          policy: {
-            hooksLockedToPlugins: hooksLocked,
-            managedPermissionRulesOnly: managedPermissionRulesOnly(state),
-          },
-          cwd: options.cwd,
-          signal: request.signal,
-        },
-        expandPorts,
+        request.invoker ?? 'user',
+        state.view.get('skillOverrides'),
+        { permittedByMention: request.permittedByMention === true },
       );
+      if (!verdict.allowed) return failed(name, verdict.message);
+      const expansion = await expansionOf({ state, gates, options }, entry, request);
       return withHooks(expansion, (hooks) => addHooks(entry, hooks));
     },
   };

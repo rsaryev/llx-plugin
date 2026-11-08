@@ -11,6 +11,7 @@ import {
   type ResolvedMonitor,
 } from '../loading/index.ts';
 import type { AgentDefinition } from '../protocol/official.ts';
+import { currentOf, type SessionCore } from './session-core.ts';
 import { scopeOf } from './scope.ts';
 import type { ActivePlugin, HostState } from './state.ts';
 import type { Resolved } from './types.ts';
@@ -80,46 +81,66 @@ async function agentsOf(plugin: ActivePlugin, state: HostState, signal?: AbortSi
   return joined(pieces);
 }
 
-export function createComponentPart(state: HostState): ComponentPart {
+async function mcpOf(plugin: ActivePlugin, state: HostState, signal?: AbortSignal) {
+  const scope = scopeOf(state, plugin, signal);
+  const results = await Promise.all(
+    Object.entries(plugin.plugin.mcpServers).map(([name, server]) =>
+      resolveMcpServer(name, server, scope),
+    ),
+  );
   return {
-    agents: (options = {}) => perPlugin(state, (plugin) => agentsOf(plugin, state, options.signal)),
-    mcpServers: (options = {}) =>
-      perPlugin(state, async (plugin) => {
-        const scope = scopeOf(state, plugin, options.signal);
-        const results = await Promise.all(
-          Object.entries(plugin.plugin.mcpServers).map(([name, server]) =>
-            resolveMcpServer(name, server, scope),
-          ),
-        );
-        return {
-          resolved: results.flatMap((result) => present(result.resolved)),
-          issues: results.flatMap((result) => result.issues),
-        };
-      }),
-    lspServers: (options = {}) =>
-      perPlugin(state, async (plugin) => {
-        const scope = scopeOf(state, plugin, options.signal);
-        const results = await Promise.all(
-          Object.entries(plugin.plugin.lspServers).map(([name, server]) =>
-            resolveLspServer(name, server, scope),
-          ),
-        );
-        return {
-          resolved: results.map((result) => result.resolved),
-          issues: results.flatMap((result) => result.issues),
-        };
-      }),
-    monitors: (options = {}) =>
-      perPlugin(state, async (plugin) => {
-        const scope = scopeOf(state, plugin, options.signal);
-        const results = await Promise.all(
-          plugin.plugin.monitors.map((monitor) => resolveMonitor(monitor, scope)),
-        );
-        return {
-          resolved: results.flatMap((result) => present(result.resolved)),
-          issues: results.flatMap((result) => result.issues),
-        };
-      }),
-    outputStyles: () => state.active.flatMap((plugin) => plugin.catalog.outputStyles),
+    resolved: results.flatMap((result) => present(result.resolved)),
+    issues: results.flatMap((result) => result.issues),
+  };
+}
+
+async function lspOf(plugin: ActivePlugin, state: HostState, signal?: AbortSignal) {
+  const scope = scopeOf(state, plugin, signal);
+  const results = await Promise.all(
+    Object.entries(plugin.plugin.lspServers).map(([name, server]) =>
+      resolveLspServer(name, server, scope),
+    ),
+  );
+  return {
+    resolved: results.map((result) => result.resolved),
+    issues: results.flatMap((result) => result.issues),
+  };
+}
+
+async function monitorsOf(plugin: ActivePlugin, state: HostState, signal?: AbortSignal) {
+  const scope = scopeOf(state, plugin, signal);
+  const results = await Promise.all(
+    plugin.plugin.monitors.map((monitor) => resolveMonitor(monitor, scope)),
+  );
+  return {
+    resolved: results.flatMap((result) => present(result.resolved)),
+    issues: results.flatMap((result) => result.issues),
+  };
+}
+
+/**
+ * The components of the current state's plugins, resolved at each call: the state is read from the
+ * core then, so a plugin an update added or dropped is the one resolved.
+ */
+export function createComponentPart(core: SessionCore): ComponentPart {
+  const stateOf = (): HostState => currentOf(core).state;
+  return {
+    agents: (options = {}) => {
+      const state = stateOf();
+      return perPlugin(state, (plugin) => agentsOf(plugin, state, options.signal));
+    },
+    mcpServers: (options = {}) => {
+      const state = stateOf();
+      return perPlugin(state, (plugin) => mcpOf(plugin, state, options.signal));
+    },
+    lspServers: (options = {}) => {
+      const state = stateOf();
+      return perPlugin(state, (plugin) => lspOf(plugin, state, options.signal));
+    },
+    monitors: (options = {}) => {
+      const state = stateOf();
+      return perPlugin(state, (plugin) => monitorsOf(plugin, state, options.signal));
+    },
+    outputStyles: () => stateOf().active.flatMap((plugin) => plugin.catalog.outputStyles),
   };
 }

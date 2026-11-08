@@ -13,7 +13,7 @@ import {
 import type { HooksSettings } from '../protocol/hook-config.ts';
 import type { HookEvent } from '../protocol/official.ts';
 import type { BackgroundListener } from './background-queue.ts';
-import type { SessionCore } from './session-core.ts';
+import { currentOf, type SessionCore } from './session-core.ts';
 
 /** Removes one registration; it does nothing once the prefix was registered again or removed. */
 export interface HookHandle {
@@ -147,14 +147,18 @@ export interface HookScope {
   onBackground(listener: BackgroundListener): () => void;
 }
 
-/** The scoped-hook part of one turn's view over the session's core. */
+/**
+ * The scoped-hook part of one turn's view over the session's core. `session` is read at each use,
+ * so the gates it carries are the current settings'.
+ */
 export function createHookScope(
   core: SessionCore,
-  session: HookSession,
+  session: () => HookSession,
   scope: TurnScope | undefined,
 ): HookScope {
   return {
     addHooks(prefix, hooks, source, options = {}) {
+      currentOf(core);
       const attach = ATTACH[options.lifetime ?? 'session'](scope);
       const entries = registerHooks(hooks, {
         idPrefix: prefix,
@@ -165,14 +169,23 @@ export function createHookScope(
       attach(handle);
       return handle;
     },
-    removeHooks: (prefix) => drop(core, prefix),
-    hasHooks: (event) => hasRunnableHandler(core.registry.get().entries, session, event),
-    fileChangedWatchList: () => [
-      ...new Set([
-        ...fileChangedWatchList(core.registry.get().entries, session),
-        ...core.watchPaths.get(),
-      ]),
-    ],
+    removeHooks: (prefix) => {
+      currentOf(core);
+      drop(core, prefix);
+    },
+    hasHooks: (event) => {
+      const now = session();
+      return hasRunnableHandler(core.registry.get().entries, now, event);
+    },
+    fileChangedWatchList: () => {
+      const now = session();
+      return [
+        ...new Set([
+          ...fileChangedWatchList(core.registry.get().entries, now),
+          ...core.watchPaths.get(),
+        ]),
+      ];
+    },
     takeBackground: () => core.background.take(),
     onBackground: (listener) => core.background.listen(listener),
   };

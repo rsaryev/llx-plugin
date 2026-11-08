@@ -98,8 +98,24 @@ function readStyles(plugin: Plugin) {
   };
 }
 
-/** Reads the skills, commands, agents and output styles of a loaded plugin with the format readers. */
+/** One reading per `Plugin` object: it holds no key, so a plugin the host drops frees its catalog. */
+const READ = new WeakMap<Plugin, PluginCatalog>();
+
+/**
+ * Reads the skills, commands, agents and output styles of a loaded plugin with the format readers.
+ * Judgment (spec/judgments.md): the catalog is cached by the identity of the `Plugin` object, which
+ * is immutable, so a host update that keeps a plugin does not read its Markdown again; a new
+ * object, even for the same id, is read.
+ */
 export function readCatalog(plugin: Plugin): PluginCatalog {
+  const cached = READ.get(plugin);
+  if (cached !== undefined) return cached;
+  const catalog = readPlugin(plugin);
+  READ.set(plugin, catalog);
+  return catalog;
+}
+
+function readPlugin(plugin: Plugin): PluginCatalog {
   const skills = readSkills(plugin);
   const commands = readCommands(plugin);
   const agents = readAgents(plugin);

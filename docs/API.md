@@ -712,7 +712,8 @@ the `… [+N chars]` marker.
 
 `createPluginHost` composes what the modules below already do; it adds no behaviour of its own. The
 host takes plugins loaded once with `loadPlugin`, the ports, the settings and the saved options, and
-reads the Markdown components of the enabled plugins once. A session reads nothing again.
+reads the Markdown components of the enabled plugins once per `Plugin` object. A session reads nothing from
+disk; `host.update` replaces the plugins and settings, and open sessions follow (see "Updating").
 
 ```ts
 import { createPluginHost, loadPlugin } from '@rsaryev/claude-plugin-kit';
@@ -740,8 +741,12 @@ createPluginHost(options: PluginHostOptions): PluginHost;
 //   parentSettings?: ParentSettingsContext; userConfig?: Record<pluginId, OptionValues>;
 //   windows?: boolean; shells?: { bash; powershell } }
 // HostPlugin: { id: 'name@marketplace'; plugin: Plugin; enabled?: boolean; source?: SkillPluginSource }
-host.plugins: readonly { id; name; enabled }[]   // every plugin given, with whether it runs
-host.issues: readonly PluginIssue[]              // what the format readers found in enabled plugins
+host.plugins: readonly { id; name; enabled }[]   // every plugin given, with whether it runs; live
+host.issues: readonly PluginIssue[]              // what the format readers found in enabled plugins; live
+host.generation: number                          // how many times `update` ran
+host.update(update: HostUpdate): { plugins; issues };  // see "Updating"
+// HostUpdate: { plugins?: HostPlugin[]; settings?: PolicyView; parentSettings?: ParentSettingsContext;
+//   userConfig?: Record<pluginId, OptionValues> }
 host.openSession(options: SessionOptions): PluginSession;
 // SessionOptions: { sessionId; cwd; permissionMode; transcriptPath; effort?: { level };
 //   interactive? (true); trusted? (true); additionalDirectories?; permissions?: ShellPermission;
@@ -900,8 +905,51 @@ a managed layer only) decide whether a skill keeps its hooks and its `allowed-to
 command whose `allowedTools` holds a rule that does not parse is reported in `host.issues` as
 `loadCommandEntries` reports it, and loads without that rule.
 
-Not in the host: starting servers and monitors, the permission decision of a tool call (`decide` in the rules module),
-and mods, which stay their own entry (`MODS_API`, `modsTesting`).
+### Updating
+
+The host owns the disk: it reads plugin folders, caches the `Plugin` objects (by mtime, by version,
+however it likes) and feeds the ones that changed to `host.update`. One call replaces the plugins and
+the settings view, and every session already open stays consistent without being reopened.
+
+```ts
+const result = host.update({ plugins: [...kept, { id: 'review@acme', plugin: reloaded }] });
+result.plugins; // the new `host.plugins`: every plugin given, with whether it runs
+result.issues; // the new `host.issues`
+host.generation; // one more than before: a caller that kept the number sees that an update happened
+host.update({ settings: createPolicyView(layers) }); // settings only; the plugins stay
+```
+
+`update` takes `plugins`, `settings`, `parentSettings` and `userConfig`. Each part given replaces the
+host's whole (`userConfig` replaces the saved values of every plugin); a part left out, or given as
+`undefined`, stays, so to clear the settings give `createPolicyView([])`. The ports, `windows` and
+`shells` are fixed for the life of the host. `createHostState` is pure: `update` merges the options
+and builds the state again, and `host.plugins` and `host.issues` read the current one. The Markdown
+of a plugin is read once per `Plugin` object (`readCatalog` caches by identity), so an update that
+keeps a plugin does not read it again; a new object for the same id is read.
+
+A session, and each `withTurn` and `runScoped` view of it, holds no state: it reads the host's at each
+use, so the next call after an update sees the new one. What it does:
+
+| Part of the session | After an update |
+| --- | --- |
+| Hooks of the plugins and of the settings files | Rebuilt from the new state, plugins first. |
+| Hooks the session registered (a skill's, an agent's, `addHooks`) | Kept, unless their `pluginId` no longer runs or the new plugin-only lock (`strictPluginOnlyCustomization` on `hooks`) silences their source; they do not return when the plugin runs again or the lock is lifted. |
+| `once` keys | A `once` hook that ran stays consumed: only skill hooks honor `once`, and an update never rebuilds them. |
+| Skill-hook limits (1,024 hooks, 16,384 matcher characters) | Summed again from the skills whose plugin still runs; a plugin dropped and added back starts from zero. |
+| Gates: `disableAllHooks`, `allowManagedHooksOnly`, the plugin-only lock, the HTTP policy, force-enabled plugins | Read from the current settings at each dispatch, so a policy switched on mid-session applies at the next one. |
+| Skills, `skillOverrides`, `disableSkillShellExecution`, `allowManagedPermissionRulesOnly` | Read at each `skills()`, `expandSkill` and `expandMessage`. |
+| Agents, MCP and LSP servers, monitors, output styles | Resolved at each call over the current plugins and `userConfig`. |
+| The dynamic watch list, the background queue, the turn view's options | Kept. |
+
+A session takes an update up at its next use, so two updates before that count as one: a plugin
+removed and added back in between never left it. A host that needs each step uses the session between
+the calls. What the host held for a run (the hooks of `addHooks` with `lifetime: 'turn'`) is the
+run's: it ends with `runScoped` as before. Replaces the hand-off of the latest run's hooks and the
+per-run rebuild of the hooks a host makes today.
+
+Not in the host: reading plugin folders from disk and caching them (the host owns that and feeds new `Plugin` objects
+through `update`), starting servers and monitors, the permission decision of a tool call (`decide` in the rules
+module), and mods, which stay their own entry (`MODS_API`, `modsTesting`).
 
 ## Permission rules (done: syntax, bare, parameter and glob rules, precedence, Bash and PowerShell commands, hook `if`, path rules, domain, MCP, Agent and Skill rules, the six permission modes)
 

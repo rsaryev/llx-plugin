@@ -7,7 +7,7 @@ import {
 import { entriesOf, invocablesOf } from './session-skill-entries.ts';
 import type { ExpandOptions, SkillInvoker, SkillPart } from './session-skills.ts';
 import type { SessionOptions } from './session-types.ts';
-import type { HostState } from './state.ts';
+import { currentOf, type SessionCore } from './session-core.ts';
 
 export interface MessageOptions {
   readonly signal: AbortSignal;
@@ -50,15 +50,16 @@ const leads = (
  * host (a built-in command, a path) and is not expanded.
  */
 export function createMentionPart(
-  state: HostState,
+  core: SessionCore,
   options: SessionOptions,
   skills: Pick<SkillPart, 'expandSkill'>,
 ): MentionPart {
-  const entries = entriesOf(state);
-  const known = new Set(entries.map((entry) => entry.invocable.command));
-  const stackable = stackableOf(invocablesOf(entries), state.view.get('skillOverrides'));
   return {
     async expandMessage(message, request) {
+      const { state } = currentOf(core);
+      const entries = entriesOf(state);
+      const known = new Set(entries.map((entry) => entry.invocable.command));
+      const stackable = stackableOf(invocablesOf(entries), state.view.get('skillOverrides'));
       const mentions = readSkillMentions(message, {
         interactive: options.interactive ?? true,
         stackable,
