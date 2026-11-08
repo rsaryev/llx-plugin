@@ -103,6 +103,7 @@ export {
 export { parseArguments } from './arguments.ts';
 export {
   substitute,
+  substituteArgumentPieces,
   substituteArguments,
   type ArgumentInput,
   type Substitution,

@@ -4,6 +4,8 @@
 
 ### Added
 
+- Export `substituteArgumentPieces` from the package root, for a host that renders a skill's
+  injected commands itself and still needs the arguments counted over the authored text.
 - Reach 100% of the in-scope requirements (2713 of 2713): host switches (`CLAUDE_CODE_*` variables,
   telemetry opt-out), channel contract and permission relay, shell redirection checks, marketplace
   add failures, name conflicts, relevance hints and telemetry names, `plugin list`/`details`/`validate`
