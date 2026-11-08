@@ -87,6 +87,13 @@
   upgraded) and `sliceFetched` (100,000-character window, unread count, next offset),
   `validateWebSearchDomains` (the two lists cannot be combined), `effectiveGrepOutputMode` and
   `capGlobMatches` (100 files and a truncation flag).
+- Tool responses (`rules/tools/responses`): `parseAgentResponse` reads the `tool_response` of an
+  Agent call as the `completed` or `async_launched` member of a union typed from the SDK's
+  `AgentOutput` (a launch exposes no usage fields, `modelsUsed` is set only after a swap and its
+  repeats are collapsed, `resolvedModel` may differ from the request). `parseBashEditDiff` reads
+  `tool_response.bashEditDiff` (at most 200 `changedFiles`, at most 5 `files`, `moreFiles`,
+  `unavailable`, `skipped`, `shared`) with warnings for broken limits, and `bashEditDiffTrust` says
+  whether a list is complete and attributable.
 
 ### Fixed
 

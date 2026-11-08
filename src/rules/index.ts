@@ -163,3 +163,22 @@ export {
   type CappedGlob,
   type GlobMatch,
 } from './tools/semantics/glob-cap.ts';
+export {
+  parseAgentResponse,
+  type AgentResponse,
+  type AgentResponseParse,
+  type AgentTextBlock,
+  type AgentUsage,
+  type CompletedAgentResponse,
+  type LaunchedAgentResponse,
+} from './tools/responses/agent-response.ts';
+export {
+  bashEditDiffTrust,
+  parseBashEditDiff,
+  MAX_CHANGED_FILES,
+  MAX_DIFFED_FILES,
+  type BashEditDiff,
+  type BashEditDiffParse,
+  type BashEditDiffTrust,
+  type BashEditFile,
+} from './tools/responses/bash-edit-diff.ts';
