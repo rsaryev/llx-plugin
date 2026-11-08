@@ -10,7 +10,9 @@ import { call, parse, type Deps } from './call.ts';
  * ("a `set` changes only its own key, so sessions that write different keys don't overwrite each
  * other", interface.md, "Save from more than one session"). Judgment: this keeps that true for every
  * session that shares the port in this process; sessions in other processes are the host's to guard
- * with a lock on the file its `ModStore` writes.
+ * with a lock on the file its `ModStore` writes. The queues are keyed by the port in a `WeakMap`, not
+ * built per host: two hosts that share one port (two sessions) must share its queue, and a queue lives
+ * no longer than the port it serves.
  */
 const queues = new WeakMap<object, Map<string, Promise<unknown>>>();
 

@@ -8,56 +8,67 @@
 import { expect, test } from 'bun:test';
 import { describeApi } from '../../../src/mods/api/index.ts';
 import { validateMod } from '../../../src/mods/load/commands/validate.ts';
-import { API_EVENT_NAMES } from '../../../src/protocol/mods-events.ts';
+import { API_EVENT_NAMES, type ApiEventName } from '../../../src/protocol/mods-events.ts';
 import { withUiRules } from '../../../src/mods/ui/index.ts';
 import { fn } from '../../support/mods-chain.ts';
-import { apiHarness } from '../../support/mods-api.ts';
+import { apiHarness, modelUsage } from '../../support/mods-api.ts';
+import {
+  drive,
+  isOwnResult,
+  hookAnswer,
+  REASON,
+  SENTINEL,
+  type Driven,
+} from '../../support/mods-api-drive.ts';
+import { CALL_SAMPLES, NOT_FIRED_BY_A_CALL } from '../../support/mods-api-samples.ts';
 import { fakeInterface, uiOver } from '../../support/mods-ui.ts';
 import { memoryFiles } from '../../support/ports.ts';
 import { rejection } from '../../support/rejection.ts';
 import { spec } from '../../support/spec.ts';
 
-const usage = { inputTokens: 1, outputTokens: 1 };
-const models = () => ({
-  calls: [] as unknown[],
-  complete(call: unknown) {
-    this.calls.push(call);
-    return Promise.resolve({ isAnswered: true as const, text: 'from the model', usage });
-  },
-  fork: () => Promise.reject(new Error('unused')),
-  classify: () => Promise.reject(new Error('unused')),
-});
-
-/** The calls that take no argument, one from each namespace that has one. */
-const WITHOUT_ARGUMENTS = [
-  'ui.panes',
-  'ui.selection',
-  'command.list',
-  'tool.list',
-  'agent.list',
-  'turn.abort',
-  'session.messages',
-  'session.cwd',
-  'session.root',
-  'session.model',
-  'session.turns',
-  'session.id',
-  'session.repo',
-  'session.surfaces',
-  'session.usage',
-  'session.version',
-  'session.compact',
-  'config.list',
-  'store.keys',
-  'clock.now',
-] as const;
-
-const callByName = (api: unknown, event: string): Promise<unknown> => {
-  const [namespace = '', method = ''] = event.split('.');
-  const member: unknown = Reflect.get(Object(Reflect.get(Object(api), namespace)), method);
-  if (typeof member !== 'function') throw new Error(`${event} is not a call`);
-  return Promise.resolve(member());
+const usage = modelUsage;
+const models = () => {
+  const calls: unknown[] = [];
+  return {
+    calls,
+    complete(call: unknown) {
+      calls.push(call);
+      return Promise.resolve({ isAnswered: true as const, text: 'from the model', usage });
+    },
+    fork: () => Promise.reject(new Error('unused')),
+    classify: () => Promise.reject(new Error('unused')),
+  };
 };
+
+const isApiEventName = (name: string): name is ApiEventName => Object.hasOwn(CALL_SAMPLES, name);
+
+/** Whether a call that a hook answered with `{ value }` resolved to what the page says it does. */
+function answeredAs(event: ApiEventName, run: Driven): boolean {
+  if (event === 'clock.after' || event === 'clock.every') return 'resolved' in run.outcome;
+  // api.md, "Send a notification": a hook that answers `ui.notify` in Claude Code's place sent nothing, which the call says as `refused`.
+  if (event === 'ui.notify') {
+    return (
+      'resolved' in run.outcome &&
+      Bun.deepEquals(run.outcome.resolved, { isSent: false, reason: 'refused' })
+    );
+  }
+  const answer = isOwnResult(event) ? hookAnswer(event, 'value') : SENTINEL;
+  return 'resolved' in run.outcome && Bun.deepEquals(run.outcome.resolved, answer);
+}
+
+/** Whether a call that a hook refused rejected with the reason, or resolved to `{ deny }` where the result is the event's own. */
+function refusedAs(event: ApiEventName, run: Driven): boolean {
+  if (event === 'clock.after' || event === 'clock.every') {
+    return run.debug.some((line) => line.includes(REASON));
+  }
+  // A stream's `{ deny }` is the one answer of it that is special: it rejects (test.md, "Follow the test kit's rules").
+  if (isOwnResult(event) && event !== 'process.spawn') {
+    return (
+      'resolved' in run.outcome && Bun.deepEquals(run.outcome.resolved, hookAnswer(event, 'deny'))
+    );
+  }
+  return 'rejected' in run.outcome && run.outcome.rejected.includes(REASON);
+}
 
 spec('mods.reference.Mods API calls', () => {
   test('fs.read, model.complete and ui.open are events: a hook on each sees the call and next(e) reaches Claude Code', async () => {
@@ -126,30 +137,64 @@ spec('mods.reference.Mods API calls', () => {
     expect(port.calls).toHaveLength(0);
   });
 
-  test('a hook intercepts only the calls of the mods that run after it', async () => {
-    const h = await apiHarness({ plugin: 'early' });
-    const late = await h.mod('late', 'append', []);
-    const early = await h.mod('early-hook', 'prepend', [fn('clock.now', () => ({ value: 42 }))]);
-    expect(await late.api.clock.now()).toBe(42);
-    // The mod that owns the hook is not intercepted by it when it is the one calling.
-    expect(await early.api.clock.now()).not.toBe(42);
+  test('a hook intercepts only the calls of the mods that run after it: the owner and the mods before it get the answer of Claude Code', async () => {
+    const intercepted = await apiHarness({ plugin: 'late', tier: 'append' });
+    await intercepted.mod('early-hook', 'prepend', [fn('clock.now', () => ({ value: 42 }))]);
+    // The hook is of a mod before the caller: the call is intercepted.
+    expect(await intercepted.api.clock.now()).toBe(42);
+
+    const owner = await apiHarness();
+    const own = await owner.mod('early-hook', 'prepend', [fn('clock.now', () => ({ value: 42 }))]);
+    // The mod that owns the hook is not intercepted by it when it is the one calling: the clock port answers.
+    expect(await own.api.clock.now()).toBe(0);
   });
 
-  test('every call of the table is such an event: a hook on one answers when the call is made', async () => {
-    const h = await apiHarness();
-    const described = new Set(
-      describeApi(h.api).flatMap((entry) => entry.members.flatMap((m) => m.event ?? [])),
-    );
-    for (const event of WITHOUT_ARGUMENTS) expect(described.has(event)).toBe(true);
-    const { iface } = fakeInterface();
-    const withUi = () => apiHarness({ rules: withUiRules, ui: uiOver(iface) });
-    for (const event of WITHOUT_ARGUMENTS) {
-      const answered = await withUi();
-      await answered.mod('stub', 'prepend', [fn(event, () => ({ value: `answered ${event}` }))]);
-      expect(await callByName(answered.api, event)).toBe(`answered ${event}`);
-      const refused = await withUi();
-      await refused.mod('policy', 'prepend', [fn(event, () => ({ deny: 'not now' }))]);
-      expect(await rejection(callByName(refused.api, event))).toContain('not now');
+  test('a hook of a mod that runs after the caller never sees its call: not for a user or prepend caller, whatever the hook answers', async () => {
+    for (const [caller, hook] of [
+      ['user', 'append'],
+      ['prepend', 'user'],
+      ['prepend', 'append'],
+      ['user', 'builtin'],
+    ] as const) {
+      for (const answer of [{ value: 42 }, { deny: 'not now' }]) {
+        const h = await apiHarness({ plugin: 'caller', tier: caller });
+        const seen: string[] = [];
+        await h.mod('later-hook', hook, [fn('clock.now', () => (seen.push('clock.now'), answer))]);
+        // The clock port answers: nothing was changed or refused, and the hook never ran.
+        expect(await h.api.clock.now()).toBe(0);
+        expect(seen).toEqual([]);
+      }
+    }
+  });
+
+  test('every call of the table has sample arguments, so no call escapes the test below', () => {
+    const missing = API_EVENT_NAMES.filter((name) => !Object.hasOwn(CALL_SAMPLES, name));
+    expect(missing).toEqual([]);
+    expect(Object.keys(CALL_SAMPLES).toSorted()).toEqual([...API_EVENT_NAMES].toSorted());
+    // A call set aside is one the page's own rule says does not fire at the call, and it names where it is proven.
+    for (const name of Object.keys(NOT_FIRED_BY_A_CALL)) expect(API_EVENT_NAMES).toContain(name);
+  });
+
+  test('every call of the table is such an event: next(e) reaches Claude Code as it would with no hook, { value } answers in its place, { deny } refuses it', async () => {
+    for (const event of API_EVENT_NAMES.filter((name) => !(name in NOT_FIRED_BY_A_CALL))) {
+      if (!isApiEventName(event)) throw new Error(`${event} has no sample arguments`);
+      const bare = await drive(event, 'none');
+      const passed = await drive(event, 'next');
+      const answered = await drive(event, 'value');
+      const refused = await drive(event, 'deny');
+      const at = `at ${event}`;
+      // The hook saw the call it was given, and next(e) changed nothing about what Claude Code does with it.
+      expect([at, passed.seen.length]).toEqual([at, 1]);
+      expect([at, passed.outcome]).toEqual([at, bare.outcome]);
+      expect([at, passed.reached]).toEqual([at, bare.reached]);
+      expect([at, passed.timers]).toEqual([at, bare.timers]);
+      // An answer of the hook is the call's result and Claude Code is never asked.
+      expect([at, answered.seen.length, refused.seen.length]).toEqual([at, 1, 1]);
+      expect([at, answered.reached]).toEqual([at, []]);
+      expect([at, refused.reached]).toEqual([at, []]);
+      expect([at, answered.timers, refused.timers]).toEqual([at, 0, 0]);
+      expect([at, answeredAs(event, answered)]).toEqual([at, true]);
+      expect([at, refusedAs(event, refused)]).toEqual([at, true]);
     }
   });
 

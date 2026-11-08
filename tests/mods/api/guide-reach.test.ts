@@ -8,7 +8,7 @@ import { expect, test } from 'bun:test';
 import type { CommandRun } from '../../../src/ports/index.ts';
 import type { ModsApi } from '../../../src/mods/types.ts';
 import { fakePorts } from '../../../src/testing/mods/index.ts';
-import { apiHarness, exited, memoryStore, reply, scripted } from '../../support/mods-api.ts';
+import { apiHarness, exited, reply, scripted } from '../../support/mods-api.ts';
 import type { Ev } from '../../support/mods-chain.ts';
 import { installed, modPlugin, registerOf, session } from '../../support/mods-load.ts';
 import { spec } from '../../support/spec.ts';
@@ -183,6 +183,23 @@ spec('mods.overview.What a mod can reach.Change your session', () => {
     expect(submitted).toEqual([{ text: 'yes, go ahead', asUser: true }]);
   });
 
+  test('without asUser the prompt reaches the port as the mod wrote it, so Claude reads it after a sentence that names the mod', async () => {
+    const submitted: unknown[] = [];
+    const base = fakePorts().ports;
+    const h = await apiHarness({
+      ports: {
+        prompts: {
+          ...base.prompts,
+          submit: (prompt) => (submitted.push(prompt), Promise.resolve({})),
+        },
+      },
+    });
+    await h.api.prompt.submit({ text: 'the build finished' });
+    // The port gets the mod as the sender, which is where the host puts the sentence that names it.
+    expect(submitted).toEqual([{ text: 'the build finished', from: 'my-mod' }]);
+    expect(submitted[0]).not.toHaveProperty('asUser');
+  });
+
   test('send a message to another of your sessions: $.session.send reaches the session port with the address and the text', async () => {
     const sent: unknown[][] = [];
     const base = fakePorts().ports;
@@ -196,65 +213,5 @@ spec('mods.overview.What a mod can reach.Change your session', () => {
     });
     await h.api.session.send({ to: { sessionId: 'abc-123' }, text: 'run the migration' });
     expect(sent).toEqual([['abc-123', 'run the migration']]);
-  });
-});
-
-spec('mods.overview.What a mod can reach.Act without asking you', () => {
-  test('a tool.check hook answers allow: the decision is made before Claude Code asks you', async () => {
-    const host = await loaded(
-      registerOf((on) => {
-        on('tool.check', async () => ({ decision: 'allow' }));
-      }),
-    );
-    let asked = false;
-    const answer = await host.fire(
-      'tool.check',
-      { tool: 'Bash', input: { command: 'rm -rf build' } },
-      {
-        core: () => {
-          asked = true;
-          return Promise.resolve({ decision: 'ask' });
-        },
-      },
-    );
-    expect(answer).toEqual({ decision: 'allow' });
-    expect(asked).toBe(false);
-  });
-
-  test('without such a hook the decision is Claude Code own: you are asked', async () => {
-    const host = await loaded(registerOf(() => undefined));
-    const answer = await host.fire(
-      'tool.check',
-      { tool: 'Bash', input: { command: 'rm -rf build' } },
-      { core: () => Promise.resolve({ decision: 'ask' }) },
-    );
-    expect(answer).toEqual({ decision: 'ask' });
-  });
-});
-
-spec('mods.overview.What a mod can reach.Spend your usage', () => {
-  test('$.model.complete sends the request through the session credentials with no question to you, and reports what it used', async () => {
-    const calls: unknown[] = [];
-    const usage = { input_tokens: 1200, output_tokens: 80 };
-    const h = await apiHarness({
-      ports: {
-        models: {
-          complete: (call: unknown) => (
-            calls.push(call),
-            Promise.resolve({ isAnswered: true as const, text: 'done', usage })
-          ),
-          fork: () => Promise.reject(new Error('unused')),
-          classify: () => Promise.reject(new Error('unused')),
-        },
-        store: memoryStore(),
-      },
-    });
-    const answer = await h.api.model.complete({
-      model: 'opus',
-      prompt: 'summarize the repo',
-      maxTokens: 4000,
-    });
-    expect(answer).toEqual({ isAnswered: true, text: 'done', usage });
-    expect(calls).toHaveLength(1);
   });
 });

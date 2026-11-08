@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { runEach } from '../../foundation/index.ts';
 import type { ModsNamespaceApi } from '../types.ts';
 import { call, parse, type Deps } from './call.ts';
 
@@ -48,7 +49,11 @@ export function createStateStore(): StateStore {
     reset() {
       const held = [...values.values()];
       values.clear();
-      for (const { plugin, key } of held) for (const listener of writes) listener(plugin, key);
+      // A listener that throws does not stop the others from redrawing; the failure is reported once all ran.
+      const redraws = held.flatMap(({ plugin, key }) =>
+        [...writes].map((listener) => () => listener(plugin, key)),
+      );
+      runEach(redraws, (redraw) => redraw());
     },
   };
 }

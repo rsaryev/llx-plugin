@@ -13,12 +13,14 @@ export {
   type RegisterFunction,
 } from './inline-runtime.ts';
 export { ExpectationError, expect } from './expect.ts';
+export type { MountHandle, MountSpec } from './mount.ts';
 export { createMockClock, type MockClock } from './mock-clock.ts';
 export { mock, type MockSession, type On } from './mock.ts';
 export {
   createTestKit,
   type TestBody,
   type TestCase,
+  type TestDollar,
   type TestKit,
   type TestOptions,
 } from './kit.ts';

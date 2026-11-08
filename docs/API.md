@@ -1000,7 +1000,7 @@ option). `$.clock.after` and `$.clock.every` return their timer at once, not a p
 and rebuilds `$` there: each namespace in the order of the reference, each member as `{ name, kind, async, event? }`
 with `kind` one of `value`, `call`, `sync` (`$.ui.resolve`), `timer` (`$.clock.after`, `$.clock.every`) and
 `stream` (`$.process.spawn`), and `event` the `ApiEventName` a call fires; it reads the live `$`, so a namespace
-another mod added is described and one it withheld is not. `ModsHost.resetState()` is what the host calls for
+another mod added is described and one it withheld is not. A `value` member carries no value: the host copies it by reading the live `$` itself (a value can be lazy, so the description stays plain data), and a call reports no arity or argument shape. `ModsHost.resetState()` is what the host calls for
 `/clear`, `/resume` and `/branch` (every `$.state` value back to its default; the host then fires
 `classic.SessionStart`), and `ModsHost.input.notice(kind, deliver)` raises a notice for the conversation that a
 stopped session holds or drops as api.md says. Changes to one plugin's `$.store` run one at a time.

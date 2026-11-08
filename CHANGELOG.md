@@ -4,6 +4,18 @@
 
 ### Fixed
 
+- Mods, review of `describeApi`, state reset and the mods API guide tests. `RunGate.userInput()` and
+  `StateStore.reset()` deliver to every held notice and every write listener even when one throws,
+  then report the failure (the error as thrown, several as an `AggregateError`); `runEach` in the
+  foundation does it. `docs/API.md` says a `value` member of `describeApi` carries no value (the host
+  copies it from the live `$`) and no arity. The test kit types `$.ui.mount` (`TestDollar`) and exports
+  `MountHandle` and `MountSpec`. Tests: every one of the 79 calls of the table gets `next(e)`,
+  `{ value }` and `{ deny }` from sample arguments (a call without a sample fails), a hook of a mod
+  that runs after the caller never sees its call, `$.prompt.submit` without `asUser` reaches the port
+  without it, `$.model.complete` asks no question and uses the Claude API's usage fields, the Add one
+  button of hello-tabs runs through the pane, `types` left out or pointing at a missing file, and a
+  write inside `ui.render` and the unchecked type of a declared value are recorded as judgments.
+
 - Mods, review of crash behaviour and refused calls. `ModSession.send` receives the reason the
   session refuses new work (`send(to, text, signal, refusal?)`) and `unsentReason.subagent` /
   `unsentReason.teammate` word the `{ isDelivered: false, reason }` of the page's table. `ModTools.call`

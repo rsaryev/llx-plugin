@@ -1,3 +1,4 @@
+import { runEach } from '../../foundation/index.ts';
 import type { ModSession } from './ports.ts';
 
 /**
@@ -147,7 +148,8 @@ export function createRunGate(
     async userInput() {
       stopped = false;
       turnsBefore = await session.turns();
-      for (const deliver of waiting.splice(0)) deliver();
+      // Judgment: a notice whose delivery throws does not cost the ones held after it; the failure is reported once all ran.
+      runEach(waiting.splice(0), (deliver) => deliver());
     },
     endInput: () => void (ended = true),
     interrupted: () => epoch.signal,

@@ -4,7 +4,7 @@
  * manifest at the declaration" (the `types` field "to let `claude plugin validate` check your code
  * against that file"), and the validation messages of "Define, read, and write a value".
  */
-import { expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { validateMod } from '../../../src/mods/load/commands/validate.ts';
 import { memoryFiles } from '../../support/ports.ts';
 import { spec } from '../../support/spec.ts';
@@ -58,6 +58,8 @@ const check = async (files: Record<string, string>, source = MODULE) => {
   return { exitCode: result.exitCode, text: result.lines.join('\n') };
 };
 
+// "each entry under it is a value and its type": validate checks that a value is declared, not what
+// its type is, so that half of the sentence is not proven here (judgments below, spec/judgments.md).
 spec('mods.interface.Declare the values', () => {
   test('the declaration of the docs declares both values under the plugin name: the code is checked against it and passes', async () => {
     const result = await check({ 'types/index.d.ts': TYPES });
@@ -87,12 +89,7 @@ spec('mods.interface.Declare the values', () => {
 });
 
 spec('mods.interface.Point the manifest at the declaration', () => {
-  test('the manifest of the docs, with `types` set to ./types/index.d.ts, is valid and its declaration is the one the code is checked against', async () => {
-    const files = folder({ 'types/index.d.ts': TYPES });
-    const result = await validateMod({ files, target: '.' });
-    expect(result.exitCode).toBe(0);
-    expect(result.lines.join('\n')).not.toContain('is not declared');
-  });
+  const unlisted = `declare module 'claude-code' { interface PluginState { 'hello-tabs': { tab: 'one' | 'two' } } }`;
 
   test('`types` names the path: a declaration at another path is read, and the file at the usual path is not', async () => {
     const files = memoryFiles({
@@ -105,6 +102,42 @@ spec('mods.interface.Point the manifest at the declaration', () => {
     const result = await validateMod({ files, target: '.' });
     expect(result.exitCode).toBe(0);
     expect(result.lines.join('\n')).not.toContain('is not declared');
+  });
+
+  test('`types` left out of the manifest: the file at types/index.d.ts is the declaration the code is checked against', async () => {
+    const files = (declaration: string) =>
+      memoryFiles({
+        '.claude-plugin/plugin.json': manifest({}),
+        'hooks/hooks.json': JSON.stringify({ modules: ['./register.js'] }),
+        'hooks/register.js': MODULE,
+        'types/index.d.ts': declaration,
+      });
+    const complete = await validateMod({ files: files(TYPES), target: '.' });
+    expect(complete.exitCode).toBe(0);
+    const partial = await validateMod({ files: files(unlisted), target: '.' });
+    expect(partial.exitCode).toBe(1);
+    expect(partial.lines.join('\n')).toContain('hello-tabs.count is not declared');
+  });
+
+  test('a module that uses $.state with no declaration at the path fails, whether `types` is left out or names a file that is not there', async () => {
+    const without = (extra: Record<string, unknown>) =>
+      memoryFiles({
+        '.claude-plugin/plugin.json': manifest(extra),
+        'hooks/hooks.json': JSON.stringify({ modules: ['./register.js'] }),
+        'hooks/register.js': MODULE,
+        // The usual path is filled when `types` names another one, so it is the field that decides.
+        ...(extra.types === undefined ? {} : { 'types/index.d.ts': TYPES }),
+      });
+    const absent = await validateMod({ files: without({}), target: '.' });
+    expect(absent.exitCode).toBe(1);
+    expect(absent.lines.join('\n')).toContain(
+      'the module uses $.state, so types/index.d.ts must declare its values',
+    );
+    const missing = await validateMod({ files: without({ types: './missing.d.ts' }), target: '.' });
+    expect(missing.exitCode).toBe(1);
+    expect(missing.lines.join('\n')).toContain(
+      'the module uses $.state, so missing.d.ts must declare its values',
+    );
   });
 });
 
@@ -162,5 +195,34 @@ spec('mods.interface.Define, read, and write a value', () => {
     // `session.start` of MODULE writes `count`; the `ui.render` hook only reads.
     expect(result.text).toContain('state writes: hello-tabs.count');
     expect(result.text).toContain('state reads: hello-tabs.count, hello-tabs.tab');
+  });
+});
+
+// Judgments (spec/judgments.md): none of these is under `spec(...)`, since a judgment is never compatibility.
+describe('what validate leaves unchecked in a declaration', () => {
+  test('the type of a declared value is not checked: a default of "x" for a number passes, because the kit has no TypeScript parser', async () => {
+    const result = await check(
+      { 'types/index.d.ts': TYPES },
+      withAtom(`const count = atom({ plugin: 'hello-tabs', key: 'count' }, 'x')`),
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.text).not.toContain('is not declared');
+  });
+
+  test('a $.state write inside a ui.render hook is not refused: validate lists it as a state write, and at runtime it does not redraw its own site (tests/mods/ui/redraw.test.ts)', async () => {
+    const writing = `
+import { atom, read, update } from 'claude-code'
+const count = atom({ plugin: 'hello-tabs', key: 'count' }, 0)
+export function register(on) {
+  on('ui.render', { component: 'Pane' }, async ($, e, next) => {
+    const n = await read($, count)
+    await update($, count, (value) => value + 1)
+    return next(e)
+  })
+}`;
+    const result = await check({ 'types/index.d.ts': TYPES }, writing);
+    expect(result.exitCode).toBe(0);
+    expect(result.text).toContain('state reads: hello-tabs.count');
+    expect(result.text).toContain('state writes: hello-tabs.count');
   });
 });

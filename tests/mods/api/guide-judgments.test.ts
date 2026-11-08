@@ -4,9 +4,16 @@
  */
 import { describe, expect, test } from 'bun:test';
 import type { JsonObject } from '../../../src/foundation/index.ts';
-import { atom, read, update } from '../../../src/mods/api/index.ts';
+import {
+  atom,
+  createRunGate,
+  createStateStore,
+  read,
+  update,
+} from '../../../src/mods/api/index.ts';
 import { apiHarness } from '../../support/mods-api.ts';
 import { flush } from '../../support/mods-chain.ts';
+import { numbers } from '../../support/mods-refusal.ts';
 import { rejection } from '../../support/rejection.ts';
 
 describe('a reset of $.state', () => {
@@ -19,6 +26,53 @@ describe('a reset of $.state', () => {
     h.shared.state.reset();
     expect(redraws).toEqual(['hello-tabs.count']);
     expect(await read(h.api, count)).toBe(0);
+  });
+
+  test('a listener that throws does not stop the others: each is told about each value, then the failure is reported', () => {
+    const state = createStateStore();
+    state.set('hello-tabs', 'count', 1);
+    state.set('hello-tabs', 'tab', 'one');
+    const told: string[] = [];
+    state.onWrite((plugin, key) => {
+      told.push(`broken:${plugin}.${key}`);
+      throw new Error('redraw failed');
+    });
+    state.onWrite((plugin, key) => void told.push(`ok:${plugin}.${key}`));
+    told.length = 0;
+    // The broken listener fails once for each of the two values: both failures are reported together.
+    expect(() => state.reset()).toThrow(AggregateError);
+    expect(told).toEqual([
+      'broken:hello-tabs.count',
+      'ok:hello-tabs.count',
+      'broken:hello-tabs.tab',
+      'ok:hello-tabs.tab',
+    ]);
+    // The values are back to their defaults even though a listener failed.
+    expect(state.get('hello-tabs', 'count')).toBeUndefined();
+  });
+
+  test('several listeners that throw are reported together', () => {
+    const state = createStateStore();
+    state.set('hello-tabs', 'count', 1);
+    state.onWrite(() => {
+      throw new Error('first');
+    });
+    state.onWrite(() => {
+      throw new Error('second');
+    });
+    const failure = (() => {
+      try {
+        state.reset();
+        return undefined;
+      } catch (error) {
+        return error;
+      }
+    })();
+    expect(failure).toBeInstanceOf(AggregateError);
+    expect(failure instanceof AggregateError && failure.errors.map(String)).toEqual([
+      'Error: first',
+      'Error: second',
+    ]);
   });
 
   test('tells nobody when no value was held', async () => {
@@ -90,5 +144,24 @@ describe('changes to the store of one plugin', () => {
     const h = await apiHarness({ plugin: 'my', ports: { store } });
     await Promise.all([h.api.store.delete('a'), h.api.store.set('c', 3)]);
     expect(store.data.my).toEqual({ b: 2, c: 3 });
+  });
+});
+
+describe('held notices of a stopped session', () => {
+  test('a notice whose delivery throws does not cost the ones held after it: the rest arrive, the session accepts input again, then the failure is reported', async () => {
+    const gate = createRunGate(numbers().port);
+    const reached: string[] = [];
+    gate.interrupt();
+    gate.notice('agent.finished', () => void reached.push('first'));
+    gate.notice('monitor.ended', () => {
+      throw new Error('delivery failed');
+    });
+    gate.notice('agent.finished', () => void reached.push('third'));
+    expect(await rejection(gate.userInput())).toContain('delivery failed');
+    expect(reached).toEqual(['first', 'third']);
+    expect(await gate.refusal()).toBeUndefined();
+    // Nothing is held any more: the next input delivers nothing twice.
+    await gate.userInput();
+    expect(reached).toEqual(['first', 'third']);
   });
 });
