@@ -49,7 +49,6 @@ export {
   effectiveDescription,
   effectiveVersion,
   readMarketplace,
-  unreadEntry,
   validateMarketplace,
   type EntryReader,
   type EntryReading,

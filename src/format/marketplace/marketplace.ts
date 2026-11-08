@@ -1,8 +1,10 @@
 import { blocksLoading, error, warning, type PluginIssue } from '../issues.ts';
 import { withoutDuplicates, type IndexedEntry } from './entry-checks.ts';
+import { createEntryReader } from './entries.ts';
 import { pluginIdIssues, desktopNameIssues } from './ids.ts';
 import { marketplaceNameIssues, validationNameIssues } from './marketplace-names.ts';
 import { isRecord, readTopLevel, typeName, type TopLevel } from './marketplace-schema.ts';
+import { parsePluginSource } from './plugin-source.ts';
 import { validateRenames } from './renames.ts';
 import type {
   Marketplace,
@@ -40,13 +42,10 @@ export interface EntrySlot {
 export type EntryReader = (raw: unknown, slot: EntrySlot) => EntryReading;
 
 /**
- * The reader used until the entry reader of the marketplace stream is installed: it drops every
- * entry and says so, so no entry is ever reported as valid without having been read.
+ * The reader `readMarketplace` and `validateMarketplace` use unless given another (tests of the
+ * top level pass a stand-in): each entry through the entry reader over the plugin source parser.
  */
-export const unreadEntry: EntryReader = (_raw, slot) => ({
-  entry: undefined,
-  issues: [error(`plugins[${slot.index}]`, 'Plugin entries are not read yet')],
-});
+const defaultEntryReader: EntryReader = createEntryReader(parsePluginSource);
 
 const NO_DESCRIPTION =
   'No marketplace description provided. Adding a description helps users understand what this marketplace offers';
@@ -153,7 +152,7 @@ function assemble(
 export function readMarketplace(
   raw: unknown,
   context: MarketplaceContext = {},
-  readEntry: EntryReader = unreadEntry,
+  readEntry: EntryReader = defaultEntryReader,
 ): MarketplaceResult {
   return assemble(raw, context, readEntry, 'load');
 }
@@ -162,7 +161,7 @@ export function readMarketplace(
 export function validateMarketplace(
   raw: unknown,
   context: MarketplaceContext = {},
-  readEntry: EntryReader = unreadEntry,
+  readEntry: EntryReader = defaultEntryReader,
 ): PluginIssue[] {
   return [...assemble(raw, context, readEntry, 'validate').issues];
 }

@@ -117,6 +117,9 @@
   installed <version>` messages (local copies skip the range; claude.ai plugins meet a dependency
   only for `@synced` plugins), and `crossMarketplaceDecision` applies the root marketplace's
   `allowCrossMarketplaceDependenciesOn`. Adds the `semver` dependency.
+- `readMarketplace` and `validateMarketplace` read every entry by default (the entry reader over
+  `parsePluginSource`), so a marketplace file loads end to end and its entries feed `planPluginFetch`,
+  `resolveRename`, `normalizeDependency` and `crossMarketplaceDecision`; `unreadEntry` is removed.
 
 ### Fixed
 

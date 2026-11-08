@@ -36,7 +36,7 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | ----------------------------------- | ------- | --------------------------------------------------------------------- |
 | `readManifest(raw)`                 | done    | `plugin.json` as loaded: unknown keys stripped, any error blocks load |
 | `validateManifest(raw)`             | done    | plus the validator: reserved names, kebab-case, missing metadata      |
-| `readMarketplace(raw)`              | planned | `marketplace.json`: entries, sources, strict mode (contracts done: see Marketplace) |
+| `readMarketplace(raw)`              | done    | `marketplace.json`: top level, names, entries, plugin sources (see Marketplace) |
 | `readSkill(path, text)`             | planned | `SKILL.md` frontmatter and body                                       |
 | `readCommand(path, text)`           | planned | a command file (the older skill format)                               |
 | `readAgent(path, text)`             | planned | an agent file → official `AgentDefinition`                            |
@@ -46,12 +46,12 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `readMcpConfig(raw)`                | planned | `.mcp.json` → official `McpServerConfig` map                          |
 | `readLspConfig(raw)`, `readMonitors(raw)`, `readOutputStyle(...)` | planned | the remaining component files |
 
-## Marketplace (planned: contracts done)
+## Marketplace
 
 `marketplace.json` and where plugins come from (plugins/marketplace-reference.md,
-plugins/host-marketplace.md, plugins/dependencies.md). The shapes below are fixed first, in
-`src/format/marketplace/types.ts` and `src/marketplace/types.ts`, so the readers, the fetch
-planners and the decisions are written against one contract. Reading and planning are pure; the
+plugins/host-marketplace.md, plugins/dependencies.md). The shapes below live in
+`src/format/marketplace/types.ts` and `src/marketplace/types.ts`; the readers, the fetch
+planners and the decisions are written against that one contract. Reading and planning are pure; the
 engines that download, run a command or hash take their effect through ports.
 
 ```ts
@@ -71,7 +71,7 @@ const { plan } = planPluginFetch(entry.source, { platform: 'posix' }); // data: 
 | `FetchPlan`, `FetchPlanContext`, `ArchiveLimits`, `MarketplaceFetchPlan` | done | what planning returns, as data a host executes                    |
 | `Sha256`, `ArchiveReader`, `GitTags`, `SourceFetcher` | done | ports only marketplaces use (`src/ports/marketplace.ts`, `src/marketplace/ports.ts`), exported by the marketplace barrel |
 | `NormalizedDependency`, `RenameStatus`          | done    | values the dependency and rename decisions return                                 |
-| `readMarketplace(raw, context?, readEntry?)`, `validateMarketplace(...)` | done (file and names) | the top-level fields and the marketplace's name as Claude Code loads them (a bad top-level field or name keeps the marketplace from loading) and as `claude plugin validate` reports them; each entry goes to an `EntryReader` on its own, so a bad one is dropped alone. Until the entry reader lands the default `unreadEntry` drops every entry with an error |
+| `readMarketplace(raw, context?, readEntry?)`, `validateMarketplace(...)` | done | the top-level fields and the marketplace's name as Claude Code loads them (a bad top-level field or name keeps the marketplace from loading) and as `claude plugin validate` reports them; each entry goes to an `EntryReader` on its own, so a bad one is dropped alone; the default reader is `createEntryReader(parsePluginSource)`, so the plugin sources are read too, and what is read feeds `planPluginFetch`, `resolveRename`, `normalizeDependency` and `crossMarketplaceDecision` |
 | `effectiveDescription`, `effectiveVersion` | done | `description` or `version`, else the one under `metadata` |
 | `marketplaceNameIssues(name, { origin?, hostedOnClaudeAi? })`, `validationNameIssues`, `loadNameIssues`, `downloadFolderIssues(name, registered)`, `spellingOf` | done | the reserved-name rules: `validationNameIssues` is what `validate` prints, `loadNameIssues` what adding or loading refuses (official names outside `github.com/anthropics/`, another spelling, JavaScript member names, `claudeai-`), `marketplaceNameIssues` both |
 | `OFFICIAL_NAMES`, `COMMUNITY_NAMES`, `DIRECTORY_NAMES`, `NON_MARKETPLACE_NAMES`, `ANY_CASING_NAMES`, `OBJECT_MEMBER_NAMES` | done | the lists of "Reserved names" |
