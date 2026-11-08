@@ -80,6 +80,16 @@
   enforces (600/600/600/30/60, lowered on `UserPromptSubmit`, `PreModelSwitch`, `PostModelSwitch`
   and `MessageDisplay`, the shared `SessionEnd` budget), and `statusMessage` reaches the host's
   observer when a hook starts.
+- Remote hook handlers (`hooks/handlers/remote`): an `http` hook POSTs the hook input as JSON with
+  `Content-Type: application/json`, interpolating `$VAR` and `${VAR}` in header values only for the
+  names in `allowedEnvVars` (unlisted ones become empty strings); an `mcp_tool` hook calls the tool
+  on the server it names (a plugin server by its scoped name), substitutes `${path}` from the hook
+  input into the string arguments, waits for a connecting server only on events that can block or
+  change a result, and reports `isError` as a non-blocking error; `prompt` and `agent` hooks
+  substitute `$ARGUMENTS` (with the `\$` escape, the input appended when absent), pass `model` and
+  the 30 s and 60 s timeouts, and read the `ok` / `reason` / `impossible` answer. `okFalseEffect`
+  says what `ok: false` does on each of the 13 events (`continueOnBlock`, `impossible`, agent hooks),
+  and `runLimited` runs at most 12 prompt or agent hooks at once, in handler order.
 
 ### Fixed
 

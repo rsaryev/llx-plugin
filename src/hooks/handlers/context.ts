@@ -1,8 +1,17 @@
 import type { PluginIssue } from '../../format/issues.ts';
 import type { ResolvedUserConfig } from '../../loading/resolve/index.ts';
-import type { CommandRunner, Environment, Locations, ShellKind } from '../../ports/index.ts';
+import type {
+  CommandRunner,
+  Environment,
+  HttpClient,
+  Locations,
+  McpCaller,
+  ModelRunner,
+  ShellKind,
+} from '../../ports/index.ts';
 import type { HookHandlerOf, HookHandlerType } from '../../protocol/hook-config.ts';
 import type { RegisteredHandler } from '../contracts.ts';
+import type { RemoteRawRun } from './remote/types.ts';
 import type { StartObserver } from './status.ts';
 import type { TimeoutPlan } from './timeouts.ts';
 
@@ -18,6 +27,12 @@ export interface RunPorts {
   readonly locations: Locations;
   readonly environment: Environment;
   readonly observer?: StartObserver;
+  /** `http` hooks (hooks.md, "HTTP hook fields"); a hook of a type whose port is absent does not run. */
+  readonly http?: HttpClient;
+  /** `mcp_tool` hooks (hooks.md, "MCP tool hook fields"). */
+  readonly mcp?: McpCaller;
+  /** `prompt` and `agent` hooks (hooks.md, "Prompt-based hooks" and "Agent-based hooks"). */
+  readonly models?: ModelRunner;
 }
 
 export interface RunContext {
@@ -92,8 +107,11 @@ export interface BackgroundRun {
 /** What running a command hook returns. */
 export type CommandRawRun = ForegroundRun | SkippedRun | BackgroundRun;
 
+/** What running any hook returns: the command runs and the runs of the remote types. */
+export type RawRun = CommandRawRun | RemoteRawRun;
+
 /** The raw run and the issues the run itself found (warnings, a refusal). */
 export interface HandlerResult {
-  readonly run: CommandRawRun;
+  readonly run: RawRun;
   readonly issues: readonly PluginIssue[];
 }

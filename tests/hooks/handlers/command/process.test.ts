@@ -232,13 +232,3 @@ describe('a runner handed a hook of another type', () => {
     expect(run).toEqual({ kind: 'skipped', reason: 'The command runner was given a http hook.' });
   });
 });
-
-describe('handler types whose runner is not in this build', () => {
-  test('is reported as not run, with the type', async () => {
-    const { run } = await runHandler(
-      entry('Stop', { handler: { type: 'http', url: 'https://x.test' } }),
-      runContext({ runner: scriptedRunner() }),
-    );
-    expect(run).toEqual({ kind: 'skipped', reason: 'http hooks are not run by this build.' });
-  });
-});

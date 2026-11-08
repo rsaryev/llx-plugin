@@ -2,6 +2,10 @@ import type { HookHandlerType } from '../../protocol/hook-config.ts';
 import type { RegisteredHandler } from '../contracts.ts';
 import { runCommand } from './command/run-command.ts';
 import type { HandlerEntry, HandlerResult, RunContext } from './context.ts';
+import { runAgent } from './remote/agent.ts';
+import { runHttp } from './remote/http.ts';
+import { runMcpTool } from './remote/mcp-tool.ts';
+import { runPrompt } from './remote/prompt.ts';
 import { announceStart } from './status.ts';
 
 /**
@@ -39,21 +43,12 @@ const runnerOf =
           issues: [],
         });
 
-/** A type whose runner is not part of this build: the hook is reported as not run. */
-const notRun =
-  (type: HookHandlerType): Runner =>
-  () =>
-    Promise.resolve({
-      run: { kind: 'skipped', reason: `${type} hooks are not run by this build.` },
-      issues: [],
-    });
-
 export const HANDLERS: { readonly [T in HookHandlerType]: Runner } = {
   command: runnerOf('command', runCommand),
-  http: notRun('http'),
-  mcp_tool: notRun('mcp_tool'),
-  prompt: notRun('prompt'),
-  agent: notRun('agent'),
+  http: runnerOf('http', runHttp),
+  mcp_tool: runnerOf('mcp_tool', runMcpTool),
+  prompt: runnerOf('prompt', runPrompt),
+  agent: runnerOf('agent', runAgent),
 };
 
 /** Runs one handler: tells the host it started (`statusMessage`), then hands it to the runner of its type. */

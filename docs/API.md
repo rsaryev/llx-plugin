@@ -199,8 +199,10 @@ const { selected, issues, monitor } = selectHandlers(registry, {
 | `buildHookInput(event, facts, session)`    | done    | the input of an event as `{ input, issues }`: the common fields from the session, then the event's facts checked against the official input type; `input` is `undefined` when a fact has the wrong type or value |
 | `serializeHookInput(input)`                | done    | the one JSON text a command hook reads on stdin and an HTTP hook receives as its body |
 | `hookPermissionMode(mode)`                 | done    | the `permission_mode` a hook sees: the mode labeled Manual is `default` |
-| `runHandler(entry, context)`               | done    | runs one handler and returns `{ run, issues }`: a `command` hook in exec form or shell form, in the foreground or the background; the other types report `skipped` until their runners land |
+| `runHandler(entry, context)`               | done    | runs one handler and returns `{ run, issues }`: a `command` hook in exec form or shell form, in the foreground or the background; an `http`, `mcp_tool`, `prompt` or `agent` hook through its port (`http`, `mcp`, `models` of the run ports) |
 | `planTimeouts(event, selected, environment)`, `handlerTimeoutMs(entry, plan)` | done | the limit in milliseconds the port enforces: defaults 600/600/600/30/60, lowered per event, none for `async`, the shared `SessionEnd` budget |
+| `okFalseEffect(event, run, options)`, `isPromptEvent(event)` | done | what `ok: false` of a prompt or agent hook does on each of the 13 events that run them: `none`, `allow-stop` (`impossible` on `Stop` and `SubagentStop`), or `block` with `endsTurn`, `delivery` and `deniesTool`; `continueOnBlock`, agent hooks and the two causes of `TaskCompleted` |
+| `runLimited(entries, run, limit?)`, `composePrompt(prompt, inputJson)` | done | at most 12 prompt or agent hooks at once, results in handler order; `$ARGUMENTS` and `\$` of a prompt |
 | `interpretRun`, `parseHookOutput`, `mergeOutputs`, `createHookEngine` | planned | exit codes and `onFailure`, the JSON output, the merged outcome |
 
 Selection also applies the gates of hooks.md: `disableAllHooks` (managed hooks survive it unless the
@@ -222,6 +224,17 @@ one string for the named shell. The result's `run` is `exited`, `timed-out` (the
 runs nothing and carries the documented error) or `background`, whose `done` settles when the process
 ends, with `wake` set for an `asyncRewake` hook that exited with code 2. What an exit code means and
 what `onFailure` does with it are the interpret stage's (planned).
+
+The remote types return the raw answer in `run`: `http` (`status` and `body`, any status), `http-failed`
+(no answer), `mcp` (`isError` and `text`, also for a server that is not connected), `model` (`ok`,
+`reason`, `impossible` from a valid answer) and `model-failed` (the model did not answer, or not in the
+schema); a timeout and an abort are the shared `timed-out` and `cancelled`. A hook whose port the host
+did not give is `skipped` with an error issue. The run ports are `http` (`HttpClient`), `mcp`
+(`McpCaller`) and `models` (`ModelRunner`). An `http` hook interpolates `$VAR` and `${VAR}` in header
+values only for the names in `allowedEnvVars`; an `mcp_tool` hook waits for a connecting server only on
+events that can block or change a result (`MCP_TIMEOUT`, 30 s, within the hook timeout). Enforcing
+`allowedHttpHookUrls` and `httpHookAllowedEnvVars` (settings) is the host's or the settings stream's: the
+run does not read them.
 
 `buildHookInput` puts `session_id`, `prompt_id` (absent until the first prompt), `transcript_path`,
 `cwd`, `scratchpad_dir` (absent without a scratchpad), `permission_mode` and `effort` (on the events
