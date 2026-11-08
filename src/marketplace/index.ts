@@ -23,7 +23,9 @@ export type {
   GitRepository,
   GitTags,
   GitTagsFailure,
+  PluginStateStore,
   Sha256,
+  StateStoreFailure,
 } from '../ports/marketplace.ts';
 export { ARCHIVE_LIMITS, planPluginFetch, type Planned } from './fetch-plan.ts';
 export { isBlockedHost } from './blocked-hosts.ts';
@@ -76,7 +78,19 @@ export {
 export { isCredentialVariable, withoutCredentials } from './credential-variables.ts';
 export { planMarketplaceFetch } from './marketplace-fetch-plan.ts';
 export { parseMarketplaceInput, type MarketplaceInputOptions } from './marketplace-input.ts';
-export { INSTALL_SCOPES, isWritableScope, type InstallScope } from './install-scopes.ts';
+export {
+  INSTALL_SCOPES,
+  SCOPE_PRECEDENCE,
+  collaboratorInstallCommand,
+  defaultScope,
+  isWritableScope,
+  mostSpecificScope,
+  scopeReach,
+  type ChosenScope,
+  type InstallScope,
+  type ScopeReach,
+  type ScopedCommand,
+} from './install-scopes.ts';
 export {
   migrateSettingsKeys,
   migrateSettingsScopes,
@@ -122,3 +136,151 @@ export {
   type DeclaredIn,
   type RefusalEffect,
 } from './cross-marketplace.ts';
+export {
+  STORE_NAMES,
+  classifyStoreEntry,
+  createStoreLayout,
+  resolvePluginsRoot,
+  type PathJoin,
+  type StoreEntry,
+  type StoreLayout,
+} from './store-layout.ts';
+export {
+  INSTALLED_PLUGINS_VERSION,
+  parseInstalledPlugins,
+  serializeInstalledPlugins,
+  type InstallRecord,
+  type InstalledPluginsRead,
+  type InstalledRecords,
+} from './installed-plugins.ts';
+export {
+  loadInstalledPlugins,
+  type InstalledPluginsPorts,
+  type LoadedInstalledPlugins,
+} from './installed-plugins-store.ts';
+export {
+  installLocationFor,
+  parseKnownMarketplaces,
+  sameMarketplaceSource,
+  serializeKnownMarketplaces,
+  type KnownMarketplace,
+  type KnownMarketplaces,
+  type KnownMarketplacesRead,
+  type RegistryFailureCode,
+} from './known-marketplaces.ts';
+export {
+  ignoredLine,
+  ignoredReason,
+  untrustedSourceMessage,
+  type IgnoreChecks,
+  type IgnoredReason,
+  type IgnoredSurface,
+} from './ignored-marketplace.ts';
+export {
+  RECORDS_UNREADABLE_CODE,
+  listNote,
+  rebuiltNote,
+  recoveryNotes,
+  refuseForUnreadableRecords,
+  setAsideNote,
+  unknownFormatMessage,
+  unreadableRecordsMessage,
+  type ErrorsTabEntry,
+  type RecordsRefusal,
+  type RefusingCommand,
+} from './install-messages.ts';
+export {
+  ADD_OFFICIAL,
+  PLUGINS_CHANGED,
+  PLUGIN_ACTIVE,
+  RELOAD_TO_APPLY,
+  alreadyAddedFromDifferentSource,
+  alreadyInstalledAtScope,
+  alreadyInstalledGlobally,
+  describeSource,
+  enabledNotInstalled,
+  failedToInstall,
+  failureOnce,
+  installSummaryEnding,
+  isInstalledGlobally,
+  marketplaceDirectoryNotFound,
+  nameTheMarketplace,
+  noMarketplaces,
+  notCached,
+  pluginDirectoryMissingAtRun,
+  pluginDirectoryNotFound,
+  pluginNotFound,
+  pluginNotFoundAnywhere,
+  reinstallCommand,
+  type EmptyView,
+  type InstallFailure,
+  type InstallSurface,
+  type PluginNotFound,
+} from './install-errors.ts';
+export {
+  decideEnabledFetch,
+  overriddenUserDisable,
+  type EnableSource,
+  type EnabledFacts,
+  type EnabledFetchDecision,
+  type TrueIn,
+  type UserDisableOverridden,
+} from './enablement-notes.ts';
+export {
+  planMarketplaceStartup,
+  stageReport,
+  unresolvedAfterStart,
+  type Layer,
+  type Stage,
+  type StageFacts,
+  type StageReport,
+  type StartupAction,
+} from './stage-report.ts';
+export {
+  closePanel,
+  marketplaceCommand,
+  marketplaceTabUpdate,
+  planMarketplaceRemoval,
+  planMarketplaceUpdate,
+  pluginActions,
+  uninstallChoice,
+  type CommandSurface,
+  type MarketplaceAction,
+  type MarketplaceRemovalFacts,
+  type MarketplaceRemovalPlan,
+  type MarketplaceTabPlugin,
+  type MarketplaceUpdatePlan,
+  type PanelClose,
+  type PluginActionFacts,
+  type UninstallOption,
+} from './install-plans.ts';
+export {
+  planDisable,
+  planEnable,
+  planInstall,
+  planPrune,
+  planUninstall,
+  type DisablePlan,
+  type EnablePlan,
+  type InstallPlan,
+  type PluginNode,
+  type UninstallPlan,
+} from './dependency-plans.ts';
+export {
+  parseReloadArguments,
+  reloadAllowed,
+  reloadGate,
+  reloadSummary,
+  skillCount,
+  type ReloadChange,
+  type ReloadCounts,
+  type ReloadGate,
+} from './reload-summary.ts';
+export {
+  ORPHANED_MARKER,
+  ORPHAN_GRACE_MS,
+  dirsToOrphan,
+  orphanMarkerPath,
+  orphanSweep,
+  type Orphan,
+} from './orphan-cleanup.ts';

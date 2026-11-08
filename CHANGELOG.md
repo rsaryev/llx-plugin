@@ -60,6 +60,22 @@
 
 ### Added
 
+- Install records: the state Claude Code keeps under the plugins root, and the texts it prints about it
+  (plugins/loading.md, plugins/troubleshooting.md, plugins/install.md, plugins/cli-reference.md).
+  `createStoreLayout` and `resolvePluginsRoot` name every path (`cache/<marketplace>/<plugin>/<version>`,
+  `data/<id>`, `marketplaces/<name>`, `synced/`, `.trash/`, the JSON records, the dated copies);
+  `parseInstalledPlugins` reads `installed_plugins.json` and decides what is rebuilt, set aside or
+  left unwritten, `loadInstalledPlugins` carries it out through the new `PluginStateStore` port;
+  `parseKnownMarketplaces` reads `known_marketplaces.json` (a source is `kind: 'directory'` or
+  `'file'`, never `local`) with `installLocationFor` and `sameMarketplaceSource`; `stageReport` says
+  how far a plugin got (declared, fetched, loaded) and `planMarketplaceStartup` what happens to
+  marketplaces missing on disk at the start; `decideEnabledFetch` and `overriddenUserDisable` answer
+  "enabled in project settings but not installed" and "disabled but still loads"; the exact
+  troubleshooting texts (`pluginNotFound`, `notCached`, `ignoredLine`, `failedToInstall`,
+  `refuseForUnreadableRecords`, ...); plans for the panel, marketplaces, plugins with dependencies
+  (`planInstall`, `planEnable`, `planDisable`, `planUninstall`, `planPrune`), scopes (`scopeReach`,
+  `defaultScope`), `/reload-plugins` (`reloadSummary`, `reloadGate`) and the 14-day orphan sweep
+  (`orphanSweep`). Pure decisions; effects only through ports.
 - Spec: the requirement set now counts the docs' prose, not only their tables. Every heading of
   the plugin, mods, skills, subagents, hooks, MCP, managed MCP, settings, managed settings,
   permissions, environment, CLI, workflows, themes, output styles and channels pages is either

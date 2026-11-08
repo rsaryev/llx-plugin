@@ -279,6 +279,50 @@ const { plan } = planPluginFetch(entry.source, { platform: 'posix' }); // data: 
 it takes the git and npm plans and returns the fetched files or a `PluginIssue`. A missing port is
 a `PluginIssue` for that source only.
 
+### Install (done: install records, the troubleshooting texts, scopes, plans and `/reload-plugins`)
+
+What Claude Code keeps on disk about what is installed, and what it says and does around an
+install (plugins/loading.md, "Check which stage a plugin reached", "Find plugins on disk";
+plugins/troubleshooting.md; plugins/install.md; plugins/cli-reference.md, "/reload-plugins"). All
+of it is pure, in `src/marketplace/`; the only effect is the `PluginStateStore` port, and no `node:path`
+is used: a path is built with the host's `join` (`Locations.joinPath`).
+
+```ts
+import { createStoreLayout, loadInstalledPlugins, stageReport } from '@rsaryev/claude-plugin-kit';
+
+const layout = createStoreLayout(root, (base, relative) => locations.joinPath(base, relative));
+const { read } = await loadInstalledPlugins({ store, sha256, clock }, signal); // rebuilds or sets aside on the way
+const report = stageReport({ id, enabled, records: read.records[id] ?? [], existing, loaded });
+```
+
+| Name                                            | Status  | Does                                                                              |
+| ----------------------------------------------- | ------- | --------------------------------------------------------------------------------- |
+| `resolvePluginsRoot({ home, override?, join })`, `createStoreLayout(root, join)`, `classifyStoreEntry(name)`, `STORE_NAMES` | done | the plugins root (`CLAUDE_CODE_PLUGIN_CACHE_DIR` or `~/.claude/plugins`) and every path under it: `cache/<marketplace>/<plugin>/<version>`, `data/<id>`, `marketplaces/<name>`, `synced/`, `.trash/`, `installed_plugins.json`, `known_marketplaces.json`, `known_marketplaces_claudeai.json`, `flagged-plugins.json` and the dated `.set-aside` and `.unreadable` copies |
+| `parseInstalledPlugins(text)`, `serializeInstalledPlugins(records)`, `InstallRecord`, `InstalledRecords` | done | `installed_plugins.json` (version 2: per id a list of `{ scope, installPath, version, ... }`): a file that is not a list of plugins is `rebuilt` (old text kept), a key that is not a plugin id is `setAside`, a record that does not parse is `unreadable` and `writable` is `false` until it is gone, a format this version does not know is `unknownFormat`; unknown fields are kept |
+| `loadInstalledPlugins({ store, sha256, clock }, signal)` | done | reads the file through `PluginStateStore` and carries out the recovery: the dated `.kept` copy then a fresh file, the dated `.set-aside` copy then the file without those records, nothing written while a record cannot be read |
+| `PluginStateStore`, `StateStoreFailure` | done | the port: `read(name)`, atomic `write(name, text)` and `names()` of the files under the plugins root (`src/ports/marketplace.ts`); the fake is `tests/support/plugin-state.ts` |
+| `parseKnownMarketplaces(text)`, `serializeKnownMarketplaces(map)`, `KnownMarketplace` | done | `known_marketplaces.json`: per name `{ source, installLocation, lastUpdated, autoUpdate? }`; `failure` is `unreadable` (`Failed to load marketplace configuration`) or `corrupted` (`Marketplace configuration file is corrupted`) |
+| `installLocationFor(source, name, layout)`, `sameMarketplaceSource(a, b)` | done | `marketplaces/<name>` for a clone, the path you gave for a local `file` or `directory`; "same type and the same value in every field" |
+| `stageReport(facts)`, `planMarketplaceStartup(declared, known)`, `unresolvedAfterStart(plugins, fetched)` | done | declared, fetched and loaded, with the layers a plugin lacks (settings, disk, session); what happens after the start to a declared marketplace `known_marketplaces.json` lacks (clone) or whose source changed (re-fetch and `Plugins changed. Run /reload-plugins to activate.`); the enabled plugins left `not cached` |
+| `decideEnabledFetch(facts)`, `overriddenUserDisable({ user, decidedBy, on })` | done | "enabled in project settings but not installed" (fetch only when user, an untracked local file, `--settings` or managed set `true`; a relative path or a seed needs none; else the Errors tab entry) and "disabled in user settings but still loads" (the row's text and the opt-out) |
+| `pluginNotFound`, `pluginNotFoundAnywhere`, `alreadyInstalledGlobally`, `alreadyAddedFromDifferentSource`, `noMarketplaces`, `failedToInstall`, `notCached`, `enabledNotInstalled`, `pluginDirectoryNotFound`, `pluginDirectoryMissingAtRun`, `installSummaryEnding`, `failureOnce` | done | the texts of "Install a plugin" and "Plugin installed but not working" that the docs quote, verbatim; an Errors tab entry is `{ message, guidance }` |
+| `unreadableRecordsMessage(ids)`, `unknownFormatMessage(version)`, `refuseForUnreadableRecords(command, name, reason)`, `recoveryNotes(names, layout)` | done | the `installed_plugins.json` messages: one record or several, a format this version does not know, the refusal of `install`, `uninstall` and `update` with `failureCode: "install_records_unreadable"`, the notes `claude plugin list` prints while a dated copy sits beside the file |
+| `ignoredReason(name, entry, checks)`, `ignoredLine(name, reason, surface)`, `untrustedSourceMessage(name)` | done | `Marketplace "<name>" is added but ignored`: the first failing check (location, git URL, URL, settings declaration, name) and its line for `claude plugin list` or the Errors tab; the untrusted-source message |
+| `scopeReach(scope)`, `mostSpecificScope`, `defaultScope(command, listedIn)`, `collaboratorInstallCommand(id)` | done | the user, project and local scopes: file, audience, reach; local beats project beats user; the scope a command acts on without `--scope` |
+| `pluginActions`, `closePanel`, `uninstallChoice`, `marketplaceCommand`, `planMarketplaceUpdate`, `marketplaceTabUpdate`, `planMarketplaceRemoval` | done | the `/plugin` panel and the marketplace commands as plans: the details menu, closing with pending changes, `y`/`u` for a project-enabled plugin, list/update/remove from a shell or a session |
+| `planInstall`, `planEnable`, `planDisable`, `planUninstall`, `planPrune` | done | what each does to declared dependencies over a graph of `PluginNode`: install and enable bring them in (dependencies first), disable is refused with a chained command, uninstall leaves auto-installed ones for `prune` |
+| `reloadSummary(counts, { interactive })`, `reloadGate(change, { force, interactive })`, `parseReloadArguments`, `reloadAllowed`, `skillCount` | done | the `Reloaded: ...` line, the refusal `This reload changes MCP tools (...)` unless `--force`, no MCP connect in a session without an interactive terminal, the remote-connection reply |
+| `orphanSweep({ remaining, orphans, nowMs })`, `dirsToOrphan`, `orphanMarkerPath`, `ORPHAN_GRACE_MS` | done | the `.orphaned_at` marker and the sweep 14 days later, only while an install is recorded |
+
+Names: the kit's `MarketplaceSource` is a union on `kind` (`github`, `git`, `url`, `npm`, `file`,
+`directory`, `settings`, ...), and `known_marketplaces.json` writes that kind under `source` as the
+settings key does. A host that stores a local marketplace as `source: 'local'` (Localix) migrates it
+once to `directory` (a folder) or `file` (a `.json` path); the kit never reads or writes `local`.
+`parseMarketplaceInput(text)` is the one function that reads what is typed after `marketplace add`;
+the source object of a file or a settings key is `parseMarketplaceSource(raw, { policy })`. A host
+function of the same name as either keeps its own name or imports the kit's under an alias; the kit
+does not rename a public export for another host.
+
 ## Loading (done: `loading`, `format/layout`)
 
 ```ts

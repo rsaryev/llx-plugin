@@ -46,3 +46,24 @@ export type GitTagsFailure = PortFailure<'connection' | 'timeout' | 'aborted'>;
 export interface GitTags {
   list(repository: GitRepository, signal: AbortSignal): Promise<readonly string[] | GitTagsFailure>;
 }
+
+/** `write`: the file could not be written; `aborted`: the signal fired. */
+export type StateStoreFailure = PortFailure<'write' | 'aborted'>;
+
+/**
+ * The files Claude Code keeps directly under the plugins root (`installed_plugins.json`,
+ * `known_marketplaces.json` and the dated copies; plugins/loading.md, "Find plugins on disk"), read
+ * and written by name. The kit decides what the text is and when to write it (`installed-plugins.ts`,
+ * `known-marketplaces.ts`); the host owns the folder and the atomic write.
+ */
+export interface PluginStateStore {
+  /** The file's text, or `undefined` when there is none. */
+  read(name: string, signal: AbortSignal): Promise<string | undefined>;
+  /**
+   * Writes the whole file atomically (a temporary file renamed over it), so a reader sees the old
+   * text or the new, never a mix. Resolves to `undefined` on success.
+   */
+  write(name: string, text: string, signal: AbortSignal): Promise<undefined | StateStoreFailure>;
+  /** The names of the files and folders directly under the plugins root. */
+  names(signal: AbortSignal): Promise<readonly string[]>;
+}
