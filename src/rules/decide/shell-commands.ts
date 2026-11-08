@@ -1,11 +1,25 @@
 import { requiresPromptDespitePrefixRule } from '../bash/exec-wrappers.ts';
 import { scanCommand, wordsOf } from '../bash/split.ts';
 import { stripWrappers } from '../bash/wrappers.ts';
-import { absolutePath } from '../path/posix.ts';
 import type { PathContext } from '../types.ts';
 import type { ProtectedPathOptions } from './context.ts';
-import { isProtectedPath } from './protected-paths.ts';
-import { expandHome, inScope, posixOf } from './scope.ts';
+import { isProtectedPath, isSymlinkTargetOnly } from './protected-paths.ts';
+import {
+  argumentsAreReadOnly,
+  FILE_READING_PROGRAMS,
+  GIT_READ_ONLY,
+  hasNetworkArgument,
+  READ_ONLY_PROGRAMS,
+  touchesSpecialVariable,
+} from './read-only-set.ts';
+import { inScope, posixOf } from './scope.ts';
+import {
+  hasUnquotedGlob,
+  operandPath,
+  readPath,
+  redirectsToFile,
+  type Walk,
+} from './shell-words.ts';
 
 /**
  * What a Bash command is, as far as the modes need it: read-only (permissions.md, "Read-only
@@ -20,46 +34,34 @@ export interface ShellVerdict {
   readonly editsInScope: boolean;
   /** A filesystem command's operand is a protected path. */
   readonly writesProtected: boolean;
+  /** Protected only where a symlink leads, or as the target of a symlinked settings file. */
+  readonly writesProtectedViaLink: boolean;
+  /** A file-reading command's operand is outside the working directories, or cannot be told. */
+  readonly readsOutside: boolean;
+  /** The parser cannot trace the command: it does not parse, changes directory twice or runs a subshell. */
+  readonly untraceable: boolean;
   /** The subcommands in reading order, and for each whether it is read-only on its own. */
   readonly subcommands: readonly string[];
   readonly readOnlyParts: readonly boolean[];
 }
 
-/** A command the kit could not read to the end, or one too long to analyse: nothing about it is approved. */
+/** A command with nothing to read, or one that is not Bash: nothing about it is approved. */
 export const UNREAD: ShellVerdict = {
   readOnly: false,
   editsInScope: false,
   writesProtected: false,
+  writesProtectedViaLink: false,
+  readsOutside: false,
+  untraceable: false,
   subcommands: [],
   readOnlyParts: [],
 };
 
+/** A command the kit could not read to the end, or one too long to analyse. */
+const UNPARSED: ShellVerdict = { ...UNREAD, untraceable: true };
+
 /** "Commands longer than 10,000 characters always prompt because they exceed what the analysis parses." */
 const MAX_COMMAND_LENGTH = 10_000;
-
-/**
- * "The set includes `ls`, `cat`, `echo`, `pwd`, `head`, `tail`, `grep`, `find`, `wc`, `which`,
- * `diff`, `stat`, `du`, `cd`, and read-only forms of `git`." The names are the docs'; `cd` and `git`
- * have their own rules below.
- */
-const READ_ONLY_PROGRAMS: ReadonlySet<string> = new Set([
-  'ls',
-  'cat',
-  'echo',
-  'pwd',
-  'head',
-  'tail',
-  'grep',
-  'find',
-  'wc',
-  'which',
-  'diff',
-  'stat',
-  'du',
-]);
-
-/** The "read-only forms of `git`" the docs do not list: a seed (spec/judgments.md). */
-const GIT_READ_ONLY: ReadonlySet<string> = new Set(['status', 'log', 'diff', 'show']);
 
 /** "`mkdir`, `touch`, `rm`, `rmdir`, `mv`, `cp`, and `sed`." */
 const FILESYSTEM_PROGRAMS: ReadonlySet<string> = new Set([
@@ -77,44 +79,13 @@ const GLOB_SENSITIVE: ReadonlySet<string> = new Set(['find', 'git']);
 
 const SCRIPT_OPTIONS: ReadonlySet<string> = new Set(['-e', '-f', '--expression', '--file']);
 
-interface Walk {
-  readonly paths: PathContext;
-  readonly options: ProtectedPathOptions;
-  /** The directory later operands are read against: moved by a `cd`. */
-  base: string;
-  changedDirectory: boolean;
-  usedGit: boolean;
-}
-
-const isQuoted = (word: string): boolean => /^["']/.test(word);
-const unquote = (word: string): string => word.replaceAll('"', '').replaceAll("'", '');
-const hasUnquotedGlob = (words: readonly string[]): boolean =>
-  words.some((word) => !isQuoted(word) && /[*?[]/.test(word));
-
 /**
- * A redirect to a file: a `>`, `>>` or `<` whose target is not `/dev/null`. Descriptor forms such
- * as `2>&1` and here-documents are not (permissions.md, "Redirections"); the targets that are files
- * are not checked against rules here, so such a command is simply not read-only (spec/judgments.md).
+ * `cd`: read-only when it moves into the working directory or an additional directory. `cd -` goes
+ * to a directory the kit cannot know, so it is not read-only (spec/judgments.md).
  */
-function redirectsToFile(words: readonly string[]): boolean {
-  return words.some((word, index) => {
-    if (isQuoted(word) || !/[<>]/.test(word) || /<</.test(word)) return false;
-    if (/^\d*[<>]&(?:\d+|-)$/.test(word)) return false;
-    const target = word.replace(/^.*?(?:&>|>>|>|<)/, '') || (words[index + 1] ?? '');
-    return target !== '/dev/null';
-  });
-}
-
-/** The absolute POSIX path of an operand, or `undefined` when a variable, substitution or glob hides it. */
-function operandPath(operand: string, walk: Walk): string | undefined {
-  const text = unquote(operand);
-  if (text === '' || /[$`*?[]/.test(text)) return undefined;
-  return absolutePath(expandHome(text, walk.paths), { ...walk.paths, cwd: walk.base });
-}
-
-/** `cd`: read-only when it moves into the working directory or an additional directory. */
 function readOnlyCd(words: readonly string[], walk: Walk): boolean {
-  const target = operandPath(words[1] ?? '~', walk);
+  const operand = words[1] ?? '~';
+  const target = operand === '-' ? undefined : operandPath(operand, walk);
   if (target === undefined || words.length > 2 || !inScope(target, walk.paths)) return false;
   walk.changedDirectory ||= target !== walk.base;
   walk.base = target;
@@ -132,13 +103,37 @@ const SPECIAL: { readonly [program: string]: (words: readonly string[], walk: Wa
   git: readOnlyGit,
 };
 
+/** What keeps a known program read-only: no file redirect, no glob that could be a flag, and the docs' prompt cases. */
+function argumentsPermit(subcommand: string, words: readonly string[], walk: Walk): boolean {
+  const program = words[0] ?? '';
+  const globFlag = GLOB_SENSITIVE.has(program) && hasUnquotedGlob(words.slice(1));
+  return (
+    !redirectsToFile(words) &&
+    !requiresPromptDespitePrefixRule(subcommand) &&
+    !globFlag &&
+    !hasNetworkArgument(words, walk.paths) &&
+    argumentsAreReadOnly(program, words)
+  );
+}
+
 function isReadOnly(subcommand: string, words: readonly string[], walk: Walk): boolean {
   const program = words[0] ?? '';
   const special = Object.hasOwn(SPECIAL, program) ? SPECIAL[program] : undefined;
   const known = special !== undefined || READ_ONLY_PROGRAMS.has(program);
-  if (!known || redirectsToFile(words) || requiresPromptDespitePrefixRule(subcommand)) return false;
-  if (GLOB_SENSITIVE.has(program) && hasUnquotedGlob(words.slice(1))) return false;
+  if (!known || !argumentsPermit(subcommand, words, walk)) return false;
   return special === undefined || special(words, walk);
+}
+
+/**
+ * Whether a file-reading command reads outside the working directories, by an operand it names, a
+ * glob's directory or a path the symlink check resolved. An operand a variable or substitution
+ * hides counts as outside (spec/judgments.md).
+ */
+function readsOutsideScope(words: readonly string[], walk: Walk): boolean {
+  if (!FILE_READING_PROGRAMS.has(words[0] ?? '')) return false;
+  const operands = words.slice(1).filter((word) => !word.startsWith('-'));
+  const reads = [...operands.map((operand) => readPath(operand, walk)), ...walk.resolved];
+  return reads.some((path) => path === undefined || !inScope(path, walk.paths));
 }
 
 /** The operands of a filesystem command (`touch` takes no option; `sed`'s first operand is its script). */
@@ -167,52 +162,119 @@ function filesystemTargets(
   return operands.map((operand) => operandPath(operand, walk));
 }
 
-interface SubVerdict {
+export interface SubVerdict {
   readonly readOnly: boolean;
   readonly edits: boolean;
   readonly protectedWrite: boolean;
+  readonly viaLink: boolean;
+  readonly readsOutside: boolean;
+}
+
+const NOTHING: SubVerdict = {
+  readOnly: false,
+  edits: false,
+  protectedWrite: false,
+  viaLink: false,
+  readsOutside: false,
+};
+
+/**
+ * A filesystem command's judgment: where it writes is the paths it names and the paths the host's
+ * symlink check resolved (permission-modes.md, "Each path also goes through the symlink check").
+ */
+export function judgeWrite(targets: readonly (string | undefined)[], walk: Walk): SubVerdict {
+  const named = targets.filter((target): target is string => target !== undefined);
+  const protect = (path: string): boolean => isProtectedPath(path, walk.paths, walk.options);
+  const asked = named.some(protect);
+  const viaLink =
+    !asked &&
+    (named.some((path) => isSymlinkTargetOnly(path, walk.paths, walk.options)) ||
+      walk.resolved.some(protect));
+  const inside =
+    named.length === targets.length &&
+    [...named, ...walk.resolved].every((p) => inScope(p, walk.paths));
+  return {
+    ...NOTHING,
+    edits: inside && !asked && !viaLink,
+    protectedWrite: asked || viaLink,
+    viaLink,
+  };
 }
 
 function judge(subcommand: string, walk: Walk): SubVerdict {
   const words = wordsOf(subcommand).map((word) => word.text);
+  const stripped = wordsOf(stripWrappers(subcommand, 'deny')).map((word) => word.text);
+  const readsOutside = readsOutsideScope(stripped, walk);
   if (isReadOnly(subcommand, words, walk)) {
-    return { readOnly: true, edits: true, protectedWrite: false };
+    return { ...NOTHING, readOnly: true, edits: true, readsOutside };
   }
   const targets = filesystemTargets(subcommand, words, walk);
-  if (targets === undefined) return { readOnly: false, edits: false, protectedWrite: false };
-  const known = targets.filter((target): target is string => target !== undefined);
-  const protectedWrite = known.some((target) => isProtectedPath(target, walk.paths, walk.options));
-  const inside =
-    known.length === targets.length && known.every((target) => inScope(target, walk.paths));
-  return { readOnly: false, edits: inside && !protectedWrite, protectedWrite };
+  return { ...(targets === undefined ? NOTHING : judgeWrite(targets, walk)), readsOutside };
 }
 
-/** The verdict on a Bash command: see `ShellVerdict`. */
+/** A `(`, `$(` or backtick outside single quotes, and outside double quotes that hold no substitution. */
+const startsSubshell = (command: string): boolean =>
+  /[(`]/.test(
+    command.replace(/'[^']*'|"(?:\\.|[^"\\])*"/g, (quoted) =>
+      /\$\(|`/.test(quoted) ? quoted : '',
+    ),
+  );
+
+/**
+ * "A command the shell parser can't trace, such as one that changes directory more than once or
+ * runs a subshell", and a `cd` with `git` (the chain that the permission checker also cannot trace).
+ */
+function isUntraceable(command: string, subcommands: readonly string[], walk: Walk): boolean {
+  const changes = subcommands.filter((sub) => wordsOf(sub)[0]?.text === 'cd').length;
+  return changes > 1 || startsSubshell(command) || (walk.changedDirectory && walk.usedGit);
+}
+
+/** What the subcommands together are: each flag holds when it holds for every subcommand, or for any one, as it reads. */
+function combine(
+  verdicts: readonly SubVerdict[],
+  walk: Walk,
+  command: string,
+): Pick<
+  ShellVerdict,
+  'readOnly' | 'editsInScope' | 'writesProtected' | 'writesProtectedViaLink' | 'readsOutside'
+> {
+  // "`cd` with `git`: prompts when the `cd` changes into a different directory."
+  const sound = !(walk.changedDirectory && walk.usedGit) && !touchesSpecialVariable(command);
+  const everyWriteViaLink = !verdicts.some((verdict) => verdict.protectedWrite && !verdict.viaLink);
+  return {
+    readOnly: sound && verdicts.every((verdict) => verdict.readOnly),
+    editsInScope: sound && verdicts.every((verdict) => verdict.edits),
+    writesProtected: verdicts.some((verdict) => verdict.protectedWrite),
+    writesProtectedViaLink: verdicts.some((verdict) => verdict.viaLink) && everyWriteViaLink,
+    readsOutside: verdicts.some((verdict) => verdict.readsOutside),
+  };
+}
+
+/**
+ * The verdict on a Bash command: see `ShellVerdict`. `resolved` is where the host's symlink check
+ * says the call's paths lead.
+ */
 export function shellVerdict(
   command: string,
   paths: PathContext,
   options: ProtectedPathOptions = {},
+  resolved: readonly string[] = [],
 ): ShellVerdict {
   const scan = scanCommand(command);
-  if (!scan.parseable || command.length > MAX_COMMAND_LENGTH || scan.subcommands.length === 0) {
-    return UNREAD;
-  }
+  if (!scan.parseable || command.length > MAX_COMMAND_LENGTH) return UNPARSED;
+  if (scan.subcommands.length === 0) return UNREAD;
   const walk: Walk = {
     paths,
     options,
+    resolved,
     base: posixOf(paths.cwd, paths),
     changedDirectory: false,
     usedGit: false,
   };
   const verdicts = scan.subcommands.map((subcommand) => judge(subcommand, walk));
-  // "`cd` with `git`: prompts when the `cd` changes into a different directory."
-  const readOnly =
-    verdicts.every((verdict) => verdict.readOnly) && !(walk.changedDirectory && walk.usedGit);
   return {
-    readOnly,
-    editsInScope:
-      verdicts.every((verdict) => verdict.edits) && !(walk.changedDirectory && walk.usedGit),
-    writesProtected: verdicts.some((verdict) => verdict.protectedWrite),
+    ...combine(verdicts, walk, command),
+    untraceable: isUntraceable(command, scan.subcommands, walk),
     subcommands: scan.subcommands,
     readOnlyParts: verdicts.map((verdict) => verdict.readOnly),
   };

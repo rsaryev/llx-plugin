@@ -1,6 +1,7 @@
 import type { PermissionMode } from '../../protocol/official.ts';
 import type { Decision, DecisionReason, PermissionRule } from '../types.ts';
 import { isDroppedInAuto } from './auto-dropped.ts';
+import { isAllowRule } from './behavior.ts';
 import type { DecideContext } from './context.ts';
 import type { CallFacts } from './facts.ts';
 
@@ -56,9 +57,16 @@ const autoInPlan = (ctx: DecideContext): boolean =>
 const autoRemoval = (ctx: DecideContext): Decision =>
   ctx.interactive ? ask('critical-path') : deny('critical-path');
 
+/**
+ * A protected-path write goes to the classifier, except "in a session started with `--restricted`
+ * ... the classifier can't approve protected-path writes": then the user is asked.
+ */
+const classifiedProtectedWrite = (ctx: DecideContext): Decision =>
+  ctx.protectedPaths?.restricted === true ? ask('protected-path') : classify('protected-path');
+
 const planProtectedWrite = (ctx: DecideContext): Decision => {
   if (bypassInPlan(ctx)) return allow('mode-plan');
-  return autoInPlan(ctx) ? classify('protected-path') : ask('protected-path');
+  return autoInPlan(ctx) ? classifiedProtectedWrite(ctx) : ask('protected-path');
 };
 
 const planRemoval = (ctx: DecideContext): Decision =>
@@ -91,7 +99,7 @@ export const MODES: { readonly [M in PermissionMode]: ModeStrategy } = {
   },
   auto: {
     ...PROMPTING,
-    protectedWrite: () => classify('protected-path'),
+    protectedWrite: classifiedProtectedWrite,
     criticalRemoval: autoRemoval,
     baseline: (facts) => {
       if (facts.readsFiles || facts.editsInScope) return allow('mode-auto');
@@ -115,6 +123,6 @@ export const MODES: { readonly [M in PermissionMode]: ModeStrategy } = {
     networkRead: () => allow('mode-bypass'),
     baseline: () => allow('mode-bypass'),
     // "Allow rules have no effect in `bypassPermissions`": everything runs without them.
-    rules: (rules) => rules.filter((rule) => rule.behavior !== 'allow'),
+    rules: (rules) => rules.filter((rule) => !isAllowRule(rule)),
   },
 };

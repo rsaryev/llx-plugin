@@ -120,7 +120,8 @@ export type DecisionReason =
   | 'tool-removed'
   | 'no-permission-required'
   | 'critical-path'
-  | 'outside-working-directory';
+  | 'outside-working-directory'
+  | 'settings-file';
 
 /**
  * The outcome of a permission check. `classify` means the host's reviewer decides (auto mode): the

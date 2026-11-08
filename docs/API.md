@@ -271,9 +271,17 @@ reach allows (`ModOutcome.policyEnforced` is managed settings or a Team or Enter
 
 What the kit does not decide is the classifier's judgement of an action in auto mode: `decide`
 returns `classify` and the host's `PermissionClassifier` answers. Also not modelled: the PowerShell
-read-only set and `acceptEdits` cmdlets, `Remove-Item` and `cmd` removal denies, the mounted-drive
-`rm` prompt, redirect targets and `tee` files (a redirect makes a command not read-only), the first
-read outside the working directories in auto mode, and the time limits of the critical-path prompt.
+read-only set, the `Remove-Item` and `cmd` removal denies (an `acceptEdits` `Remove-Item` that the
+check would deny is only not approved), the `Monitor` removal check, the mounted-drive `rm` prompt,
+redirect targets and `tee` files (a redirect makes a command not read-only), the first read outside
+the working directories in auto mode, the `LSP` tool under the read block, and the time limits of the
+critical-path prompt. `acceptEdits` approves the `Set-Content`, `Add-Content`, `Clear-Content` and
+`Remove-Item` cmdlets in scope. With `blockReadsOutsideWorkingDirectories` a Bash command that reads
+outside, or that the parser cannot trace, prompts in every mode (`sandboxEnforcesReadBlock` lifts it);
+`blockWritesOutsideWorkingDirectories` also refuses settings files inside the working directories
+(reason `settings-file`) and leaves the session's own files writable (`sessionDirectories` names the
+scratchpad). `ProtectedPathOptions` carries `symlinkTargets` (a write there prompts in the modes that
+classify), `configDirectory` (`CLAUDE_CONFIG_DIR`) and `restricted`.
 
 ## Testing kit (planned)
 

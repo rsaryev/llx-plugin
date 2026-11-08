@@ -54,7 +54,18 @@ const NOT_CRITICAL: readonly string[] = [
   'rm -rf "${DIR:?}"/*',
   'rmdir empty',
   'rm -f /work/app/a.txt',
-  'rm -rf /work/shared',
+];
+
+/**
+ * The docs' examples of a removal that is not critical, with the single-quoted script that binds
+ * `$1` and a guarded expansion. They run without a prompt in bypassPermissions, where a critical
+ * removal asks.
+ */
+const RUNS_IN_BYPASS: readonly string[] = [
+  ...NOT_CRITICAL,
+  'sh -c \'rm -rf "$1"/*\' _ {}',
+  'rm -rf a/*',
+  'cd logs && rm -rf a',
 ];
 
 for (const mode of PERMISSION_MODES) {
@@ -90,16 +101,22 @@ spec('permissions.mode.default', () => {
       });
     }
 
-    for (const command of NOT_CRITICAL) {
-      test(`${command} is not`, () => {
-        expect(bash('default', command)).not.toEqual(ask('critical-path'));
+    for (const command of RUNS_IN_BYPASS) {
+      test(`${command} is not, so bypassPermissions runs it without a prompt`, () => {
+        expect(bash('bypassPermissions', command)).toEqual(allow('mode-bypass'));
       });
     }
 
     test('additional working directories count only for a glob under one of them', () => {
       const match = pathsWith({ additionalDirectories: ['/work/shared'] });
-      expect(bash('default', 'rm -rf /work/shared/*', { match })).toEqual(ask('critical-path'));
-      expect(bash('default', 'rm -rf /work/shared', { match })).not.toEqual(ask('critical-path'));
+      expect(bash('bypassPermissions', 'rm -rf /work/shared/*', { match })).toEqual(
+        ask('critical-path'),
+      );
+      expect(bash('bypassPermissions', 'rm -rf /work/shared', { match })).toEqual(
+        allow('mode-bypass'),
+      );
+      // The same directory with no additional directory set is an ordinary path.
+      expect(bash('bypassPermissions', 'rm -rf /work/shared/*')).toEqual(allow('mode-bypass'));
     });
 
     test('the parents of an additional working directory count, for a glob under one', () => {
@@ -149,6 +166,114 @@ spec('permissions.mode.bypassPermissions', () => {
           bash(mode, 'rm -rf ~', { criticalPathPromptOff: true, bypassAvailable: true }),
         ).toEqual(ask('critical-path'));
       }
+    });
+  });
+});
+
+spec('permissions.mode.bypassPermissions', () => {
+  describe('"Removals inside nested commands and inline scripts": positional parameters', () => {
+    const FIND = 'find . -name \'*.tmp\' -exec sh -c "rm -rf \\"$1\\"/*" _ {} \\;';
+
+    test('a double-quoted script is expanded by the invoking shell first: `$1` is empty, a removal from the root', () => {
+      expect(bash('bypassPermissions', FIND)).toEqual(ask('critical-path'));
+      expect(bash('bypassPermissions', 'sh -c "rm -rf \\"$1\\"/*" _ x')).toEqual(
+        ask('critical-path'),
+      );
+    });
+
+    test('a single-quoted script that binds `$1` to a real value is not flagged', () => {
+      expect(bash('bypassPermissions', 'sh -c \'rm -rf "$1"/*\' _ {}')).toEqual(
+        allow('mode-bypass'),
+      );
+      expect(bash('bypassPermissions', 'find . -exec sh -c \'rm -rf "$1"/*\' _ {} \\;')).toEqual(
+        allow('mode-bypass'),
+      );
+    });
+
+    test('a single-quoted script with no argument gives `$1` no value: flagged', () => {
+      expect(bash('bypassPermissions', 'sh -c \'rm -rf "$1"/*\'')).toEqual(ask('critical-path'));
+    });
+
+    test('a variable the arguments do not bind is still flagged in a single-quoted script', () => {
+      expect(bash('bypassPermissions', 'sh -c \'rm -rf "$DIR"/*\' _ {}')).toEqual(
+        ask('critical-path'),
+      );
+    });
+
+    test('a path typed into a `-c` script is found for a shell run by `-exec`, and not for a word that only names one', () => {
+      expect(bash('bypassPermissions', "find . -exec sh -c 'rm -rf ~' _ {} \\;")).toEqual(
+        ask('critical-path'),
+      );
+      // `sh` as an argument of another program is not a shell run.
+      expect(bash('bypassPermissions', "echo sh -c 'rm -rf ~'")).toEqual(
+        allow('read-only-command'),
+      );
+    });
+  });
+
+  describe('"Other targets that count as critical paths": the rows the table adds', () => {
+    test('a glob after a cd: `cd logs && rm -rf a/*`', () => {
+      expect(bash('bypassPermissions', 'cd logs && rm -rf a/*')).toEqual(ask('critical-path'));
+      expect(bash('bypassPermissions', 'rm -rf a/*')).toEqual(allow('mode-bypass'));
+      expect(bash('bypassPermissions', 'cd logs && rm -rf a')).toEqual(allow('mode-bypass'));
+    });
+
+    test('a target that is only backslashes counts on every platform', () => {
+      expect(bash('bypassPermissions', 'rm -rf "\\\\"')).toEqual(ask('critical-path'));
+      expect(bash('bypassPermissions', 'rm -rf \\\\')).toEqual(ask('critical-path'));
+      expect(bash('bypassPermissions', 'rm -rf a\\b')).toEqual(allow('mode-bypass'));
+    });
+
+    test('a Windows path that names a volume by GUID counts', () => {
+      expect(bash('bypassPermissions', "rm -rf '\\\\?\\Volume{GUID}\\work\\build'")).toEqual(
+        ask('critical-path'),
+      );
+    });
+  });
+
+  describe('"Which paths are critical": Windows spellings', () => {
+    const match = pathsWith({
+      platform: 'windows',
+      cwd: 'C:\\work\\app',
+      primaryWorkingDirectory: 'C:\\work\\app',
+      home: 'C:\\Users\\alice',
+    });
+    const run = (command: string) => bash('bypassPermissions', command, { match });
+
+    test('`\\\\?\\C:\\` and `\\\\localhost\\C$` count as `C:\\`', () => {
+      expect(run("rm -rf '\\\\?\\C:\\'")).toEqual(ask('critical-path'));
+      expect(run("rm -rf '\\\\localhost\\C$'")).toEqual(ask('critical-path'));
+      expect(run("rm -rf '\\\\?\\C:\\Windows'")).toEqual(ask('critical-path'));
+    });
+
+    test('the same spelling of a path below the working directory does not', () => {
+      expect(run("rm -rf '\\\\?\\C:\\work\\app\\build'")).toEqual(allow('mode-bypass'));
+    });
+
+    test('the 8.3 short name of the home directory counts', () => {
+      expect(run("rm -rf 'C:\\Users\\ALICE~1'")).toEqual(ask('critical-path'));
+      expect(run("rm -rf 'C:\\Users\\alice\\build'")).toEqual(allow('mode-bypass'));
+    });
+  });
+
+  describe('"The `Dangerous rm operation not ruled out` prompt": a command the shell may read differently', () => {
+    test('a command that does not parse gets the critical-path outcome, bypassPermissions included', () => {
+      expect(bash('bypassPermissions', 'ls && (')).toEqual(ask('critical-path'));
+      expect(bash('bypassPermissions', 'echo "unclosed')).toEqual(ask('critical-path'));
+    });
+
+    test('no allow rule or hook allow approves it', () => {
+      const rules = rulesOf(['allow', 'Bash']);
+      expect(bash('default', 'ls && (', { rules, hook: { decision: 'allow' } })).toEqual(
+        ask('critical-path'),
+      );
+    });
+
+    test('dontAsk denies it, and a deny rule still denies it first', () => {
+      expect(bash('dontAsk', 'ls && (')).toEqual(deny('critical-path'));
+      expect(bash('default', 'ls && (', { rules: rulesOf(['deny', 'Bash(ls *)']) })).toEqual(
+        deny('deny-rule'),
+      );
     });
   });
 });

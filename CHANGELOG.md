@@ -106,6 +106,22 @@
   and the Agent, Skill and WebFetch matchers read behaviour and specifier form through a registry
   and a named guard, and their input fields are tied to the SDK's `AgentInput`, `WebFetchInput`
   and `ArtifactInput`.
+- Permission modes (`rules/decide`), review fixes: a double-quoted `sh -c` script (also after
+  `find -exec`) is read after the invoking shell expands it, a single-quoted one binds `$1` only
+  when an argument follows; `cd logs && rm -rf a/*`, a backslash-only target, a volume-GUID path,
+  the `\\?\C:\`, `\\localhost\C$` and 8.3 home spellings are critical paths; a command that does
+  not parse gets the critical-path outcome in every mode. `ps`, `file` and `docker` join the
+  read-only set with their documented prompt cases, a UNC argument on Windows and a write to a
+  special shell variable (`for IFS in`, `unset PATH`) prompt. Under
+  `blockReadsOutsideWorkingDirectories` a Bash command that reads outside the working directories,
+  or that the parser cannot trace, prompts in every mode; under `blockWritesOutsideWorkingDirectories`
+  settings files are refused inside the working directories too and plan files, the scratchpad and
+  auto-memory Markdown stay writable. `--restricted` makes a classified protected-path write ask,
+  the target of a symlinked settings file is its own option and asks in auto and plan, `dev-mods` and
+  `CLAUDE_CONFIG_DIR` are protected, Bash `rm`, `mv` and `cp` go through the symlink check, and
+  `acceptEdits` approves `Set-Content`, `Add-Content`, `Clear-Content` and `Remove-Item` in scope.
+  `HookPermissionDecision` is re-exported from the SDK, and hook decisions and rule behaviors are
+  read through registries.
 - Permission modes (`rules/decide`): `decide(call, context)` answers allow, ask, deny or classify
   for one call in `default`, `acceptEdits`, `plan`, `auto`, `dontAsk` and `bypassPermissions`: deny,
   then ask, then allow with a compound Bash command allowed subcommand by subcommand, a PreToolUse

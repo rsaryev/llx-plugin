@@ -52,9 +52,9 @@ const GATES: readonly Gate[] = [
       : undefined,
   // "the file tools refuse reads there ... in every permission mode, including bypassPermissions"
   ({ facts }) =>
-    facts.blocked
-      ? pending({ outcome: 'deny', reason: 'outside-working-directory' }, 'never')
-      : undefined,
+    facts.blockedBy === undefined
+      ? undefined
+      : pending({ outcome: 'deny', reason: facts.blockedBy }, 'never'),
   // "A hook that exits with code 2 stops the tool call before permission rules are evaluated."
   ({ ctx }) =>
     hookVetoes(ctx) ? pending({ outcome: 'deny', reason: 'hook' }, 'unenforced') : undefined,
@@ -83,6 +83,11 @@ const GATES: readonly Gate[] = [
   // "A read from a network path prompts you even when an allow rule matches."
   ({ facts, ctx, strategy }) =>
     facts.network ? pending(strategy.networkRead(ctx), 'never') : undefined,
+  // "recognized file-reading Bash commands prompt even in auto mode and `bypassPermissions` mode".
+  ({ facts, strategy }) =>
+    facts.readBlockPrompt
+      ? pending(strategy.prompt('outside-working-directory'), 'unenforced')
+      : undefined,
   // "The safety check runs before Claude Code evaluates allow rules from settings."
   ({ facts, ctx, strategy }) => {
     if (!facts.protectedWrite) return undefined;

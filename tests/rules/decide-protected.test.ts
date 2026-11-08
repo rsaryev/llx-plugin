@@ -154,7 +154,7 @@ spec('permissions.mode.default', () => {
     test('the file a symlinked settings file points to is protected', () => {
       expect(
         onPath('default', 'Write', '/home/alice/dotfiles/claude/settings.json', {
-          protectedPaths: { files: ['/home/alice/dotfiles/claude/settings.json'] },
+          protectedPaths: { symlinkTargets: ['/home/alice/dotfiles/claude/settings.json'] },
         }),
       ).toEqual(ask('protected-path'));
     });

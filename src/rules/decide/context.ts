@@ -1,4 +1,4 @@
-import type { PermissionBehavior, PermissionMode } from '../../protocol/official.ts';
+import type { HookPermissionDecision, PermissionMode } from '../../protocol/official.ts';
 import type { Decision, MatchContext, PermissionRule } from '../types.ts';
 
 /**
@@ -8,7 +8,7 @@ import type { Decision, MatchContext, PermissionRule } from '../types.ts';
  * turn, so it is not an answer to the permission check.
  */
 export interface HookOutcome {
-  readonly decision?: PermissionBehavior | 'defer';
+  readonly decision?: HookPermissionDecision;
   /** "A hook that exits with code 2 stops the tool call before permission rules are evaluated." */
   readonly blocked?: boolean;
   /** "`AskUserQuestion` and `ExitPlanMode` need `updatedInput` paired with `\"allow\"`." */
@@ -48,6 +48,17 @@ export interface DecideContext {
   readonly blockReadsOutsideWorkingDirectories?: boolean;
   readonly blockWritesOutsideWorkingDirectories?: boolean;
   /**
+   * The command runs in a sandbox that enforces the read block: "This prompt doesn't apply when the
+   * command runs in the sandbox and the sandbox enforces the block" (permissions.md, settings-reference.md).
+   */
+  readonly sandboxEnforcesReadBlock?: boolean;
+  /**
+   * Directories Claude Code itself keeps for the session, which the read and write blocks leave
+   * alone: the session scratchpad (settings-reference.md, "What the write block refuses and what
+   * stays writable"). The host knows where they are.
+   */
+  readonly sessionDirectories?: readonly string[];
+  /**
    * The "Permission required" column of the tools table, as the host knows it. A tool it answers
    * `false` for runs without a prompt; with no function every tool outside the read-only set asks
    * (spec/judgments.md).
@@ -64,8 +75,15 @@ export interface DecideContext {
 
 /** What the session adds to the protected paths and their exceptions (permission-modes.md, "Protected paths"). */
 export interface ProtectedPathOptions {
-  /** Files passed to `--settings`, `--mcp-config` or `--agents`, and the file a symlinked settings file points to. */
+  /** Files passed to `--settings`, `--mcp-config` or `--agents`. */
   readonly files?: readonly string[];
+  /**
+   * The files that a symlinked settings file points to. Unlike `files`, a write to one prompts in
+   * the modes that route protected-path writes to the classifier, "even when an allow rule matches".
+   */
+  readonly symlinkTargets?: readonly string[];
+  /** The directory `CLAUDE_CONFIG_DIR` points to, in place of `~/.claude` (default `~/.claude`). */
+  readonly configDirectory?: string;
   /** Directories loaded with `--plugin-dir`. */
   readonly directories?: readonly string[];
   /** The `plansDirectory` setting. */

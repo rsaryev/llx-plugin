@@ -164,11 +164,16 @@ spec('permissions.mode.auto', () => {
     test('a blanket Bash(*) or PowerShell(*)', () => {
       dropped('Bash(*)', 'Bash', { command: 'npm test' });
       dropped('Bash', 'Bash', { command: 'npm test' });
-      dropped('PowerShell(*)', 'PowerShell', { command: 'Get-Date' });
+      dropped('PowerShell(*)', 'PowerShell', { command: 'Invoke-WebRequest https://example.com' });
     });
 
     test('a wildcarded interpreter', () => {
       dropped('Bash(python*)', 'Bash', { command: 'python script.py' });
+    });
+
+    test('package-manager run commands', () => {
+      dropped('Bash(npm run *)', 'Bash', { command: 'npm run build' });
+      dropped('Bash(pnpm run *)', 'Bash', { command: 'pnpm run build' });
     });
 
     test('Agent and Monitor allow rules', () => {
@@ -187,6 +192,12 @@ spec('permissions.mode.auto', () => {
 
     test('runs without a classifier check', () => {
       expect(bash('auto', 'npm test', { ...AUTO, mod })).toEqual(allow('mod'));
+    });
+
+    test('a mod that policy does not enforce reaches past a permission callback', () => {
+      expect(bash('auto', 'npm test', { ...AUTO, mod, permissionCallback: true })).toEqual(
+        allow('mod'),
+      );
     });
 
     test('except where it cannot bypass the permission prompt tool or SDK callback: the classifier checks first', () => {

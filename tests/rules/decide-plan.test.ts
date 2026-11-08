@@ -16,11 +16,12 @@ const BYPASS_AT_TERMINAL = { bypassAvailable: true, interactive: true };
 /**
  * The docs say plan mode blocks edits "until you approve a plan" and that a call gets "the same
  * prompt, block, or approval" as without a hook, without saying which of prompt and block a plain
- * edit gets: these tests ask only that it does not run. Which one it is, is a judgment
- * (decide-judgments.test.ts).
+ * edit gets. The kit reads it as the prompt (spec/judgments.md, row for plan mode), so the outcome is
+ * asserted exactly: a change to a denial, or to another reason, fails here and in
+ * decide-judgments.test.ts.
  */
 const expectStopped = (decided: Decision): void => {
-  expect(['ask', 'deny']).toContain(decided.outcome);
+  expect(decided).toEqual(ask('mode-plan'));
 };
 
 spec('permissions.mode.plan', () => {

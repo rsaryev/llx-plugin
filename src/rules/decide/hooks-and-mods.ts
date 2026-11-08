@@ -1,3 +1,4 @@
+import type { HookPermissionDecision } from '../../protocol/official.ts';
 import type { Decision, PreparedCall } from '../types.ts';
 import type { DecideContext, ModOutcome, ModReach, Pending } from './context.ts';
 import type { CallFacts } from './facts.ts';
@@ -8,14 +9,32 @@ import type { ModeStrategy } from './modes.ts';
  * with hooks"; hooks.md, "PreToolUse decision control").
  */
 
-/** A hook that "exits with code 2" blocks, and a `deny` is a block; JSON on an exit-2 hook cannot override it. */
-export function hookVetoes(ctx: DecideContext): boolean {
-  const hook = ctx.hook;
-  return hook?.blocked === true || hook?.decision === 'deny';
+/** What one answer of a PreToolUse hook does to the permission check. */
+interface HookAnswer {
+  readonly vetoes: boolean;
+  readonly asks: boolean;
+  readonly allows: boolean;
 }
 
+const NO_ANSWER: HookAnswer = { vetoes: false, asks: false, allows: false };
+
+/** Typed over the SDK's union: a decision added to it fails the typecheck until it has an entry. `defer` is no answer here. */
+const HOOK_ANSWERS: { readonly [D in HookPermissionDecision]: HookAnswer } = {
+  allow: { vetoes: false, asks: false, allows: true },
+  deny: { vetoes: true, asks: false, allows: false },
+  ask: { vetoes: false, asks: true, allows: false },
+  defer: NO_ANSWER,
+};
+
+const answerOf = (ctx: DecideContext): HookAnswer =>
+  ctx.hook?.decision === undefined ? NO_ANSWER : HOOK_ANSWERS[ctx.hook.decision];
+
+/** A hook that "exits with code 2" blocks, and a `deny` is a block; JSON on an exit-2 hook cannot override it. */
+export const hookVetoes = (ctx: DecideContext): boolean =>
+  ctx.hook?.blocked === true || answerOf(ctx).vetoes;
+
 /** A hook `ask` "prompts the user to confirm". `defer` is not an answer here. */
-export const hookAsks = (ctx: DecideContext): boolean => ctx.hook?.decision === 'ask';
+export const hookAsks = (ctx: DecideContext): boolean => answerOf(ctx).asks;
 
 /**
  * Tools whose allow needs the hook's own answer: "`AskUserQuestion` and `ExitPlanMode` need
@@ -24,7 +43,7 @@ export const hookAsks = (ctx: DecideContext): boolean => ctx.hook?.decision === 
  */
 const PAIRED_TOOLS: ReadonlySet<string> = new Set(['AskUserQuestion', 'ExitPlanMode']);
 
-const hookAllowed = (ctx: DecideContext): boolean => ctx.hook?.decision === 'allow';
+const hookAllowed = (ctx: DecideContext): boolean => answerOf(ctx).allows;
 
 /** Whether the hook's allow settles a call of a paired tool. */
 export const hookApprovesPaired = (call: PreparedCall, ctx: DecideContext): boolean =>

@@ -1,5 +1,6 @@
 import { textPatternOf } from '../bash/text-pattern.ts';
 import type { PermissionRule } from '../types.ts';
+import { isAllowRule } from './behavior.ts';
 
 /**
  * permission-modes.md, "How the classifier evaluates actions": "On entering auto mode, broad allow
@@ -27,7 +28,7 @@ function wildcardedInterpreter(pattern: string): boolean {
 
 /** Whether `rule` is an allow rule auto mode drops. */
 export function isDroppedInAuto(rule: PermissionRule): boolean {
-  if (rule.behavior !== 'allow') return false;
+  if (!isAllowRule(rule)) return false;
   const tool = rule.value.toolName;
   if (rule.specifier === undefined) return BARE_TOOLS.has(tool);
   const pattern = textPatternOf(rule);

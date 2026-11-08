@@ -1,11 +1,11 @@
-import { POWERSHELL_DIALECT } from '../bash/dialect.ts';
 import { commandOf } from '../bash/shell.ts';
-import { scanCommand } from '../bash/split.ts';
 import { readsNetworkPath } from '../path/network.ts';
 import type { DecisionReason, PathContext, PreparedCall } from '../types.ts';
+import { readBlocked, writeBlockReason } from './block-exceptions.ts';
 import type { DecideContext } from './context.ts';
-import { removesCriticalPath } from './critical-removal.ts';
-import { isProtectedPath } from './protected-paths.ts';
+import { cannotRuleOutRemoval, removesCriticalPath } from './critical-removal.ts';
+import { powershellVerdict } from './powershell-edits.ts';
+import { isProtectedPath, isSymlinkTargetOnly } from './protected-paths.ts';
 import { inScope, toolPath } from './scope.ts';
 import { shellVerdict, UNREAD, type ShellVerdict } from './shell-commands.ts';
 
@@ -38,8 +38,13 @@ export interface CallFacts {
   readonly criticalRemoval: boolean;
   /** The tool requires user interaction. */
   readonly interaction: boolean;
-  /** A file tool call the `permissions.block*OutsideWorkingDirectories` keys refuse. */
-  readonly blocked: boolean;
+  /** Why a file tool call is refused by the `permissions.block*OutsideWorkingDirectories` keys, if it is. */
+  readonly blockedBy: DecisionReason | undefined;
+  /**
+   * A Bash command that prompts under `permissions.blockReadsOutsideWorkingDirectories`: it reads
+   * outside the working directories, or the parser cannot trace it.
+   */
+  readonly readBlockPrompt: boolean;
   /** The command, split, for a shell call. */
   readonly parts: ShellVerdict;
   /** A tool no rule, hook or mode stops (`EndConversation`). */
@@ -59,7 +64,8 @@ const NONE: CallFacts = {
   shell: false,
   criticalRemoval: false,
   interaction: false,
-  blocked: false,
+  blockedBy: undefined,
+  readBlockPrompt: false,
   parts: UNREAD,
   exempt: false,
 };
@@ -85,7 +91,7 @@ const readFacts: Builder = (call, ctx) => {
     readsFiles: true,
     network,
     readOnly: inside && !network,
-    blocked: !inside && ctx.blockReadsOutsideWorkingDirectories === true,
+    blockedBy: readBlocked(touched(call, requested), ctx) ? 'outside-working-directory' : undefined,
   };
 };
 
@@ -97,21 +103,31 @@ const editFacts: Builder = (call, ctx) => {
   const options = ctx.protectedPaths ?? {};
   const all = touched(call, requested);
   const asked = isProtectedPath(requested, paths, options);
-  const viaLink = !asked && all.some((path) => isProtectedPath(path, paths, options));
+  const viaLink =
+    !asked &&
+    all.some(
+      (path) => isProtectedPath(path, paths, options) || isSymlinkTargetOnly(path, paths, options),
+    );
   const inside = allInScope(all, paths);
   return {
     editsInScope: inside && !asked && !viaLink,
     escapesViaLink: inScope(requested, paths) && !inside,
     protectedWrite: asked || viaLink,
     protectedViaLink: viaLink,
-    blocked: !inside && ctx.blockWritesOutsideWorkingDirectories === true,
+    blockedBy: writeBlockReason(all, ctx),
   };
 };
+
+/** Whether a Bash command prompts under the read block: it reads outside, or cannot be traced. */
+const promptsUnderReadBlock = (parts: ShellVerdict, ctx: DecideContext): boolean =>
+  ctx.blockReadsOutsideWorkingDirectories === true &&
+  ctx.sandboxEnforcesReadBlock !== true &&
+  (parts.readsOutside || parts.untraceable);
 
 const bashFacts: Builder = (call, ctx) => {
   const command = commandOf(call.input);
   if (command === undefined) return { shell: true };
-  const parts = shellVerdict(command, ctx.match.paths, ctx.protectedPaths);
+  const parts = shellVerdict(command, ctx.match.paths, ctx.protectedPaths, call.resolvedPaths);
   return {
     shell: true,
     parts,
@@ -119,21 +135,29 @@ const bashFacts: Builder = (call, ctx) => {
     readReason: 'read-only-command',
     shellEdits: parts.editsInScope,
     protectedWrite: parts.writesProtected,
-    criticalRemoval: removesCriticalPath(command, ctx.match.paths),
+    protectedViaLink: parts.writesProtectedViaLink,
+    readBlockPrompt: promptsUnderReadBlock(parts, ctx),
+    criticalRemoval: removesCriticalPath(command, ctx.match.paths) || cannotRuleOutRemoval(command),
   };
 };
 
-/** PowerShell: split into subcommands for the rules; its read-only set and `acceptEdits` cmdlets are not modelled. */
-const powershellFacts: Builder = (call) => {
+/** PowerShell: split into subcommands for the rules, and the `acceptEdits` cmdlets read; no read-only set. */
+const powershellFacts: Builder = (call, ctx) => {
   const command = commandOf(call.input);
   if (command === undefined) return { shell: true };
-  const { subcommands, parseable } = scanCommand(command, POWERSHELL_DIALECT);
-  const parts: ShellVerdict = {
-    ...UNREAD,
-    subcommands: parseable ? subcommands : [],
-    readOnlyParts: subcommands.map(() => false),
+  const parts = powershellVerdict(
+    command,
+    ctx.match.paths,
+    ctx.protectedPaths ?? {},
+    call.resolvedPaths ?? [],
+  );
+  return {
+    shell: true,
+    parts,
+    shellEdits: parts.editsInScope,
+    protectedWrite: parts.writesProtected,
+    protectedViaLink: parts.writesProtectedViaLink,
   };
-  return { shell: true, parts };
 };
 
 const BUILDERS: ReadonlyMap<string, Builder> = new Map<string, Builder>([

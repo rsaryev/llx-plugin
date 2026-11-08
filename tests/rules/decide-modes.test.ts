@@ -86,7 +86,7 @@ spec('permissions.mode.default', () => {
     test('find prompts with an unquoted glob or an action that deletes, runs or writes', () => {
       expect(bash('default', 'find *.ts')).toEqual(ask('default-prompt'));
       expect(bash('default', 'find . -name x -delete')).toEqual(ask('default-prompt'));
-      expect(bash('default', 'find . -exec rm {} ;')).toEqual(ask('default-prompt'));
+      expect(bash('default', 'find . -exec rm {} \\;')).toEqual(ask('default-prompt'));
       expect(bash('default', 'find . -fprint out.txt')).toEqual(ask('default-prompt'));
     });
 
@@ -108,7 +108,7 @@ spec('permissions.mode.default', () => {
     });
 
     test('a command that cannot be parsed, or runs over 10,000 characters, asks', () => {
-      expect(bash('default', 'ls &&')).toEqual(ask('default-prompt'));
+      expect(bash('default', 'ls &&')).toEqual(ask('critical-path'));
       expect(bash('default', `ls ${'a'.repeat(10_000)}`)).toEqual(ask('default-prompt'));
     });
 
@@ -147,7 +147,7 @@ spec('permissions.mode.default', () => {
     });
 
     test('a rule that matches the whole text does not approve a command left unparsed', () => {
-      expect(bash('default', 'npm test &&', { rules })).toEqual(ask('default-prompt'));
+      expect(bash('default', 'npm test &&', { rules })).toEqual(ask('critical-path'));
     });
   });
 

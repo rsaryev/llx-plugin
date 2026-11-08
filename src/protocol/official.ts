@@ -17,6 +17,7 @@ export type {
   HookEvent,
   HookInput,
   HookJSONOutput,
+  HookPermissionDecision,
   McpHttpServerConfig,
   McpServerConfig,
   McpSSEServerConfig,

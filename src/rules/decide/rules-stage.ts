@@ -1,6 +1,7 @@
 import type { PermissionBehavior } from '../../protocol/official.ts';
 import { evaluateRules, matchRule } from '../evaluate.ts';
 import type { PermissionRule, PreparedCall } from '../types.ts';
+import { isAllowRule } from './behavior.ts';
 import type { DecideContext } from './context.ts';
 import type { CallFacts } from './facts.ts';
 
@@ -19,7 +20,7 @@ function everySubcommandAllowed(
   const { subcommands, readOnlyParts } = facts.parts;
   // A command of read-only parts alone needs no rule: the read-only gate settles it.
   if (subcommands.length === 0 || readOnlyParts.every(Boolean)) return false;
-  const allows = rules.filter((rule) => rule.behavior === 'allow');
+  const allows = rules.filter(isAllowRule);
   return subcommands.every(
     (subcommand, index) =>
       readOnlyParts[index] === true ||
