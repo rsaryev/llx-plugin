@@ -4,6 +4,12 @@
 
 ### Added
 
+- `resolveSubagentPermissionMode`: the mode a subagent runs in from its `permissionMode` and the
+  main conversation's (a main `bypassPermissions`, `acceptEdits` or `auto` forces its mode, `plan`
+  is held and `dontAsk` then denies instead of asking, under `default` or `dontAsk` the set mode
+  applies except `bypassPermissions` and an unavailable `auto`, `manual` is `default`, unset
+  inherits); `PERMISSION_MODE_TRAITS` and `baselineDecision` for what each mode runs without asking
+  (`allow`, `ask`, `deny` or `classify`), typed over the official `PermissionMode` union.
 - `resolveSubagentTools`: the tools a subagent gets from `tools` and `disallowedTools` (inherit
   when omitted, `disallowedTools` first, a specifier removes the whole tool, `mcp__server`
   entries including servers whose name holds `__`, the always-removed list with `ExitPlanMode` kept

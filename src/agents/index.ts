@@ -8,3 +8,23 @@ export {
   type ToolRefusal,
   type ToolsOutcome,
 } from './tool-resolution.ts';
+export {
+  PERMISSION_MODE_INPUTS,
+  PERMISSION_MODE_TRAITS,
+  type GrantEnvironment,
+  type MainStance,
+  type PermissionModeInput,
+  type PermissionModeTraits,
+} from './permission-mode.ts';
+export {
+  baselineDecision,
+  type ActionCategory,
+  type BaselineAction,
+  type BaselineDecision,
+} from './permission-baseline.ts';
+export {
+  resolveSubagentPermissionMode,
+  type SubagentModeBasis,
+  type SubagentPermission,
+  type SubagentPermissionInput,
+} from './subagent-permission.ts';

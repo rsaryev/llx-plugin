@@ -21,7 +21,7 @@ agent, not a model client and not a sandbox. It runs anywhere JavaScript runs.
 | 3     | `marketplace` | Marketplace and plugin-entry reading, sources, dependencies (planned)         |
 | 3     | `loading`     | A plugin folder to a typed `Plugin`; `loading/resolve` holds variable substitution (done), the rest planned |
 | 3     | `foundation`  | Shared by mods and the layer-4 streams: budgets, result shapes (planned)      |
-| 4     | `agents`      | Sub-agent behaviour: the tools a subagent gets (`tool-list`, `tool-filters`, `tool-resolution`); the rest planned |
+| 4     | `agents`      | Sub-agent behaviour: the tools a subagent gets (`tool-list`, `tool-filters`, `tool-resolution`); the permission mode it runs in (`permission-mode`, `permission-baseline`, `subagent-permission`); the rest planned |
 | 4     | `hooks`       | The hook engine: select, run through ports, merge outputs (planned)           |
 | 4     | `skills`      | Skill and command expansion (planned)                                         |
 | 4     | `mods`        | The mods runtime: events, guest hooks through a host runtime (planned)        |

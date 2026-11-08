@@ -279,6 +279,30 @@ session's tools itself. `SubagentRun.handback` says the host gives the subagent 
 Teammates' task and cron tools, and the Glob and Grep a subagent gets back without Bash, are the
 host's to put in the pool.
 
+### Sub-agents: the permission mode
+
+```ts
+import { baselineDecision, resolveSubagentPermissionMode } from '@rsaryev/claude-plugin-kit';
+
+const { mode, denyInsteadOfAsk } = resolveSubagentPermissionMode({
+  main: 'default',                              // the main conversation's mode
+  set: agent.definition.permissionMode,         // the subagent's own, or undefined
+  autoAvailable: true,                          // the host knows: disableAutoMode, the model
+});
+baselineDecision(mode, { category: 'edit', inScope: true }); // 'ask' | 'allow' | 'deny' | 'classify'
+```
+
+| Function                                   | Status | Does                                                                                   |
+| ------------------------------------------ | ------ | -------------------------------------------------------------------------------------- |
+| `resolveSubagentPermissionMode(input)`     | done   | the full "Permission modes" matrix of sub-agents.md: main `bypassPermissions`, `acceptEdits` or `auto` forces its mode; `plan` is held and a set `dontAsk` denies instead of asking; under `default` or `dontAsk` the set mode applies, except `bypassPermissions` (only when the main conversation does) and `auto` while auto mode is unavailable; `manual` is `default`; unset inherits. `basis` says `inherited`, `set` or `main` |
+| `baselineDecision(mode, action)`           | done   | the "Available modes" table cell by cell for a category (`read`, `edit`, `filesystem-command`, `other`) and `inScope` (working directory or `additionalDirectories`, the host decides) |
+| `PERMISSION_MODE_TRAITS`, `PERMISSION_MODE_INPUTS` | done | the registry over the official union (classifier, denies instead of asking, stance toward a subagent) and the accepted `permissionMode` values (six modes and `manual`) |
+
+The classifier behind `auto` is a model call and the host's; the kit says only that the mode
+routes an action to it. Rules, hooks, protected paths and critical-path removals layer on the
+baseline and are not part of it. An agent team teammate follows the agent teams rules, not this
+function.
+
 ## Testing kit (planned)
 
 `@rsaryev/claude-plugin-kit/testing`: in-memory `PluginFiles`, a scripted `CommandRunner`, a
