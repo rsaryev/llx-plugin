@@ -16,6 +16,8 @@ export function openSession(state: HostState, options: SessionOptions): PluginSe
   const directories = createSessionDirectories(options);
   const hooks = createHookPart(state, options, directories);
   const hookPart: HookPart = {
+    hookEnvironment: hooks.hookEnvironment,
+    subprocessEnvironment: (kind) => hooks.subprocessEnvironment(kind),
     dispatch: (event, facts, run) => hooks.dispatch(event, facts, run),
   };
   const agents = createAgentPart(state, options, directories);

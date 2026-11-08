@@ -19,6 +19,7 @@ import type { DispatchRequest, HookOutcome } from './outcome.ts';
 import { createOutputStage } from './output/stage.ts';
 import type { IfEvaluator } from './select/if-guard.ts';
 import { selectHandlers } from './select/select.ts';
+import { createStopBlockCap, type StopBlockCap } from './verdict/stop-block-cap.ts';
 import type { HookObserver, OutputStage } from './verdict/types.ts';
 
 /** The ports the engine runs handlers through: each handler type needs its own (docs/API.md, "Ports"). */
@@ -56,6 +57,24 @@ export interface HookEngineOptions {
   readonly tempDirectory?: string;
   readonly userConfigOf?: DispatchConfig['userConfigOf'];
   readonly httpPolicy?: DispatchConfig['httpPolicy'];
+  /** The host process's id, exported as `CLAUDE_PID` to command hooks. */
+  readonly processId?: DispatchConfig['processId'];
+  /** The `env` blocks of the settings files, resolved (`resolveSettingsEnv`). */
+  readonly settingsEnv?: DispatchConfig['settingsEnv'];
+  /** `CLAUDE_ENV_FILE` for the events that have one (`createEnvFiles`). */
+  readonly envFiles?: DispatchConfig['envFiles'];
+  /**
+   * The counter of consecutive Stop blocks (`createStopBlockCap`). By default each engine has its
+   * own, which is gone with it; a host that builds an engine per run passes one that outlives the
+   * runs, owns its lifetime and calls its `reset` when the session ends.
+   */
+  readonly stopCap?: StopBlockCap;
+  /**
+   * Plugin command hooks first check that their plugin's directory exists, so a plugin that is gone
+   * from disk fails with the documented notice. On by default; a host that never re-reads its
+   * plugins mid-session and wants no lookup per hook run sets `false`.
+   */
+  readonly checkPluginDirectories?: DispatchConfig['checkPluginDirectories'];
 }
 
 export interface HookEngine {
@@ -83,6 +102,10 @@ const hostOf = (options: HookEngineOptions) => ({
   ...(options.tempDirectory === undefined ? {} : { tempDirectory: options.tempDirectory }),
   ...(options.userConfigOf === undefined ? {} : { userConfigOf: options.userConfigOf }),
   ...(options.httpPolicy === undefined ? {} : { httpPolicy: options.httpPolicy }),
+  ...(options.processId === undefined ? {} : { processId: options.processId }),
+  ...(options.settingsEnv === undefined ? {} : { settingsEnv: options.settingsEnv }),
+  ...(options.envFiles === undefined ? {} : { envFiles: options.envFiles }),
+  ...(options.checkPluginDirectories === false ? {} : { checkPluginDirectories: true }),
 });
 
 /** The engine over the real stages: select, build, run through the ports, read, merge. */
@@ -95,6 +118,7 @@ export function createHookEngine(ports: HookPorts, options: HookEngineOptions = 
       output: options.output ?? createOutputStage(scratchOf(ports)),
     },
     ports: runPortsOf(ports),
+    stopCap: options.stopCap ?? createStopBlockCap(),
     windows: options.windows ?? false,
     defaultShell: options.defaultShell ?? 'bash',
     ...(ports.observer === undefined ? {} : { observer: ports.observer }),

@@ -171,9 +171,9 @@ spec('policy.managed.Keys that fail closed', () => {
       expect(managed(raw).get('permissions.blockReadsOutsideWorkingDirectories')).toBe(true);
     });
 
-    test('in a user file the same locks stay as written, the file loses only invalid entries', () => {
+    test('in a user file invalid lock values are dropped, not interpreted as restrictions', () => {
       const raw = { permissions: { disableAutoMode: 'yes', denyInsteadOfPrompting: 'yes' } };
-      expect(plain(viewOf(['user', raw]).get('permissions'))).toEqual(raw.permissions);
+      expect(plain(viewOf(['user', raw]).get('permissions'))).toEqual({});
     });
 
     test('an invalid permissions.defaultMode reads as default', () => {
@@ -279,10 +279,10 @@ spec('policy.managed.Keys that fail closed', () => {
       expect(said(raw)).toEqual([]);
     });
 
-    describe('in a user file the block is read as written', () => {
+    describe('in a user file malformed list fields are dropped', () => {
       test('nothing is withheld', () => {
         const raw = { autoMode: { soft_deny: 'x', allow: ['a'] } };
-        expect(plain(viewOf(['user', raw]).get('autoMode'))).toEqual(raw.autoMode);
+        expect(plain(viewOf(['user', raw]).get('autoMode'))).toEqual({ allow: ['a'] });
       });
     });
   });

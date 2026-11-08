@@ -1092,8 +1092,8 @@ session removes) and `background` (the `additionalContext`, `systemMessage` or `
 `async` or `asyncRewake` hook once its process ends).
 
 `effects` carries what the merged output asks the host to do, one optional field per thing:
-`permissionDecision` with `permissionDecisionReason`, `updatedInput` and, for `defer`, the
-`deferCondition` the host applies (`-p` and a single tool call); `permissionRequest` (the `decision`
+`permissionDecision` with `permissionDecisionReason` and `updatedInput` (`resolveDefer` says whether
+a `defer` applies: `-p` and a single tool call); `permissionRequest` (the `decision`
 object: `allow` with `updatedInput` and `updatedPermissions`, or `deny` with `message` and
 `interrupt`); `updatedToolOutput` (a built-in tool's value that does not match its output shape, for
 Bash, Glob, Grep, WebFetch and WebSearch, is dropped with an issue; MCP output and the other tools
@@ -1125,6 +1125,74 @@ status and a connection failure are non-blocking errors. Without Git Bash a shel
 or `PermissionRequest` command hook is a gate as the docs describe (`defaultShell: 'powershell'` on
 Windows stands for it).
 
+Outcomes that need the host's facts:
+
+- **Background hooks.** `HookOutcome.background` holds one promise per `async` or `asyncRewake` hook
+  that settles when its process ends, with a `BackgroundDelivery`: `outcome` (`completed`,
+  `cancelled` for a process the session killed at teardown, `timed-out`, `failed`),
+  `additionalContext` and `systemMessage` of the JSON response (the response is alone on stdout or on
+  a line of its own; a field of the wrong type is dropped) and `wake` (an `asyncRewake` hook that
+  exited 2: its stderr, or stdout when stderr is empty). The host delivers `additionalContext` and
+  `systemMessage` to Claude on the next turn, never to the user, and wakes Claude at once on `wake`
+  even when the session is idle. `async` is only a field of command hooks, and its `timeout` is not
+  enforced (it is on `asyncRewake`).
+- **A runner that tells a capture is held open.** The answer of a `CommandRunner` may carry
+  `outputHeldOpen: true` (declare the answer as `HeldOpenResult`, exported from `hooks`, so the
+  compiler checks the name; the `CommandRunner` port itself does not type it) when the hook's own process ended while a process it started still held its
+  stdout or stderr. The run is then refused with `refusing to honor the suspect capture`, as a block
+  where exit 2 blocks and a non-blocking error elsewhere; an exit 2 stays an exit 2. Output printed
+  after the hook's own process exited is never part of the run: the runner returns at that exit.
+- **An interrupt.** `DispatchRequest.interrupt` is the key the user pressed while a tool ran
+  (`{ key: 'esc' | 'enter' | 'ctrl-enter', queuedShellCommand? }`), read for `PostToolUse`:
+  `ctrl-enter` caps every command hook that has a limit at 10 seconds whatever its `timeout`, `enter` changes
+  nothing, `esc` cancels the hooks at once (none runs) and `ctrl-enter` acts as `esc` with a queued
+  `!` command or `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`. An aborted `signal` that cancelled a
+  `UserPromptSubmit` hook makes `HookOutcome.interrupted`: the prompt did not go ahead
+  (`proceed: false`) and `restoreInput` says whether its text returns to the input (it does not when
+  a hook blocked the prompt at the same moment).
+- **The observer.** `HookObserver.finished` reports each run's `status` and, for a command hook whose
+  process ran to the end, its `exitCode` (the debug log's "hook ran with its exit code").
+- **A blocked prompt.** The block message of `UserPromptSubmit` ends with `Original prompt:` and the
+  submitted text unless a hook printed `suppressOriginalPrompt: true` (a decision block and an exit 2
+  alike). The host still writes the text wherever it keeps its transcript.
+- **The Stop cap.** The engine counts consecutive holds of a `Stop` (and each subagent's
+  `SubagentStop`): an exit 2, a `decision: "block"` or an `additionalContext` that keeps Claude
+  working. After `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` of them (default 8, `0` for none) the next hold is
+  lifted: `proceed` is `true`, `effects.continuesTurn` is dropped and a warning issue says so. A Stop
+  that holds nothing, and any `PreToolUse`, `PostToolUse` or `PostToolUseFailure` dispatched for the
+  session (or the subagent, by `agent_id`), start the count again ("resets each time Claude calls a
+  tool"), also when no hook is registered. The counter is `HookEngineOptions.stopCap`
+  (`createStopBlockCap()`); an engine built per run passes one that outlives it, owns its lifetime
+  and calls `reset(sessionId, agentId?)` when the session ends.
+- **A plugin that blocks.** An exit-2 block of a plugin's hook ends with `This hook comes from the
+  <plugin> plugin.`; a plugin command hook whose directory is gone does not run (on unless the engine
+  gets `checkPluginDirectories: false`) and reports `Failed to run: Plugin directory does not exist: <path> (<plugin> — run /plugin
+  to reinstall)`.
+
+- **A worktree path.** A `WorktreeCreate` command hook cannot return JSON: its stdout is the path, and
+  `HookOutcome.stdout` holds it raw. `resolveWorktreePath(outcome, { ranIn, repositoryRoot?, isSymlink? })`
+  reads it as the docs do (the last non-empty line, ANSI escapes stripped by `stripAnsi`; an HTTP hook's
+  `effects.worktreePath` wins when both answer) and returns `{ path }` or `{ failure }`: a hook that
+  failed or printed no path, an absolute path with a `.` or `..` segment and a path through a symlink
+  below `repositoryRoot` (the host's `isSymlink` probe; the kit reads no file system) fail, naming the
+  component; a relative path is resolved against `ranIn` with its `.` and `..` collapsed. That the
+  result is a directory the session can enter is the host's to check.
+- **A deferred tool call.** `resolveDefer(effects, { interactive, toolCalls })` says whether a
+  `PreToolUse` `defer` pauses the turn (`deferred`: `-p` and a single tool call), is `ignored` with a
+  warning issue (interactive session, or several tool calls: the normal permission flow runs) or is not
+  a defer (`none`).
+- **The permission check.** `preToolUseHookOutcome(outcome)` turns a `PreToolUse` outcome into the
+  `DecideContext.hook` the rules read (`decision`, `blocked` for an exit 2, `hasUpdatedInput`), which is
+  how `AskUserQuestion` and `ExitPlanMode` stay unapproved by an `allow` without `updatedInput`.
+- **A task completed.** `DispatchRequest.taskCompletedBy` (`task-update` or `teammate-turn`) says what
+  fired `TaskCompleted`: a `TaskUpdate` call ignores `continue: false`, a teammate's finished turn is
+  stopped by it and an `ok: false` prompt hook then behaves as on `TeammateIdle`. Without it
+  `effects.stopCondition` (`teammate-finished-its-turn`) tells the host where `continue: false` holds.
+- **Terminal sequences.** A `terminalSequence` is handed on only when `HookSession.interactive` is true
+  ("in non-interactive mode with the `-p` flag and in the Agent SDK, it ignores the field"); whether the
+  interface is on screen is the host's. A `PermissionDenied` `retry: true` is dropped, with a warning,
+  when the denial `reason` starts with `Auto mode could not evaluate this action` (no verdict).
+
 `buildHookInput` puts `session_id`, `prompt_id` (absent until the first prompt), `transcript_path`,
 `cwd`, `scratchpad_dir` (absent without a scratchpad), `permission_mode` and `effort` (on the events
 that have them), `hook_event_name`, and `agent_id` and `agent_type` (inside an agent, or `agent_type`
@@ -1134,6 +1202,47 @@ cost fields of `SessionStart` outside resume and fork, `globs` of `InstructionsL
 `path_glob_match`, a task field of another task type) or to no field of the event is dropped with a
 warning. The free text of `Stop` and `SubagentStop` tasks and crons is capped at 1000 characters with
 the `… [+N chars]` marker.
+
+### Hook environment and `CLAUDE_ENV_FILE` (done: `hooks/handlers/command/env`, `scrub`, `powershell`, `hooks/env-file`)
+
+A command hook's process gets the host's environment with the settings files' `env` written over it
+(`RunContext.settingsEnv`, from `resolveSettingsEnv`), with its credentials removed when
+`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` is `1` (`scrubEnvironment`: the docs' table, a name or value that
+"looks like a credential" being a judgment) and without the `OTEL_*` variables; then the variables
+Claude Code exports: `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`,
+`CLAUDE_PLUGIN_OPTION_<KEY>`, `CLAUDECODE` and `CLAUDE_CODE_CHILD_SESSION` (`1`),
+`CLAUDE_CODE_SESSION_ID` (the input's `session_id`, so it follows a `/clear`), `CLAUDE_PID`
+(`options.processId` of the engine or host; unset when the host gives none) and `CLAUDE_ENV_FILE`.
+
+`CLAUDE_ENV_FILE` is the `EnvFileStore` port (`path`, `read`, `clear`) of the `hooks/env-file` module:
+`createEnvFiles(store, { launchScript })` hands the engine (`options.envFiles`) the file of each event
+and gives the host the rest.
+
+| Function                              | Does                                                                                  |
+| ------------------------------------- | ------------------------------------------------------------------------------------- |
+| `envFileKindOf(event)`                | `session` for `SessionStart` and `Setup`, `cwd` for `CwdChanged` and `FileChanged`, none for any other event |
+| `createEnvFiles(store, options)`      | `pathFor(event, shell)` (none for PowerShell hooks; exec form is not PowerShell), `beforeEvent` (a `CwdChanged` clears the `cwd` file, even when no hook handles it), `scripts` (what a Bash command runs first: the launch script, the session file, the `cwd` file) and `powershellVariables` |
+| `readPowershellVariables(text, { windows })` | the assignments PowerShell commands receive: only when every line is blank, a `#` comment or a plain `export`/`declare -x`/`NAME=value`; otherwise none and the `Session environment is not all plain assignments` issue; on Windows a value with `/` or `\` is left out |
+
+`powershellVariables({ windows, sandboxed })` reads the launch script and both files and returns none for
+a sandboxed command. A host session passes `processId` and `envFiles` in `PluginHostOptions` and reads
+`session.hookEnvironment` (`settings`: the `env` that applies and what was ignored; `files`).
+
+`subprocessEnvironment({ kind, environment, settingsEnv, windows, sessionId, processId })` is the same
+environment for any process Claude Code starts, `kind` being `hook`, `bash`, `powershell`, `mcp` or
+`monitor` (`SUBPROCESS_KINDS`): the environment with the settings `env` over it, the scrub, the `OTEL_*`
+removal, `CLAUDECODE` for every kind, `CLAUDE_CODE_CHILD_SESSION` for all but `mcp`,
+`CLAUDE_CODE_SESSION_ID` for all but `monitor` and `CLAUDE_PID` for `hook`, `bash` and `powershell`.
+`session.subprocessEnvironment(kind)` calls it with the session's settings `env`, session id, process id
+and environment, so a host builds its own Bash, PowerShell, stdio MCP and Monitor environments without
+copying the logic. It never holds `CLAUDE_ENV_FILE` or the plugin path variables, and the kit starts none
+of those processes itself (what is left out is in `spec/judgments.md`). `scrubEnvironment(env, windows)`
+and `scrubRequested(env)` are the scrub on its own.
+
+A shell-form hook that PowerShell runs by the host's default (no `shell` field) and whose command is only
+quoted strings starts nothing: the run is `not-started` with a message that begins `PowerShell started no
+program` and lists the fixes, and the Windows-without-Git-Bash error of a blocked call carries both texts.
+With `"shell": "powershell"` the command runs as written.
 
 ## Host and sessions (done: `host`)
 
@@ -1493,6 +1602,8 @@ mergeSettingsHooks(view.layers); // every file's hooks, managed ones never remov
 | `createChannelSettingsPolicy(view, context)` | done | `channelsEnabled` and `allowedChannelPlugins` as one `ChannelSettingsPolicy`: `gate()` (`ChannelGate`: closed on claude.ai Team and Enterprise until managed `true`, and on Console once managed settings exist (a managed layer counts); open by default on Console without them and on Pro, Max and Ultra without an organization, which skip both keys; `false` is unset; `startupWarning` names the admin warning), `allowlist()` (the managed `allowedChannelPlugins` taken whole from the highest managed source, replacing the host's `defaultChannelAllowlist` even when empty; an unusable value is an empty list, an invalid entry is stripped, the string `plugin@marketplace` is the equivalent object) and `allowed(entry)` (`ChannelVerdict { allowed, reason }` for a `ChannelEntry` that carries its `origin`: `channels` with a `plugin`, or `development` with `interactive` and, for `plugin:<name>@<marketplace>`, the `plugin`; a bare `server:<name>` is a development entry with none. A closed gate blocks everything, the development flag included; otherwise a development entry, in an interactive session only, skips the list and a `--channels` entry needs both names on it; the bypass is per entry, so a mixed session is answered entry by entry). `ChannelPolicyContext` is `account` (`claudeaiTeamEnterprise`, `claudeaiPersonal`, `console`), `hasManagedSettings` and `defaultChannelAllowlist` (the Anthropic list is not in the docs). The kit starts no channel server: a closed gate carries `serverConnects: true` (the MCP server stays connected and its tools work, only channel messages stop), and the verdict only says whether it may register as a channel; refusing a server that negotiates protocol revision 2026-07-28 on the v2 MCP client runtime is the host's concern (spec/judgments.md). The pieces are exported alone: `channelGate`, `effectiveChannelAllowlist`, `channelVerdict` |
 | `suggestionMarketplaces(view, registered)` | done | `pluginSuggestionMarketplaces`: the listed names that take effect, managed settings only; each must be registered and its registered source declared in the same managed settings, as the `extraKnownMarketplaces` entry of that name or an entry of `strictKnownMarketplaces` that admits it; the official marketplace needs its name alone; also `PluginSettingsPolicy.suggestionMarketplaces` |
 | `createCustomizationPolicy(view, context)`, `readSurfaceLocks(value)` | done | `strictPluginOnlyCustomization`: `locked` (`true` all four, an array the kinds it names, an unreadable value `true`, an unknown name locks nothing and is counted in `unknownSurfaceNames`), `loads(surface, origin)` per surface (skills: user, project, commands, added directory and claude.ai sync stop, bundled, managed directory and plugins load; agents; hooks: asked of the hook policy's origin table; mcp: `~/.claude.json` and `.mcp.json` stop, managed files and plugin servers load), `skillsDirPlugins()` (stopped by a lock on any surface or the marketplace lists), `skillAllowedToolsPreapproved(skill)` (a personal or project skill with `hooks` loses it unless `context: fork`) and `mcpAddRefusal` (the documented message while `mcp` is locked) |
+| `createPermissionsPolicy(view, context)` | done | `permissions`, `allowManagedPermissionRulesOnly`, `autoMode`, `disableAutoMode`, `skipAutoPermissionPrompt`, `skipDangerousModePermissionPrompt` and `useAutoModeDuringPlan` as one `PermissionsPolicy`: `rules` (`SettingsRule`: `behavior`, `text`, `scope`; the lock, the parent settings and workspace trust applied), `additionalDirectories` (`SettingsDirectory`, with `repositoryOnly`), `managedRulesOnly`, the two block flags, the two locks, `skipDangerousModePermissionPrompt`, `autoMode` (`AutoModeSettings`) and `startingMode(input)` |
+| `settingsLocations(input)` | done | where Claude Code reads `~/.claude/settings.json` (or `$CLAUDE_CONFIG_DIR`), the project file (the primary working directory's, no parent fallback), the local file (the repository root unless outside git, home as root, Windows or a root another user owns) and which folders hold output styles (the working directory and its parents, then the user's) |
 | `PolicyContext` | done | the facts a host copies in: account, plan, managed-settings presence, `parentSettingsBehavior`, folder trust, environment values, the default channel allowlist, the official marketplace names, the organization's workflow toggle, safe mode, the `/config` workflow size and the ultracode state; each field names its docs page |
 | `resolvePolicy({ layers, context, issues? })` | done | every area behind one `ResolvedPolicy`: `plugins`, `marketplaces` (`gate`, `registry`, `commandSources`), `hooks`, `skills`, `workflows`, `channels`, `customization`, the `view`, and `issues` (the reader's, then the registry's); parent settings are dropped where an administrator deploys managed settings without opting in, and the `hooks` lock comes from the customization policy |
 | `createGeneralView(layers)` | done | the policy view plus `merged()`: every setting as Claude Code applies it. `get`, `winner` and `eachFromHighest` answer for the general keys too (`GENERAL_KEYS`: `model`, `fallbackModel`, `modelPicker`, `availableModels`, `permissions`, `env`, `sandbox`, `permissions.defaultMode`, the 12 managed-exception keys...); a key with no row is merged by the general rule (blocks key by key, lists combined without duplicates, the rest from the highest file) |
@@ -1572,6 +1683,8 @@ case-insensitive, a trailing host dot ignored, paths case-sensitive; no port mea
 subset enforced; an unreadable managed `allowedMcpServers` is an empty allowlist, an unreadable
 `denied` value is dropped.
 
+| `resolvePolicy({ layers, context, issues? })` | done | every area behind one `ResolvedPolicy`: `plugins`, `marketplaces` (`gate`, `registry`, `commandSources`), `hooks`, `skills`, `workflows`, `channels`, `permissions`, `customization`, the `view`, and `issues` (the reader's, then the registry's); parent settings are dropped where an administrator deploys managed settings without opting in, and the `hooks` lock comes from the customization policy |
+
 Scopes, highest first: `managed`, `parent` (the SDK `managedSettings`), `flag` (`--settings`),
 `local`, `project`, `addDir`, `user`. A key a scope may not carry is dropped with a warning (its
 **Scope** line); a `--add-dir` directory's settings carry `enabledPlugins` and
@@ -1579,6 +1692,88 @@ Scopes, highest first: `managed`, `parent` (the SDK `managedSettings`), `flag` (
 an empty one, an unreadable lock reads as `true`, and `strictPluginOnlyCustomization` as `true`;
 elsewhere the value or entry is dropped. The aliases `allowedMarketplaces` and
 `additionalMarketplaces` are rewritten to their canonical keys, so a resolver sees only those.
+
+### Permission settings (done: `settings/permissions`, `settings/locations`, `host/permission-session`)
+
+```ts
+import { resolvePolicy, startPermissions } from '@rsaryev/claude-plugin-kit';
+import { decide } from '@rsaryev/claude-plugin-kit';
+
+const { permissions } = resolvePolicy({ layers, context });
+permissions.rules; // [{ behavior: 'deny', text: 'Read(./.env)', scope: 'managed' }, ...]
+const started = startPermissions({
+  policy: permissions,
+  start: { surface: 'terminal', autoAvailable: true, permissionMode: undefined },
+  paths, // the PathContext of the session
+  commandLine: { allowed: ['Bash(npm test)'] }, // --allowedTools; --disallowedTools is `disallowed`
+});
+if (started.outcome === 'started') decide(call, started.context); // started.mode, started.issues
+```
+
+`permissions` is read per field in every file. In the policy tier (`managed`, `parent`) a lock reads as
+its restrictive value, an invalid `defaultMode` as `default`, an unreadable `permissions` object turns the
+write block on, and while a `deny` or `ask` list cannot be read `allow` and `additionalDirectories` are
+withheld (the report names each grant); the same holds for the `soft_deny` and `hard_deny` lists of
+`autoMode`. Lists unite across files; a `true` of `blockReadsOutsideWorkingDirectories`,
+`blockWritesOutsideWorkingDirectories` or `autoMode.classifyAllShell` and a `"disable"` lock hold from any
+file; a `false` of `useAutoModeDuringPlan` from managed settings, `--settings`, user or local settings turns
+it off; a `true` of a `skip*Prompt` key from any file that carries it applies.
+
+`allowManagedPermissionRulesOnly` drops the `allow`, `ask` and `deny` rules of user, project, local and
+`--settings` files and the command line's `--allowedTools` (`--disallowedTools` stays); the parent
+settings lose their `allow` rules and directories, and a `Read` or `Edit` rule of a host that starts with
+`!` is never kept. A project file's `allow` rules and `additionalDirectories` wait for workspace trust
+(`PolicyContext.isFolderTrusted`), the local file's only when git tracks it
+(`PolicyContext.localSettingsTracked`); `deny` and `ask` rules never wait.
+
+`startingMode(input)` answers "Which mode a session starts in": the flag (`permissionMode`,
+`dangerouslySkipPermissions`), then `permissions.defaultMode` (an `auto` or `bypassPermissions` from a
+project or local file is no value; the VS Code surface reads user, managed and `--settings` files only), then
+the built-in default (`auto` in a terminal, `default` under `-p`, the SDK, the HIPAA configuration or
+`disableAutoMode`). `auto` becomes `default` when `autoAvailable` is false or `disableAutoMode` is set;
+`disableBypassPermissionsMode` refuses the flag; `--restricted` and root outside a sandbox refuse
+`bypassPermissions`; a background session honors a bypass request only with `skipDangerousModePermissionPrompt`
+in user or managed settings (a `local` or `--settings` acceptance ignores the request with the documented
+notice, none refuses it). The result carries `bypassAvailable`, `autoAvailable` and `bypassWarning`.
+`startPermissions` turns the policy and the start into the `DecideContext` `decide` takes: the parsed rules
+with their sources, the mode, the facts the settings decide, `cannotPrompt` for a `-p` or SDK run with no
+callback (an `ask` is then denied with the reason `prompt-unavailable`) and `repositoryDirectories`
+(directories only repository settings add, which the read and write blocks do not count).
+
+`decide` also takes `connectorToolsSetToAsk` (never approved by a mode, rule, hook or mod; reason
+`organization-ask`) and `preapprovedFetchDomain` (WebFetch's built-in set of documentation domains, which
+the host knows), and `approvalMemory(tool, { rulesLocked })` says what "Yes, and don't ask again" remembers per tool type.
+The cross-session messaging safeguards of the bypass section are not modelled: the kit sends no message.
+The read of another organization's public `Artifact`, which `bypassPermissions` does not approve ("Claude can't
+read one"), is not modelled either: the artifact's organization is not in the call, so `decide` allows it in that mode.
+
+`startPermissions` also takes `interactive` (default: a `terminal` surface) for a host with its own approval
+interface, which is not a terminal and must not claim to be one; it fills `classifyAllShell` (in auto mode every
+Bash and PowerShell allow rule is suspended, `Bash(npm test)` included, and a `false` leaves the narrow rules in
+force) and returns `notices`, the text a session shows at its start (the HIPAA terminal notice, verbatim; the
+first-time `auto` notice is the host's). `savedApproval(tool, policy, locations)` says what "Yes, and don't ask
+again" does for a tool and, for an approval that lasts, the file it saves the rule to (`settingsLocations().local`);
+under `allowManagedPermissionRulesOnly` nothing is offered or saved.
+
+### The `env` block (done: `settings/env`)
+
+```ts
+import { applySettingsEnv, resolveSettingsEnv } from '@rsaryev/claude-plugin-kit';
+
+const { values, ignored, issues } = resolveSettingsEnv(view.layers, {
+  isFolderTrusted: (scope) => trust[scope], // the project and local files wait for trust
+  environment: process.env, // the launch environment (an off value never replaces it)
+  windows: false,
+});
+const environment = applySettingsEnv(process.env, values, false); // a settings value replaces the shell's
+```
+
+Files combine per variable, the highest precedence winning; a value is copied as written (an empty string is
+a value; nothing is ever removed). Project and local files cannot set what a checked-out repository must not
+control (`CLAUDE_CONFIG_DIR`, the operating-system directories, the Windows program variables, the
+OpenTelemetry exporter variables except their off values, how Claude Code starts and signs in), and no file
+sets the identity variables the hosting environments own. `ignored` names the variable, the scope and the
+reason (`repository`, `host-owned`, `untrusted`, `launch`, `not-text`), never a value.
 
 ## Sub-agents (done: the tools a subagent gets)
 
@@ -1786,3 +1981,7 @@ resolveEnv resolves settings environment values with scope, trust and launch-env
 ## Agent runtime policy
 
 Split subagent context by responsibility: persistent memory, preloaded skills and scoped MCP servers; add folder trust diagnostics and model allowlist substitution. The host still owns provider resolution, connections and prompt assembly.
+
+## Hook classifier annotations and auto-mode rewrites
+
+Hook output exposes classifierContext with its shared 2,000-character cap and classifierTrust; notes for unrecorded read-only lookups are discarded. reviewHookRewrite decides whether a changed call applies, is denied, or drops a further rewrite on a repeat. afterHandbackDenial counts the three retry notices; the host delivers them.

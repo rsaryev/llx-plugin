@@ -17,6 +17,8 @@ import {
 } from './repair-closed.ts';
 import { hooks } from './repair-hooks.ts';
 import { allowedMcpServers, deniedMcpServers } from './mcp/entries.ts';
+import { autoModeBlock, consentBoolean } from './permissions/auto-mode.ts';
+import { disableValue, permissionsBlock } from './permissions/read.ts';
 import type { Repair } from './repair-support.ts';
 import {
   boolean,
@@ -64,6 +66,10 @@ export const REPAIR_KINDS = [
   'modelDenylist',
   'orgUuid',
   'gatewayNetworks',
+  'permissions',
+  'autoMode',
+  'disableMode',
+  'consentBoolean',
 ] as const;
 export type RepairKind = (typeof REPAIR_KINDS)[number];
 
@@ -94,4 +100,8 @@ export const REPAIRS: { readonly [R in RepairKind]: Repair } = {
   modelDenylist,
   orgUuid,
   gatewayNetworks,
+  permissions: permissionsBlock,
+  autoMode: autoModeBlock,
+  disableMode: disableValue,
+  consentBoolean,
 };

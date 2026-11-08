@@ -8,6 +8,7 @@ export { readAsyncResponse, readBody, readStdout } from './stdout-kind.ts';
 export type { BodyReading, StdoutReading } from './stdout-kind.ts';
 export type {
   BackgroundDelivery,
+  BackgroundOutcome,
   BlockInfo,
   BlockRoute,
   BlockVia,
@@ -25,3 +26,7 @@ export type {
   ParseResult,
   TaggedOutput,
 } from './types.ts';
+export { ORIGINAL_PROMPT, withOriginalPrompt } from './blocked-prompt.ts';
+export { DEFAULT_STOP_BLOCK_CAP, createStopBlockCap, stopBlockCap } from './stop-block-cap.ts';
+export type { StopBlockCap } from './stop-block-cap.ts';
+export { SUSPECT_CAPTURE } from './suspect-capture.ts';

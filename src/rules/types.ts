@@ -112,10 +112,13 @@ export type DecisionReason =
   | 'allow-rule'
   | 'read-in-working-directory'
   | 'read-only-command'
+  | 'preapproved-domain'
   | 'accept-edits'
   | 'protected-path'
   | 'network-path'
   | 'requires-user-interaction'
+  | 'organization-ask'
+  | 'prompt-unavailable'
   | 'mode-bypass'
   | 'mode-dontask'
   | 'mode-plan'
@@ -137,4 +140,12 @@ export type Decision =
   | { readonly outcome: 'allow'; readonly reason: DecisionReason }
   | { readonly outcome: 'ask'; readonly reason: DecisionReason }
   | { readonly outcome: 'deny'; readonly reason: DecisionReason }
-  | { readonly outcome: 'classify'; readonly reason: DecisionReason };
+  | {
+      readonly outcome: 'classify';
+      readonly reason: DecisionReason;
+      /**
+       * The reviewer's approval does not run the call: it "still goes to the prompt" (hooks.md,
+       * "PreToolUse `ask` decisions in auto mode"). Its denial stands.
+       */
+      readonly thenPrompt?: true;
+    };

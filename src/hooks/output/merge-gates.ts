@@ -79,9 +79,6 @@ function mergeGates(event: 'PreToolUse' | 'PreModelSwitch', reads: readonly Read
       permissionDecision: winner.decision,
       ...(reason === undefined ? {} : { permissionDecisionReason: reason }),
       ...rewrite,
-      ...(winner.decision === 'defer'
-        ? { deferCondition: 'non-interactive-single-tool-call' as const }
-        : {}),
     },
     issues: [],
     ...(winner.decision === 'deny'

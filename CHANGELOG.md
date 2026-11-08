@@ -518,6 +518,84 @@
   they exercise; judgments of the folder scan (dot-folders, `taken`, exact local names, bare plugin names,
   `additionalDirectories`, the main checkout's commands) and every class of refused name have their own
   tests.
+- Permissions: the settings keys and the starting mode. `permissions`, `allowManagedPermissionRulesOnly`,
+  `autoMode`, `disableAutoMode`, `skipAutoPermissionPrompt`, `skipDangerousModePermissionPrompt` and
+  `useAutoModeDuringPlan` are policy keys (per-field repair, fail-closed in the policy tier, the merge and
+  scope of each) behind `resolvePolicy(...).permissions`, with `startingMode` (flag, `defaultMode`, built-in
+  default, the locks, the background bypass notice), `settingsLocations`, and `startPermissions`, which
+  builds the `DecideContext`. `decide` gains `cannotPrompt` (a `-p` run denies what would prompt),
+  `connectorToolsSetToAsk`, `preapprovedFetchDomain` and `repositoryDirectories`; `approvalMemory` tabulates
+  "don't ask again".
+
+- Hooks: the per-event contracts. Every `<Event> input` section, the decision-control table, the
+  response schema of prompt hooks and the context, interaction, elicitation, defer and terminal sections
+  of hooks.md are proven by tests against the docs' own examples and scripts. New: `resolveWorktreePath`
+  (the path of a `WorktreeCreate` hook: last non-empty line, ANSI stripped, relative resolution, `.`/`..`
+  and symlink refusals), `resolveDefer`, `preToolUseHookOutcome`, `DispatchRequest.taskCompletedBy` and
+  `effects.stopCondition` for `TaskCompleted`; a `terminalSequence` is dropped outside an interactive
+  session and a `PermissionDenied` `retry` when the classifier produced no verdict.
+- Hooks: `CLAUDE_ENV_FILE`. The `EnvFileStore` port and `createEnvFiles` give `SessionStart` and `Setup`
+  hooks the file that lasts the session and `CwdChanged` and `FileChanged` hooks the file a `CwdChanged`
+  event clears, never a hook that runs PowerShell nor another event; `readPowershellVariables` reads the
+  plain `export`, `declare -x` and `NAME=value` lines PowerShell commands receive (none, with the
+  `Session environment is not all plain assignments` issue, when a line is another kind; on Windows
+  without a value that holds `/` or `\`). A host session takes `envFiles` and `processId` and reads
+  `session.hookEnvironment`.
+- Hooks: the process environment. `CLAUDE_CODE_SESSION_ID` (the input's `session_id`), `CLAUDECODE`,
+  `CLAUDE_CODE_CHILD_SESSION` and `CLAUDE_PID` are set; the settings files' `env` is written over the
+  inherited environment; `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` removes credentials by the docs' table
+  (`scrubEnvironment`) before the `OTEL_*` removal.
+- Hooks: a shell-form hook that PowerShell runs by default whose command is only quoted strings fails with
+  `PowerShell started no program` and the fixes instead of printing it.
+- Settings: `resolveSettingsEnv` and `applySettingsEnv`, the `env` block (merge per variable, trust, the
+  variables project and local files cannot set, the host-owned identity variables).
+
+- Hooks: runtime outcomes of a run. `UserPromptSubmit` block messages end with `Original prompt:` unless
+  `suppressOriginalPrompt`; `DispatchRequest.interrupt` (`esc`, `enter`, `ctrl-enter` on `PostToolUse`)
+  and `HookOutcome.interrupted` (an interrupted prompt check); the `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`
+  cap on consecutive `Stop` and `SubagentStop` holds (`createStopBlockCap`); `refusing to honor the
+  suspect capture` for a runner that reports `outputHeldOpen`; `This hook comes from the <plugin>
+  plugin.` on a plugin's exit-2 block; `checkPluginDirectories`; `BackgroundDelivery.outcome`.
+
+### Fixed
+
+- Permissions (review of the settings keys and the session): `autoMode.classifyAllShell` now acts, as
+  `DecideContext.classifyAllShell` (filled by `startPermissions`) that suspends every Bash and PowerShell
+  allow rule in auto mode; an enforced mod can no longer lift a default-mode prompt that a permission
+  callback would be asked about; `approvalMemory(tool, { rulesLocked })` and the new `savedApproval` hide
+  the always-allow choices under `allowManagedPermissionRulesOnly` and name the file a rule is saved to;
+  `startPermissions` takes `interactive` for hosts with their own approval interface and returns `notices`
+  (the HIPAA terminal notice, verbatim); judgments recorded for the fail-closed block flags, the
+  unmodelled `Artifact` read in bypass mode and the first-time `auto` notice; `mergePermissionBlocks`
+  builds its blocks without a type assertion; weak or echoing tests were rewritten and lint warnings in
+  the new tests fixed.
+
+- Hooks (review of the per-event contracts): `effects.deferCondition` is removed, `resolveDefer` is the
+  one way to know whether a `defer` applies; `effects.stopCondition` of a `TaskCompleted` now comes from
+  its own merger and the teammate-stop rule of an `ok: false` hook from `EXIT2_RULES`, not from an event
+  name; the tests no longer assert echoes of their own input, claims the host owns (`hook_response`,
+  the debug log, the pasted-text expansion) or titles that overstate what they check; added tests for
+  `ElicitationResult` `mode` and `elicitation_id`, the value sets of `PreModelSwitch` and
+  `PostModelSwitch`, `UserPromptExpansion.command_source`, the `PreToolUse` exit-2 path through
+  `decide`, and the `WorktreeCreate` path reading; the judgments for these are in `spec/judgments.md`.
+- Hooks (review of the runtime outcomes): the `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` count resets when
+  Claude calls a tool (`PreToolUse`, `PostToolUse`, `PostToolUseFailure`, with or without a hook) and
+  when a Stop holds nothing, no longer on `stop_hook_active`; `StopBlockCap.reset` and
+  `HookEngineOptions.stopCap` let a host that rebuilds its engine keep the counter; `Ctrl+Enter`'s
+  10-second cap kills command hooks only; `HookObserver.finished` carries `exitCode`; `HeldOpenResult`
+  types a runner's `outputHeldOpen`; `checkPluginDirectories` is on by default; the plugin sentence is
+  left off a block whose stderr is not the message, and a plugin is named by its manifest name, else
+  its id, everywhere.
+- Hooks: `onFailure: "block"` blocked on a failure of a hook with only `asyncRewake` set, which is a
+  background hook like one with `async`.
+- Hooks and settings (review of the exec stream): the scrub keeps `http_proxy` and `https_proxy` in lower
+  case as it keeps `HTTP_PROXY` and `HTTPS_PROXY`; `subprocessEnvironment` and
+  `session.subprocessEnvironment(kind)` build the environment of a hook, Bash, PowerShell, stdio MCP or
+  Monitor process, and `scrubEnvironment` and `scrubRequested` are exported as `docs/API.md` says; on a
+  Windows host the settings `env` reads off values and the launch environment without regard to case;
+  the judgments of the scrub, the managed layer order, the `CLAUDE_ENV_FILE` of exec-form hooks and the
+  PowerShell reader are recorded and tested outside `spec(...)`.
+
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
   short label and the amounts of each row of the Limits table, not the page's sentences, so the
   repository holds facts and identifiers only.
@@ -1617,3 +1695,6 @@
 ### Fixed (content completion)
 
 - Split subagent context by responsibility: persistent memory, preloaded skills and scoped MCP servers; add folder trust diagnostics and model allowlist substitution. The host still owns provider resolution, connections and prompt assembly.
+### Fixed (exec completion)
+
+- Hook output exposes classifierContext with its shared 2,000-character cap and classifierTrust; notes for unrecorded read-only lookups are discarded. reviewHookRewrite decides whether a changed call applies, is denied, or drops a further rewrite on a repeat. afterHandbackDenial counts the three retry notices; the host delivers them.

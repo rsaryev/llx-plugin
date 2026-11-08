@@ -62,6 +62,7 @@ export const SCOPE_RULES = [
   'userManagedFlag',
   'userLocalManagedFlag',
   'repositoryCannotElevate',
+  'userFlagOrManaged',
 ] as const;
 export type ScopeRule = (typeof SCOPE_RULES)[number];
 
@@ -99,6 +100,7 @@ const ADMITS: { readonly [R in ScopeRule]: Admits } = {
   repositoryCannotElevate: (scope, value) =>
     inScopes(...FILES)(scope, value) && !(REPOSITORY_FILES.includes(scope) && isElevated(value)),
   userLocalManagedFlag: inScopes('user', 'local', 'managed', 'flag'),
+  userFlagOrManaged: inScopes('user', 'flag', 'managed'),
 };
 
 /**
@@ -135,6 +137,11 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     merge: MERGES.highestWins,
     repair: 'lockBoolean',
   },
+  allowManagedPermissionRulesOnly: {
+    scopes: 'managed',
+    merge: MERGES.highestWins,
+    repair: 'lockBoolean',
+  },
   allowedChannelPlugins: {
     scopes: 'managed',
     merge: MERGES.highestWins,
@@ -160,6 +167,7 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
   },
   appendPlugins: { scopes: 'userOrManaged', merge: MERGES.highestWins, repair: 'stringList' },
   availableModelsMatch: { scopes: 'managed', merge: MERGES.highestWins, repair: 'matchMode' },
+  autoMode: { scopes: 'userFlagOrManaged', merge: MERGES.autoModeBlocks, repair: 'autoMode' },
   blockedMarketplaces: {
     scopes: 'managedAndParent',
     merge: MERGES.unionArrays,
@@ -173,6 +181,7 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
   },
   deniedModels: { scopes: 'managed', merge: MERGES.highestWins, repair: 'modelDenylist' },
   disableAllHooks: { scopes: 'anyAndParent', merge: MERGES.highestWins, repair: 'hooksSwitch' },
+  disableAutoMode: { scopes: 'any', merge: MERGES.highestWins, repair: 'disableMode' },
   disableBundledSkills: { scopes: 'any', merge: MERGES.highestWins, repair: 'lockBoolean' },
   // "Scope: Any file ... A `true` in any settings file applies"; a boolean lock key fails closed in the
   // policy tier (managed-settings.md), which `lockBoolean` does. The MCP load settings read every holder.
@@ -226,6 +235,7 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
   managedMcpServers: { scopes: 'managed', merge: MERGES.perKeyHighestWins, repair: 'record' },
   managedSourcesBehavior: { scopes: 'managed', merge: MERGES.highestWins, repair: 'asWritten' },
   parentSettingsBehavior: { scopes: 'managed', merge: MERGES.highestWins, repair: 'asWritten' },
+  permissions: { scopes: 'anyAndParent', merge: MERGES.permissionBlocks, repair: 'permissions' },
   pluginConfigs: { scopes: 'userOrManaged', merge: MERGES.perKeyHighestWins, repair: 'record' },
   pluginSuggestionMarketplaces: {
     scopes: 'managed',
@@ -236,6 +246,16 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
   policyHelper: { scopes: 'managed', merge: MERGES.highestWins, repair: 'asWritten' },
   prependPlugins: { scopes: 'userOrManaged', merge: MERGES.highestWins, repair: 'stringList' },
   skillOverrides: { scopes: 'any', merge: MERGES.perKeyHighestWins, repair: 'skillOverrides' },
+  skipAutoPermissionPrompt: {
+    scopes: 'userOrManaged',
+    merge: MERGES.anyTrue,
+    repair: 'consentBoolean',
+  },
+  skipDangerousModePermissionPrompt: {
+    scopes: 'userLocalManagedFlag',
+    merge: MERGES.anyTrue,
+    repair: 'consentBoolean',
+  },
   strictKnownMarketplaces: {
     scopes: 'managedAndParent',
     merge: MERGES.highestWins,
@@ -257,6 +277,12 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     merge: MERGES.highestWins,
     exception: FALSE_FROM_ANY_SCOPE,
     repair: 'boolean',
+  },
+  useAutoModeDuringPlan: {
+    scopes: 'userLocalManagedFlag',
+    merge: MERGES.anyFalse,
+    exception: FALSE_FROM_ANY_SCOPE,
+    repair: 'consentBoolean',
   },
   workflowKeywordTriggerEnabled: { scopes: 'any', merge: MERGES.highestWins, repair: 'boolean' },
   workflowSizeGuideline: { scopes: 'any', merge: MERGES.highestWins, repair: 'workflowSize' },

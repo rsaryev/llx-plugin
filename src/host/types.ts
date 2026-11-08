@@ -1,6 +1,6 @@
 import type { PluginIssue } from '../format/issues.ts';
 import type { Plugin } from '../loading/index.ts';
-import type { HookPorts } from '../hooks/index.ts';
+import type { EnvFileStore, HookPorts } from '../hooks/index.ts';
 import type { FolderScan } from '../ports/folder-scan.ts';
 import type { EffortLevel, PermissionMode } from '../protocol/official.ts';
 import type { PermissionRule } from '../rules/index.ts';
@@ -43,6 +43,18 @@ export interface PluginHostOptions {
   readonly windows?: boolean;
   /** The shells a skill's `shell` field can pick; default `bash` only, plus PowerShell when `windows`. */
   readonly shells?: { readonly bash: boolean; readonly powershell: boolean };
+  /** The host process's id: `CLAUDE_PID` in every command hook (env-vars.md). Absent, the variable is not set. */
+  readonly processId?: number;
+  /**
+   * Where `CLAUDE_ENV_FILE` lives (hooks.md, "Persist environment variables"): the files a session's
+   * hooks write and the shells of the host read. Absent, hooks get no `CLAUDE_ENV_FILE`.
+   */
+  readonly envFiles?: EnvFileStore;
+  /**
+   * An app or a self-hosted runner built this host's launch environment: a settings `env` value never
+   * replaces a variable it sets (settings-reference.md, "How `env` values interact with your shell").
+   */
+  readonly launchOwnsEnvironment?: boolean;
 }
 
 export interface SessionOptions {

@@ -105,10 +105,9 @@ spec('hooks.output.PreToolUse.permissionDecision', () => {
     expect(outcome.effects.permissionDecision).toBe('allow');
   });
 
-  test('defer carries the condition under which Claude Code honors it', () => {
-    const outcome = merged('PreToolUse', [decide('defer')]);
-    expect(outcome.effects.deferCondition).toBe('non-interactive-single-tool-call');
-    expect(merged('PreToolUse', [decide('ask')]).effects.deferCondition).toBeUndefined();
+  test('a defer is the merged decision, an ask is not one', () => {
+    expect(merged('PreToolUse', [decide('defer')]).effects.permissionDecision).toBe('defer');
+    expect(merged('PreToolUse', [decide('ask')]).effects.permissionDecision).toBe('ask');
   });
 
   test('a decision outside allow, deny, ask and defer fails validation', () => {

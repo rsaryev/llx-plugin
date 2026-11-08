@@ -23,17 +23,18 @@ export const cmd = (more: object = {}): HookHandler => ({
   ...more,
 });
 
-export async function fire<E extends HookEvent>(
-  event: E,
+interface FireOptions {
+  observer?: HookObserver;
+  http?: HttpReply[];
+  /** The output stage; the stand-in `fakeOutput` when absent. */
+  output?: OutputStage;
+}
+
+async function fireWith(
+  event: HookEvent,
   entries: readonly RegisteredHandler[],
   replies: readonly RunnerReply[],
-  options: {
-    observer?: HookObserver;
-    facts?: EventFactsOf<E>;
-    http?: HttpReply[];
-    /** The output stage; the stand-in `fakeOutput` when absent. */
-    output?: OutputStage;
-  } = {},
+  options: FireOptions & { facts?: object },
 ) {
   const runner = scriptedRunner(...replies);
   const engine = createHookEngine(
@@ -46,7 +47,8 @@ export async function fire<E extends HookEvent>(
     },
     { output: options.output ?? fakeOutput, ifEvaluator: ifEvaluatorFor(matchContext) },
   );
-  const facts: EventFactsOf<E> = options.facts ?? FACTS[event];
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the one place a test hands the engine facts typed only as an object, such as an example read from the docs; the engine validates them
+  const facts = (options.facts ?? FACTS[event]) as EventFactsOf<typeof event>;
   const outcome = await engine.dispatch(createHookRegistry(entries), {
     event,
     facts,
@@ -54,4 +56,26 @@ export async function fire<E extends HookEvent>(
     signal: new AbortController().signal,
   });
   return { outcome, runner };
+}
+
+/** `event` fired with the facts of the event's type, or with any object (an example, a bad value). */
+export function fire<E extends HookEvent>(
+  event: E,
+  entries: readonly RegisteredHandler[],
+  replies: readonly RunnerReply[],
+  options?: FireOptions & { facts?: EventFactsOf<E> },
+): ReturnType<typeof fireWith>;
+export function fire(
+  event: HookEvent,
+  entries: readonly RegisteredHandler[],
+  replies: readonly RunnerReply[],
+  options?: FireOptions & { facts?: object },
+): ReturnType<typeof fireWith>;
+export function fire(
+  event: HookEvent,
+  entries: readonly RegisteredHandler[],
+  replies: readonly RunnerReply[],
+  options: FireOptions & { facts?: object } = {},
+): ReturnType<typeof fireWith> {
+  return fireWith(event, entries, replies, options);
 }

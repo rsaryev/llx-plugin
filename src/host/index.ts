@@ -6,6 +6,7 @@ export {
   type PermissionRulesOf,
 } from './permission-rules.ts';
 export type { PluginSession } from './session.ts';
+export type { HookEnvironment } from './session-hooks.ts';
 export type {
   ExpandOptions,
   SkillInvoker,
@@ -22,3 +23,11 @@ export type {
   Resolved,
   SessionOptions,
 } from './types.ts';
+export {
+  startPermissions,
+  type CommandLineRules,
+  type PermissionSession,
+  type PermissionSessionInput,
+  type StartedPermissions,
+} from './permission-session.ts';
+export { savedApproval, type SavedApproval } from './saved-approval.ts';

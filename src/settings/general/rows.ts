@@ -104,11 +104,9 @@ export const GENERAL_SPECS: { readonly [K in GeneralKey]: ValueSpec<GeneralValue
   subagentStatusLine: { scopes: 'anyAndParent', merge: MERGES.highestWins },
   teammateMode: { scopes: 'anyAndParent', merge: MERGES.highestWins },
   theme: { scopes: 'anyAndParent', merge: MERGES.highestWins },
-  allowManagedPermissionRulesOnly: { scopes: 'managed', merge: MERGES.highestWins },
   // "Any file"; blocks merge by the general rule (the object form of `false` takes the highest file).
   attribution: { scopes: 'anyAndParent', merge: MERGES.deepMerge },
   // "User or managed" (settings-reference.md, `autoMode`); `classifyAllShell` is "read wherever `autoMode` is read".
-  autoMode: { scopes: 'userManagedFlag', merge: MERGES.deepMerge },
   'autoMode.classifyAllShell': nested<'autoMode.classifyAllShell'>(
     ['autoMode', 'classifyAllShell'],
     { scopes: 'userManagedFlag', merge: MERGES.highestWins, exception: CLASSIFY_ALL_SHELL },
@@ -122,7 +120,6 @@ export const GENERAL_SPECS: { readonly [K in GeneralKey]: ValueSpec<GeneralValue
     exception: CROSS_SESSION,
   },
   // "Any file"; its one value is `"disable"`, so the highest file that sets it is the value.
-  disableAutoMode: { scopes: 'anyAndParent', merge: MERGES.highestWins },
   // "`disableArtifact: true` from any scope" counts as `enableArtifact: false`; its `false` is ignored.
   enableArtifact: {
     scopes: 'anyAndParent',
@@ -143,7 +140,6 @@ export const GENERAL_SPECS: { readonly [K in GeneralKey]: ValueSpec<GeneralValue
   // One lineup, "ignores the key in project and local settings"; the highest of the three wins whole.
   modelPicker: { scopes: 'userManagedFlag', merge: MERGES.highestWins },
   // The embedding host's parent settings may carry rules too (permissions.md, "Settings precedence").
-  permissions: { scopes: 'anyAndParent', merge: MERGES.deepMerge },
   'permissions.blockReadsOutsideWorkingDirectories':
     nested<'permissions.blockReadsOutsideWorkingDirectories'>(
       ['permissions', 'blockReadsOutsideWorkingDirectories'],
@@ -191,13 +187,7 @@ export const GENERAL_SPECS: { readonly [K in GeneralKey]: ValueSpec<GeneralValue
     isBoolean,
   ),
   // "User, local, or managed" (settings-reference.md): an untrusted repository cannot skip the dialog.
-  skipDangerousModePermissionPrompt: { scopes: 'userLocalManagedFlag', merge: MERGES.highestWins },
   spinnerTipsEnabled: { scopes: 'anyAndParent', merge: MERGES.highestWins },
-  useAutoModeDuringPlan: {
-    scopes: 'userLocalManagedFlag',
-    merge: MERGES.highestWins,
-    exception: FALSE_FROM_ANY_SCOPE,
-  },
   worktree: { scopes: 'anyAndParent', merge: MERGES.deepMerge },
   // "`User`, in `~/.claude/settings.json` on the remote machine" (settings-reference.md, `worktree.location`).
   'worktree.location': nested<'worktree.location'>(

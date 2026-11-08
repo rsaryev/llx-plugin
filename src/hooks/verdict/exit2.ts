@@ -1,5 +1,6 @@
 import type { HookEvent } from '../../protocol/official.ts';
-import type { HookSource, HookSourceKind } from '../contracts.ts';
+import type { HookSource } from '../contracts.ts';
+import { isPluginSource } from '../source-kind.ts';
 
 /**
  * What exit code 2 does on each event (hooks.md, "Exit code 2 behavior per event"): the table is
@@ -59,6 +60,8 @@ export interface Exit2Rule {
   readonly blocksUnlessDirectoryGone?: boolean;
   /** Exit 2 with nothing on stdout and a missing-file stderr is a non-blocking error for these sources. */
   readonly missingFileIsError?: (source: HookSource) => boolean;
+  /** A hook that ends the turn stops a teammate instead of holding an action back (`TeammateIdle`; `TaskCompleted` when a teammate's finished turn fired it). */
+  readonly stopsTeammate?: boolean;
   /** The event's own exception to blocking (`ConfigChange`: "`policy_settings` changes can't be blocked"). */
   readonly cannotBlockWhen?: (facts: object) => boolean;
 }
@@ -76,14 +79,7 @@ const ignored = (stderr: StderrChannel) => row(false, 'none', stderr);
 
 /** "Stop, SubagentStop, TaskCompleted, and a plugin's UserPromptSubmit hook": a missing file is not a block. */
 const anySource = (): boolean => true;
-const PLUGIN_SOURCES: { readonly [K in HookSourceKind]: boolean } = {
-  plugin: true,
-  settings: false,
-  skill: false,
-  agent: false,
-  session: false,
-};
-const pluginOnly = (source: HookSource): boolean => PLUGIN_SOURCES[source.kind];
+const pluginOnly = isPluginSource;
 
 const POLICY_SETTINGS = 'policy_settings';
 const isPolicySettings = (facts: object): boolean =>
@@ -99,9 +95,15 @@ export const EXIT2_RULES: { readonly [E in HookEvent]: Exit2Rule } = {
   UserPromptExpansion: blocks('blocks-expansion', 'user'),
   Stop: blocks('prevents-stop', 'claude', KEEPS_WORKING),
   SubagentStop: blocks('prevents-subagent-stop', 'claude', KEEPS_WORKING),
-  TeammateIdle: blocks('prevents-teammate-idle', 'claude', { ignoresOnFailure: true }),
+  TeammateIdle: blocks('prevents-teammate-idle', 'claude', {
+    ignoresOnFailure: true,
+    stopsTeammate: true,
+  }),
   TaskCreated: blocks('rolls-back-task-creation', 'claude'),
-  TaskCompleted: blocks('prevents-task-completion', 'claude', KEEPS_WORKING),
+  TaskCompleted: blocks('prevents-task-completion', 'claude', {
+    ...KEEPS_WORKING,
+    stopsTeammate: true,
+  }),
   ConfigChange: blocks('blocks-config-change', 'debug', { cannotBlockWhen: isPolicySettings }),
   StopFailure: ignored('discarded'),
   PostToolUse: ignored('claude'),

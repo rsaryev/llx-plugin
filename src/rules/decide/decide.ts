@@ -25,10 +25,14 @@ type Gate = (step: Step) => Pending | undefined;
 
 const pending = (decision: Decision, reach: ModReach): Pending => ({ decision, reach });
 
-/** A baseline outcome from the mode is lifted by a mod, except a classification the host cannot skip. */
+/**
+ * A baseline outcome from the mode is lifted by a mod, except what is put to the host's callback: a
+ * prompt (`--permission-prompt-tool` or `canUseTool` "would be asked about") and a classification
+ * (permissions.md, "Precedence among rules, hooks, and mods"), which an enforced mod cannot skip.
+ */
 const BASELINE_REACH: { readonly [O in Decision['outcome']]: ModReach } = {
   allow: 'any',
-  ask: 'any',
+  ask: 'unbypassable',
   deny: 'any',
   classify: 'unbypassable',
 };
@@ -42,6 +46,17 @@ const VIA_LINK: { readonly [O in Decision['outcome']]: (decision: Decision) => D
 };
 
 const DENIED: Decision = { outcome: 'deny', reason: 'deny-rule' };
+
+/** Where no one can answer a prompt, an `ask` is a denial; the other outcomes stand. */
+const UNANSWERED: { readonly [O in Decision['outcome']]: (decision: Decision) => Decision } = {
+  allow: (decision) => decision,
+  ask: () => ({ outcome: 'deny', reason: 'prompt-unavailable' }),
+  deny: (decision) => decision,
+  classify: (decision) => decision,
+};
+
+const settle = (decision: Decision, ctx: DecideContext): Decision =>
+  ctx.cannotPrompt === true ? UNANSWERED[decision.outcome](decision) : decision;
 
 /** Each gate is one rule of the docs; the first that answers decides, in the order of the docs. */
 const GATES: readonly Gate[] = [
@@ -63,9 +78,9 @@ const GATES: readonly Gate[] = [
   // "Tools matched by an explicit ask rule" are never auto-approved; dontAsk denies them.
   ({ verdict, strategy }) =>
     verdict === 'ask' ? pending(strategy.prompt('ask-rule'), 'unenforced') : undefined,
-  // A hook ask prompts, and auto mode "still shows you those prompts".
-  ({ ctx, strategy }) =>
-    hookAsks(ctx) ? pending(strategy.prompt('hook'), 'unenforced') : undefined,
+  // A hook ask prompts, and auto mode "still shows you those prompts" (with its own paths for a few calls).
+  ({ ctx, facts, strategy }) =>
+    hookAsks(ctx) ? pending(strategy.hookAsk(facts), 'unenforced') : undefined,
   // "Recognized `rm` and `rmdir` critical-path removals, which no allow rule or PreToolUse hook allow approves".
   ({ facts, ctx, strategy }) =>
     facts.criticalRemoval ? pending(strategy.criticalRemoval(ctx), 'never') : undefined,
@@ -80,6 +95,9 @@ const GATES: readonly Gate[] = [
       'never',
     );
   },
+  // "Connector tools your organization set to `ask`": no mode, hook or mod approves them.
+  ({ facts, strategy }) =>
+    facts.connectorAsk ? pending(strategy.prompt('organization-ask'), 'never') : undefined,
   // "A read from a network path prompts you even when an allow rule matches."
   ({ facts, ctx, strategy }) =>
     facts.network ? pending(strategy.networkRead(ctx), 'never') : undefined,
@@ -121,12 +139,13 @@ const GATES: readonly Gate[] = [
 export function decide(call: PreparedCall, ctx: DecideContext): Decision {
   const strategy = MODES[ctx.mode];
   const facts = factsOf(call, ctx);
-  const verdict = ruleBehavior(call, strategy.rules(ctx.rules), facts, ctx);
+  const verdict = ruleBehavior(call, strategy.rules(ctx.rules, ctx), facts, ctx);
   const step: Step = { call, ctx, facts, strategy, verdict };
   for (const gate of GATES) {
     const answer = gate(step);
-    if (answer !== undefined) return applyMod(answer, facts, ctx, strategy);
+    if (answer !== undefined) return settle(applyMod(answer, facts, ctx, strategy), ctx);
   }
   const baseline = strategy.baseline(facts, ctx);
-  return applyMod(pending(baseline, BASELINE_REACH[baseline.outcome]), facts, ctx, strategy);
+  const last = pending(baseline, BASELINE_REACH[baseline.outcome]);
+  return settle(applyMod(last, facts, ctx, strategy), ctx);
 }

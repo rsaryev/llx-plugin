@@ -7,11 +7,13 @@ import {
   type ExitClass,
   type StdoutClass,
 } from './exit-codes.ts';
+import { isPluginSource, pluginLabel } from '../source-kind.ts';
 import { EXIT2_RULES, type Exit2Rule } from './exit2.ts';
 import {
   NO_STDERR,
   NON_BLOCKING_STATUS,
   firstLine,
+  fromPlugin,
   handlerLabel,
   hookError,
   hookName,
@@ -21,6 +23,7 @@ import { PLAIN_STDOUT } from './plain-stdout.ts';
 import type { Subject } from './subject.ts';
 import { readStdout, type StdoutReading } from './stdout-kind.ts';
 import { routedBlock, shownWith } from './route.ts';
+import { suspectCapture } from './suspect-capture.ts';
 import type { HandlerVerdict, ParsedOutput, ParseResult } from './types.ts';
 
 /**
@@ -128,13 +131,29 @@ function unblockable(read: Read): HandlerVerdict {
   return common;
 }
 
+/**
+ * The plugin whose hook this is, when it is one: the error names it, the same way the missing
+ * directory notice does (`pluginLabel`).
+ */
+const pluginOf = (subject: Subject): string | undefined =>
+  isPluginSource(subject.entry.source) ? pluginLabel(subject.entry) : undefined;
+
+/**
+ * "When a plugin's hook blocks this way and its stderr is the blocking message": a hook that
+ * printed nothing to stderr has no message to end, so the sentence is left out.
+ */
+const stderrMessage = (subject: Subject, reason: string): string =>
+  reason === ''
+    ? lineFor(subject, reason)
+    : fromPlugin(lineFor(subject, reason), pluginOf(subject));
+
 function blocked(read: Read): HandlerVerdict {
   const { subject, run } = read;
   const reason = run.stderr.trim();
   const block = routedBlock(
     subject.event,
     'exit2',
-    { reason, message: lineFor(subject, reason) },
+    { reason, message: stderrMessage(subject, reason) },
     read.rule.blocksUnlessDirectoryGone === true ? 'worktree-directory-remains' : undefined,
   );
   const output = appliedOutput(read, 'two');
@@ -213,8 +232,12 @@ function readOutput(subject: Subject, stdout: string) {
 
 export function interpretExited(
   subject: Subject,
-  run: Pick<ExitedRun, 'exitCode' | 'stdout' | 'stderr'>,
+  run: Pick<ExitedRun, 'exitCode' | 'stdout' | 'stderr' | 'outputHeldOpen'>,
 ): HandlerVerdict {
+  // Exit 2 blocks on its own; any other run whose capture is suspect is refused.
+  if (run.outputHeldOpen === true && exitClassOf(run.exitCode) !== 'two') {
+    return suspectCapture(subject);
+  }
   const { stdoutClass, ...rest } = readOutput(subject, run.stdout);
   const exitClass = exitClassOf(run.exitCode);
   const cell = EXIT_TABLE[exitClass][stdoutClass];

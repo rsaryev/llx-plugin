@@ -117,6 +117,7 @@ describe('the dispatch', () => {
     // "drops any field whose value has the wrong type": the systemMessage is a number.
     expect(await outcome.background[0]).toEqual({
       handlerId: hook.id,
+      outcome: 'completed',
       additionalContext: 'Tests passed',
     });
   });
@@ -135,7 +136,11 @@ describe('the dispatch', () => {
       signal: new AbortController().signal,
     });
     runner.finish(0, { exitCode: 2, stderr: 'deploy failed' });
-    expect(await outcome.background[0]).toEqual({ handlerId: hook.id, wake: 'deploy failed' });
+    expect(await outcome.background[0]).toEqual({
+      handlerId: hook.id,
+      outcome: 'completed',
+      wake: 'deploy failed',
+    });
   });
 
   test('an event with no hook, and an input that fails its schema, run nothing', async () => {

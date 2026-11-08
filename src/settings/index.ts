@@ -30,3 +30,36 @@ export {
   type ResolveInput,
   type ResolvedPolicy,
 } from './resolve.ts';
+export {
+  IGNORED_REASONS,
+  applySettingsEnv,
+  resolveSettingsEnv,
+  type IgnoredReason as IgnoredEnvReason,
+  type IgnoredVariable,
+  type SettingsEnv,
+  type SettingsEnvContext,
+} from './env.ts';
+export {
+  AUTO_MODE_LISTS,
+  BYPASS_AS_ROOT,
+  BYPASS_IGNORED_NOTICE,
+  HIPAA_AUTO_NOTICE,
+  SURFACES,
+  bypassAcceptance,
+  createPermissionsPolicy,
+  type BypassAcceptance,
+  type AutoModeList,
+  type AutoModeSettings,
+  type PermissionsPolicy,
+  type SettingsDirectory,
+  type SettingsRule,
+  type StartInput,
+  type StartSource,
+  type StartingMode,
+  type Surface,
+} from './permissions/index.ts';
+export {
+  settingsLocations,
+  type SettingsLocations,
+  type SettingsLocationsInput,
+} from './locations.ts';

@@ -1,4 +1,5 @@
 import type { HookSpecificOutputOf } from '../../protocol/hook-events.ts';
+import type { ClassifierTrust } from './classifier-note.ts';
 
 /**
  * What a merged output asks the host to do, beside the decision itself (hooks.md, "Decision
@@ -13,11 +14,6 @@ interface GateEffects {
   readonly permissionDecisionReason?: string;
   /** Replaces the whole input of the tool call (`PreToolUse` only). */
   readonly updatedInput?: HookSpecificOutputOf<'PreToolUse'>['updatedInput'];
-  /**
-   * `defer` only: "Claude Code honors `defer` only in non-interactive mode with the `-p` flag, and
-   * only when Claude makes a single tool call in the turn". The host applies the condition.
-   */
-  readonly deferCondition?: 'non-interactive-single-tool-call';
 }
 
 /** `PermissionRequest`: the `decision` object of the winning hooks. */
@@ -31,6 +27,8 @@ interface ToolResultEffects {
   readonly updatedToolOutput?: unknown;
   /** The note for the auto mode classifier, at most 2,000 characters over every hook. */
   readonly classifierContext?: string;
+  /** How much weight the classifier may give the note (`classifier-note.ts`). */
+  readonly classifierTrust?: ClassifierTrust;
 }
 
 /** `SessionStart`, `UserPromptSubmit`, `UserPromptExpansion`. */
@@ -61,6 +59,12 @@ interface MiscEffects {
   readonly worktreePath?: string;
   /** `PreCompact`: the hooks' stdout, instructions for the compaction summary. */
   readonly compactionInstructions?: readonly string[];
+  /**
+   * `TaskCompleted` with `continue: false`: it "stops the teammate entirely" only "when a teammate
+   * finishing its turn triggered the event"; "when the `TaskUpdate` tool triggered the event, Claude
+   * Code ignores `continue: false`". The input does not say which fired it, so the host applies this.
+   */
+  readonly stopCondition?: 'teammate-finished-its-turn';
   /**
    * `Stop` and `SubagentStop`: a hook's `additionalContext` keeps the conversation going without a
    * block ("non-error feedback"), through the same loop protections.

@@ -13,6 +13,7 @@ import {
 import { createMcpSettingsPolicy, type McpSettingsPolicy } from './mcp/policy.ts';
 import { createMarketplaceGate, type MarketplaceGate } from './marketplaces/gate.ts';
 import { createMarketplaceRegistry, type MarketplaceRegistry } from './marketplaces/registry.ts';
+import { createPermissionsPolicy, type PermissionsPolicy } from './permissions/index.ts';
 import { createPluginSettingsPolicy, type PluginSettingsPolicy } from './plugins/policy.ts';
 import { createSkillSettingsPolicy, type SkillSettingsPolicy } from './skills/policy.ts';
 import { createPolicyView, type PolicyView } from './view.ts';
@@ -36,6 +37,7 @@ export interface ResolvedPolicy {
   readonly channels: ChannelSettingsPolicy;
   readonly customization: CustomizationPolicy;
   readonly mcp: McpSettingsPolicy;
+  readonly permissions: PermissionsPolicy;
   /** What reading the files said, then what the marketplace registry refused. */
   readonly issues: readonly PluginIssue[];
 }
@@ -114,6 +116,7 @@ export function resolvePolicy(input: ResolveInput): ResolvedPolicy {
       pluginOnlyMcp: customization.locked.has('mcp'),
       deviceManaged: input.deviceManaged ?? [],
     }),
+    permissions: createPermissionsPolicy(view, context),
     issues: [
       ...(input.issues ?? []),
       ...marketplaces.registry.registrations().flatMap((each) => each.issues),

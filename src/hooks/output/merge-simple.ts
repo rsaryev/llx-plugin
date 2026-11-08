@@ -1,4 +1,5 @@
 import { warning, type PluginIssue } from '../../format/issues.ts';
+import { classifierNote } from './classifier-note.ts';
 import { boolIn, specificOf, stringIn, stringsIn, textIn } from './fields.ts';
 import { checkToolOutput, isMcpToolName } from './tool-output.ts';
 import { NOTHING, factOf, lastOf, type Merged, type Merger, type Read } from './merge-rules.ts';
@@ -66,9 +67,30 @@ export const mergeDisplay: Merger = (reads) => {
   return displayContent === undefined ? NOTHING : { effects: { displayContent }, issues: [] };
 };
 
-export const mergeRetry: Merger = (reads) => {
+/**
+ * "Claude Code ignores `retry: true` when the classifier produced no verdict on the action": the
+ * denial `reason` then "starts with `Auto mode could not evaluate this action and is blocking it
+ * for safety`", and "Claude Code already tells the model in the rejection message whether to retry
+ * later or move on".
+ */
+const NO_VERDICT_REASON = 'Auto mode could not evaluate this action and is blocking it for safety';
+
+export const mergeRetry: Merger = (reads, facts) => {
   const retry = anyTrue(reads, 'retry');
-  return retry === undefined ? NOTHING : { effects: { retry }, issues: [] };
+  if (retry === undefined) return NOTHING;
+  const reason = factOf(facts, 'reason');
+  if (typeof reason === 'string' && reason.startsWith(NO_VERDICT_REASON)) {
+    return {
+      effects: {},
+      issues: [
+        warning(
+          'hooks.PermissionDenied.retry',
+          'is ignored: the classifier produced no verdict on the action',
+        ),
+      ],
+    };
+  }
+  return { effects: { retry }, issues: [] };
 };
 
 export const mergeWorktreeCreate: Merger = (reads) => {
@@ -99,9 +121,6 @@ export const mergeStop: Merger = (reads) => {
   );
   return feedback ? { effects: { continuesTurn: true }, issues: [] } : NOTHING;
 };
-
-/** "Caps the notes for one tool call at 2,000 characters and truncates the rest." */
-const CLASSIFIER_CAP = 2_000;
 
 interface Rewrite {
   readonly read: Read;
@@ -151,18 +170,16 @@ export const mergePostToolUse: Merger = (reads, facts) => {
   const rewrites = found.flatMap(({ rewrite }) => (rewrite === undefined ? [] : [rewrite]));
   const issues = found.flatMap(({ issue }) => (issue === undefined ? [] : [issue]));
   const winner = rewrites.filter((rewrite) => rewrite.accepted).at(-1);
-  const notes = reads.flatMap((read) => {
-    const note = textIn(read.specific, 'classifierContext');
+  // A note is dropped with its own rewrite when that is rejected or replaced, and kept otherwise.
+  const kept = reads.filter((read) => {
     const own = rewrites.find((rewrite) => rewrite.read === read);
-    const survives = own === undefined || (own.accepted && own === winner);
-    return note === undefined || !survives ? [] : [note];
+    return own === undefined || (own.accepted && own === winner);
   });
-  const classifierContext =
-    notes.length === 0 ? undefined : Array.from(notes.join('\n')).slice(0, CLASSIFIER_CAP).join('');
+  const note = classifierNote(name, kept);
   return {
     effects: {
       ...(winner === undefined ? {} : { updatedToolOutput: winner.value }),
-      ...(classifierContext === undefined ? {} : { classifierContext }),
+      ...(note === undefined ? {} : { classifierContext: note.text, classifierTrust: note.trust }),
     },
     issues,
   };
@@ -218,3 +235,12 @@ export function mergeElicitation(
       : { block: { via: 'decision' as const, by: blocking.handler.id } }),
   };
 }
+
+/**
+ * `TaskCompleted`'s `continue: false` holds only when a teammate's finished turn fired the event:
+ * the input does not say which, so the merge marks the stop and the host applies the condition.
+ */
+export const mergeTaskCompleted: Merger = (reads) =>
+  reads.some((read) => read.output?.continue === false)
+    ? { effects: { stopCondition: 'teammate-finished-its-turn' }, issues: [] }
+    : NOTHING;

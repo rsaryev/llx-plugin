@@ -96,3 +96,8 @@ export {
   type SkillCatalog,
   type SkillSkipReason,
 } from './preload-skills.ts';
+export {
+  afterHandbackDenial,
+  HANDBACK_DENIALS_TOLD,
+  type HandbackAfterDenial,
+} from './handback-denial.ts';

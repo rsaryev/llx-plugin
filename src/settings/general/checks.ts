@@ -1,23 +1,8 @@
 import { EFFORT_LEVELS } from '../../protocol/effort.ts';
 import { CROSS_SESSION_MODES } from '../../protocol/settings-keys.ts';
-import {
-  splitRule,
-  invalidRuleMessage,
-  MALFORMED_RULE,
-} from '../../format/permission-rule-shape.ts';
 import { isRecord } from '../record.ts';
-import {
-  closedFound,
-  drop,
-  entriesOf,
-  keep,
-  notText,
-  type Check,
-  type Checked,
-} from './check-support.ts';
-import { autoMode, failClosedPermissions } from './closed-blocks.ts';
+import { closedFound, drop, entriesOf, keep, notText, type Check } from './check-support.ts';
 import { attribution, worktree } from './closed-fields.ts';
-import { DISABLE_LOCK, FALSE_LOCK, type LockKind } from './closed-locks.ts';
 import { sandbox } from './sandbox-check.ts';
 import { commandLine } from './command-lines.ts';
 import { parseTheme, TEAMMATE_MODES } from './look-and-feel.ts';
@@ -35,34 +20,6 @@ import type { GeneralKey } from './keys.ts';
  */
 const boolean: Check = (value, { name }) =>
   typeof value === 'boolean' ? keep(value) : drop(name, 'true or false');
-
-/**
- * A lock with one restrictive value (managed-settings.md, "Keys that fail closed"): in the policy
- * tier a value Claude Code cannot read reads as `true`, with a report.
- */
-const lock: Check = (value, context) => {
-  if (typeof value === 'boolean' || !context.closed) return boolean(value, context);
-  // "The string "true" or "false" reads as that Boolean, with a notice asking you to drop the quotes."
-  if (value === 'true' || value === 'false') {
-    return keep(value === 'true', [
-      { at: '', message: `"${context.name}" is the text "${value}": drop the quotes` },
-    ]);
-  }
-  return keep(true, [closedFound(context.name, 'it is treated as true')]);
-};
-
-/**
- * A top-level key with one restrictive value (`disableAutoMode`, `skipDangerousModePermissionPrompt`):
- * in the policy tier a value Claude Code cannot read reads as it; elsewhere `unreadable` says what to
- * drop (managed-settings.md, "Keys that fail closed").
- */
-const closedLock =
-  (kind: LockKind, unreadable: Check): Check =>
-  (value, context) => {
-    const fixed = context.closed ? kind(value, context.name, '') : undefined;
-    if (fixed !== undefined) return keep(fixed.value, [fixed.found]);
-    return context.closed ? keep(value) : unreadable(value, context);
-  };
 
 const text: Check = (value, { name }) =>
   typeof value === 'string' ? keep(value) : drop(name, 'a string');
@@ -131,50 +88,6 @@ const crossSessionInbound: Check = (value, context) => {
   };
 };
 
-/** A rule of `permissions.allow`, `deny` or `ask`: a string of the shape `Tool` or `Tool(content)`. */
-const ruleProblem = (entry: unknown): string | undefined => {
-  if (typeof entry !== 'string') return 'A permission rule must be a string; the rule is skipped';
-  return splitRule(entry) === undefined ? invalidRuleMessage(entry, MALFORMED_RULE) : undefined;
-};
-
-const RULE_LISTS = ['allow', 'deny', 'ask'] as const;
-
-function checkedList(block: Readonly<Record<string, unknown>>, name: string) {
-  const list = block[name];
-  if (list === undefined) return keep(undefined);
-  if (!Array.isArray(list)) {
-    return {
-      value: undefined,
-      found: [
-        { at: `.${name}`, message: `"permissions.${name}" must be a list; the list is ignored` },
-      ],
-    };
-  }
-  const isRule = (RULE_LISTS as readonly string[]).includes(name);
-  const read = entriesOf(list, `.${name}`, isRule ? ruleProblem : notText(`permissions.${name}`));
-  return keep(read.kept, read.found);
-}
-
-/** `permissions`: the rule lists and `additionalDirectories` are read entry by entry, every other field stays as written. */
-const permissions: Check = (value, context) => {
-  if (!isRecord(value)) return drop(context.name, 'an object');
-  const read = readPermissions(value);
-  return context.closed ? failClosedPermissions(value, read) : read;
-};
-
-function readPermissions(value: Readonly<Record<string, unknown>>): Checked {
-  const lists = [...RULE_LISTS, 'additionalDirectories'].map((name) => ({
-    name,
-    ...checkedList(value, name),
-  }));
-  const fields = Object.entries(value).filter(([key]) => !lists.some((one) => one.name === key));
-  const kept = lists.flatMap((one) => (one.value === undefined ? [] : [[one.name, one.value]]));
-  return keep(
-    Object.fromEntries([...fields, ...kept]),
-    lists.flatMap((one) => one.found),
-  );
-}
-
 const anyValue: Check = (value) => keep(value);
 
 /**
@@ -195,13 +108,10 @@ export const GENERAL_CHECKS: { readonly [K in GeneralKey]: Check } = {
       ? keep(value)
       : drop(name, 'a preset or custom theme reference'),
   'worktree.location': anyValue,
-  allowManagedPermissionRulesOnly: lock,
   attribution,
   'autoMode.classifyAllShell': anyValue,
-  autoMode,
   availableModels: modelAllowlist,
   crossSessionInbound,
-  disableAutoMode: closedLock(DISABLE_LOCK, oneOf('disable')),
   enableArtifact: boolean,
   env,
   fallbackModel: textList,
@@ -209,7 +119,6 @@ export const GENERAL_CHECKS: { readonly [K in GeneralKey]: Check } = {
   maxEffortLevel: oneOf(...EFFORT_LEVELS),
   model: text,
   modelPicker: object,
-  permissions,
   'permissions.blockReadsOutsideWorkingDirectories': anyValue,
   'permissions.blockWritesOutsideWorkingDirectories': anyValue,
   'permissions.defaultMode': anyValue,
@@ -218,8 +127,6 @@ export const GENERAL_CHECKS: { readonly [K in GeneralKey]: Check } = {
   'sandbox.filesystem.allowManagedReadPathsOnly': anyValue,
   'sandbox.filesystem.disabled': anyValue,
   'sandbox.network.allowManagedDomainsOnly': anyValue,
-  skipDangerousModePermissionPrompt: closedLock(FALSE_LOCK, boolean),
   spinnerTipsEnabled: boolean,
-  useAutoModeDuringPlan: boolean,
   worktree,
 };

@@ -1,6 +1,6 @@
-import type { BackgroundResult } from '../handlers/context.ts';
+import type { BackgroundResult, ForegroundRun } from '../handlers/context.ts';
 import { isRecord, readAsyncResponse } from './stdout-kind.ts';
-import type { BackgroundDelivery } from './types.ts';
+import type { BackgroundDelivery, BackgroundOutcome } from './types.ts';
 
 /**
  * What a background hook hands over once its process ends (hooks.md, "How async hooks execute"):
@@ -15,6 +15,13 @@ import type { BackgroundDelivery } from './types.ts';
 const textOf = (value: unknown): string | undefined =>
   typeof value === 'string' && value !== '' ? value : undefined;
 
+const OUTCOMES: { readonly [K in ForegroundRun['kind']]: BackgroundOutcome } = {
+  exited: 'completed',
+  'timed-out': 'timed-out',
+  'not-started': 'failed',
+  cancelled: 'cancelled',
+};
+
 export function deliveryOf(handlerId: string, result: BackgroundResult): BackgroundDelivery {
   const response = 'stdout' in result.run ? readAsyncResponse(result.run.stdout) : undefined;
   const specific =
@@ -28,6 +35,7 @@ export function deliveryOf(handlerId: string, result: BackgroundResult): Backgro
       : undefined;
   return {
     handlerId,
+    outcome: OUTCOMES[result.run.kind],
     ...(additionalContext === undefined ? {} : { additionalContext }),
     ...(systemMessage === undefined ? {} : { systemMessage }),
     ...(result.wake === undefined ? {} : { wake: result.wake }),

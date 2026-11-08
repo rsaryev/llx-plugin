@@ -10,14 +10,11 @@ import type { PolicyKey } from '../../protocol/settings-keys.ts';
  */
 export const GENERAL_KEYS = [
   'agent',
-  'allowManagedPermissionRulesOnly',
   'attribution',
-  'autoMode',
   'autoMode.classifyAllShell',
   'availableModels',
   'crossSessionInbound',
   'disableAgentView',
-  'disableAutoMode',
   'enableArtifact',
   'env',
   'fallbackModel',
@@ -27,7 +24,6 @@ export const GENERAL_KEYS = [
   'model',
   'modelPicker',
   'outputStyle',
-  'permissions',
   'permissions.blockReadsOutsideWorkingDirectories',
   'permissions.blockWritesOutsideWorkingDirectories',
   'permissions.defaultMode',
@@ -37,13 +33,11 @@ export const GENERAL_KEYS = [
   'sandbox.filesystem.allowManagedReadPathsOnly',
   'sandbox.filesystem.disabled',
   'sandbox.network.allowManagedDomainsOnly',
-  'skipDangerousModePermissionPrompt',
   'spinnerTipsEnabled',
   'statusLine',
   'subagentStatusLine',
   'teammateMode',
   'theme',
-  'useAutoModeDuringPlan',
   'worktree',
   'worktree.location',
 ] as const;
@@ -64,13 +58,10 @@ export interface GeneralValues {
   readonly teammateMode: Settings['teammateMode'];
   readonly theme: Settings['theme'];
   readonly 'worktree.location': NonNullable<Settings['worktree']>['location'];
-  readonly allowManagedPermissionRulesOnly: Settings['allowManagedPermissionRulesOnly'];
   readonly attribution: Settings['attribution'];
-  readonly autoMode: Settings['autoMode'];
   readonly 'autoMode.classifyAllShell': NonNullable<Settings['autoMode']>['classifyAllShell'];
   readonly availableModels: Settings['availableModels'];
   readonly crossSessionInbound: Settings['crossSessionInbound'];
-  readonly disableAutoMode: Settings['disableAutoMode'];
   readonly enableArtifact: Settings['enableArtifact'];
   readonly env: Settings['env'];
   readonly fallbackModel: Settings['fallbackModel'];
@@ -78,7 +69,6 @@ export interface GeneralValues {
   readonly maxEffortLevel: Settings['maxEffortLevel'];
   readonly model: Settings['model'];
   readonly modelPicker: Settings['modelPicker'];
-  readonly permissions: Settings['permissions'];
   readonly 'permissions.blockReadsOutsideWorkingDirectories': NonNullable<
     Settings['permissions']
   >['blockReadsOutsideWorkingDirectories'];
@@ -97,9 +87,7 @@ export interface GeneralValues {
   readonly 'sandbox.network.allowManagedDomainsOnly': NonNullable<
     NonNullable<Settings['sandbox']>['network']
   >['allowManagedDomainsOnly'];
-  readonly skipDangerousModePermissionPrompt: Settings['skipDangerousModePermissionPrompt'];
   readonly spinnerTipsEnabled: Settings['spinnerTipsEnabled'];
-  readonly useAutoModeDuringPlan: Settings['useAutoModeDuringPlan'];
   readonly worktree: Settings['worktree'];
 }
 

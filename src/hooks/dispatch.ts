@@ -8,10 +8,14 @@ import { handlerTimeoutMs, planTimeouts } from './handlers/timeouts.ts';
 import { runLimited } from './handlers/remote/concurrency.ts';
 import { serializeHookInput } from './input/build.ts';
 import type { buildHookInput } from './input/build.ts';
+import type { EnvFiles } from './env-file/index.ts';
 import type { DispatchRequest, HookOutcome } from './outcome.ts';
 import type { selectHandlers } from './select/select.ts';
 import type { IfEvaluator } from './select/if-guard.ts';
+import { interruptPlan, withInterrupt, type InterruptPlan } from './interrupt.ts';
+import { withOriginalPrompt } from './verdict/blocked-prompt.ts';
 import { interpretRun } from './verdict/interpret.ts';
+import { isToolCall, type StopBlockCap } from './verdict/stop-block-cap.ts';
 import type { HandlerVerdict, HookObserver, OutputStage, TaggedOutput } from './verdict/types.ts';
 
 /**
@@ -40,6 +44,16 @@ export interface DispatchConfig {
   readonly tempDirectory?: string;
   readonly userConfigOf?: RunContext['userConfigOf'];
   readonly httpPolicy?: RunContext['httpPolicy'];
+  /** The host process's id: `CLAUDE_PID` in every command hook. */
+  readonly processId?: number;
+  /** The `env` of the settings files (`resolveSettingsEnv`), written over the host's environment for every hook. */
+  readonly settingsEnv?: RunContext['settingsEnv'];
+  /** `CLAUDE_ENV_FILE`: the files, and the clearing a `CwdChanged` event does. */
+  readonly envFiles?: EnvFiles;
+  /** Plugin command hooks first check that their plugin's directory exists (`checkPluginDirectory`). */
+  readonly checkPluginDirectories?: boolean;
+  /** The counter of consecutive Stop blocks (`createStopBlockCap`); without it no cap applies. */
+  readonly stopCap?: StopBlockCap;
 }
 
 /** The input text of one handler: a Monitor call that reached a `Bash` matcher is a Bash call. */
@@ -62,6 +76,7 @@ function contextOf(
     ports: config.ports,
     input,
     cwd: request.session.cwd,
+    sessionId: request.session.sessionId,
     windows: config.windows,
     defaultShell: config.defaultShell,
     timeouts,
@@ -70,6 +85,10 @@ function contextOf(
     ...(config.tempDirectory === undefined ? {} : { tempDirectory: config.tempDirectory }),
     ...(config.userConfigOf === undefined ? {} : { userConfigOf: config.userConfigOf }),
     ...(config.httpPolicy === undefined ? {} : { httpPolicy: config.httpPolicy }),
+    ...(config.processId === undefined ? {} : { processId: config.processId }),
+    ...(config.settingsEnv === undefined ? {} : { settingsEnv: config.settingsEnv }),
+    ...(config.envFiles === undefined ? {} : { envFiles: config.envFiles }),
+    ...(config.checkPluginDirectories === true ? { checkPluginDirectory: true } : {}),
   };
 }
 
@@ -86,9 +105,111 @@ function report(
   verdicts: readonly HandlerVerdict[],
 ) {
   for (const verdict of verdicts) {
-    observer?.finished?.({ event, handlerId: verdict.handler.id, status: verdict.status });
+    observer?.finished?.({
+      event,
+      handlerId: verdict.handler.id,
+      status: verdict.status,
+      ...(verdict.exitCode === undefined ? {} : { exitCode: verdict.exitCode }),
+    });
     if (verdict.notice !== undefined) observer?.notice?.(verdict.notice);
   }
+}
+
+/** "you cancel the hooks at once": the hooks of an interrupted event do not run. */
+const cancelledRuns = (selected: readonly RegisteredHandler[]) =>
+  selected.map((entry) => ({
+    entry,
+    result: { run: { kind: 'cancelled' }, issues: [] } satisfies HandlerResult,
+  }));
+
+/**
+ * "Claude Code writes the sequence only in an interactive session ... In non-interactive mode with
+ * the `-p` flag and in the Agent SDK, it ignores the field" (hooks.md, "Emit terminal
+ * notifications"). Whether the interface is on screen at that moment is the host's.
+ */
+const withTerminal = <E extends HookEvent>(
+  outcome: HookOutcome<E>,
+  session: DispatchRequest<E>['session'],
+): HookOutcome<E> =>
+  session.interactive || outcome.terminalSequences.length === 0
+    ? outcome
+    : { ...outcome, terminalSequences: [] };
+
+/**
+ * "When the `TaskUpdate` tool triggered the event, Claude Code ignores `continue: false`" (hooks.md,
+ * "TaskCompleted decision control"); when a teammate's finished turn did, it stops the teammate. With
+ * the trigger known the outcome says which; without it `effects.stopCondition` is left to the host.
+ */
+function withTaskTrigger<E extends HookEvent>(
+  outcome: HookOutcome<E>,
+  request: DispatchRequest<E>,
+): HookOutcome<E> {
+  const { taskCompletedBy } = request;
+  if (taskCompletedBy === undefined || outcome.effects.stopCondition === undefined) return outcome;
+  const { stopCondition: _decided, ...effects } = outcome.effects;
+  if (taskCompletedBy === 'teammate-turn') return { ...outcome, effects };
+  const { stopReason: _ignored, ...rest } = outcome;
+  return { ...rest, continue: true, effects };
+}
+
+/** What the interrupt, the prompt and the Stop cap leave of an outcome (hooks.md, "Hook lifecycle"). */
+function finished<E extends HookEvent>(
+  outcomeOfRun: HookOutcome<E>,
+  request: DispatchRequest<E>,
+  config: DispatchConfig,
+): HookOutcome<E> {
+  const outcome = withTaskTrigger(withTerminal(outcomeOfRun, request.session), request);
+  const quoted = withOriginalPrompt(outcome, request.facts);
+  const interrupted = withInterrupt(quoted, request.signal.aborted);
+  const where = { sessionId: request.session.sessionId, facts: request.facts };
+  return config.stopCap?.apply(interrupted, where, config.ports.environment) ?? interrupted;
+}
+
+/** A dispatch with nothing to run holds nothing back: a Stop like that ends the run of blocks. */
+function finishedIdle<E extends HookEvent>(
+  outcome: HookOutcome<E>,
+  request: DispatchRequest<E>,
+  config: DispatchConfig,
+): HookOutcome<E> {
+  const where = { sessionId: request.session.sessionId, facts: request.facts };
+  return config.stopCap?.apply(outcome, where, config.ports.environment) ?? outcome;
+}
+
+interface Planned {
+  readonly selection: Selection;
+  readonly plan: InterruptPlan;
+  readonly input: Parameters<typeof serializeHookInput>[0];
+}
+
+async function runAll<E extends HookEvent>(
+  request: DispatchRequest<E>,
+  config: DispatchConfig,
+  { selection, plan, input }: Planned,
+) {
+  const { event } = request;
+  const { environment } = config.ports;
+  const timeouts = planTimeouts(event, selection.selected, environment, plan.capMs);
+  const ran = plan.cancel
+    ? cancelledRuns(selection.selected)
+    : await runLimited(selection.selected, async (entry) => ({
+        entry,
+        result: await config.stages.run(
+          entry,
+          contextOf(config, request, timeouts, inputText(input, selection, entry)),
+        ),
+      }));
+  return ran.map(({ entry, result }) => ({
+    ...interpretRun(entry, result.run, {
+      event,
+      facts: request.facts,
+      parse: config.stages.output.parse,
+      timeoutMs: handlerTimeoutMs(entry, timeouts),
+      effectsIgnored: selection.monitor.get(entry)?.effectsApply === false,
+      gitBashMissing: config.windows && config.defaultShell === 'powershell',
+      teammateStopped: request.taskCompletedBy === 'teammate-turn',
+    }),
+    issues: result.issues,
+  }));
 }
 
 export async function dispatchEvent<E extends HookEvent>(
@@ -98,6 +219,10 @@ export async function dispatchEvent<E extends HookEvent>(
 ): Promise<HookOutcome<E>> {
   const { event, facts, session } = request;
   const { stages } = config;
+  // "The count of consecutive continuations resets each time Claude calls a tool": hook or no hook.
+  if (isToolCall(event)) config.stopCap?.reset(session.sessionId, session.agent?.id);
+  // "until the next CwdChanged event, when Claude Code clears them": whether or not a hook is there.
+  await config.envFiles?.beforeEvent(event, request.signal);
   const selection = stages.select(registry, {
     event,
     facts,
@@ -108,29 +233,15 @@ export async function dispatchEvent<E extends HookEvent>(
   const built = stages.build(event, facts, session);
   const issues: readonly PluginIssue[] = [...selection.issues, ...built.issues];
   if (built.input === undefined || selection.selected.length === 0)
-    return idleOutcome(event, issues);
-  const { input } = built;
-  const timeouts = planTimeouts(event, selection.selected, config.ports.environment);
-  const ran = await runLimited(selection.selected, async (entry) => ({
-    entry,
-    result: await stages.run(
-      entry,
-      contextOf(config, request, timeouts, inputText(input, selection, entry)),
-    ),
-  }));
-  const verdicts = ran.map(({ entry, result }) => ({
-    ...interpretRun(entry, result.run, {
-      event,
-      facts,
-      parse: stages.output.parse,
-      timeoutMs: handlerTimeoutMs(entry, timeouts),
-      effectsIgnored: selection.monitor.get(entry)?.effectsApply === false,
-      gitBashMissing: config.windows && config.defaultShell === 'powershell',
-    }),
-    issues: result.issues,
-  }));
+    return finishedIdle(idleOutcome(event, issues), request, config);
+  const plan = interruptPlan(event, request.interrupt, config.ports.environment);
+  const verdicts = await runAll(request, config, { selection, plan, input: built.input });
   report(config.observer, event, verdicts);
   const limited = await stages.output.limit(event, verdicts.map(tagged), request.signal);
   const merged = stages.output.merge(event, limited.outputs, facts);
-  return assemble(event, verdicts, merged, [...issues, ...limited.issues]);
+  return finished(
+    assemble(event, verdicts, merged, [...issues, ...limited.issues]),
+    request,
+    config,
+  );
 }

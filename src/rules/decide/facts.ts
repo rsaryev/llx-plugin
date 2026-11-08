@@ -1,7 +1,7 @@
 import { commandOf } from '../bash/shell.ts';
 import { readsNetworkPath } from '../path/network.ts';
 import type { DecisionReason, PathContext, PreparedCall } from '../types.ts';
-import { readBlocked, writeBlockReason } from './block-exceptions.ts';
+import { blockPaths, readBlocked, writeBlockReason } from './block-exceptions.ts';
 import type { DecideContext } from './context.ts';
 import { cannotRuleOutRemoval, removesCriticalPath } from './critical-removal.ts';
 import { powershellVerdict } from './powershell-edits.ts';
@@ -38,6 +38,8 @@ export interface CallFacts {
   readonly criticalRemoval: boolean;
   /** The tool requires user interaction. */
   readonly interaction: boolean;
+  /** A connector tool the organization set to `ask`. */
+  readonly connectorAsk: boolean;
   /** Why a file tool call is refused by the `permissions.block*OutsideWorkingDirectories` keys, if it is. */
   readonly blockedBy: DecisionReason | undefined;
   /**
@@ -49,6 +51,10 @@ export interface CallFacts {
   readonly parts: ShellVerdict;
   /** A tool no rule, hook or mode stops (`EndConversation`). */
   readonly exempt: boolean;
+  /** A Bash command that asks to run outside the sandbox (`dangerouslyDisableSandbox: true`). */
+  readonly unsandboxed: boolean;
+  /** A `SubagentHandback` call, the delivery of a subagent's report. */
+  readonly handback: boolean;
 }
 
 const NONE: CallFacts = {
@@ -64,10 +70,13 @@ const NONE: CallFacts = {
   shell: false,
   criticalRemoval: false,
   interaction: false,
+  connectorAsk: false,
   blockedBy: undefined,
   readBlockPrompt: false,
   parts: UNREAD,
   exempt: false,
+  unsandboxed: false,
+  handback: false,
 };
 
 type Builder = (call: PreparedCall, ctx: DecideContext) => Partial<CallFacts>;
@@ -119,10 +128,29 @@ const editFacts: Builder = (call, ctx) => {
 };
 
 /** Whether a Bash command prompts under the read block: it reads outside, or cannot be traced. */
-const promptsUnderReadBlock = (parts: ShellVerdict, ctx: DecideContext): boolean =>
-  ctx.blockReadsOutsideWorkingDirectories === true &&
-  ctx.sandboxEnforcesReadBlock !== true &&
-  (parts.readsOutside || parts.untraceable);
+const promptsUnderReadBlock = (
+  command: string,
+  parts: ShellVerdict,
+  call: PreparedCall,
+  ctx: DecideContext,
+): boolean => {
+  if (ctx.blockReadsOutsideWorkingDirectories !== true || ctx.sandboxEnforcesReadBlock === true) {
+    return false;
+  }
+  // A directory only repository settings add is outside the working directories for the block.
+  const counted =
+    ctx.repositoryDirectories === undefined
+      ? parts
+      : shellVerdict(command, blockPaths(ctx), ctx.protectedPaths, call.resolvedPaths);
+  return counted.readsOutside || counted.untraceable;
+};
+
+/** "Commands that ask to run outside the sandbox": the unsandboxed retry's `dangerouslyDisableSandbox` parameter. */
+const asksOutsideSandbox = (input: unknown): boolean =>
+  typeof input === 'object' &&
+  input !== null &&
+  'dangerouslyDisableSandbox' in input &&
+  input.dangerouslyDisableSandbox === true;
 
 const bashFacts: Builder = (call, ctx) => {
   const command = commandOf(call.input);
@@ -130,13 +158,14 @@ const bashFacts: Builder = (call, ctx) => {
   const parts = shellVerdict(command, ctx.match.paths, ctx.protectedPaths, call.resolvedPaths);
   return {
     shell: true,
+    unsandboxed: asksOutsideSandbox(call.input),
     parts,
     readOnly: parts.readOnly,
     readReason: 'read-only-command',
     shellEdits: parts.editsInScope,
     protectedWrite: parts.writesProtected,
     protectedViaLink: parts.writesProtectedViaLink,
-    readBlockPrompt: promptsUnderReadBlock(parts, ctx),
+    readBlockPrompt: promptsUnderReadBlock(command, parts, call, ctx),
     criticalRemoval: removesCriticalPath(command, ctx.match.paths) || cannotRuleOutRemoval(command),
   };
 };
@@ -160,6 +189,25 @@ const powershellFacts: Builder = (call, ctx) => {
   };
 };
 
+/** WebFetch: a URL whose domain is in the host's preapproved set fetches without a prompt. */
+const webFetchFacts: Builder = (call, ctx) => {
+  const url =
+    typeof call.input === 'object' && call.input !== null && 'url' in call.input
+      ? call.input.url
+      : undefined;
+  const hostname = typeof url === 'string' ? hostnameOf(url) : undefined;
+  const preapproved = hostname !== undefined && ctx.preapprovedFetchDomain?.(hostname) === true;
+  return { readOnly: preapproved, readReason: 'preapproved-domain' };
+};
+
+const hostnameOf = (text: string): string | undefined => {
+  try {
+    return new URL(text).hostname.toLowerCase();
+  } catch {
+    return undefined;
+  }
+};
+
 const BUILDERS: ReadonlyMap<string, Builder> = new Map<string, Builder>([
   ['Read', readFacts],
   ['Grep', readFacts],
@@ -170,6 +218,7 @@ const BUILDERS: ReadonlyMap<string, Builder> = new Map<string, Builder>([
   ['MultiEdit', editFacts],
   ['Bash', bashFacts],
   ['PowerShell', powershellFacts],
+  ['WebFetch', webFetchFacts],
 ]);
 
 /** "The built-in `AskUserQuestion` tool and MCP tools marked `requiresUserInteraction`." */
@@ -183,6 +232,8 @@ const INTERACTION_TOOLS: ReadonlySet<string> = new Set(['AskUserQuestion']);
  */
 const EXEMPT_TOOLS: ReadonlySet<string> = new Set(['EndConversation']);
 
+const HANDBACK_TOOL = 'SubagentHandback';
+
 /** What `call` is, in the session `ctx` describes. */
 export function factsOf(call: PreparedCall, ctx: DecideContext): CallFacts {
   const built = { ...NONE, ...BUILDERS.get(call.toolName)?.(call, ctx) };
@@ -194,8 +245,10 @@ export function factsOf(call: PreparedCall, ctx: DecideContext): CallFacts {
     readOnly: built.readOnly || noPermission,
     readReason: noPermission && !built.readOnly ? 'no-permission-required' : built.readReason,
     exempt: EXEMPT_TOOLS.has(call.toolName),
+    handback: call.toolName === HANDBACK_TOOL,
     interaction:
       INTERACTION_TOOLS.has(call.toolName) ||
       ctx.requiresUserInteraction?.has(call.toolName) === true,
+    connectorAsk: ctx.connectorToolsSetToAsk?.has(call.toolName) === true,
   };
 }

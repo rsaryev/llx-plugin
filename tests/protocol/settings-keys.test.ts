@@ -21,7 +21,7 @@ const strings = (list: readonly string[]): readonly string[] => list;
 describe('settings keys', () => {
   test('are the plugin-area and managed-only keys, each once', () => {
     expect(new Set(POLICY_KEYS).size).toBe(POLICY_KEYS.length);
-    expect(POLICY_KEYS).toHaveLength(48);
+    expect(POLICY_KEYS).toHaveLength(55);
   });
 
   test('the strictPluginOnlyCustomization surfaces are skills, agents, hooks, mcp in the docs order', () => {

@@ -69,3 +69,11 @@ const withDetail = (head: string, detail: string): string =>
   detail.trim() === '' ? head : `${head}\n${detail.trim()}`;
 
 export const firstLine = (text: string): string => text.trim().split(/\r?\n/, 1)[0] ?? '';
+
+/**
+ * "When a plugin's hook blocks this way and its stderr is the blocking message, the error ends with
+ * `This hook comes from the <plugin> plugin.` so that you know which plugin to disable or fix"
+ * (plugins/troubleshooting.md). Judgment (spec/judgments.md): the docs give no separator, a space.
+ */
+export const fromPlugin = (message: string, plugin: string | undefined): string =>
+  plugin === undefined ? message : `${message} This hook comes from the ${plugin} plugin.`;

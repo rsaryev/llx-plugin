@@ -4,6 +4,7 @@ import type { ShellKind } from '../../../ports/index.ts';
 import type { HandlerEntry, RunContext } from '../context.ts';
 import { fieldPath, type CommandPlan } from './exec-form.ts';
 import { handlerSubstituter } from './placeholders.ts';
+import { noProgramIssue } from './powershell.ts';
 
 /**
  * Shell form (hooks.md, "Exec form and shell form"): `args` is absent and the `command` string is
@@ -62,6 +63,11 @@ export async function planShellForm(
     return { issues: [error(fieldPath(entry, 'command'), refusal(pluginId, command))] };
   }
   const shell = entry.handler.shell ?? context.defaultShell;
+  const none =
+    shell === 'powershell'
+      ? noProgramIssue(entry, fieldPath(entry, 'command'), command)
+      : undefined;
+  if (none !== undefined) return { notStarted: none.message, issues: [none] };
   const text = await handlerSubstituter(
     entry,
     SURFACES[shell],

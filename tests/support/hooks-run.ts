@@ -11,7 +11,7 @@ import type {
 } from '../../src/ports/index.ts';
 import type { HookHandlerOf } from '../../src/protocol/hook-config.ts';
 import type { HookEvent } from '../../src/protocol/official.ts';
-import { entry, pluginSource } from './hooks-select.ts';
+import { entry, pluginSource, skillSource } from './hooks-select.ts';
 import { fakeEnvironment, locations } from './ports.ts';
 
 /** A command handler as a settings file declares it. */
@@ -23,12 +23,24 @@ export const settingsCommand = (
   handler: { type: 'command', ...hook },
 });
 
+/** A command handler a skill declares in its frontmatter. */
+export const skillCommand = (
+  hook: Omit<HookHandlerOf<'command'>, 'type'>,
+  event: HookEvent = 'PostToolUse',
+): HandlerEntry<'command'> => ({
+  ...entry(event, { source: skillSource }),
+  handler: { type: 'command', ...hook },
+});
+
 /** A command handler of the plugin `formatter@acme-tools`. */
 export const pluginCommand = (
   hook: Omit<HookHandlerOf<'command'>, 'type'>,
   event: HookEvent = 'PostToolUse',
 ): HandlerEntry<'command'> => ({
-  ...entry(event, { source: pluginSource('formatter'), pluginId: 'formatter@acme-tools' }),
+  ...entry(event, {
+    source: pluginSource('formatter'),
+    pluginId: 'formatter@acme-tools',
+  }),
   handler: { type: 'command', ...hook },
 });
 
@@ -45,6 +57,10 @@ export interface ContextOptions {
   readonly startDirectory?: string;
   readonly tempDirectory?: string;
   readonly timeouts?: RunContext['timeouts'];
+  readonly sessionId?: string;
+  readonly processId?: number;
+  readonly settingsEnv?: RunContext['settingsEnv'];
+  readonly envFiles?: RunContext['envFiles'];
 }
 
 /** A run context over the fakes: POSIX paths, `bash`, an empty environment, input `{}`. */
@@ -65,6 +81,10 @@ export function runContext(options: ContextOptions): RunContext {
     ...(options.userConfigOf === undefined ? {} : { userConfigOf: options.userConfigOf }),
     ...(options.startDirectory === undefined ? {} : { startDirectory: options.startDirectory }),
     ...(options.tempDirectory === undefined ? {} : { tempDirectory: options.tempDirectory }),
+    ...(options.sessionId === undefined ? {} : { sessionId: options.sessionId }),
+    ...(options.processId === undefined ? {} : { processId: options.processId }),
+    ...(options.settingsEnv === undefined ? {} : { settingsEnv: options.settingsEnv }),
+    ...(options.envFiles === undefined ? {} : { envFiles: options.envFiles }),
   };
 }
 
@@ -92,6 +112,12 @@ export function pendingRunner(): CommandRunner & {
       return new Promise((resolve) => resolvers.push(resolve));
     },
     finish: (index, result = {}) =>
-      resolvers[index]?.({ exitCode: 0, stdout: '', stderr: '', timedOut: false, ...result }),
+      resolvers[index]?.({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        timedOut: false,
+        ...result,
+      }),
   };
 }

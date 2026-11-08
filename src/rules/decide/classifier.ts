@@ -34,6 +34,12 @@ export interface ClassificationRequest {
 }
 
 /** What becomes of a decision: only `classify` goes to the reviewer; the rest stand. */
+const APPROVED: Record<Decision['outcome'], boolean> = {
+  allow: true,
+  deny: false,
+  ask: false,
+  classify: false,
+};
 const SETTLE: {
   readonly [O in Decision['outcome']]: (
     decision: Decision,
@@ -46,7 +52,11 @@ const SETTLE: {
   classify: async (decision, { call, mode, classifier, signal }) => {
     // "Claude Code denies the action rather than run it unreviewed" when there is no verdict.
     if (classifier === undefined) return ANSWER.deny(decision.reason);
-    return ANSWER[await classifier.review(call, { mode }, signal)](decision.reason);
+    const answer = ANSWER[await classifier.review(call, { mode }, signal)](decision.reason);
+    // An approval that "still goes to the prompt" asks; a denial or an `ask` stands.
+    return 'thenPrompt' in decision && APPROVED[answer.outcome]
+      ? ANSWER.ask(decision.reason)
+      : answer;
   },
 };
 

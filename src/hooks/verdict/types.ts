@@ -12,6 +12,8 @@ export interface HookObserver extends StartObserver {
     readonly event: HookEvent;
     readonly handlerId: string;
     readonly status: HandlerStatus;
+    /** The exit code of a command hook whose process ran to the end; absent for the other runs. */
+    readonly exitCode?: number;
   }): void;
   /** A `<hook name> hook error` notice for the transcript. */
   notice?(notice: HookNotice): void;
@@ -82,9 +84,18 @@ export interface Feedback {
   readonly text: string;
 }
 
+/**
+ * How a background hook's process ended: `cancelled` is a process the session killed ("in
+ * non-interactive mode with the `-p` flag, Claude Code kills any async hook still running at
+ * teardown and finalizes it with outcome `cancelled`"); `timed-out` an `asyncRewake` hook that
+ * reached its timeout; `failed` one that did not start.
+ */
+export type BackgroundOutcome = 'completed' | 'cancelled' | 'timed-out' | 'failed';
+
 /** What `async` and `asyncRewake` hooks hand over once their process ends. */
 export interface BackgroundDelivery {
   readonly handlerId: string;
+  readonly outcome: BackgroundOutcome;
   /** `additionalContext` of the JSON response, for the next turn. */
   readonly additionalContext?: string;
   /** `systemMessage` of the JSON response, for Claude on the next turn. */
@@ -99,6 +110,8 @@ export interface HandlerVerdict {
   readonly status: HandlerStatus;
   /** The run counts as a success for `once`: no block, no error, no timeout. */
   readonly succeeded: boolean;
+  /** The exit code of a run that ended with one (a `command` hook's process). */
+  readonly exitCode?: number;
   readonly block?: BlockInfo;
   /** The turn ends with this reason (`ok: false` of a prompt or agent hook that ends the turn). */
   readonly stop?: { readonly reason: string };
