@@ -37,6 +37,12 @@
 
 ### Fixed
 
+- Bash rules: a here-string (`<<< 'x'`) no longer opens a quoted here-document that hid the lines
+  after it from deny and allow rules; a hook `if` that names Bash now runs for a Monitor call (the
+  hook gets the Monitor input), and a Monitor rule still does not run for a Bash call; `if` finds
+  `$()`, backticks and `$VAR` with the quote-aware scanner, so an apostrophe inside double quotes
+  no longer hides one; an unreadable `if` is reported at `hooks.if`; the command field is tied to
+  the SDK's `BashInput` and `MonitorInput`.
 - Permission rules: an `mcp__` rule with parentheses is skipped only when it comes from a settings
   file, so a deny rule from the command line or the session matches an MCP tool parameter;
   `RuleSource` gains `managed` and `embedder-managed`; a `Skill(skill:<name>)` deny rule matches

@@ -7,6 +7,7 @@
  * `command` are ignored, so a rule's text pattern is the only way a command is matched).
  */
 import { expect, test } from 'bun:test';
+import type { BashInput, MonitorInput } from '../../src/protocol/official-tools.ts';
 import { matchRule } from '../../src/rules/index.ts';
 import { call, matchContext, parsed } from '../support/rule-context.ts';
 import { spec } from '../support/spec.ts';
@@ -14,13 +15,31 @@ import { spec } from '../support/spec.ts';
 const covered = (rule: string, toolName: string, input: unknown): boolean =>
   matchRule(parsed(rule, 'deny'), call(toolName, input), matchContext);
 
+/**
+ * The SDK's own input shapes (`BashInput`, `MonitorInput`): this file stops compiling when `command`
+ * leaves either type, so the field the rules read is the field the SDK declares (AGENTS.md E2). The
+ * SDK has no PowerShell input type; its `command` is the docs' field and the judgment is a row in
+ * spec/judgments.md.
+ */
+const sdkBash: BashInput = {
+  command: 'rm -rf build',
+  description: 'Clean',
+  timeout: 120000,
+  run_in_background: false,
+};
+const sdkMonitor: MonitorInput = {
+  command: 'tail -f log.txt',
+  description: 'Watch',
+  timeout_ms: 1000,
+};
+
 const ROLE: readonly (readonly [string, string, string])[] = [
   ['tools.input.Bash.command', 'Bash', 'Bash(rm *)'],
   ['tools.input.PowerShell.command', 'PowerShell', 'PowerShell(Remove-Item *)'],
 ];
 
 for (const [id, tool, rule] of ROLE) {
-  const command = tool === 'Bash' ? 'rm -rf build' : 'Remove-Item -Recurse build';
+  const command = tool === 'Bash' ? sdkBash.command : 'Remove-Item -Recurse build';
   spec(id, () => {
     test('a command rule matches the command field', () => {
       expect(covered(rule, tool, { command })).toBe(true);
@@ -31,7 +50,7 @@ for (const [id, tool, rule] of ROLE) {
     });
 
     test('the other fields of the table do not change the match', () => {
-      const input = { command, description: 'Clean', timeout: 120000, run_in_background: false };
+      const input = tool === 'Bash' ? sdkBash : { ...sdkBash, command };
       expect(covered(rule, tool, input)).toBe(true);
     });
 
@@ -47,3 +66,8 @@ for (const [id, tool, rule] of ROLE) {
     });
   });
 }
+
+test('a Monitor input carries its command in the same field', () => {
+  expect(covered('Monitor(tail *)', 'Monitor', sdkMonitor)).toBe(true);
+  expect(covered('Monitor(tail *)', 'Monitor', { ws: { url: 'wss://x' } })).toBe(false);
+});

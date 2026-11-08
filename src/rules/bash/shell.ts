@@ -1,8 +1,11 @@
 import type { PermissionBehavior } from '../../protocol/official.ts';
+import type { BashInput, MonitorInput } from '../../protocol/official-tools.ts';
+import type { Assert, Equal } from '../../protocol/type-equality.ts';
 import type { MatchContext, PermissionRule, PreparedCall } from '../types.ts';
 import type { ShellDialect } from './dialect.ts';
 import { requiresPromptDespitePrefixRule } from './exec-wrappers.ts';
 import { splitCommand } from './split.ts';
+import { textPatternOf } from './text-pattern.ts';
 import { hasWildcard, normalizePattern } from './wildcard.ts';
 import { SAFE_ENVIRONMENT_VARIABLES } from './wrappers.ts';
 
@@ -25,10 +28,24 @@ export interface Shell {
   readonly guardsExecWrappers: boolean;
 }
 
-/** The command text a call carries: `command` for Bash, Monitor and PowerShell (hooks.md). */
+/** The field that holds the command: the SDK's `BashInput` and `MonitorInput` both have it. */
+const COMMAND_FIELD = 'command' as const satisfies keyof BashInput & keyof MonitorInput;
+
+/** @public A compile-time drift guard: `command` is a string in `BashInput`. */
+export type BashCommandIsText = Assert<Equal<BashInput[typeof COMMAND_FIELD], string>>;
+
+/** @public A compile-time drift guard: `command` is an optional string in `MonitorInput`. */
+export type MonitorCommandIsText = Assert<
+  Equal<NonNullable<MonitorInput[typeof COMMAND_FIELD]>, string>
+>;
+
+/**
+ * The command text a call carries: `command` for Bash, Monitor and PowerShell (hooks.md). The input
+ * is `unknown` because a hook or a model sends whatever it likes; the field name is the SDK's.
+ */
 export function commandOf(input: unknown): string | undefined {
   if (typeof input !== 'object' || input === null) return undefined;
-  const command: unknown = Reflect.get(input, 'command');
+  const command: unknown = Reflect.get(input, COMMAND_FIELD);
   return typeof command === 'string' ? command : undefined;
 }
 
@@ -52,6 +69,13 @@ const COVERAGE: {
     subs.some(covered) || (!parseable && covered(whole.trim())),
 };
 
+/** Whether a prefix (wildcard) rule of each behavior must not approve exec wrappers: allow only. */
+const GUARDS_PREFIX_RULES: { readonly [B in PermissionBehavior]: boolean } = {
+  allow: true,
+  deny: false,
+  ask: false,
+};
+
 /** Whether a text-specifier rule on a command tool covers the call's command. */
 export function matchShellRule(
   shell: Shell,
@@ -59,12 +83,14 @@ export function matchShellRule(
   call: PreparedCall,
   ctx: MatchContext,
 ): boolean {
-  const { specifier, behavior } = rule;
+  const { behavior } = rule;
   const command = commandOf(call.input);
-  if (specifier?.form !== 'text' || command === undefined) return false;
-  const pattern = shell.pattern(normalizePattern(specifier.pattern));
+  const text = textPatternOf(rule);
+  if (text === undefined || command === undefined) return false;
+  const pattern = shell.pattern(normalizePattern(text));
   const safeEnv = new Set([...SAFE_ENVIRONMENT_VARIABLES, ...(ctx.safeEnvVars ?? [])]);
-  const prefixRule = behavior === 'allow' && shell.guardsExecWrappers && hasWildcard(pattern);
+  const prefixRule =
+    GUARDS_PREFIX_RULES[behavior] && shell.guardsExecWrappers && hasWildcard(pattern);
   const covered = (subcommand: string): boolean =>
     !(prefixRule && requiresPromptDespitePrefixRule(subcommand)) &&
     shell.forms(subcommand, behavior, safeEnv).some((form) => shell.compare(pattern, form));

@@ -1,7 +1,9 @@
 import { warning, type PluginIssue } from '../../format/issues.ts';
 import type { PermissionRule } from '../types.ts';
-import { normalizePattern } from './wildcard.ts';
+import type { PermissionBehavior } from '../../protocol/official.ts';
 import { wordsOf } from './split.ts';
+import { textPatternOf } from './text-pattern.ts';
+import { normalizePattern } from './wildcard.ts';
 
 const isOption = (word: string): boolean => word.startsWith('-');
 const hasStar = (word: string): boolean => word.includes('*');
@@ -22,17 +24,27 @@ function hasWildcardBeforeSubcommand(pattern: string): boolean {
   return rest.slice(star + 1).some((word) => !hasStar(word));
 }
 
+/** errors.md: the warning is about an allow rule (a deny or ask rule only restricts more). */
+const WARNS: { readonly [B in PermissionBehavior]: boolean } = {
+  allow: true,
+  deny: false,
+  ask: false,
+};
+
+/** errors.md names a `Bash` rule; Monitor and PowerShell are not named (spec/judgments.md). */
+const WARNED_TOOLS: ReadonlySet<string> = new Set(['Bash']);
+
 /**
  * The startup warning for a Bash allow rule with a `*` before the subcommand. Claude Code "keeps
  * the rule and changes nothing about how it matches", so this is only a warning.
  */
 export function wildcardBeforeSubcommand(rule: PermissionRule): readonly PluginIssue[] {
-  const { specifier, behavior, value } = rule;
+  const text = textPatternOf(rule);
   const applies =
-    behavior === 'allow' &&
-    value.toolName === 'Bash' &&
-    specifier?.form === 'text' &&
-    hasWildcardBeforeSubcommand(specifier.pattern);
+    WARNS[rule.behavior] &&
+    WARNED_TOOLS.has(rule.value.toolName) &&
+    text !== undefined &&
+    hasWildcardBeforeSubcommand(text);
   return applies
     ? [
         warning(

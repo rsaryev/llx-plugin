@@ -62,6 +62,23 @@ describe('a pattern filters when the commands are known', () => {
   });
 });
 
+describe('substitutions are read with the quote-aware scanner', () => {
+  test('an apostrophe inside double quotes does not hide a substitution', () => {
+    expect(bash('Bash(git push *)', "echo \"it's $(date)\" && echo 'x'")).toBe(true);
+    expect(bash('Bash(git push *)', "echo \"it's $HOME\" && echo 'x'")).toBe(true);
+    expect(bash('Bash(git push *)', 'echo "it\'s `date`"')).toBe(true);
+  });
+
+  test('a substitution inside single quotes is still text, an escaped one too', () => {
+    expect(bash('Bash(git push *)', "echo 'it$(date)' && echo '$HOME'")).toBe(false);
+    expect(bash('Bash(git push *)', 'echo \\$HOME "\\$(date)"')).toBe(false);
+  });
+
+  test('a substitution inside a quoted here-document body is text', () => {
+    expect(bash('Bash(git push *)', "cat <<'EOF'\n$(date) $HOME\nEOF")).toBe(false);
+  });
+});
+
 describe('when the commands cannot be determined the hook runs regardless of the pattern', () => {
   test('an unparseable command', () => {
     expect(bash('Bash(rm *)', 'npm test &&')).toBe(true);
@@ -78,7 +95,6 @@ describe('when the commands cannot be determined the hook runs regardless of the
 describe('the tool name in the rule decides which tool it is about', () => {
   test('a rule that names another tool does not run', () => {
     expect(runs('Bash(rm *)', 'PowerShell', { command: 'rm x' })).toBe(false);
-    expect(runs('Bash(rm *)', 'Monitor', { command: 'rm x' })).toBe(false);
     expect(runs('PowerShell(Remove-Item *)', 'Bash', { command: 'Remove-Item x' })).toBe(false);
   });
 
@@ -86,6 +102,18 @@ describe('the tool name in the rule decides which tool it is about', () => {
     expect(runs('Monitor(tail *)', 'Monitor', { command: 'tail -f log.txt' })).toBe(true);
     expect(runs('Monitor(tail *)', 'Monitor', { command: 'cat log.txt' })).toBe(false);
     expect(runs('Monitor(tail *)', 'Monitor', { command: 'FOO=1 tail -f x | grep y' })).toBe(true);
+  });
+
+  test('a rule that names Bash also runs for a Monitor call: the hook gets the Monitor input', () => {
+    expect(runs('Bash(tail *)', 'Monitor', { command: 'tail x' })).toBe(true);
+    expect(runs('Bash(rm *)', 'Monitor', { command: 'rm x' })).toBe(true);
+    expect(runs('Bash(rm *)', 'Monitor', { command: 'ls x' })).toBe(false);
+    expect(runs('Bash(rm *)', 'Monitor', { command: 'echo a | rm x' })).toBe(true);
+  });
+
+  test('a rule that names Monitor does not run for a Bash call: the hook does not run if its if names Monitor', () => {
+    expect(runs('Monitor(tail *)', 'Bash', { command: 'tail x' })).toBe(false);
+    expect(runs('Monitor(tail *)', 'Bash', { command: 'cat x' })).toBe(false);
   });
 
   test('PowerShell(Remove-Item *) filters PowerShell commands, aliases included', () => {
@@ -102,6 +130,19 @@ describe('a rule the kit cannot read', () => {
     const result = evaluateIf('Bash(command:rm *)', 'Bash', { command: 'ls' }, matchContext);
     expect(result.runs).toBe(true);
     expect(result.issues.map((found) => found.severity)).toEqual(['warning']);
+  });
+
+  test('an issue points at the hook handler field, not a permissions list, and says the hook runs', () => {
+    for (const text of ['Bash(', 'Bash(command:rm *)']) {
+      const { runs: ran, issues } = evaluateIf(text, 'Bash', { command: 'ls' }, matchContext);
+      expect(ran).toBe(true);
+      expect(issues.map((found) => found.path)).toEqual(['hooks.if']);
+      expect(issues[0]?.message).toContain(`"${text}"`);
+      expect(issues[0]?.message).toContain('the hook runs for every call');
+      expect(issues[0]?.message).not.toContain('permissions.');
+    }
+    const [malformed] = evaluateIf('Bash(', 'Bash', { command: 'ls' }, matchContext).issues;
+    expect(malformed?.severity).toBe('error');
   });
 
   test('a good rule reports no issue', () => {

@@ -9,6 +9,16 @@ export interface SplitCommand {
   readonly parseable: boolean;
 }
 
+/** A split command plus whether it expands or substitutes anything outside single quotes. */
+export interface CommandScan extends SplitCommand {
+  /**
+   * `$(`, a backtick (Bash), `${` or `$NAME` outside single quotes and not escaped: the command may
+   * run something its text does not show. Read by the quote-aware scanner, so an apostrophe inside
+   * double quotes does not hide one.
+   */
+  readonly substitutes: boolean;
+}
+
 /** Nesting deeper than this is not read: no real command nests substitutions this far. */
 const MAX_DEPTH = 32;
 
@@ -21,6 +31,8 @@ interface Scan {
   pos: number;
   depth: number;
   ok: boolean;
+  /** Set when a substitution or expansion is read outside single quotes. */
+  substitutes: boolean;
 }
 
 interface Heredoc {
@@ -29,28 +41,60 @@ interface Heredoc {
   readonly indented: boolean;
 }
 
+const newScan = (src: string, dialect: ShellDialect, depth: number): Scan => ({
+  src,
+  dialect,
+  subs: [],
+  heredocs: [],
+  pos: 0,
+  depth,
+  ok: true,
+  substitutes: false,
+});
+
 const WHITESPACE = /\s/;
 const isBlank = (char: string | undefined): boolean => char !== undefined && WHITESPACE.test(char);
+
+/** `$(`, `${` or `$NAME`: a substitution or expansion starts here. */
+const EXPANSION = /\$[({A-Za-z_]/y;
+
+/** Records an expansion or substitution that starts at `at`; never called inside single quotes. */
+function noteExpansion(scan: Scan, at: number): void {
+  EXPANSION.lastIndex = at;
+  const backtick = scan.dialect.backtickSubstitutes && scan.src[at] === '`';
+  if (backtick || EXPANSION.test(scan.src)) scan.substitutes = true;
+}
 
 const fail = (scan: Scan): void => {
   scan.ok = false;
   scan.pos = scan.src.length;
 };
 
-/** Moves `scan.pos` past the quote that opens at `at`; a quote that never closes is unparseable. */
-function skipQuoted(scan: Scan, at: number, quote: string, escapes: boolean): void {
-  let i = at + 1;
+/** A single-quoted part is literal: `scan.pos` moves past its closing quote, or the scan fails. */
+function skipSingle(scan: Scan): void {
+  const close = scan.src.indexOf("'", scan.pos + 1);
+  if (close === -1) return fail(scan);
+  scan.pos = close + 1;
+}
+
+/**
+ * A double-quoted part: text, except for what is substituted inside it, which runs. `scan.pos`
+ * moves past the closing quote; a quote that never closes is unparseable.
+ */
+function skipDouble(scan: Scan): void {
+  let i = scan.pos + 1;
   while (i < scan.src.length) {
     const char = scan.src[i];
-    if (escapes && char === scan.dialect.escape) i += 2;
-    else if (char === quote) {
+    noteExpansion(scan, i);
+    if (char === scan.dialect.escape) i += 2;
+    else if (char === '"') {
       scan.pos = i + 1;
       return;
-    } else if (escapes && scan.src.startsWith('$(', i)) {
+    } else if (scan.src.startsWith('$(', i)) {
       scan.pos = i;
       skipNested(scan, 2, ')');
       i = scan.pos;
-    } else if (escapes && char === '`' && scan.dialect.backtickSubstitutes) {
+    } else if (char === '`' && scan.dialect.backtickSubstitutes) {
       scan.pos = i;
       skipBacktick(scan);
       i = scan.pos;
@@ -58,9 +102,6 @@ function skipQuoted(scan: Scan, at: number, quote: string, escapes: boolean): vo
   }
   fail(scan);
 }
-
-const skipSingle = (scan: Scan): void => skipQuoted(scan, scan.pos, "'", false);
-const skipDouble = (scan: Scan): void => skipQuoted(scan, scan.pos, '"', true);
 
 /** A backtick substitution: what is between the backticks is a command line of its own. */
 function skipBacktick(scan: Scan): void {
@@ -107,8 +148,11 @@ const OPENERS: readonly { readonly open: string; readonly skip: (scan: Scan) => 
   { open: '"', skip: skipDouble },
 ];
 
-/** `<<'EOF'` or `<<"EOF"`: "here-documents" with a quoted delimiter hold text, never commands. */
-const QUOTED_HEREDOC = /<<(-?)[ \t]*(['"])([^'"\n]+)\2/y;
+/**
+ * `<<'EOF'` or `<<"EOF"`: "here-documents" with a quoted delimiter hold text, never commands. The
+ * `<<` of a here-string (`<<< 'text'`) is not an opener: its lookbehind rejects a `<` before it.
+ */
+const QUOTED_HEREDOC = /(?<!<)<<(?!<)(-?)[ \t]*(['"])([^'"\n]+)\2/y;
 
 /** Notes a here-document that starts at `scan.pos`; its body is skipped at the end of the line. */
 function noteHeredoc(scan: Scan): boolean {
@@ -140,6 +184,7 @@ function skipUnit(scan: Scan): void {
     scan.pos += 2;
     return;
   }
+  noteExpansion(scan, pos);
   if (src[pos] === '`' && dialect.backtickSubstitutes) return skipBacktick(scan);
   if (src[pos] === '{' && dialect.bracesHoldCommands) return skipNested(scan, 1, '}');
   if (src[pos] === '<' && dialect.hasKeywords && noteHeredoc(scan)) return;
@@ -205,10 +250,10 @@ function readList(scan: Scan, closer: string | undefined): void {
   endSegment(scan, segment, scan.src.length);
 }
 
-function scanText(src: string, dialect: ShellDialect, depth: number): SplitCommand {
-  const scan: Scan = { src, dialect, subs: [], heredocs: [], pos: 0, depth, ok: true };
+function scanText(src: string, dialect: ShellDialect, depth: number): CommandScan {
+  const scan = newScan(src, dialect, depth);
   readList(scan, undefined);
-  return { subcommands: scan.subs, parseable: scan.ok };
+  return { subcommands: scan.subs, parseable: scan.ok, substitutes: scan.substitutes };
 }
 
 /**
@@ -218,6 +263,12 @@ function scanText(src: string, dialect: ShellDialect, depth: number): SplitComma
  * the kit cannot read to the end is `parseable: false`, with the subcommands found so far.
  */
 export function splitCommand(command: string, dialect: ShellDialect = BASH_DIALECT): SplitCommand {
+  const { subcommands, parseable } = scanText(command, dialect, 0);
+  return { subcommands, parseable };
+}
+
+/** `splitCommand` with whether the command substitutes or expands anything outside single quotes. */
+export function scanCommand(command: string, dialect: ShellDialect = BASH_DIALECT): CommandScan {
   return scanText(command, dialect, 0);
 }
 
@@ -229,7 +280,7 @@ export interface Word {
 }
 
 export function wordsOf(command: string, dialect: ShellDialect = BASH_DIALECT): readonly Word[] {
-  const scan: Scan = { src: command, dialect, subs: [], heredocs: [], pos: 0, depth: 0, ok: true };
+  const scan = newScan(command, dialect, 0);
   const words: Word[] = [];
   while (scan.pos < command.length) {
     if (isBlank(command[scan.pos])) {

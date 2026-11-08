@@ -48,6 +48,23 @@ describe('shell syntax the splitter reads', () => {
     expect(denies('Bash(rm *)', command)).toBe(false);
   });
 
+  test('a here-string is not a here-document: the line after it is still a command', () => {
+    expect(splitCommand("grep foo <<< 'x'\nrm y").subcommands).toEqual([
+      "grep foo <<< 'x'",
+      'rm y',
+    ]);
+    expect(splitCommand('x <<< "a"\nrm y').subcommands).toEqual(['x <<< "a"', 'rm y']);
+    expect(denies('Bash(rm *)', "grep foo <<< 'x'\nrm y")).toBe(true);
+    expect(allows('Bash(grep *)', "grep foo <<< 'x'\nrm y")).toBe(false);
+    expect(denies('Bash(rm *)', 'x <<< "a"\nrm y')).toBe(true);
+    expect(allows('Bash(x *)', 'x <<< "a"\nrm y')).toBe(false);
+  });
+
+  test('a quoted here-document after a here-string still has an inert body', () => {
+    const command = "cat <<< 'a'; cat <<'EOF'\nrm y\nEOF";
+    expect(denies('Bash(rm *)', command)).toBe(false);
+  });
+
   test('an unquoted here-document body is read as commands, since it expands $()', () => {
     expect(denies('Bash(rm *)', 'cat <<EOF\n$(rm -rf x)\nEOF')).toBe(true);
   });
