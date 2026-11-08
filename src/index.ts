@@ -49,6 +49,17 @@ export {
   type McpSourceKind,
 } from './format/mcp-sources.ts';
 export type { McpLoadContext } from './format/mcp-bundles.ts';
+export {
+  LSP_FIELDS,
+  LSP_TRANSPORTS,
+  mergeLspSources,
+  readLspConfig,
+  readLspServer,
+  type LspConfigRead,
+  type LspServer,
+  type LspServerRead,
+  type LspTransport,
+} from './format/lsp-config.ts';
 export * from './rules/index.ts';
 export {
   PERMISSION_BEHAVIORS,

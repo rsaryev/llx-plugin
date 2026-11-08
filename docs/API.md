@@ -45,7 +45,8 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `matchesMatcher(matcher, value, mode?)` | done | a hook `matcher` against the field its event filters on: match-all, exact list, unanchored regex; `'narrow'` for FileChanged and StopFailure |
 | `readMcpConfig(raw, origin)`, `readMcpServer(name, raw, origin)` | done | `.mcp.json` (wrapper or bare map) → `PluginMcpServer` map; an entry Claude Code would drop is an error issue |
 | `collectMcpServers(files, manifestValue, options)`, `classifyMcpSource(value)` | done | the root `.mcp.json`, then each `mcpServers` source in order (`.json` file, inline map, `.mcpb` or `.dxt` bundle path or URL); a later name replaces an earlier one |
-| `readLspConfig(raw)`, `readMonitors(raw)`, `readOutputStyle(...)` | planned | the remaining component files |
+| `readLspConfig(raw, origin)`, `readLspServer(name, raw, origin)`, `mergeLspSources(reads)` | done | an LSP server map (`.lsp.json` or inline: no wrapper) → `LspServer` map; one invalid entry skips the whole map; a later source replaces an earlier server of the same name |
+| `readMonitors(raw)`, `readOutputStyle(...)` | planned | the remaining component files |
 
 ## Loading (planned)
 
@@ -142,6 +143,34 @@ reports `Bundled MCP server "<name>" was not started: it needs configuration`; t
 plugin loads. Without a `McpBundleReader` a bundle is a warning. Paths given to the reader are
 relative to the plugin root, like every `PluginFiles` path. The server's tool prefix is `rules`'
 `pluginMcpServerName`; `mcpServerKey` is the `plugin:<plugin>:<server>` name `/mcp` shows.
+
+### LSP servers (done: `format/lsp-config`, `loading/resolve/lsp*`)
+
+```ts
+import { readLspConfig, mergeLspSources, resolveLspServer, languageIdFor, lspRestartDecision } from '@rsaryev/claude-plugin-kit';
+
+const root = readLspConfig(JSON.parse(lspJson), '.lsp.json'); // { servers, issues }
+const { servers } = mergeLspSources([root, readLspConfig(manifest.lspServers, 'lspServers')]);
+const { resolved } = await resolveLspServer('go', servers.go, scope);
+// resolved.command/args/env/workspaceFolder substituted, resolved.environment = the three path variables
+languageIdFor(servers, 'src/main.go'); // { server: 'go', languageId: 'go' }
+lspRestartDecision(resolved, restartsSoFar); // 'restart' | 'stay-stopped'
+```
+
+| API | What it does |
+| --- | --- |
+| `LspServer`, `LSP_FIELDS` | kit-owned type (the SDK has no LSP config type): the fourteen documented fields, a strict object: an unknown key is an error |
+| `readLspConfig(raw, origin)` | one map, no wrapper object; an invalid entry skips the whole map, each reported as `Invalid LSP server config for "<origin>": <server>: <reason>` |
+| `mergeLspSources(reads)` | `.lsp.json` first, then each declared source in order; a later name replaces the earlier entry whole and keeps its first position |
+| `resolveLspServer(name, server, scope)` | `command`, `args`, `env`, `workspaceFolder` substituted (`${user_config.*}` allowed, `${VAR}` left to the process), `environment` = `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_PROJECT_DIR`; `transport` is always `stdio`; `requestTimeoutMs` 60000, `restartOnCrash` and `diagnostics` true by default; `shutdownTimeoutMs`, `startupTimeoutMs`, `maxRestarts` stay unset when unset |
+| `lspRestartDecision(server, restartsSoFar)` | `restartOnCrash: false` stays stopped; `restartsSoFar >= maxRestarts` stays stopped; unset `maxRestarts` is unbounded |
+| `languageIdFor(servers, filePath)`, `lspExtensionConflicts(servers)` | the server and language ID of a file (the first registered server keeps a shared extension; the longest extension wins); the `LSP server "<name>" is not used for <ext> files` warning |
+| `initializeOptionsOf(server)`, `didChangeConfigurationOf(server)` | the `initializationOptions` of the initialize request and the `workspace/didChangeConfiguration` notification for `settings` |
+
+The kit never starts a language server and never enforces a timeout: the host's LSP client starts the
+process, waits `startupTimeoutMs`, applies `requestTimeoutMs`, terminates after `shutdownTimeoutMs`,
+pushes diagnostics when `diagnostics` is on and speaks the protocol. The kit proves the values and
+decisions it hands over.
 
 ## Ports (done)
 

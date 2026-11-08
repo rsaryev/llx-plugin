@@ -6,10 +6,10 @@ import {
 } from '../../format/mcp-config.ts';
 import type { McpStdioServerConfig } from '../../protocol/official.ts';
 import { exportedEnvironment } from './exported-environment.ts';
+import { fieldOf, fieldRunner, when } from './field-runner.ts';
 import type { SubstitutionScope } from './scope.ts';
 import { HEADERS_HELPER_GUARD, rejectUserConfigInShell } from './shell-guard.ts';
-import { substituter, type Substituter } from './substitute.ts';
-import { SURFACE_POLICY, type Surface } from './surfaces.ts';
+import { substituter } from './substitute.ts';
 
 /**
  * A plugin's MCP server config resolved for this host (plugins/manifest-reference.md, "Where each
@@ -60,55 +60,8 @@ export function headersHelperEnvironment(
   };
 }
 
-interface Part<T> {
-  readonly value: T;
-  readonly issues: PluginIssue[];
-}
-
-/**
- * Substitutes the strings of one server, each with the policy of the surface it belongs to. One
- * substituter serves all fields, so the data folder is asked for once.
- */
-function fieldRunner(run: Substituter, base: string) {
-  const one = async (surface: Surface, template: string, field: string): Promise<Part<string>> => {
-    const done = await run.run(template, SURFACE_POLICY[surface], `${base}.${field}`);
-    return { value: done.text, issues: [...done.issues] };
-  };
-  const list = async (
-    surface: Surface,
-    templates: readonly string[],
-    field: string,
-  ): Promise<Part<string[]>> => {
-    const parts = await Promise.all(templates.map((each) => one(surface, each, field)));
-    return { value: parts.map((part) => part.value), issues: parts.flatMap((part) => part.issues) };
-  };
-  const table = async (
-    surface: Surface,
-    entries: Readonly<Record<string, string>>,
-    field: string,
-  ): Promise<Part<Record<string, string>>> => {
-    const parts = await Promise.all(
-      Object.entries(entries).map(
-        async ([key, each]) => [key, await one(surface, each, `${field}.${key}`)] as const,
-      ),
-    );
-    return {
-      value: Object.fromEntries(parts.map(([key, part]) => [key, part.value])),
-      issues: parts.flatMap(([, part]) => part.issues),
-    };
-  };
-  return { one, list, table };
-}
-
 const invalid = (name: string, path: string, why: string): PluginIssue =>
   error(path, `Invalid MCP server config for "${name}": ${why}`);
-
-/** `use(value)` for a field the server has, `undefined` for one it does not. */
-const when = <T, R>(value: T | undefined, use: (present: T) => R): R | undefined =>
-  value === undefined ? undefined : use(value);
-
-const fieldOf = <T>(part: Part<T> | undefined, field: string): Record<string, T> =>
-  part ? { [field]: part.value } : {};
 
 async function resolveStdio(
   name: string,

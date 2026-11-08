@@ -6,6 +6,22 @@
  */
 export { pluginDataId } from './data-id.ts';
 export { substituteDeep, type DeepSubstituted, type ValuePath } from './deep.ts';
+export {
+  LSP_DEFAULTS,
+  resolveLspServer,
+  type LspResolution,
+  type ResolvedLspServer,
+} from './lsp.ts';
+export {
+  didChangeConfigurationOf,
+  initializeOptionsOf,
+  languageIdFor,
+  lspExtensionConflicts,
+  lspRestartDecision,
+  type DidChangeConfiguration,
+  type LanguageRoute,
+  type RestartDecision,
+} from './lsp-runtime.ts';
 export { exportedEnvironment } from './exported-environment.ts';
 export {
   headersHelperEnvironment,

@@ -67,6 +67,15 @@
   describes (events, matcher groups, the five handler types and their fields), into the official
   `HooksSettings`; and `matchesMatcher`, the matcher grammar of hooks.md (match-all, exact list,
   unanchored regular expression, the narrower set of `FileChanged` and `StopFailure`).
+- LSP servers of a plugin: `readLspConfig` and `readLspServer` (the 14 fields of manifest-reference's
+  `lspServers` table as a strict object; `command` without spaces unless it starts with `/`,
+  `extensionToLanguage` with dot-prefixed keys, positive and zero-or-more integers; one invalid entry
+  skips the whole map with `Invalid LSP server config for ".lsp.json"`), `mergeLspSources` (a later
+  server replaces an earlier one), `resolveLspServer` (`command`, `args`, `env` and `workspaceFolder`
+  substituted, the three path variables exported, defaults `requestTimeout` 60000, `restartOnCrash`
+  and `diagnostics` true, `transport` always `stdio`), and the runtime decisions the host reads:
+  `lspRestartDecision`, `languageIdFor`, `lspExtensionConflicts`, `initializeOptionsOf` and
+  `didChangeConfigurationOf`.
 
 ### Fixed
 
