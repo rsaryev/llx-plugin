@@ -171,6 +171,7 @@ export {
 export {
   ignoredLine,
   ignoredReason,
+  untrustedSource,
   untrustedSourceMessage,
   type IgnoreChecks,
   type IgnoredReason,
@@ -182,6 +183,7 @@ export {
   rebuiltNote,
   recoveryNotes,
   refuseForUnreadableRecords,
+  refusalResultLine,
   setAsideNote,
   unknownFormatMessage,
   unreadableRecordsMessage,
@@ -201,7 +203,7 @@ export {
   enabledNotInstalled,
   failedToInstall,
   failureOnce,
-  installSummaryEnding,
+  installActivation,
   isInstalledGlobally,
   marketplaceDirectoryNotFound,
   nameTheMarketplace,
@@ -213,6 +215,7 @@ export {
   pluginNotFoundAnywhere,
   reinstallCommand,
   type EmptyView,
+  type InstallActivationFacts,
   type InstallFailure,
   type InstallSurface,
   type PluginNotFound,
@@ -256,16 +259,15 @@ export {
 } from './install-plans.ts';
 export {
   planDisable,
-  planEnable,
   planInstall,
   planPrune,
   planUninstall,
   type DisablePlan,
-  type EnablePlan,
   type InstallPlan,
-  type PluginNode,
   type UninstallPlan,
 } from './dependency-plans.ts';
+export { planEnable, type EnableOverride, type EnablePlan } from './dependency-enable.ts';
+export { type PluginNode } from './dependency-graph.ts';
 export {
   parseReloadArguments,
   reloadAllowed,
@@ -284,3 +286,10 @@ export {
   orphanSweep,
   type Orphan,
 } from './orphan-cleanup.ts';
+export {
+  DEFAULT_CLEANUP_PERIOD_DAYS,
+  agedCopies,
+  sweepAgedCopies,
+  type AgedName,
+  type CopySweep,
+} from './copy-sweep.ts';

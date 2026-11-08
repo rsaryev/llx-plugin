@@ -124,27 +124,27 @@ function isUsableId(key: string): boolean {
 }
 
 function readPlugins(plugins: Record<string, unknown>): InstalledPluginsRead {
-  const records: Record<string, readonly InstallRecord[]> = {};
-  const setAside: Record<string, unknown> = {};
-  const unreadable: string[] = [];
-  for (const [key, value] of Object.entries(plugins)) {
-    if (!isUsableId(key)) {
-      setAside[key] = value;
-      continue;
-    }
-    const read = readRecords(value);
-    if (read === undefined) unreadable.push(key);
-    else records[key] = read;
-  }
+  // `Object.fromEntries` defines own properties, so a key named `__proto__` is kept, never taken as
+  // the prototype the way `object[key] = value` takes it.
+  const entries = Object.entries(plugins).map(([key, value]) => ({
+    key,
+    value,
+    read: isUsableId(key) ? readRecords(value) : undefined,
+    usable: isUsableId(key),
+  }));
+  const unreadable = entries.filter((one) => one.usable && one.read === undefined);
+  const ids = unreadable.map((one) => one.key);
   return {
-    records,
-    setAside,
-    unreadable,
-    writable: unreadable.length === 0,
+    records: Object.fromEntries(
+      entries.flatMap((one) => (one.read === undefined ? [] : [[one.key, one.read] as const])),
+    ),
+    setAside: Object.fromEntries(
+      entries.filter((one) => !one.usable).map((one) => [one.key, one.value]),
+    ),
+    unreadable: ids,
+    writable: ids.length === 0,
     issues:
-      unreadable.length === 0
-        ? []
-        : [error('installed_plugins.json', unreadableRecordsMessage(unreadable))],
+      ids.length === 0 ? [] : [error('installed_plugins.json', unreadableRecordsMessage(ids))],
   };
 }
 

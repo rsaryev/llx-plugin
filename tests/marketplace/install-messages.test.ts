@@ -8,11 +8,13 @@
  * heading of the two dated-copy notes, are rows in spec/judgments.md.
  */
 import { expect, test } from 'bun:test';
+import { parseInstalledPlugins } from '../../src/marketplace/installed-plugins.ts';
 import {
   listNote,
   rebuiltNote,
   recoveryNotes,
   refuseForUnreadableRecords,
+  refusalResultLine,
   setAsideNote,
   unknownFormatMessage,
   unreadableRecordsMessage,
@@ -59,9 +61,14 @@ spec(`${RECORD}.Several such records`, () => {
 });
 
 spec(`${RECORD}.claude plugin list`, () => {
-  test('prints the message as a Note:', () => {
-    const text = unreadableRecordsMessage(['new@acme']);
-    expect(listNote(text)).toBe(`Note: ${text}`);
+  test('prints the message that reading a record this version cannot read produces, as a Note:', () => {
+    const read = parseInstalledPlugins(
+      JSON.stringify({ version: 2, plugins: { 'new@acme': [{ scope: 'galaxy' }] } }),
+    );
+    const message = read.issues[0]?.message ?? '';
+    expect(listNote(message)).toStartWith(
+      'Note: installed_plugins.json holds a record under "new@acme" that this version of Claude Code cannot read. ',
+    );
   });
 });
 
@@ -71,14 +78,24 @@ spec(`${RECORD}.--json on any of those three commands`, () => {
     ['uninstall', 'uninstalled'],
     ['update', 'updated'],
   ] as const)(
-    '%s refuses with `Plugin "<name>" was not %s:` and the same text',
+    '%s refuses with `Plugin "<name>" was not %s:` and the same text, and --json carries it',
     (command, word) => {
       const reason = unreadableRecordsMessage(['new@acme']);
       const refusal = refuseForUnreadableRecords(command, 'formatter', reason);
       expect(refusal.message).toBe(`Plugin "formatter" was not ${word}: ${reason}`);
-      expect(refusal.failureCode).toBe('install_records_unreadable');
+      expect(JSON.parse(refusalResultLine(command, refusal))).toEqual({
+        command,
+        outcome: 'failed',
+        message: `Plugin "formatter" was not ${word}: ${reason}`,
+        failureCode: 'install_records_unreadable',
+      });
     },
   );
+
+  test('the result is one object on one line', () => {
+    const refusal = refuseForUnreadableRecords('install', 'f', unreadableRecordsMessage(['a@b']));
+    expect(refusalResultLine('install', refusal)).not.toContain('\n');
+  });
 });
 
 const layout = createStoreLayout('/p', (base, rel) => `${base}/${rel}`);

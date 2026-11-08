@@ -71,6 +71,20 @@ export const refuseForUnreadableRecords = (
   failureCode: RECORDS_UNREADABLE_CODE,
 });
 
+/**
+ * The last line of stdout of `claude plugin install|uninstall|update --json` for that refusal: "one
+ * JSON object" with `command`, `outcome` and `message`, and `failureCode` where it applies
+ * (cli-reference.md, "JSON result format"; troubleshooting.md: "the result line carries the same
+ * `message` and `failureCode`").
+ */
+export const refusalResultLine = (command: RefusingCommand, refusal: RecordsRefusal): string =>
+  JSON.stringify({
+    command,
+    outcome: 'failed',
+    message: refusal.message,
+    failureCode: refusal.failureCode,
+  });
+
 /** `claude plugin list` prints the unreadable-record text as a `Note:`. */
 export const listNote = (text: string): string => `Note: ${text}`;
 

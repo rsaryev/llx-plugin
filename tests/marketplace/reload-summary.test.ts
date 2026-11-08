@@ -10,7 +10,7 @@
  * plugins/troubleshooting.md § `Run /reload-plugins to apply.` repeats the two lines. How the error
  * and dependency clauses join the counts, and the order of several servers, are rows in spec/judgments.md.
  */
-import { describe, expect, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import {
   parseReloadArguments,
   reloadAllowed,
@@ -176,15 +176,5 @@ spec('install.plugin.Sessions without an interactive terminal', () => {
 
   test('an interactive terminal accepts the command whichever way it arrives', () => {
     expect(reloadAllowed({ interactive: true, typedByUser: false })).toEqual({ allowed: true });
-  });
-});
-
-describe('the Run /reload-plugins to apply. ending', () => {
-  test('a reload that is refused leaves the changes pending', () => {
-    const gate = reloadGate(
-      { addedMcp: ['docs'], removedMcp: [], lsp: 'unchanged', invalidatesPromptCache: true },
-      { force: false, interactive: true },
-    );
-    expect(gate.apply).toBe(false);
   });
 });

@@ -47,14 +47,20 @@ export interface GitTags {
   list(repository: GitRepository, signal: AbortSignal): Promise<readonly string[] | GitTagsFailure>;
 }
 
-/** `write`: the file could not be written; `aborted`: the signal fired. */
-export type StateStoreFailure = PortFailure<'write' | 'aborted'>;
+/** `write`: the file could not be written; `remove`: it could not be removed; `aborted`: the signal fired. */
+export type StateStoreFailure = PortFailure<'write' | 'remove' | 'aborted'>;
 
 /**
  * The files Claude Code keeps directly under the plugins root (`installed_plugins.json`,
- * `known_marketplaces.json` and the dated copies; plugins/loading.md, "Find plugins on disk"), read
- * and written by name. The kit decides what the text is and when to write it (`installed-plugins.ts`,
- * `known-marketplaces.ts`); the host owns the folder and the atomic write.
+ * `known_marketplaces.json` and the dated copies; plugins/loading.md, "Find plugins on disk"), read,
+ * written and removed by name. The kit decides what the text is and when to write it
+ * (`installed-plugins.ts`, `known-marketplaces.ts`) and which copies have aged out
+ * (`copy-sweep.ts`); the host owns the folder and the atomic write.
+ *
+ * The kit takes no lock: `loadInstalledPlugins` reads, keeps a copy and rewrites, and two callers
+ * that overlap can each rewrite the file. A host that runs more than one session over one plugins
+ * root serialises those calls itself (a lock file, a database transaction or one queue), as it does
+ * every other write under the root; the port has no compare-and-swap to offer.
  */
 export interface PluginStateStore {
   /** The file's text, or `undefined` when there is none. */
@@ -66,4 +72,8 @@ export interface PluginStateStore {
   write(name: string, text: string, signal: AbortSignal): Promise<undefined | StateStoreFailure>;
   /** The names of the files and folders directly under the plugins root. */
   names(signal: AbortSignal): Promise<readonly string[]>;
+  /** When the file was last written, in Unix milliseconds; `undefined` when there is none. */
+  modifiedAt(name: string, signal: AbortSignal): Promise<number | undefined>;
+  /** Removes the file; a file that is already gone is removed. Resolves to `undefined` on success. */
+  remove(name: string, signal: AbortSignal): Promise<undefined | StateStoreFailure>;
 }

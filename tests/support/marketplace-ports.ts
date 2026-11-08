@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { PluginFiles } from '../../src/ports/index.ts';
 import type {
   ArchiveFailure,
@@ -54,6 +55,11 @@ export function fakeSha256(hex: string): Sha256 & { readonly hashed: Uint8Array[
     },
   };
 }
+
+/** A `Sha256` that hashes the bytes for real, so a digest depends on its input. */
+export const realSha256: Sha256 = {
+  hex: (bytes) => Promise.resolve(createHash('sha256').update(bytes).digest('hex')),
+};
 
 /** An `ArchiveReader` that reports `answer` for any bytes (stats or a failure) and counts its calls. */
 export function fakeArchive(

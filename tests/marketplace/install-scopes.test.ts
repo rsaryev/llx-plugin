@@ -6,6 +6,10 @@
  * the plugin; `install` and `uninstall` act on user scope); plugins/overview.md § Understand install
  * scopes; plugins/loading.md § Enabled in project settings but not installed (a collaborator still
  * installs a project-scope plugin on their own machine).
+ *
+ * A scope is a name only: that a cloud session "doesn't load the plugins in your local settings"
+ * (overview.md) is a matter of which settings a session reads, which the settings stream owns, and
+ * `defaultEnabled: false` ("installed but stays off") is the install plan's, in dependency-plans.test.ts.
  */
 import { describe, expect, test } from 'bun:test';
 import {
@@ -59,6 +63,39 @@ spec([`${SCOPE}.Local scope`, `${OVERVIEW}.Local scope`], () => {
       committed: false,
       collaboratorsInstall: false,
     });
+  });
+});
+
+describe('how the three scopes relate (install.md, "Choose an install scope")', () => {
+  const chosen = ['user', 'project', 'local'] as const;
+
+  test('each scope has its own settings file', () => {
+    expect(new Set(chosen.map((scope) => scopeReach(scope).file)).size).toBe(3);
+  });
+
+  test('only the project file is committed, and only for it does each collaborator install', () => {
+    expect(chosen.filter((scope) => scopeReach(scope).committed)).toEqual(['project']);
+    expect(chosen.filter((scope) => scopeReach(scope).collaboratorsInstall)).toEqual(['project']);
+  });
+
+  test('the file under the home directory reaches every project; the two beside the repository only this one', () => {
+    for (const scope of chosen) {
+      const { file, reach } = scopeReach(scope);
+      expect(reach).toBe(file.startsWith('~/') ? 'every-project' : 'this-repository');
+    }
+  });
+
+  test('the local file is the project file with `.local` before the extension, so it is not committed with it', () => {
+    expect(scopeReach('local').file).toBe(
+      scopeReach('project').file.replace('.json', '.local.json'),
+    );
+  });
+
+  test('the scopes that are only for you are the ones nobody else receives', () => {
+    expect(chosen.filter((scope) => scopeReach(scope).audience === 'you')).toEqual([
+      'user',
+      'local',
+    ]);
   });
 });
 

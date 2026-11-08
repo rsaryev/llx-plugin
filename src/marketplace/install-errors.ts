@@ -112,9 +112,26 @@ export const PLUGIN_ACTIVE = 'Plugin is now active.';
 /** The notice above the prompt that can appear at the same time. */
 export const PLUGINS_CHANGED = 'Plugins changed. Run /reload-plugins to activate.';
 
-/** An install summary ends `Plugin is now active.` when activated, else `Run /reload-plugins to apply.` */
-export const installSummaryEnding = (activated: boolean): string =>
-  activated ? PLUGIN_ACTIVE : RELOAD_TO_APPLY;
+export interface InstallActivationFacts {
+  /** Activating the plugin now would invalidate the prompt cache. */
+  readonly invalidatesPromptCache: boolean;
+  /** The attempt to activate the plugin during the install failed. */
+  readonly activationFailed: boolean;
+}
+
+/**
+ * Whether an install activated the plugin, and the line its summary ends with: `Plugin is now
+ * active.` when it did, else `Run /reload-plugins to apply.` "Claude Code didn't activate the
+ * plugin during the install, either because activating it would invalidate the prompt cache or
+ * because the activation attempt failed" (troubleshooting.md).
+ */
+export function installActivation(facts: InstallActivationFacts): {
+  readonly activated: boolean;
+  readonly ending: string;
+} {
+  const activated = !facts.invalidatesPromptCache && !facts.activationFailed;
+  return { activated, ending: activated ? PLUGIN_ACTIVE : RELOAD_TO_APPLY };
+}
 
 // ---- Errors tab entries ----
 

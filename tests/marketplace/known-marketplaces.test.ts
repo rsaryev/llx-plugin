@@ -7,7 +7,7 @@
  * marketplace configuration (the file is unreadable, or valid JSON that does not match the schema);
  * plugins/troubleshooting.md § `Marketplace "<name>" is already added from a different source` ("the
  * same type and the same value in every field"). The kit's source names its kind `directory` and
- * `file`; the file writes it under `source`. The Localix name `local` is not a kind.
+ * `file`; the file writes it under `source`. A name that is no kind of source (such as `local`) is not read.
  */
 import { describe, expect, test } from 'bun:test';
 import type { MarketplaceSource } from '../../src/format/marketplace/types.ts';
@@ -55,15 +55,36 @@ describe('reading the file', () => {
     expect(parseKnownMarketplaces(undefined)).toEqual({ marketplaces: {}, issues: [] });
   });
 
-  test('text that is not JSON, and an empty file, fail to load', () => {
-    for (const text of ['', '{ nope']) {
+  test('an empty file fails to load with the documented line, on every runtime', () => {
+    for (const text of ['', '  \n']) {
       const read = parseKnownMarketplaces(text);
-      expect(read.failure?.code).toBe('unreadable');
-      expect(read.failure?.message.startsWith('Failed to load marketplace configuration')).toBe(
-        true,
-      );
+      expect(read.failure).toEqual({
+        code: 'unreadable',
+        message: 'Failed to load marketplace configuration: JSON Parse error: Unexpected EOF',
+      });
       expect(read.marketplaces).toEqual({});
     }
+  });
+
+  test("a judgment: other text that is not JSON keeps the lead, with the runtime's own detail after it", () => {
+    const read = parseKnownMarketplaces('{ nope');
+    expect(read.failure?.code).toBe('unreadable');
+    expect(read.failure?.message).toStartWith('Failed to load marketplace configuration: ');
+    expect(read.failure?.message.length).toBeGreaterThan(
+      'Failed to load marketplace configuration: '.length,
+    );
+    expect(read.marketplaces).toEqual({});
+  });
+
+  test('an entry named __proto__ is an entry like any other', () => {
+    const text = `{"__proto__": ${JSON.stringify(entry({ source: 'directory', path: '/x' }))}, "acme": ${JSON.stringify(entry({ source: 'github', repo: 'a/b' }))}}`;
+    const read = parseKnownMarketplaces(text);
+    expect(read.failure).toBeUndefined();
+    expect(Object.keys(read.marketplaces)).toEqual(['__proto__', 'acme']);
+    expect(Object.keys(JSON.parse(serializeKnownMarketplaces(read.marketplaces)))).toEqual([
+      '__proto__',
+      'acme',
+    ]);
   });
 
   test('valid JSON that does not match the schema is a corrupted file, naming the entries', () => {
@@ -101,6 +122,7 @@ describe('writing the file', () => {
       { kind: 'url', url: 'https://example.com/marketplace.json' },
       { kind: 'file', path: '/work/marketplace.json' },
       { kind: 'directory', path: '/work/mk' },
+      { kind: 'npm', package: '@acme/plugins' },
     ];
     for (const source of sources) {
       const text = serializeKnownMarketplaces({
@@ -110,17 +132,6 @@ describe('writing the file', () => {
       expect(parseKnownMarketplaces(text).marketplaces['m']?.source).toEqual(source);
     }
   });
-
-  test('the Localix kind `local` is never written', () => {
-    const text = serializeKnownMarketplaces({
-      m: {
-        source: { kind: 'directory', path: '/work/mk' },
-        installLocation: '/work/mk',
-        lastUpdated: '2026-01-01T00:00:00Z',
-      },
-    });
-    expect(text).not.toContain('"local"');
-  });
 });
 
 describe('where a marketplace lives on disk (loading.md, "Find plugins on disk")', () => {
@@ -129,6 +140,8 @@ describe('where a marketplace lives on disk (loading.md, "Find plugins on disk")
       { kind: 'github', repo: 'a/b', path: 'm.json' },
       { kind: 'git', url: 'https://x.y/z.git', path: 'm.json' },
       { kind: 'url', url: 'https://x.y/m.json' },
+      // A judgment (spec/judgments.md): the docs do not place an npm marketplace, so it is kept like a clone.
+      { kind: 'npm', package: '@acme/plugins' },
     ];
     for (const source of sources) {
       expect(installLocationFor(source, 'acme', layout)).toBe(

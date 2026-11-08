@@ -1,3 +1,4 @@
+import { loadNameIssues } from '../format/marketplace/marketplace-names.ts';
 import type { MarketplaceSource } from '../format/marketplace/types.ts';
 import { isBlockedHost } from './blocked-hosts.ts';
 import type { ErrorsTabEntry } from './install-messages.ts';
@@ -13,7 +14,10 @@ import { readGitAddress } from './source-safety.ts';
  * host's to probe (an effect); everything else is decided here.
  *
  * Judgments (spec/judgments.md): the docs quote the line and the fix only for the location check,
- * so the fix for the others is the kit's wording; a git URL is unusable when `readGitAddress` refuses
+ * so the fix for the others is the kit's wording; the name is refused when `loadNameIssues` finds an
+ * issue with the entry's own source (another spelling of a reserved name, a member name of
+ * JavaScript objects), and a reserved name refused only for its source is the untrusted-source case
+ * (`untrustedSource`), not this one; a git URL is unusable when `readGitAddress` refuses
  * it or its host is loopback, link-local or a cloud-metadata address (`isBlockedHost`); the Errors
  * tab line ends with the reason's period.
  */
@@ -24,8 +28,6 @@ export interface IgnoreChecks {
   readonly location: 'local' | 'network' | 'unchecked';
   /** The `extraKnownMarketplaces` source of the same name in user or managed settings (not a repository's). */
   readonly declared?: MarketplaceSource;
-  /** Claude Code refuses the name, such as another spelling of a reserved one (`loadNameIssues`). */
-  readonly nameRefused: boolean;
 }
 
 export interface IgnoredReason {
@@ -84,6 +86,33 @@ const mismatchReason = (name: string): IgnoredReason => ({
   fix: `Re-add the marketplace from the declared source, or change the declaration; claude plugin marketplace remove ${name} clears the entry.`,
 });
 
+/** An official name's own source: the one place `loadNameIssues` lets a reserved name load from. */
+const OFFICIAL_ORIGIN: MarketplaceSource = {
+  kind: 'github',
+  repo: 'anthropics/claude-plugins-official',
+  path: '.claude-plugin/marketplace.json',
+};
+
+const refused = (name: string, origin: MarketplaceSource): boolean =>
+  loadNameIssues(name, { origin }).length > 0;
+
+/**
+ * A reserved name whose registered source is not an `anthropics` GitHub repository: the name is
+ * refused with the entry's source and accepted with an official one, so the source is the only
+ * thing wrong with it. Reserved names are "re-checked every time a marketplace loads or refreshes".
+ */
+const refusedForSourceOnly = (name: string, source: MarketplaceSource): boolean =>
+  refused(name, source) && !refused(name, OFFICIAL_ORIGIN);
+
+/**
+ * `Marketplace "<name>" is registered from an untrusted source: ...` for an entry registered under a
+ * reserved name from a source that is not an `anthropics` GitHub repository: it and its plugins
+ * stop loading. `undefined` for any other entry. The host checks this on every load beside
+ * `ignoredReason`, which leaves this case to it.
+ */
+export const untrustedSource = (name: string, entry: KnownMarketplace): string | undefined =>
+  refusedForSourceOnly(name, entry.source) ? untrustedSourceMessage(name) : undefined;
+
 /**
  * Why an entry is ignored, or `undefined` when it loads: the first check that fails, in the order
  * the docs list them (location, git URL or URL, settings declaration, name).
@@ -95,13 +124,12 @@ export function ignoredReason(
 ): IgnoredReason | undefined {
   const mismatched =
     checks.declared !== undefined && !sameMarketplaceSource(entry.source, checks.declared);
+  const nameRefused = refused(name, entry.source) && !refusedForSourceOnly(name, entry.source);
   return (
     locationReason(entry, checks.location) ??
     sourceReason(name, entry.source) ??
     (mismatched ? mismatchReason(name) : undefined) ??
-    (checks.nameRefused
-      ? { fix: `Remove it with: claude plugin marketplace remove ${name}` }
-      : undefined)
+    (nameRefused ? { fix: `Remove it with: claude plugin marketplace remove ${name}` } : undefined)
   );
 }
 

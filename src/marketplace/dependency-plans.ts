@@ -1,65 +1,34 @@
 import { error, type PluginIssue } from '../format/issues.ts';
 import { checkInstalledDependency } from './dependencies.ts';
+import {
+  closure,
+  find,
+  isEnabled,
+  isInstalled,
+  isInstalledAt,
+  quotedList,
+  type Graph,
+} from './dependency-graph.ts';
+import { alreadyInstalledAtScope } from './install-errors.ts';
 import type { ChosenScope } from './install-scopes.ts';
 
 /**
- * What installing, enabling, disabling and uninstalling a plugin does to the plugins it depends on
- * (plugins/install.md, "Plugins with dependencies"; plugins/cli-reference.md, "plugin enable",
- * "plugin disable", "plugin prune"): plans over the graph of plugins a host knows, pure. The
- * declarations are read by `normalizeDependency`, and whether one is met by `checkInstalledDependency`;
- * a graph node already names its dependencies by id (`name@marketplace`).
+ * What installing, disabling and uninstalling a plugin does to the plugins it depends on
+ * (plugins/install.md, "Plugins with dependencies"; plugins/cli-reference.md, "plugin install",
+ * "plugin disable", "plugin prune"): plans over the graph of plugins a host knows, pure; enabling is
+ * `dependency-enable.ts`. The declarations are read by `normalizeDependency`, and whether one is met
+ * by `checkInstalledDependency`.
  *
  * Judgments (spec/judgments.md): the wording the docs describe without quoting (the install line's
- * list of dependencies, the enable failure and the disable refusal); dependents are disabled
- * farthest first; a refused or failed plan changes nothing.
+ * list of dependencies, the disable refusal); dependents are disabled farthest first; a refused or
+ * failed plan changes nothing; a dependency installed at another scope is installed again at the
+ * target scope, since the docs install "at the same scope".
  */
-
-export interface PluginNode {
-  /** `name@marketplace`. */
-  readonly id: string;
-  readonly installed: boolean;
-  readonly enabled: boolean;
-  /** The ids of its declared dependencies. */
-  readonly dependencies: readonly string[];
-  /** Installed as a dependency of another plugin rather than by the user. */
-  readonly autoInstalled?: boolean;
-}
-
-type Graph = readonly PluginNode[];
-
-const find = (graph: Graph, id: string): PluginNode | undefined =>
-  graph.find((one) => one.id === id);
-
-/** Postorder over the dependencies from `id`: each plugin after what it depends on, once; ids the graph lacks are `absent`. */
-function closure(
-  graph: Graph,
-  id: string,
-): { readonly order: string[]; readonly absent: string[] } {
-  const seen = new Set<string>();
-  const order: string[] = [];
-  const absent: string[] = [];
-  const walk = (current: string): void => {
-    if (seen.has(current)) return;
-    seen.add(current);
-    const one = find(graph, current);
-    if (one === undefined) {
-      absent.push(current);
-      return;
-    }
-    one.dependencies.forEach(walk);
-    order.push(current);
-  };
-  walk(id);
-  return { order, absent };
-}
 
 const dependencyOf = (id: string): { readonly name: string; readonly marketplace?: string } => {
   const at = id.indexOf('@');
   return at < 0 ? { name: id } : { name: id.slice(0, at), marketplace: id.slice(at + 1) };
 };
-
-const installCommand = (id: string): string => `claude plugin install ${id}`;
-const quotedList = (ids: readonly string[]): string => ids.map((id) => `"${id}"`).join(', ');
 
 // ---- install ----
 
@@ -78,11 +47,21 @@ export interface InstallPlan {
 
 /**
  * "Install: Claude Code also installs and enables the plugin's declared dependencies at the same
- * scope. The success message lists them."
+ * scope. The success message lists them." Each plugin is installed and enabled at the target scope
+ * when it is not already, so a dependency that exists only at another scope is installed here too.
+ * A plugin whose author set `defaultEnabled: false` "is installed but stays off until you turn it
+ * on" (install.md, "Choose an install scope"), so it is installed and not in `enable`; a dependency is
+ * enabled whatever its own default, since the plugin that needs it would not work otherwise
+ * (judgment). A plugin already installed at the scope prints `Plugin "<id>" is already installed (scope:
+ * <scope>)` and changes nothing (cli-reference.md, "plugin install").
  */
 export function planInstall(id: string, scope: ChosenScope, graph: Graph): InstallPlan {
-  const { order, absent } = closure(graph, id);
   const empty = { install: [], enable: [], autoInstalled: [], scope } as const;
+  const root = find(graph, id);
+  if (root !== undefined && isInstalledAt(root, scope)) {
+    return { ...empty, message: alreadyInstalledAtScope(id, scope) };
+  }
+  const { order, absent } = closure(graph, id);
   const [first] = absent;
   if (first !== undefined) {
     const refused =
@@ -93,7 +72,7 @@ export function planInstall(id: string, scope: ChosenScope, graph: Graph): Insta
     return { ...empty, refused };
   }
   const nodes = order.flatMap((one) => find(graph, one) ?? []);
-  const install = nodes.filter((one) => !one.installed).map((one) => one.id);
+  const install = nodes.filter((one) => !isInstalledAt(one, scope)).map((one) => one.id);
   const autoInstalled = install.filter((one) => one !== id);
   const list =
     autoInstalled.length === 0
@@ -101,66 +80,15 @@ export function planInstall(id: string, scope: ChosenScope, graph: Graph): Insta
       : ` (+ ${autoInstalled.length} dependencies: ${autoInstalled.join(', ')})`;
   return {
     install,
-    enable: nodes.filter((one) => !one.installed || !one.enabled).map((one) => one.id),
+    enable: nodes
+      .filter((one) => !isInstalledAt(one, scope) || one.enabledIn[scope] !== true)
+      .filter((one) => !(one.id === id && one.defaultEnabled === false))
+      .map((one) => one.id),
     autoInstalled,
     scope,
     message: `Successfully installed plugin: ${id} (scope: ${scope})${list}`,
   };
 }
-
-// ---- enable ----
-
-export interface EnablePlan {
-  readonly enable: readonly string[];
-  readonly failure?: {
-    readonly missing: readonly string[];
-    readonly message: string;
-    /** `claude plugin install` for each plugin that is missing. */
-    readonly commands: readonly string[];
-  };
-}
-
-const missingFailure = (missing: readonly string[]): EnablePlan => ({
-  enable: [],
-  failure: {
-    missing,
-    message:
-      missing.length === 1
-        ? `Dependency ${quotedList(missing)} is not installed. Install it first.`
-        : `Dependencies ${quotedList(missing)} are not installed. Install them first.`,
-    commands: missing.map(installCommand),
-  },
-});
-
-/**
- * "Enable: Claude Code also enables the plugin's dependencies that are installed but disabled. If a
- * declared dependency isn't installed, the enable fails and the message tells you to install it
- * first": the command prints `claude plugin install` for each one that is missing.
- */
-export function planEnable(id: string, graph: Graph): EnablePlan {
-  const root = find(graph, id);
-  if (root === undefined || !root.installed) {
-    return {
-      enable: [],
-      failure: {
-        missing: [id],
-        message: `Plugin "${id}" is not installed. Install it first.`,
-        commands: [installCommand(id)],
-      },
-    };
-  }
-  const { order, absent } = closure(graph, id);
-  const notInstalled = order.filter((one) => find(graph, one)?.installed !== true);
-  const missing = [...new Set([...absent, ...notInstalled])];
-  if (missing.length > 0) return missingFailure(dependencyOrder(root, missing));
-  return { enable: order.filter((one) => find(graph, one)?.enabled === false) };
-}
-
-/** The missing ones in the order the plugin declares them, then any found deeper. */
-const dependencyOrder = (root: PluginNode, missing: readonly string[]): readonly string[] => [
-  ...root.dependencies.filter((one) => missing.includes(one)),
-  ...missing.filter((one) => !root.dependencies.includes(one)),
-];
 
 // ---- disable ----
 
@@ -185,7 +113,7 @@ function dependentsOf(
   for (let distance = 1; frontier.length > 0; distance += 1) {
     const next = graph.filter(
       (one) =>
-        one.enabled &&
+        isEnabled(one) &&
         one.id !== id &&
         !found.some((seen) => seen.id === one.id) &&
         one.dependencies.some((dep) => frontier.includes(dep)),
@@ -231,9 +159,11 @@ export function planPrune(graph: Graph): readonly string[] {
     needed.add(id);
     find(graph, id)?.dependencies.forEach(mark);
   };
-  graph.filter((one) => one.installed && one.autoInstalled !== true).forEach((one) => mark(one.id));
+  graph
+    .filter((one) => isInstalled(one) && one.autoInstalled !== true)
+    .forEach((one) => mark(one.id));
   return graph
-    .filter((one) => one.installed && one.autoInstalled === true && !needed.has(one.id))
+    .filter((one) => isInstalled(one) && one.autoInstalled === true && !needed.has(one.id))
     .map((one) => one.id);
 }
 
@@ -252,7 +182,10 @@ export interface UninstallPlan {
 export function planUninstall(id: string, graph: Graph): UninstallPlan {
   const kept = closure(graph, id)
     .order.filter((one) => one !== id)
-    .filter((one) => find(graph, one)?.installed === true);
+    .filter((one) => {
+      const node = find(graph, one);
+      return node !== undefined && isInstalled(node);
+    });
   const remaining = graph.filter((one) => one.id !== id);
   return {
     uninstall: [id],

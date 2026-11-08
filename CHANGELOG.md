@@ -4,6 +4,20 @@
 
 ### Fixed
 
+- Install records and plans (review fixes): a `__proto__` key in `installed_plugins.json` or
+  `known_marketplaces.json` is kept like any other (it was dropped); the default plugins root honours
+  `CLAUDE_CONFIG_DIR`; a session prints `✔ Updated N marketplaces` where a shell prints `Successfully
+  updated ...`, and a shell `marketplace remove` needs its name; dependency plans work per scope (a
+  dependency installed only at another scope is installed at the target scope, a plugin already
+  installed there says `is already installed (scope: ...)`, `defaultEnabled: false` stays off) and
+  `planEnable` fails for a dependency the organization's policy blocks or that is `false` above the
+  target scope; an install decides `Plugin is now active.` or `Run /reload-plugins to apply.` from
+  the prompt-cache and activation facts, and closing the panel queues the reload while a response
+  streams; the untrusted-source and refused-name cases of an ignored marketplace come from
+  `loadNameIssues` with the entry's source; an empty `known_marketplaces.json` reports the documented
+  `JSON Parse error: Unexpected EOF`; the dated copies age out on `cleanupPeriodDays` (`PluginStateStore`
+  gains `modifiedAt` and `remove`; the host serialises rewrites of the records); the tests that echoed
+  constants now assert the documented decisions (a real SHA-256, failing writes, the `--json` line).
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
   short label and the amounts of each row of the Limits table, not the page's sentences, so the
   repository holds facts and identifiers only.

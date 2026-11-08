@@ -3,7 +3,7 @@
  * every path under it: `cache/<marketplace>/<plugin>/<version>/`, `data/<plugin-id>/`,
  * `marketplaces/<name>/`, `synced/`, `.trash/`, the two JSON records, `known_marketplaces_claudeai.json`,
  * `flagged-plugins.json` and the dated set-aside and unreadable copies) and env-vars.md
- * (`CLAUDE_CODE_PLUGIN_CACHE_DIR` "sets the parent directory, not the cache itself"). The table has
+ * (`CLAUDE_CODE_PLUGIN_CACHE_DIR` "sets the parent directory, not the cache itself"; `CLAUDE_CONFIG_DIR`: "All settings, session history, and plugins are stored under this path"). The table has
  * no requirement id of its own, so these tests sit outside `spec(...)`; the wording of an empty
  * override and the date form of the dated copies are rows in spec/judgments.md.
  */
@@ -30,6 +30,26 @@ describe('the plugins root (loading.md, "Find plugins on disk"; env-vars.md)', (
     expect(resolvePluginsRoot({ home: '/home/u', override: '', join })).toBe(
       '/home/u/.claude/plugins',
     );
+  });
+
+  test('CLAUDE_CONFIG_DIR moves the default root: plugins are stored under it', () => {
+    expect(resolvePluginsRoot({ home: '/home/u', configDir: '/srv/work', join })).toBe(
+      '/srv/work/plugins',
+    );
+    expect(resolvePluginsRoot({ home: '/home/u', configDir: '', join })).toBe(
+      '/home/u/.claude/plugins',
+    );
+  });
+
+  test('a judgment: CLAUDE_CODE_PLUGIN_CACHE_DIR, which names the root itself, wins over CLAUDE_CONFIG_DIR', () => {
+    expect(
+      resolvePluginsRoot({
+        home: '/home/u',
+        override: '/mnt/plugins',
+        configDir: '/srv/work',
+        join,
+      }),
+    ).toBe('/mnt/plugins');
   });
 
   test('the override is the parent: the cache is a folder under it, not the override itself', () => {

@@ -4,32 +4,23 @@
  * dependencies that are installed but disabled, and fails, telling you to install first, when one is
  * not installed; disable of a plugin another enabled plugin still needs is refused with a chained
  * command that disables both in the right order; uninstall leaves auto-installed dependencies until
- * `claude plugin prune`); plugins/cli-reference.md § plugin enable (the command prints the `claude
- * plugin install` command for each missing dependency), § plugin prune (never removes a plugin you
- * installed yourself). The dependency declarations themselves are `normalizeDependency`'s; the
+ * `claude plugin prune`); plugins/cli-reference.md § plugin install (a plugin already installed at the
+ * scope prints `is already installed (scope: <scope>)`), § plugin enable (the command prints the
+ * `claude plugin install` command for each missing dependency, and fails for a dependency blocked by
+ * the organization's plugin policy or set to `false` at a scope above the target), § plugin prune
+ * (never removes a plugin you installed yourself); plugins/install.md § Choose an install scope
+ * (`defaultEnabled`: installed but stays off). The dependency declarations themselves are `normalizeDependency`'s; the
  * wording of the install success line's list and of the refusals is a row in spec/judgments.md.
  */
 import { describe, expect, test } from 'bun:test';
 import {
   planDisable,
-  planEnable,
   planInstall,
   planPrune,
   planUninstall,
-  type PluginNode,
 } from '../../src/marketplace/dependency-plans.ts';
+import { app, node } from '../support/dependency-nodes.ts';
 import { spec } from '../support/spec.ts';
-
-const node = (id: string, extra: Partial<PluginNode> = {}): PluginNode => ({
-  id,
-  installed: true,
-  enabled: true,
-  dependencies: [],
-  ...extra,
-});
-
-const app = (extra: Partial<PluginNode> = {}) =>
-  node('app@acme', { dependencies: ['lib@acme'], ...extra });
 
 spec('install.guide.Plugins with dependencies.Install', () => {
   test('installs the plugin and its declared dependencies at the same scope, dependencies first', () => {
@@ -45,6 +36,44 @@ spec('install.guide.Plugins with dependencies.Install', () => {
       scope: 'project',
     });
     expect(plan.refused).toBeUndefined();
+  });
+
+  test('a dependency installed only at another scope is installed at the target scope too', () => {
+    const graph = [app({ installed: false, enabled: false }), node('lib@acme', { scope: 'user' })];
+    const atProject = planInstall('app@acme', 'project', graph);
+    expect(atProject.install).toEqual(['lib@acme', 'app@acme']);
+    expect(atProject.enable).toEqual(['lib@acme', 'app@acme']);
+    expect(atProject.autoInstalled).toEqual(['lib@acme']);
+    const atUser = planInstall('app@acme', 'user', graph);
+    expect(atUser.install).toEqual(['app@acme']);
+    expect(atUser.enable).toEqual(['app@acme']);
+  });
+
+  test('a dependency installed at the target scope but not listed there is only enabled', () => {
+    const lib = { ...node('lib@acme', { scope: 'project' }), enabledIn: {} };
+    const plan = planInstall('app@acme', 'project', [
+      app({ installed: false, enabled: false }),
+      lib,
+    ]);
+    expect(plan.install).toEqual(['app@acme']);
+    expect(plan.enable).toEqual(['lib@acme', 'app@acme']);
+  });
+
+  test('a plugin already installed at that scope says so and changes nothing', () => {
+    const plan = planInstall('lib@acme', 'project', [node('lib@acme', { scope: 'project' })]);
+    expect(plan).toEqual({
+      install: [],
+      enable: [],
+      autoInstalled: [],
+      scope: 'project',
+      message: 'Plugin "lib@acme" is already installed (scope: project)',
+    });
+  });
+
+  test('one installed at another scope is not "already installed" here', () => {
+    const plan = planInstall('lib@acme', 'project', [node('lib@acme', { scope: 'user' })]);
+    expect(plan.install).toEqual(['lib@acme']);
+    expect(plan.message).toBe('Successfully installed plugin: lib@acme (scope: project)');
   });
 
   test('the success message lists the dependencies', () => {
@@ -90,44 +119,22 @@ spec('install.guide.Plugins with dependencies.Install', () => {
   });
 });
 
-spec('install.guide.Plugins with dependencies.Enable', () => {
-  test('also enables the dependencies that are installed but disabled', () => {
-    const plan = planEnable('app@acme', [
-      app({ enabled: false }),
-      node('lib@acme', { enabled: false, dependencies: ['base@acme'] }),
-      node('base@acme', { enabled: false }),
+describe('defaultEnabled (install.md, "Choose an install scope")', () => {
+  test('a plugin whose author set defaultEnabled false is installed but stays off', () => {
+    const plan = planInstall('lib@acme', 'user', [
+      node('lib@acme', { installed: false, defaultEnabled: false }),
     ]);
-    expect(plan).toEqual({ enable: ['base@acme', 'lib@acme', 'app@acme'] });
+    expect(plan.install).toEqual(['lib@acme']);
+    expect(plan.enable).toEqual([]);
+    expect(plan.message).toBe('Successfully installed plugin: lib@acme (scope: user)');
   });
 
-  test('a dependency already on is left alone', () => {
-    expect(planEnable('app@acme', [app({ enabled: false }), node('lib@acme')])).toEqual({
-      enable: ['app@acme'],
-    });
-  });
-
-  test('fails when a declared dependency is not installed, with the install command for each', () => {
-    const plan = planEnable('app@acme', [
-      app({ enabled: false, dependencies: ['lib@acme', 'other@acme'] }),
-      node('lib@acme', { installed: false, enabled: false }),
+  test('a judgment: a dependency is enabled whatever its own defaultEnabled', () => {
+    const plan = planInstall('app@acme', 'user', [
+      app({ installed: false }),
+      node('lib@acme', { installed: false, defaultEnabled: false }),
     ]);
-    expect(plan).toEqual({
-      enable: [],
-      failure: {
-        missing: ['lib@acme', 'other@acme'],
-        message: 'Dependencies "lib@acme", "other@acme" are not installed. Install them first.',
-        commands: ['claude plugin install lib@acme', 'claude plugin install other@acme'],
-      },
-    });
-  });
-
-  test('one missing dependency is named in the singular', () => {
-    const plan = planEnable('app@acme', [app({ enabled: false })]);
-    expect(plan.failure?.message).toBe('Dependency "lib@acme" is not installed. Install it first.');
-  });
-
-  test('an unknown plugin enables nothing and fails naming itself', () => {
-    expect(planEnable('ghost@acme', []).failure?.missing).toEqual(['ghost@acme']);
+    expect(plan.enable).toEqual(['lib@acme', 'app@acme']);
   });
 });
 

@@ -12,20 +12,28 @@
 export type PathJoin = (base: string, relativePath: string) => string;
 
 /** The plugins root of a default install, relative to the home directory. */
-const DEFAULT_ROOT = '.claude/plugins';
+const PLUGINS_FOLDER = 'plugins';
+const DEFAULT_ROOT = `.claude/${PLUGINS_FOLDER}`;
 
 /**
- * The plugins root: `CLAUDE_CODE_PLUGIN_CACHE_DIR` when set, else `~/.claude/plugins`. "Despite the
- * name, this sets the parent directory, not the cache itself" (env-vars.md). Judgment
- * (spec/judgments.md): an empty value is no override, as for an unset variable.
+ * The plugins root: `CLAUDE_CODE_PLUGIN_CACHE_DIR` when set, else `plugins` under the configuration
+ * directory (`CLAUDE_CONFIG_DIR`: "All settings, session history, and plugins are stored under this
+ * path"), else `~/.claude/plugins`. "Despite the name, this sets the parent directory, not the cache
+ * itself" (env-vars.md). Judgments (spec/judgments.md): the docs do not say which wins when both
+ * variables are set, so the one that names the plugins root itself wins over the configuration
+ * directory; an empty value is no override, as for an unset variable.
  */
 export function resolvePluginsRoot(options: {
   readonly home: string;
   readonly override?: string;
+  /** `CLAUDE_CONFIG_DIR`: the directory every `~/.claude` path lives under when it is set. */
+  readonly configDir?: string;
   readonly join: PathJoin;
 }): string {
-  const { override, home, join } = options;
-  return override === undefined || override === '' ? join(home, DEFAULT_ROOT) : override;
+  const { override, configDir, home, join } = options;
+  if (override !== undefined && override !== '') return override;
+  if (configDir !== undefined && configDir !== '') return join(configDir, PLUGINS_FOLDER);
+  return join(home, DEFAULT_ROOT);
 }
 
 /** The names the table of "Find plugins on disk" gives; each is directly under the root. */

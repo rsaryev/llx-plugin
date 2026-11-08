@@ -12,7 +12,8 @@ import type { StoreLayout } from './store-layout.ts';
  * The SDK types the `source` of an `extraKnownMarketplaces` entry, with `installLocation` and
  * `autoUpdate`; the file adds `lastUpdated`. The kit's `MarketplaceSource` names its member
  * `kind` (`directory`, `file`); the file writes that under `source`, as the settings key does. A
- * Localix `local` source is a `directory` or a `file` here, migrated once and never written.
+ * host that kept its registry in another shape migrates it to this one itself, once: the kit reads
+ * and writes only the shape above and keeps no reader for another.
  * Judgments (spec/judgments.md): the wording of the corrupted-file message after its quoted lead;
  * a registry with any entry that does not match is read as empty, since every command that needs it fails.
  */
@@ -67,6 +68,20 @@ const corruptedMessage = (names: readonly string[]): string =>
     names.length === 1 ? 'does' : 'do'
   } not match the registry schema`;
 
+const UNREADABLE_LEAD = 'Failed to load marketplace configuration';
+
+/** What an empty file reports (errors.md: `JSON Parse error: Unexpected EOF`), the same on every runtime. */
+const EMPTY_DETAIL = 'JSON Parse error: Unexpected EOF';
+
+/**
+ * The detail after the lead. An empty (or blank) file is the documented `JSON Parse error:
+ * Unexpected EOF`. Judgment (spec/judgments.md): for any other text that is not JSON the detail is
+ * the message of the runtime's own `JSON.parse`, which differs between engines (the docs show
+ * only the empty file's), so only the lead is a promise.
+ */
+const parseDetail = (text: string, thrown: unknown): string =>
+  text.trim() === '' ? EMPTY_DETAIL : thrown instanceof Error ? thrown.message : String(thrown);
+
 /** The registry's text; no file is no marketplaces. */
 export function parseKnownMarketplaces(text: string | undefined): KnownMarketplacesRead {
   if (text === undefined) return { marketplaces: {}, issues: [] };
@@ -74,19 +89,19 @@ export function parseKnownMarketplaces(text: string | undefined): KnownMarketpla
   try {
     parsed = JSON.parse(text);
   } catch (thrown) {
-    const detail = thrown instanceof Error ? thrown.message : String(thrown);
-    return failed('unreadable', `Failed to load marketplace configuration: ${detail}`);
+    return failed('unreadable', `${UNREADABLE_LEAD}: ${parseDetail(text, thrown)}`);
   }
   if (!isRecord(parsed)) return failed('corrupted', 'Marketplace configuration file is corrupted');
-  const marketplaces: Record<string, KnownMarketplace> = {};
-  const mismatched: string[] = [];
-  for (const [name, raw] of Object.entries(parsed)) {
-    const read = readEntry(raw);
-    if (read === undefined) mismatched.push(name);
-    else marketplaces[name] = read;
-  }
+  // Own-property reads and `Object.fromEntries`: an entry named `__proto__` is an entry like any other.
+  const read = Object.entries(parsed).map(([name, raw]) => ({ name, entry: readEntry(raw) }));
+  const mismatched = read.filter((one) => one.entry === undefined).map((one) => one.name);
   return mismatched.length === 0
-    ? { marketplaces, issues: [] }
+    ? {
+        marketplaces: Object.fromEntries(
+          read.flatMap((one) => (one.entry === undefined ? [] : [[one.name, one.entry] as const])),
+        ),
+        issues: [],
+      }
     : failed('corrupted', corruptedMessage(mismatched));
 }
 

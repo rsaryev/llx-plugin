@@ -114,6 +114,14 @@ spec(
       expect(read.unreadable).toEqual([]);
     });
 
+    test('a key named __proto__ is set aside like any other, never taken as the prototype', () => {
+      const text = `{"version":2,"plugins":{"__proto__":[${JSON.stringify(record())}],"a b":[1]}}`;
+      const read = parseInstalledPlugins(text);
+      expect(Object.keys(read.setAside)).toEqual(['__proto__', 'a b']);
+      expect(Object.getPrototypeOf(read.setAside)).toBe(Object.prototype);
+      expect(read.writable).toBe(true);
+    });
+
     test('a valid id is never set aside, a reserved origin included', () => {
       const read = parseInstalledPlugins(
         file({ 'p@inline': [record()], 'p.q_r-1@m.x': [record()] }),
@@ -159,9 +167,11 @@ spec([UNREADABLE_RECORD, `${UNREADABLE_RECORD}.Several such records`], () => {
     expect(read.issues.map((found) => found.severity)).toEqual(['error']);
   });
 
-  test('the same file is kept as it is when it is not written back', () => {
-    const text = file({ 'new@acme': [record({ scope: 'galaxy' })] });
-    expect(parseInstalledPlugins(text).writable).toBe(false);
+  test('a file with such a record is not writable, and the record is neither read nor set aside', () => {
+    const read = parseInstalledPlugins(file({ 'new@acme': [record({ scope: 'galaxy' })] }));
+    expect(read.writable).toBe(false);
+    expect(read.records).toEqual({});
+    expect(read.setAside).toEqual({});
   });
 });
 

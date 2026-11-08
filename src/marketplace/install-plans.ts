@@ -45,21 +45,28 @@ export function pluginActions(facts: PluginActionFacts): readonly string[] {
 export type PanelClose =
   | { readonly reload: 'run' }
   | { readonly reload: 'none' }
+  | { readonly reload: 'queue-until-response-ends' }
   | { readonly reload: 'warn-and-leave-pending'; readonly forceCommand: string };
 
 /**
  * "When you close the `/plugin` panel with pending changes you made in it, Claude Code runs
  * `/reload-plugins` for you. If the reload would invalidate the prompt cache, it warns and leaves
- * the changes pending instead. Run `/reload-plugins --force` to apply them anyway."
+ * the changes pending instead. Run `/reload-plugins --force` to apply them anyway." The panel "runs
+ * `/reload-plugins` for you, or queues it until the response that's streaming finishes"
+ * (troubleshooting.md, `Run /reload-plugins to apply.`). Judgment (spec/judgments.md): the warning
+ * comes first, since the docs give the prompt-cache refusal without a streaming exception.
  */
 export function closePanel(state: {
   readonly pending: boolean;
   readonly invalidatesPromptCache: boolean;
+  /** A response is streaming in the session. */
+  readonly streaming: boolean;
 }): PanelClose {
   if (!state.pending) return { reload: 'none' };
-  return state.invalidatesPromptCache
-    ? { reload: 'warn-and-leave-pending', forceCommand: '/reload-plugins --force' }
-    : { reload: 'run' };
+  if (state.invalidatesPromptCache) {
+    return { reload: 'warn-and-leave-pending', forceCommand: '/reload-plugins --force' };
+  }
+  return state.streaming ? { reload: 'queue-until-response-ends' } : { reload: 'run' };
 }
 
 // ---- uninstalling a plugin the project enables ----
@@ -108,12 +115,27 @@ const PREFIX: { readonly [S in CommandSurface]: string } = {
   session: '/plugin marketplace',
 };
 
-/** The command for an action, in a shell or in a session; `update` and `remove` take the marketplace name. */
-export const marketplaceCommand = (
+/**
+ * The command for an action, in a shell or in a session. `claude plugin marketplace remove <name>`
+ * needs the name; `update` takes one or none; in a session `/plugin marketplace remove [name]`
+ * opens the Marketplaces tab with none (cli-reference.md, "plugin marketplace remove", "Commands in
+ * a session").
+ */
+export function marketplaceCommand(action: 'list', surface: CommandSurface): string;
+export function marketplaceCommand(
+  action: 'update',
+  surface: CommandSurface,
+  name?: string,
+): string;
+export function marketplaceCommand(action: 'remove', surface: 'shell', name: string): string;
+export function marketplaceCommand(action: 'remove', surface: 'session', name?: string): string;
+export function marketplaceCommand(
   action: MarketplaceAction,
   surface: CommandSurface,
   name?: string,
-): string => [PREFIX[surface], action, name].filter((part) => part !== undefined).join(' ');
+): string {
+  return [PREFIX[surface], action, name].filter((part) => part !== undefined).join(' ');
+}
 
 export interface MarketplaceUpdatePlan {
   /** The marketplaces whose listing is refreshed. */
@@ -124,27 +146,43 @@ export interface MarketplaceUpdatePlan {
   readonly failure?: string;
 }
 
+const plural = (count: number): string => `${count} marketplace${count === 1 ? '' : 's'}`;
+
+/** The success line of each surface: `Successfully updated ...` from a shell, `✔ Updated ...` in a session. */
+const UPDATED: {
+  readonly [S in CommandSurface]: (refreshed: readonly string[], named: boolean) => string;
+} = {
+  shell: (refreshed, named) =>
+    named
+      ? `Successfully updated marketplace: ${refreshed.join(', ')}`
+      : `Successfully updated ${plural(refreshed.length)}`,
+  session: (refreshed) => `✔ Updated ${plural(refreshed.length)}`,
+};
+
 /**
  * `claude plugin marketplace update <name>` refreshes that listing and prints `Successfully updated
  * marketplace: <name>`; with no name it refreshes every marketplace's listing, leaves installed
  * plugins at their current versions and prints a count such as `Successfully updated 2
- * marketplaces`. A name that is not registered refreshes nothing: `Marketplace '<name>' not
- * found` (troubleshooting.md).
+ * marketplaces`. In a session the line is `✔ Updated 1 marketplace`. A name that is not registered
+ * refreshes nothing: `Marketplace '<name>' not found` (troubleshooting.md). Judgment
+ * (spec/judgments.md): a count other than one is `✔ Updated N marketplaces` in a session, and an
+ * empty registry refreshes nothing and is a count of 0, not a failure.
  */
 export function planMarketplaceUpdate(
   requested: string | undefined,
   registered: readonly string[],
+  surface: CommandSurface,
 ): MarketplaceUpdatePlan {
   const none = { updatesInstalledPlugins: false } as const;
   if (requested === undefined) {
     return {
       refresh: registered,
       ...none,
-      success: `Successfully updated ${registered.length} marketplace${registered.length === 1 ? '' : 's'}`,
+      success: UPDATED[surface](registered, false),
     };
   }
   return registered.includes(requested)
-    ? { refresh: [requested], ...none, success: `Successfully updated marketplace: ${requested}` }
+    ? { refresh: [requested], ...none, success: UPDATED[surface]([requested], true) }
     : { refresh: [], ...none, failure: `Marketplace '${requested}' not found` };
 }
 

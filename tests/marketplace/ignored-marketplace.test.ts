@@ -13,6 +13,7 @@ import type { MarketplaceSource } from '../../src/format/marketplace/types.ts';
 import {
   ignoredLine,
   ignoredReason,
+  untrustedSource,
   untrustedSourceMessage,
   type IgnoreChecks,
 } from '../../src/marketplace/ignored-marketplace.ts';
@@ -29,7 +30,9 @@ const entry = (
 });
 
 const GITHUB: MarketplaceSource = { kind: 'github', repo: 'a/b', path: 'm.json' };
-const OK: IgnoreChecks = { location: 'local', nameRefused: false };
+const OK: IgnoreChecks = { location: 'local' };
+/** Another spelling of the reserved `claude-code-plugins`, refused whatever its source. */
+const SPELLING = 'claude.code.plugins';
 
 const LOCATION =
   'Its location is on a network drive, has "." or ".." in its path, or couldn\'t be checked';
@@ -92,6 +95,20 @@ spec(`install.troubleshooting.Marketplace "<name>" is added but ignored`, () => 
     expect(reason && ignoredLine('git-mk', reason, 'list')).toStartWith(
       "Marketplace git-mk is added but ignored. Its git URL can't be used: ",
     );
+    expect(reason?.sentence).toBe(
+      'Its git URL can\'t be used: "169.254.169.254" is a loopback, link-local or cloud-metadata address',
+    );
+  });
+
+  test("a git URL the address check refuses carries that check's message after the colon", () => {
+    const reason = ignoredReason(
+      'git-mk',
+      entry({ kind: 'git', url: 'ext::sh -c x', path: 'm.json' }),
+      OK,
+    );
+    expect(reason?.sentence).toBe(
+      'Its git URL can\'t be used: "ext::sh -c x" is not a git URL: it must start with https://, http://, file:// or git@',
+    );
   });
 
   test('a usable git URL is fine', () => {
@@ -124,12 +141,9 @@ spec(`install.troubleshooting.Marketplace "<name>" is added but ignored`, () => 
   });
 
   test('a refused name shows "(see the debug log)" in place of a reason', () => {
-    const reason = ignoredReason('claude.code.plugins', entry(GITHUB), {
-      ...OK,
-      nameRefused: true,
-    });
-    expect(reason && ignoredLine('claude.code.plugins', reason, 'list')).toStartWith(
-      'Marketplace claude.code.plugins is added but ignored (see the debug log)',
+    const reason = ignoredReason(SPELLING, entry(GITHUB), OK);
+    expect(reason && ignoredLine(SPELLING, reason, 'list')).toStartWith(
+      `Marketplace ${SPELLING} is added but ignored (see the debug log)`,
     );
   });
 
@@ -138,9 +152,8 @@ spec(`install.troubleshooting.Marketplace "<name>" is added but ignored`, () => 
   });
 
   test('the first failing check names the reason, in the order the docs list them', () => {
-    const reason = ignoredReason('t', entry({ kind: 'url', url: 'ftp://x/m.json' }), {
+    const reason = ignoredReason(SPELLING, entry({ kind: 'url', url: 'ftp://x/m.json' }), {
       location: 'network',
-      nameRefused: true,
     });
     expect(reason && ignoredLine('t', reason, 'list')).toContain(LOCATION);
   });
@@ -154,15 +167,67 @@ spec(`install.troubleshooting.Marketplace "<name>" is registered from an untrust
   });
 });
 
+spec(`install.troubleshooting.Marketplace "<name>" is registered from an untrusted source`, () => {
+  const reserved = 'claude-community';
+
+  test('a reserved name registered from a GitHub repository outside anthropics stops loading, with the message', () => {
+    const source: MarketplaceSource = {
+      kind: 'github',
+      repo: 'acme/claude-community',
+      path: 'm.json',
+    };
+    expect(untrustedSource(reserved, entry(source))).toBe(untrustedSourceMessage(reserved));
+    expect(ignoredReason(reserved, entry(source), OK)).toBeUndefined();
+  });
+
+  test('the same name from github.com/anthropics/ loads', () => {
+    const source: MarketplaceSource = {
+      kind: 'github',
+      repo: 'anthropics/claude-community',
+      path: 'm.json',
+    };
+    expect(untrustedSource(reserved, entry(source))).toBeUndefined();
+    expect(ignoredReason(reserved, entry(source), OK)).toBeUndefined();
+  });
+
+  test('a git URL under github.com/anthropics/ loads, one elsewhere does not', () => {
+    const official: MarketplaceSource = {
+      kind: 'git',
+      url: 'https://github.com/anthropics/x.git',
+      path: 'm.json',
+    };
+    const other: MarketplaceSource = {
+      kind: 'git',
+      url: 'https://git.example.com/anthropics/x.git',
+      path: 'm.json',
+    };
+    expect(untrustedSource(reserved, entry(official))).toBeUndefined();
+    expect(untrustedSource(reserved, entry(other))).toBeDefined();
+  });
+
+  test('a reserved name from a URL or a local folder is untrusted: only GitHub sources of anthropics may use it', () => {
+    expect(
+      untrustedSource(reserved, entry({ kind: 'url', url: 'https://x.example/m.json' })),
+    ).toBeDefined();
+    expect(untrustedSource(reserved, entry({ kind: 'directory', path: '/work/mk' }))).toBeDefined();
+  });
+
+  test('a name that is not reserved is trusted from any source', () => {
+    expect(untrustedSource('team-tools', entry(GITHUB))).toBeUndefined();
+  });
+
+  test('another spelling of a reserved name is refused for the name, not for its source', () => {
+    expect(untrustedSource(SPELLING, entry(GITHUB))).toBeUndefined();
+    expect(ignoredReason(SPELLING, entry(GITHUB), OK)).toBeDefined();
+  });
+});
+
 describe('the remove command', () => {
   test('is named in the fix of a refused name, so adding it again under the same name is not suggested', () => {
-    const reason = ignoredReason('claude.code.plugins', entry(GITHUB), {
-      ...OK,
-      nameRefused: true,
-    });
-    expect(reason && ignoredLine('claude.code.plugins', reason, 'errors-tab')).toEqual({
-      message: 'Marketplace "claude.code.plugins" is added but ignored (see the debug log)',
-      guidance: 'Remove it with: claude plugin marketplace remove claude.code.plugins',
+    const reason = ignoredReason(SPELLING, entry(GITHUB), OK);
+    expect(reason && ignoredLine(SPELLING, reason, 'errors-tab')).toEqual({
+      message: `Marketplace "${SPELLING}" is added but ignored (see the debug log)`,
+      guidance: `Remove it with: claude plugin marketplace remove ${SPELLING}`,
     });
   });
 });

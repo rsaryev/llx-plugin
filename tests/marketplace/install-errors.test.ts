@@ -7,6 +7,7 @@
  * No plugins available or No marketplaces configured, § Plugin directory not found at path. Quoted
  * texts are asserted verbatim; the joins the docs do not show are in spec/judgments.md.
  */
+import { closePanel } from '../../src/marketplace/install-plans.ts';
 import { describe, expect, test } from 'bun:test';
 import {
   alreadyAddedFromDifferentSource,
@@ -15,7 +16,7 @@ import {
   enabledNotInstalled,
   failedToInstall,
   failureOnce,
-  installSummaryEnding,
+  installActivation,
   isInstalledGlobally,
   marketplaceDirectoryNotFound,
   nameTheMarketplace,
@@ -154,9 +155,30 @@ spec('install.troubleshooting.Failed to install: <plugin> (<reason>)', () => {
 });
 
 spec('install.troubleshooting.Run /reload-plugins to apply.', () => {
-  test('an install that did not activate ends with the reload line, not "Plugin is now active."', () => {
-    expect(installSummaryEnding(false)).toBe('Run /reload-plugins to apply.');
-    expect(installSummaryEnding(true)).toBe('Plugin is now active.');
+  test('an install that activated ends "Plugin is now active."', () => {
+    expect(installActivation({ invalidatesPromptCache: false, activationFailed: false })).toEqual({
+      activated: true,
+      ending: 'Plugin is now active.',
+    });
+  });
+
+  test.each([
+    ['activating it would invalidate the prompt cache', true, false],
+    ['the activation attempt failed', false, true],
+    ['both', true, true],
+  ])('not activated because %s: the summary ends with the reload line', (_why, cache, failed) => {
+    expect(installActivation({ invalidatesPromptCache: cache, activationFailed: failed })).toEqual({
+      activated: false,
+      ending: 'Run /reload-plugins to apply.',
+    });
+  });
+
+  test('the panel closes and runs /reload-plugins for you, or queues it until the streaming response finishes', () => {
+    const closed = { pending: true, invalidatesPromptCache: false };
+    expect(closePanel({ ...closed, streaming: false })).toEqual({ reload: 'run' });
+    expect(closePanel({ ...closed, streaming: true })).toEqual({
+      reload: 'queue-until-response-ends',
+    });
   });
 
   test('the notice that can appear above the prompt at the same time', () => {
