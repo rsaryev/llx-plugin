@@ -109,3 +109,48 @@ export {
   type MarketplaceAdd,
   type PluginCommandPlan,
 } from './install-hosts.ts';
+/** The Node.js package dependencies of a plugin: the plan, the registry-only rule and what the user sees. */
+export { nodeDepsRun, planNodeDepsInstall } from './node-deps.ts';
+export {
+  DEPS_ORIGIN_OF_MODE,
+  INSTALL_TIMEOUT_MS,
+  type DepsOrigin,
+  type NodeDepsInput,
+  type NodeDepsInstall,
+  type NodeDepsPlan,
+  type NodeDepsResult,
+  type NodeDepsSkip,
+  type PackageManager,
+  type SkipReason as NodeDepsSkipReason,
+  type StagedFile,
+  type UnsupportedLockfile,
+} from './node-deps-types.ts';
+export {
+  installOutcome,
+  nodeDepsNote,
+  updateRetriesInstall,
+  type CachedCopy,
+  type FailureCause,
+  type InstallOutcome,
+  type NodeDepsNote,
+  type NoteKind,
+} from './node-deps-failure.ts';
+export {
+  readLockfile,
+  type LockedOrigin,
+  type LockfileFacts,
+  type LockfileName,
+  type RootDependencies,
+} from './node-deps-lockfile.ts';
+export {
+  classifySpecifier,
+  dependencyRefusal,
+  downloadLinkRefusal,
+  readPackageJson,
+  specifierRefusals,
+  type DependencyMap,
+  type DependencySection,
+  type PackageJson,
+  type SpecifierKind,
+  type SpecifierRefusal,
+} from './node-deps-spec.ts';

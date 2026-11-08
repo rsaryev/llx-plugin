@@ -1,7 +1,8 @@
 import { error, type PluginIssue } from '../format/issues.ts';
 import type { GitRepository } from '../ports/marketplace.ts';
 import { isBlockedHost } from './blocked-hosts.ts';
-import { NOT_A_LINK, npmRefusalMessage } from './install-failures.ts';
+import { npmRefusalMessage } from './install-failures.ts';
+import { isDefaultRegistry, packageValueRefusal } from './node-deps-spec.ts';
 
 /**
  * The checks made before anything is fetched (plugins/marketplace-reference.md, "url plugin
@@ -84,97 +85,13 @@ export interface NpmSafety {
   readonly defaultRegistry?: string;
 }
 
-interface Refusal {
-  readonly matches: (value: string) => boolean;
-  readonly reason: string;
-}
-
-const hostOf = (link: string): string | undefined => {
-  try {
-    return new URL(link).hostname.toLowerCase();
-  } catch {
-    return undefined;
-  }
-};
-
-const LINK = /^https?:\/\//i;
-/** Hosts whose tarball links are refused, GitHub release downloads included. */
-const REFUSED_TARBALL_HOSTS = [
-  'github.com',
-  'gist.github.com',
-  'gitlab.com',
-  'bitbucket.org',
-  'git.sr.ht',
-];
-const GITLAB_REGISTRY_PATH = '/api/v4/';
-
-const onRefusedHost = (link: string): boolean => {
-  const host = hostOf(link);
-  if (host === undefined) return false;
-  const named = REFUSED_TARBALL_HOSTS.some((name) => host === name || host.endsWith(`.${name}`));
-  if (!named) return false;
-  const gitlabRegistry =
-    host === 'gitlab.com' && new URL(link).pathname.startsWith(GITLAB_REGISTRY_PATH);
-  return !gitlabRegistry;
-};
-
-/** In the order the docs list them; the first that matches is the reason given. */
-const REFUSALS: readonly Refusal[] = [
-  {
-    matches: (value) => /^npm:/i.test(value) || value.includes('@npm:'),
-    reason: "it is an npm: alias; use the package's own name",
-  },
-  {
-    matches: (value) =>
-      /^file:/i.test(value) || /^(?:\.{1,2}(?:[\\/]|$)|[\\/~]|[A-Za-z]:[\\/])/.test(value),
-    reason:
-      'it is a folder or file: path; use a relative path source for a folder in the marketplace',
-  },
-  {
-    // "github:acme/formatter" is the docs' own example of a value that "is not an http or https link".
-    matches: (value) => /^(?:git\+|git:|git@|ssh:|github:|gitlab:|bitbucket:|gist:)/i.test(value),
-    reason: NOT_A_LINK,
-  },
-  {
-    matches: (value) =>
-      (LINK.test(value) && /\.git(?:[#?].*)?$/i.test(value)) ||
-      (!value.startsWith('@') && /^[^\s/:@]+\/[^\s/:]+(?:#.*)?$/.test(value)),
-    reason: 'it is a git address',
-  },
-  {
-    matches: (value) => LINK.test(value) && onRefusedHost(value),
-    reason:
-      'it is a tarball link on github.com, gist.github.com, gitlab.com, bitbucket.org or git.sr.ht (only a GitLab npm registry link under gitlab.com/api/v4/ is allowed)',
-  },
-];
-
-const trailingSlash = (url: string): string => url.replace(/\/+$/, '');
-
-const isDefaultRegistryLink = (link: string, defaultRegistry: string | undefined): boolean =>
-  defaultRegistry !== undefined &&
-  `${trailingSlash(link)}/`
-    .toLowerCase()
-    .startsWith(`${trailingSlash(defaultRegistry)}/`.toLowerCase());
-
-/** "Claude Code checks the `package` value before fetching anything." */
+/**
+ * "Claude Code checks the `package` value before fetching anything." The kinds of value and what
+ * each means are the registry-only rule of `node-deps-spec`, shared with the dependency install.
+ */
 export function npmPackageIssues(pkg: string, safety: NpmSafety, path: string): PluginIssue[] {
-  const refusal = REFUSALS.find((candidate) => candidate.matches(pkg));
-  if (refusal !== undefined) {
-    return [error(path, npmRefusalMessage(pkg, refusal.reason))];
-  }
-  const plainHttp = /^http:\/\//i.test(pkg);
-  if (plainHttp && !isDefaultRegistryLink(pkg, safety.defaultRegistry)) {
-    return [
-      error(
-        path,
-        npmRefusalMessage(
-          pkg,
-          'it is a tarball link over http, which is allowed only on your own default npm registry',
-        ),
-      ),
-    ];
-  }
-  return [];
+  const reason = packageValueRefusal(pkg, safety.defaultRegistry);
+  return reason === undefined ? [] : [error(path, npmRefusalMessage(pkg, reason))];
 }
 
 /** The `registry` URL "must use `https` unless it is the installing user's own default npm registry". */
@@ -183,10 +100,9 @@ export function npmRegistryIssues(
   safety: NpmSafety,
   path: string,
 ): PluginIssue[] {
-  const own =
-    safety.defaultRegistry !== undefined &&
-    trailingSlash(registry).toLowerCase() === trailingSlash(safety.defaultRegistry).toLowerCase();
-  if (own || /^https:\/\//i.test(registry)) return [];
+  if (isDefaultRegistry(registry, safety.defaultRegistry) || /^https:\/\//i.test(registry)) {
+    return [];
+  }
   return [
     error(
       path,
@@ -196,6 +112,14 @@ export function npmRegistryIssues(
 }
 
 // ---- archive ----
+
+const hostOf = (link: string): string | undefined => {
+  try {
+    return new URL(link).hostname.toLowerCase();
+  } catch {
+    return undefined;
+  }
+};
 
 /** `url` "must use `https://` and can't point at a loopback, link-local, or cloud-metadata host". */
 export function archiveUrlIssues(url: string, path: string): PluginIssue[] {

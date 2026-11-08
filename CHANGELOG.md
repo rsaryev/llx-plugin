@@ -22,6 +22,16 @@
   `linkModeHash`, `subdirectoryPathHash`, `unknownVersionSteps`, `pluginNames`, `lookupPlugin`,
   `folderCollisions` and `listingFields`, with the strict-mode and display-field merge rules proven.
 
+- The Node.js package dependencies of a plugin: `planNodeDepsInstall` (a copied plugin with a
+  `package.json` and `bun.lock`, `npm-shrinkwrap.json` or `package-lock.json` gets a frozen,
+  script-free install in a separate folder under a 60-second timeout; in-place and link-mode plugins,
+  unsupported or unreadable lockfiles, a missing package manager, overrides, patches, non-registry
+  dependencies, `http` downloads and a `package.json` that differs from the lockfile skip it),
+  `nodeDepsRun`, `readLockfile`, `readPackageJson`, `nodeDepsNote` (the `are not installed` and
+  `were not installed, because ...` notes, a warning: the plugin loads), `installOutcome` and the
+  registry-only rule (`classifySpecifier`, `dependencyRefusal`, `downloadLinkRefusal`) that the npm
+  source's `package` check now shares.
+
 ### Fixed
 
 - Install and cache lifecycle (review fixes): an install of a source kind the kit cannot fetch is
