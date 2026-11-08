@@ -57,13 +57,17 @@ interface Entry {
 /** Without an answer from the host a shell placeholder asks, and an `ask` aborts the expansion (skills.md, "Permission checks on injected commands"). */
 const ASKS: ShellPermission = () => 'ask';
 
+/**
+ * A plugin's skill and command of one name are one entry, the command's: Claude Code 2.1.319 lists
+ * `<plugin>:<name>` in `slash_commands` with the command's own `user-invocable`, whichever of the
+ * two the plugin has under that name (spec/judgments.md, "oracle 2.1.319").
+ */
 const entriesOf = (state: HostState): readonly Entry[] =>
-  state.active.flatMap((plugin) =>
-    [...plugin.catalog.skills, ...plugin.catalog.commands].map((invocable) => ({
-      plugin,
-      invocable,
-    })),
-  );
+  state.active.flatMap((plugin) => {
+    const commanded = new Set(plugin.catalog.commands.map((command) => command.command));
+    const skills = plugin.catalog.skills.filter((skill) => !commanded.has(skill.command));
+    return [...skills, ...plugin.catalog.commands].map((invocable) => ({ plugin, invocable }));
+  });
 
 function failed(name: string, message: string): Expansion {
   return { ok: false, issues: [error(`/${name}`, message)] };

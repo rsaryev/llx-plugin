@@ -18,6 +18,10 @@
 
 ### Fixed
 
+- Session registration, as Claude Code 2.1.319 does (`bun run oracle:runtime`): a plugin skill a scan
+  finds is named after its folder, not its frontmatter `name`; two agents with one `name` register
+  once; a skill and a command with one name are one menu entry, the command; a plugin whose manifest
+  sets `defaultEnabled: false` is off until `enabledPlugins` turns it on.
 - Corpus: the loading comparison leaves out what `plugin details` does not list (nested agents
   and commands, single files a manifest path names, inline commands), which a runtime session
   still loads.

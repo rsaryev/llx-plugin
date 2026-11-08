@@ -18,6 +18,21 @@ export interface PluginCatalog {
   readonly issues: readonly PluginIssue[];
 }
 
+/**
+ * One component per name, the first one kept: Claude Code 2.1.319 registers two agent files that
+ * declare the same `name` once (spec/judgments.md, "oracle 2.1.319"; which one it keeps is not
+ * observable in the session's `init` event, so the kit keeps the first in loading order).
+ */
+const firstPerName = <T>(items: readonly T[], nameOf: (item: T) => string): T[] => {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const name = nameOf(item);
+    if (seen.has(name)) return false;
+    seen.add(name);
+    return true;
+  });
+};
+
 /** `db:migrate` is the file `db/migrate.md` below its folder. */
 const relativePath = (file: PluginTextFile): string => `${file.name.split(':').join('/')}.md`;
 
@@ -35,9 +50,16 @@ function readSkills(plugin: Plugin) {
     readSkill(pathOf(file, 'skills'), file.text, {
       origin: originOf(plugin, file.directory === '.'),
       dirName: file.name,
+      fixedName: true,
     }),
   );
-  return { skills: reads.map((read) => read.skill), issues: reads.flatMap((read) => read.issues) };
+  return {
+    skills: firstPerName(
+      reads.map((read) => read.skill),
+      (skill) => skill.command,
+    ),
+    issues: reads.flatMap((read) => read.issues),
+  };
 }
 
 /**
@@ -69,7 +91,10 @@ function readCommands(plugin: Plugin) {
       : readEntry(plugin, file, file.entry),
   );
   return {
-    commands: reads.flatMap((read) => read.command ?? []),
+    commands: firstPerName(
+      reads.flatMap((read) => read.command ?? []),
+      (command) => command.command,
+    ),
     issues: reads.flatMap((read) => read.issues),
   };
 }
@@ -83,7 +108,10 @@ function readAgents(plugin: Plugin) {
     }),
   );
   return {
-    agents: reads.flatMap((read) => read.agent ?? []),
+    agents: firstPerName(
+      reads.flatMap((read) => read.agent ?? []),
+      (agent) => agent.scopedName,
+    ),
     issues: reads.flatMap((read) => read.issues),
   };
 }
