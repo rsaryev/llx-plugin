@@ -335,6 +335,22 @@
 - Hook output (`hooks/output`): `SubagentStart` `hookSpecificOutput.additionalContext` is proven
   as a requirement (accepted for that event only, carried from every hook, capped, and no decision
   holds subagent creation back).
+- Mods, two seams of load. `ModCompiler.compile` returns `{ scan?, run?, issues }`: `scan` is an ES
+  module the static scan reads (`claude plugin validate`, `plugin.register`'s `e.uses`), `run` is the
+  code and format (`esm`, `cjs`, `iife`...) the host chose for its engine, which `ModRuntime.load` now
+  receives with its `format`. A compiler whose run output is an ES module may return it alone; a CommonJS
+  scan output is refused with a message that names both outputs. New `MatcherEngine` port
+  (`createModChain({ matcherEngine, matcherMs })`, `createModsHost` likewise): the regular expressions of
+  hook matchers are tested there, under a limit, instead of on the host thread, and a test the engine
+  refuses or does not answer is no match plus a skipped-hook line. The lines of skipped hooks follow
+  troubleshoot.md: the transcript or stderr gets the first of each mod, event and kind (`throw`,
+  `timeout`, `wrong-shape`) until the mod reloads, the debug log gets every occurrence (`HookReport.kind`).
+  A runtime or compiler that throws is a `hooks module did not load` line, a stack overflow the
+  documented reason (`engineStackIssue`, `the engine ran out of stack linking the file and its imports`,
+  `...loading the file (code nested too deep): <message>`), the parser's reason has no line number, and
+  a `Client` error with no message is `the module failed without a message`. `DispatchOptions.before` is
+  where the managed `PreToolUse` hooks run, ahead of the first mod. 19 requirements of the mods events,
+  overview, create and troubleshoot pages are now proven.
 
 ### Fixed
 

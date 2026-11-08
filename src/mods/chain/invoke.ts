@@ -1,6 +1,6 @@
 import { createBudget, deepFreeze } from '../../foundation/index.ts';
 import { MOD_LIMITS } from '../../protocol/mods-limits.ts';
-import type { ModsApi } from '../types.ts';
+import type { ModsApi, SkipKind } from '../types.ts';
 import { guardApi } from './api-guard.ts';
 import { NESTING_EXEMPT, hookMs, type Context } from './context.ts';
 import { createDownstream, finish, type Downstream, type Stream } from './downstream.ts';
@@ -41,12 +41,20 @@ async function* runCore(ctx: Context, e: unknown): Stream {
   return await out;
 }
 
-/** Runs the chain from the first hook at or after `from` whose matcher accepts `e`, then Claude Code's own behaviour. */
+/**
+ * Runs the chain from the first hook at or after `from` whose matcher accepts `e`, then Claude
+ * Code's own behaviour. A hook whose matcher could not be tested (the engine refused a pattern or
+ * did not answer in time) is skipped like one that failed, and the line says so.
+ */
 export async function* runFrom(ctx: Context, from: number, e: unknown): Stream {
+  const run = { clock: ctx.clock, signal: ctx.options.signal, ms: ctx.matcherMs };
   for (let index = from; index < ctx.chain.length; index += 1) {
     const entry = ctx.chain[index];
-    if (entry?.matcher.test(e))
+    if (!entry) continue;
+    const verdict = await entry.matcher.test(e, run);
+    if (verdict.matched)
       return yield* invoke({ ctx, entry, index, e, downstream: createDownstream() });
+    if (verdict.fault) skipReport({ ctx, entry }, verdict.fault.kind, verdict.fault.reason);
   }
   return yield* runCore(ctx, e);
 }
@@ -137,12 +145,14 @@ function catchRun(site: Site, failure: Failure): Run | undefined {
   };
 }
 
-function report(site: Site, reason: string): void {
+/** The line for a hook skipped: `my-mod: tool.call hook skipped: threw Error: boom`. */
+function skipReport(site: Pick<Site, 'ctx' | 'entry'>, kind: SkipKind, reason: string): void {
   const { entry, ctx } = site;
   const plugin = entry.plugin.name;
   ctx.options.report({
     plugin,
     event: ctx.name,
+    kind,
     reason,
     line: `${plugin}: ${ctx.name} hook skipped: ${reason}`,
   });
@@ -160,7 +170,7 @@ async function* recover(site: Site, failure: Failure): Stream {
   const answered = run ? yield* attempt(site, run) : undefined;
   if (answered && 'value' in answered) return answered.value;
   // A handler that fails too leaves the hook skipped as if it had no handler: the hook's own reason is the line.
-  if (REPORTED[failure.kind]) report(site, failure.reason);
+  if (REPORTED[failure.kind]) skipReport(site, failure.skip, failure.reason);
   const latest = site.downstream.latest();
   return latest ? yield* finish(latest) : yield* runFrom(site.ctx, site.index + 1, site.e);
 }

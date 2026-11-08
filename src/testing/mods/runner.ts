@@ -124,7 +124,7 @@ async function runFile(options: RunOptions, file: string): Promise<FileOutcome> 
   const signal = options.signal ?? new AbortController().signal;
   const header = [`${file}:`];
   const compiled = await options.compiler.compile({ files: options.files, entry: file }, signal);
-  if (compiled.code === undefined) {
+  if (compiled.run === undefined) {
     return {
       lines: [...header, `(fail) ${file}`, ...issueLines(compiled.issues)],
       passed: 0,
@@ -133,7 +133,7 @@ async function runFile(options: RunOptions, file: string): Promise<FileOutcome> 
   }
   const kit = createTestKit();
   const loaded = await options.testRuntime.loadTests(
-    { plugin: 'plugin', file, code: compiled.code, kit },
+    { plugin: 'plugin', file, code: compiled.run.code, format: compiled.run.format, kit },
     signal,
   );
   if (loaded.issues.length > 0) {

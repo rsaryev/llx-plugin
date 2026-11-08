@@ -6,6 +6,8 @@ import type { JsonObject } from '../../foundation/index.ts';
 import type { PluginFiles } from '../../ports/index.ts';
 import type { ModsApiHandle, ModPluginRef } from '../api/index.ts';
 import type { ModCompiler, ModRuntime } from '../ports.ts';
+import { noRunOutput, scanSourceOf, type CompileResult, type RunOutput } from './compile-output.ts';
+import { thrownByCompiler, thrownByEngine } from './engine-faults.ts';
 import type { HookReport, ModChain, RegisterTier } from '../types.ts';
 import { registeredFrom } from './guest.ts';
 import { modOptions } from './options.ts';
@@ -67,7 +69,8 @@ export interface LoadOutcome {
 interface Prepared {
   readonly manifest: PluginManifest;
   readonly entry: string;
-  readonly code: string;
+  /** What the engine runs, in the format the compiler chose. */
+  readonly run: RunOutput;
   readonly scan: ModScan;
   readonly options: JsonObject;
 }
@@ -116,6 +119,31 @@ async function scanned(
   return needed === undefined ? { scan } : { problem: needed };
 }
 
+/** The compiler's outputs; a compiler that throws is an issue, not a throw out of the loader. */
+async function compileModule(
+  env: LoaderEnv,
+  files: PluginFiles,
+  entry: string,
+): Promise<CompileResult> {
+  try {
+    return await env.compiler.compile({ files, entry }, env.signal);
+  } catch (thrown) {
+    return { issues: [thrownByCompiler(entry, thrown)] };
+  }
+}
+
+/** The runtime's answer; a runtime that throws (it ran out of stack, or the module's top-level code threw) is an issue, not a throw. */
+async function evaluate(
+  env: LoaderEnv,
+  input: Parameters<ModRuntime['load']>[0],
+): ReturnType<ModRuntime['load']> {
+  try {
+    return await env.runtime.load(input, env.signal);
+  } catch (thrown) {
+    return { issues: [thrownByEngine(input.entry, thrown)] };
+  }
+}
+
 /** The manifest, the module the plugin names, its compiled code, its scan and its options; or why not. */
 async function prepare(env: LoaderEnv, plugin: ModPlugin): Promise<Prepared | LoadOutcome> {
   const { candidate, files } = plugin;
@@ -127,13 +155,15 @@ async function prepare(env: LoaderEnv, plugin: ModPlugin): Promise<Prepared | Lo
   const bad = firstError(modules.issues);
   if (bad.length > 0) return didNotLoad(candidate.name, messages(bad));
   if (modules.entry === undefined) return {};
-  const compiled = await env.compiler.compile({ files, entry: modules.entry }, env.signal);
-  if (compiled.code === undefined) {
-    return didNotLoad(candidate.name, messages(compiled.issues) || 'the compiler gave no code');
+  const compiled = await compileModule(env, files, modules.entry);
+  if (compiled.run === undefined) {
+    return didNotLoad(candidate.name, noRunOutput(compiled, modules.entry));
   }
+  const source = scanSourceOf(compiled, modules.entry);
+  if ('problem' in source) return didNotLoad(candidate.name, source.problem);
   const checked = await scanned(env, files, manifestRead.manifest, {
     entry: modules.entry,
-    code: compiled.code,
+    code: source.code,
   });
   if ('problem' in checked) return didNotLoad(candidate.name, checked.problem);
   const { scan } = checked;
@@ -146,7 +176,7 @@ async function prepare(env: LoaderEnv, plugin: ModPlugin): Promise<Prepared | Lo
   return {
     manifest: manifestRead.manifest,
     entry: modules.entry,
-    code: compiled.code,
+    run: compiled.run,
     scan,
     options: fitted.options,
   };
@@ -155,7 +185,7 @@ async function prepare(env: LoaderEnv, plugin: ModPlugin): Promise<Prepared | Lo
 /** What each loaded module was made from, so a failed reload can put it back. */
 const preparedOf = new WeakMap<LoadedMod, Prepared>();
 
-const isPrepared = (value: Prepared | LoadOutcome): value is Prepared => 'code' in value;
+const isPrepared = (value: Prepared | LoadOutcome): value is Prepared => 'run' in value;
 
 /** Registers the module's hooks; the mods before it have already answered `plugin.register`. */
 async function start(env: LoaderEnv, mod: OrderedMod, prepared: Prepared): Promise<LoadOutcome> {
@@ -166,16 +196,14 @@ async function start(env: LoaderEnv, mod: OrderedMod, prepared: Prepared): Promi
     return { line: `${name}: refused by ${refusal.by}: ${refusal.reason}` };
   }
   const handle = await env.createApi({ name, tier: mod.tier });
-  const loaded = await env.runtime.load(
-    {
-      plugin: name,
-      entry: prepared.entry,
-      code: prepared.code,
-      options: prepared.options,
-      surface: env.surface,
-    },
-    env.signal,
-  );
+  const loaded = await evaluate(env, {
+    plugin: name,
+    entry: prepared.entry,
+    code: prepared.run.code,
+    format: prepared.run.format,
+    options: prepared.options,
+    surface: env.surface,
+  });
   if (!loaded.module) {
     handle.dispose();
     return didNotLoad(name, messages(loaded.issues) || 'the runtime loaded nothing');

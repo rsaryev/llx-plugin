@@ -9,13 +9,14 @@ import {
 } from '../api/index.ts';
 import { createModChain } from '../chain/index.ts';
 import { createEventRules } from '../events/index.ts';
-import type { DenyRuleChecker, ModCompiler, ModRuntime } from '../ports.ts';
+import type { DenyRuleChecker, MatcherEngine, ModCompiler, ModRuntime } from '../ports.ts';
 import type { HookReport, ModChain, RegisteredHook, RegisterTier } from '../types.ts';
 import { createModsUi, withUiRules, type ModInterface, type ModsUi } from '../ui/index.ts';
 import { guardHooks, type ApprovalLedger } from './guard.ts';
 import type { LoaderEnv, LoadedMod } from './loader.ts';
 import { pluginOptions, type ModsPolicyInput } from './policy-input.ts';
 import { tagRefusals, withRegisterRules, type RefusalBook } from './register-call.ts';
+import { forgettingChain, skipReports, type SkipReports } from './skip-reports.ts';
 import { withUnanswered } from './unanswered.ts';
 import { GUARD_ID, GUARD_NAME } from '../../protocol/mods-settings.ts';
 
@@ -31,6 +32,9 @@ export interface Wires {
   readonly report: (report: HookReport) => void;
   readonly signal: AbortSignal;
   readonly unanswered?: (name: string) => string | undefined;
+  /** Where the regular expressions of matchers run (`createModChain`); in this thread without one. */
+  readonly matcherEngine?: MatcherEngine;
+  readonly matcherMs?: number;
 }
 
 export interface Wired {
@@ -55,11 +59,27 @@ const savedOptions = (policy: ModsPolicyInput) => (id: string) => {
   return user === undefined && managed === undefined ? undefined : { ...user, ...managed };
 };
 
+/** The chain of the mods runtime, over the ports the host gave: the skipped-hook lines it reports go through `reports`. */
+function chainOf(given: Wires, reports: SkipReports): ModChain {
+  const rules = withRegisterRules(withUiRules(withApiRules(createEventRules())));
+  const chain = forgettingChain(
+    createModChain({
+      clock: given.ports.clock,
+      rules,
+      ...(given.matcherEngine ? { matcherEngine: given.matcherEngine } : {}),
+      ...(given.matcherMs === undefined ? {} : { matcherMs: given.matcherMs }),
+    }),
+    reports,
+  );
+  return chain;
+}
+
 /** The chain, the interface and the API of the mods runtime, wired over the ports the host gave. */
 export function wire(given: Wires): Wired {
-  const { ports, policy, debug, report, signal } = given;
-  const rules = withRegisterRules(withUiRules(withApiRules(createEventRules())));
-  const chain = createModChain({ clock: ports.clock, rules });
+  const { ports, policy, debug, signal } = given;
+  const reports = skipReports(debug, given.report);
+  const { report } = reports;
+  const chain = chainOf(given, reports);
   const calls = given.unanswered ? withUnanswered(chain, given.unanswered) : chain;
   const state = createStateStore();
   const scopes: ScopeBook = new Map();

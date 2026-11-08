@@ -144,10 +144,20 @@ export interface ModPluginInfo {
   readonly api: ModsApi;
 }
 
+/**
+ * Why a hook was skipped, as the line classes it: it threw, it ran over a time limit, or what it
+ * returned had the wrong shape (troubleshoot.md, "`hook skipped`": "A hook threw, exceeded its time
+ * limit, or returned a result of the wrong shape"). A skip because the event came from the mod's
+ * own API call is `re-entry`, and is not reported.
+ */
+export type SkipKind = 'throw' | 'timeout' | 'wrong-shape' | 're-entry';
+
 /** One line the chain reports when it skips a hook: `my-mod: tool.call hook skipped: threw Error: boom`. */
 export interface HookReport {
   readonly plugin: string;
   readonly event: string;
+  /** The class of failure: the line is shown once for each event and kind until the mod reloads. */
+  readonly kind: SkipKind;
   readonly reason: string;
   readonly line: string;
 }
@@ -197,6 +207,13 @@ export interface DispatchOptions {
   /** Claude Code's own behaviour, at the end of the chain. A streaming event gives a stream. */
   readonly core: (e: unknown) => Promise<unknown> | AsyncGenerator<unknown, unknown>;
   readonly report: (report: HookReport) => void;
+  /**
+   * What runs before the first mod's hook (events.md, "Where settings hooks run in the order": the
+   * `PreToolUse` hooks of managed settings run before the first mod's `tool.call` hook). It returns
+   * `undefined` to let the chain run, or the answer of the whole event: then no hook runs, no more
+   * than Claude Code's own behaviour.
+   */
+  readonly before?: (e: unknown) => unknown;
   readonly reentry?: ReentryInfo;
   /**
    * The mod whose mods API call fires the event: only the hooks of the mods that run before it

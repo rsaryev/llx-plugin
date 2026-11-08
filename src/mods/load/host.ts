@@ -1,7 +1,7 @@
 import type { PluginFiles } from '../../ports/index.ts';
 import { type AnyModEventName, type StreamEventName } from '../../protocol/mods-events.ts';
 import type { ModHostPorts } from '../api/index.ts';
-import type { DenyRuleChecker, ModCompiler, ModRuntime } from '../ports.ts';
+import type { DenyRuleChecker, MatcherEngine, ModCompiler, ModRuntime } from '../ports.ts';
 import type {
   ChunkOf,
   EventOf,
@@ -41,6 +41,14 @@ export interface ModsHostOptions {
   readonly deny: DenyRuleChecker;
   /** The debug log (troubleshoot.md, "Read the debug log"). */
   readonly debug?: (line: string) => void;
+  /** Where the regular expressions of mods' matchers run; without one, in this thread (`MatcherEngine`). */
+  readonly matcherEngine?: MatcherEngine;
+  /** How long the engine has for one test of one pattern, in milliseconds (default 100). */
+  readonly matcherMs?: number;
+  /**
+   * The transcript line (or stderr) for a skipped hook: the first of each mod, event and kind until
+   * the mod reloads. The debug log gets every occurrence.
+   */
   readonly report?: (report: HookReport) => void;
   readonly signal?: AbortSignal;
   /**

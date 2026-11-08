@@ -7,6 +7,8 @@ import {
 import { validateManifest } from '../../../format/manifest.ts';
 import type { PluginFiles } from '../../../ports/index.ts';
 import type { ModCompiler } from '../../ports.ts';
+import { scanSourceOf } from '../compile-output.ts';
+import { thrownByCompiler } from '../engine-faults.ts';
 import { declaredState, missingTypes } from '../types-decl.ts';
 import { callLabel, hookLabel, scanHooksModule, type ModScan } from '../scan/index.ts';
 
@@ -112,9 +114,18 @@ async function sourceOf(
       issue: error(entry, `${entry}: a TypeScript or JSX hooks module needs a compiler to be read`),
     };
   }
-  const compiled = await compiler.compile({ files, entry }, signal ?? new AbortController().signal);
-  if (compiled.code !== undefined) return { code: compiled.code };
-  return { issue: compiled.issues[0] ?? error(entry, `${entry}: the compiler gave no code`) };
+  try {
+    const compiled = await compiler.compile(
+      { files, entry },
+      signal ?? new AbortController().signal,
+    );
+    // `validate` reads the scan output and runs nothing, so a compiler with only a scan output is enough.
+    const source = scanSourceOf(compiled, entry);
+    if ('code' in source) return source;
+    return { issue: compiled.issues[0] ?? error(entry, source.problem) };
+  } catch (thrown) {
+    return { issue: thrownByCompiler(entry, thrown) };
+  }
 }
 
 interface Module {

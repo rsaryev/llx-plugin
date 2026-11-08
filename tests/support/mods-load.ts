@@ -1,4 +1,5 @@
 import type { PluginFiles } from '../../src/ports/index.ts';
+import { ESM_FORMAT } from '../../src/mods/load/compile-output.ts';
 import type { DenyRuleChecker, ModCompiler, ModRuntime } from '../../src/mods/ports.ts';
 import {
   createModsHost,
@@ -76,7 +77,7 @@ function modFolder(
 export const textCompiler: ModCompiler = {
   compile: async ({ files, entry }) => {
     const code = await files.readText(entry);
-    return code === undefined ? { issues: [] } : { code, issues: [] };
+    return code === undefined ? { issues: [] } : { run: { code, format: ESM_FORMAT }, issues: [] };
   },
 };
 

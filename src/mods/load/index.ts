@@ -50,3 +50,11 @@ export {
   type ValidateInput,
   type ValidateReport,
 } from './commands/validate.ts';
+export {
+  ESM_FORMAT,
+  scanSourceOf,
+  type CompileResult,
+  type RunOutput,
+  type ScanOutput,
+} from './compile-output.ts';
+export { engineStackIssue, type StackPhase } from './engine-faults.ts';

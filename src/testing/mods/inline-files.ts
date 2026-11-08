@@ -1,4 +1,5 @@
 import type { DirectoryEntry, FileStat, PluginFiles } from '../../ports/index.ts';
+import { ESM_FORMAT } from '../../mods/load/compile-output.ts';
 import type { ModCompiler, ModRuntime } from '../../mods/ports.ts';
 import type { RegisterFunction } from './inline-runtime.ts';
 import { inlineRuntime } from './inline-runtime.ts';
@@ -88,7 +89,9 @@ export function withInlineCompiler(
     compile: async (input, signal) => {
       if (!inline.has(input.files)) return compiler.compile(input, signal);
       const code = await input.files.readText(input.entry);
-      return code === undefined ? { issues: [] } : { code, issues: [] };
+      return code === undefined
+        ? { issues: [] }
+        : { run: { code, format: ESM_FORMAT }, issues: [] };
     },
   };
 }

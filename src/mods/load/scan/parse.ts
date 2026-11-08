@@ -15,16 +15,27 @@ export interface Parsed {
 const messageOf = (thrown: unknown): string =>
   thrown instanceof Error ? thrown.message : String(thrown);
 
+/**
+ * The message of a stack overflow without the position acorn appends, `(2:3405)`: the documented
+ * reason "gives no line number and doesn't say what kind of code is nested" (troubleshoot.md).
+ */
+export const stackMessage = (thrown: unknown): string =>
+  messageOf(thrown).replace(/\s*\(\d+:\d+\)$/, '');
+
+/** Whether `thrown` is a JavaScript engine running out of stack: a `RangeError`, or a message that says so. */
+export const isStackOverflow = (thrown: unknown): boolean =>
+  thrown instanceof RangeError || /stack/i.test(messageOf(thrown));
+
 export function parseModule(source: string, file: string): Parsed {
   try {
     return { program: parse(source, { ecmaVersion: 'latest', sourceType: 'module' }), issues: [] };
   } catch (thrown) {
-    if (thrown instanceof RangeError || /stack/i.test(messageOf(thrown))) {
+    if (isStackOverflow(thrown)) {
       return {
         issues: [
           error(
             file,
-            `${file}: code nested too deep to scan (the parser stopped: ${messageOf(thrown)})`,
+            `${file}: code nested too deep to scan (the parser stopped: ${stackMessage(thrown)})`,
           ),
         ],
       };

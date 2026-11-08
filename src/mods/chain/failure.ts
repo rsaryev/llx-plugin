@@ -1,8 +1,10 @@
 import type { HookFailure, HookFailureKind, ReentryCause } from '../../protocol/mods-events.ts';
+import type { SkipKind } from '../types.ts';
 
-/** A hook failure with the reason a skipped hook is reported under. */
+/** A hook failure with the reason a skipped hook is reported under, and the class the line is shown once for. */
 export interface Failure extends HookFailure {
   readonly reason: string;
+  readonly skip: SkipKind;
 }
 
 /**
@@ -26,21 +28,31 @@ const isErrorLike = (value: unknown): value is { name?: unknown; message: string
 /** A hook that threw: `threw Error: boom`. */
 export function thrown(error: unknown): Failure {
   if (!isErrorLike(error))
-    return { kind: 'throw', message: String(error), reason: `threw ${String(error)}` };
+    return {
+      kind: 'throw',
+      message: String(error),
+      reason: `threw ${String(error)}`,
+      skip: 'throw',
+    };
   const name = 'name' in error && typeof error.name === 'string' ? error.name : 'Error';
-  return { kind: 'throw', message: error.message, reason: `threw ${name}: ${error.message}` };
+  return {
+    kind: 'throw',
+    message: error.message,
+    reason: `threw ${name}: ${error.message}`,
+    skip: 'throw',
+  };
 }
 
 /** A hook that used up its own time (judgment: the docs name the kind, not the words). */
 export function timedOut(ms: number): Failure {
   const message = `ran over its ${ms} ms limit`;
-  return { kind: 'timeout', message, reason: `timed out: ${message}` };
+  return { kind: 'timeout', message, reason: `timed out: ${message}`, skip: 'timeout' };
 }
 
 /** The hooks of one event that used up the time they share. */
 export function groupTimedOut(event: string, ms: number): Failure {
   const message = `the ${event} hooks ran over the ${ms} ms they share`;
-  return { kind: 'timeout', message, reason: `timed out: ${message}` };
+  return { kind: 'timeout', message, reason: `timed out: ${message}`, skip: 'timeout' };
 }
 
 /**
@@ -48,7 +60,12 @@ export function groupTimedOut(event: string, ms: number): Failure {
  * rule it broke)` (troubleshoot.md, "A pane or band is empty").
  */
 export function wrongShape(problem: string): Failure {
-  return { kind: 'throw', message: problem, reason: `returned the wrong shape (${problem})` };
+  return {
+    kind: 'throw',
+    message: problem,
+    reason: `returned the wrong shape (${problem})`,
+    skip: 'wrong-shape',
+  };
 }
 
 /** A hook that returned a result that is refused: nested too deep. */
@@ -57,6 +74,7 @@ export function refused(problem: string): Failure {
     kind: 'throw',
     message: problem,
     reason: `returned a result that is refused: ${problem}`,
+    skip: 'wrong-shape',
   };
 }
 
@@ -65,8 +83,8 @@ export function reentered(plugin: string, cause: ReentryCause | undefined): Fail
   const message = `the event came from a mods API call by ${plugin}`;
   const reason = `skipped: ${message}`;
   return cause === undefined
-    ? { kind: 're-entry', message, reason }
-    : { kind: 're-entry', message, cause, reason };
+    ? { kind: 're-entry', message, reason, skip: 're-entry' }
+    : { kind: 're-entry', message, cause, reason, skip: 're-entry' };
 }
 
 /** What `next.error` holds: the failure without its report reason. */
