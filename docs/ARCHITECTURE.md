@@ -20,11 +20,11 @@ agent, not a model client and not a sandbox. It runs anywhere JavaScript runs.
 | 3     | `settings`    | Settings layers and the policy keys, pure over data (planned)                 |
 | 3     | `marketplace` | Marketplace and plugin-entry reading, sources, dependencies (planned)         |
 | 3     | `loading`     | A plugin folder to a typed `Plugin`; `loading/resolve` holds variable substitution (done), the rest planned |
-| 3     | `foundation`  | Shared by mods and the layer-4 streams: budgets, result shapes (planned)      |
+| 3     | `foundation`  | Shared by mods and the layer-4 streams: time budgets, deep freeze, plain-data limits, JSON sizes (done); result shapes planned |
 | 4     | `agents`      | Sub-agent definitions and their scoping (planned)                             |
 | 4     | `hooks`       | The hook engine: select, run through ports, merge outputs (planned)           |
 | 4     | `skills`      | Skill and command expansion (planned)                                         |
-| 4     | `mods`        | The mods runtime: events, guest hooks through a host runtime (planned)        |
+| 4     | `mods`        | The mods runtime: `mods/chain` (the middleware engine, done), then events, API, UI and loading (planned); its ports live in `mods/ports.ts` |
 | 5     | `host`        | `createPluginHost`, sessions: composition of the modules above (planned)      |
 | 6     | `testing`     | Fakes of every port for hosts' tests (planned)                                |
 

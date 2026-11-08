@@ -59,6 +59,17 @@
   describes (events, matcher groups, the five handler types and their fields), into the official
   `HooksSettings`; and `matchesMatcher`, the matcher grammar of hooks.md (match-all, exact list,
   unanchored regular expression, the narrower set of `FileChanged` and `StopFailure`).
+- Mods hook chain (`mods/chain`): `createModChain` runs hooks as middleware by tier (`prepend`, `user`,
+  `append`, `builtin`, then Claude Code) with `e` deeply frozen, `next(e)`, `next.signal`,
+  `next.origin`, `next.budget`, `next.to(e, tier)`, matchers, `*` and `classic.*`, the failure
+  policy with `.catch` handlers (`next.error`, `next.error.cause`, `next.called`), re-entry, the
+  10 s, 50 ms (`prompt.edit`), 1 s (`.catch`) and shared `session.end` time limits measured on the
+  `Clock` port (a hook's time stops inside `next` and mods API calls except `$.clock.sleep`), the
+  28000-level nesting limits, async generator hooks for `turn.step` and `process.spawn`, and the
+  telemetry events' `{ to: 'collector' }` filter. Foundations for the other parts of mods:
+  `MOD_LIMITS`, `MOD_EVENT_NAMES` (48 events), `MODS_API`, `MOD_TIERS`, `foundation`
+  (`createBudget`, `deepFreeze`, `plainDataProblem`, `jsonChars`), and the mods ports (`ModRuntime`,
+  `ModCompiler`, `ModStore`, `TelemetrySink`, `ModWatcher`, `DenyRuleChecker`).
 
 ### Fixed
 

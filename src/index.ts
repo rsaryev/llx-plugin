@@ -39,3 +39,35 @@ export {
   type SdkOnlyTool,
 } from './protocol/tool-names.ts';
 export type * from './protocol/official-tools.ts';
+export * from './foundation/index.ts';
+export * from './mods/index.ts';
+export { MODS_API, type ModsMethod, type ModsNamespace } from './protocol/mods-api-names.ts';
+export {
+  API_EVENT_NAMES,
+  CLASSIC_EVENT_NAMES,
+  ENGINE_ORIGIN,
+  HOOK_FAILURE_KINDS,
+  MOD_EVENT_GROUPS,
+  MOD_EVENT_NAMES,
+  MOD_TIERS,
+  REENTRY_CAUSES,
+  STREAM_EVENTS,
+  TELEMETRY_EVENTS,
+  TELEMETRY_FILTER,
+  WILDCARDS,
+  type AnyModEventName,
+  type ApiEventName,
+  type ClassicEventName,
+  type HookFailure,
+  type HookFailureKind,
+  type HookOrigin,
+  type MatcherValue,
+  type ModEventGroup,
+  type ModEventName,
+  type ModMatcher,
+  type ModTier,
+  type ReentryCause,
+  type StreamEventName,
+  type Wildcard,
+} from './protocol/mods-events.ts';
+export { MOD_LIMITS, MOD_NAME_PATTERN } from './protocol/mods-limits.ts';

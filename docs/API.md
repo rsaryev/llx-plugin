@@ -252,6 +252,45 @@ out of the rules before it in the same source and list; `evaluateRules` applies 
 `Glob(...)`, `Grep(...)` and `NotebookEdit(...)` rules with a path never match; write `Edit(...)` or
 `Read(...)`. A host asks `readsNetworkPath` before it trusts any allow rule, hook or classifier.
 
+## Mods (in progress: the hook chain)
+
+A mod is a plugin whose hooks module registers event handlers (plugins/mods/overview.md). The kit
+never runs a module's source: the host evaluates it in an isolate it chooses through the
+`ModRuntime` port, and the kit runs the hooks it hands back through one chain per event.
+
+```ts
+import { createModChain, ENGINE_ORIGIN } from '@rsaryev/claude-plugin-kit';
+
+const chain = createModChain({ clock });
+const issues = chain.register({ name: 'my-mod', api }, 'user', hooks); // [] or why the module is refused
+const result = await chain.dispatch('tool.call', event, {
+  origin: ENGINE_ORIGIN,
+  signal,
+  core: (e) => runTheTool(e), // Claude Code's own behaviour, at the end of the chain
+  report: (report) => log(report.line), // my-mod: tool.call hook skipped: threw Error: boom
+});
+```
+
+| Piece                                 | Status  | Does                                                                                  |
+| ------------------------------------- | ------- | ------------------------------------------------------------------------------------- |
+| `createModChain(options)`             | done    | middleware chain by tier, matchers, `*` and `classic.*`, `next`, `next.to`, `.catch`, time and nesting limits; streams for `turn.step` and `process.spawn` through `dispatchStream` |
+| `MOD_LIMITS`, `MOD_NAME_PATTERN`      | done    | every number of the reference's Limits table                                          |
+| `MOD_EVENT_NAMES`, `MODS_API`, `MOD_TIERS`, `CLASSIC_EVENT_NAMES`, `API_EVENT_NAMES` | done | the 48 events, the 21 namespaces, the tiers, and the names derived from them |
+| `createBudget`, `deepFreeze`, `plainDataProblem`, `jsonChars`, `jsonBytes` | done | `foundation`: a time budget on the `Clock` port that stops while code waits, in-place deep freeze, a stack-safe walk with depth, node and character limits, JSON sizes |
+| `reentryCause(flags)`                 | done    | `rewritten` wins over `lent` (reference.md, `next.error.cause`)                       |
+| Events, API, UI, loading, test kit    | planned | the other parts of mods                                                               |
+
+`register` refuses a whole module (and adds none of its hooks) when `on("x")` is registered twice
+without a matcher, when a hook's form does not fit its event, when a telemetry hook lacks
+`{ to: 'collector' }`, or when a matcher's expression does not compile. `dispatch` takes the
+`DispatchOptions`: `core` is what runs after the last hook, `report` receives the line for every
+hook skipped, `reentry` names the mod whose own API call fired the event (its hooks are skipped
+as `re-entry`, with a cause of `rewritten` or `lent`), and `groupMs` the time all `session.end`
+hooks share (default 1.5 s; pass more when settings raise the SessionEnd budget). A hook's own
+time excludes `next` and mods API calls except `$.clock.sleep`; the chain wraps the mod's `$` to
+meter that and to reject an argument nested past 28000 levels. The ports for mods that name
+`PluginIssue` live in `src/mods/ports.ts`, not `src/ports`.
+
 ## Testing kit (planned)
 
 `@rsaryev/claude-plugin-kit/testing`: in-memory `PluginFiles`, a scripted `CommandRunner`, a
