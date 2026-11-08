@@ -1,0 +1,8 @@
+{
+  "loaded": true,
+  "agents": [],
+  "slashCommands": [],
+  "skills": [],
+  "mcpServers": ["plugin:mcp-file:alpha", "plugin:mcp-file:beta"],
+  "outputStyle": "default"
+}

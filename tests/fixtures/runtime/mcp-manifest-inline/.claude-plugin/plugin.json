@@ -1,0 +1,8 @@
+{
+  "name": "mcp-manifest-inline",
+  "mcpServers": {
+    "delta": {
+      "command": "no-such-binary-delta"
+    }
+  }
+}

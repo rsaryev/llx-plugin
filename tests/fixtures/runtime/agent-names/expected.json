@@ -1,0 +1,13 @@
+{
+  "loaded": true,
+  "agents": [
+    "agent-names:Has Space",
+    "agent-names:Mixed-Case",
+    "agent-names:bar",
+    "agent-names:baz"
+  ],
+  "slashCommands": [],
+  "skills": [],
+  "mcpServers": [],
+  "outputStyle": "default"
+}

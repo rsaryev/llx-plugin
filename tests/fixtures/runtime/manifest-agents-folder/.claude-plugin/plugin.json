@@ -1,0 +1,4 @@
+{
+  "name": "manifest-agents-folder",
+  "agents": "./custom-agents"
+}

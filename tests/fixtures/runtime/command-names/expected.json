@@ -1,0 +1,14 @@
+{
+  "loaded": true,
+  "agents": [],
+  "slashCommands": [
+    "command-names:git:deep:more",
+    "command-names:git:named",
+    "command-names:git:sync",
+    "command-names:named",
+    "command-names:top"
+  ],
+  "skills": [],
+  "mcpServers": [],
+  "outputStyle": "default"
+}

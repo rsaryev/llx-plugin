@@ -1,0 +1,8 @@
+{
+  "loaded": true,
+  "agents": [],
+  "slashCommands": ["skill-manifest-root:default-skill", "skill-manifest-root:top-skill"],
+  "skills": ["skill-manifest-root:default-skill", "skill-manifest-root:top-skill"],
+  "mcpServers": [],
+  "outputStyle": "default"
+}

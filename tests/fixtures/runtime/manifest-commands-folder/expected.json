@@ -1,0 +1,8 @@
+{
+  "loaded": true,
+  "agents": [],
+  "slashCommands": ["manifest-commands-folder:listed", "manifest-commands-folder:sub:deeper"],
+  "skills": [],
+  "mcpServers": [],
+  "outputStyle": "default"
+}

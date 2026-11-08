@@ -1,0 +1,14 @@
+{
+  "loaded": true,
+  "agents": [
+    "agent-nested:review:deep:inner",
+    "agent-nested:review:deep:plain",
+    "agent-nested:review:lint",
+    "agent-nested:review:other",
+    "agent-nested:review:security"
+  ],
+  "slashCommands": [],
+  "skills": [],
+  "mcpServers": [],
+  "outputStyle": "default"
+}

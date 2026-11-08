@@ -42,6 +42,15 @@ a comment citing both; a test of an oracle-only rule lives outside `spec(...)`
 | --- | --- | --- |
 | plugins/troubleshooting.md, "`Failed to load hooks from <path>`": a hooks file that fails the schema is a load failure of the hooks | A guard hook (`PreToolUse`, `PermissionRequest`) that cannot be read, or a stray guard or handler list outside `hooks`, keeps the whole plugin from loading | `loadPlugin` returns no plugin |
 | mcp.md, "Option 2": Claude Code skips a server whose entry cannot be read | An unreadable entry in the manifest's inline `mcpServers` keeps the whole plugin from loading (the same entry in `.mcp.json` is dropped) | `loadPlugin` returns no plugin |
+| plugins/components.md, "Skills": a frontmatter `name` "replaces the last segment" of `/<plugin>:<directory>` | A session (`init` event of `claude -p --plugin-dir`) names a skill that a scan finds after its folder; `name` is used only for a folder a manifest path names itself and for the plugin-root `SKILL.md` | The catalog gives the folder as the final name (`SkillLayout.fixedName`); `resolveSkillName` alone keeps the docs |
+| skills.md, "Resolve skills that share a name": a skill wins over a `.claude/commands/` file | In a plugin, the command's entry is the one in `slash_commands` for a skill and a command of one name | The session lists the command |
+
+The runtime oracle (`bun run oracle:runtime`, docs/TESTING.md, "Runtime oracle") reads what a session
+registers, not what `plugin details` lists, and is the stronger source for names: it shows nested
+agents, manifest paths and inline commands that the listing leaves out. Where the two disagree on a
+loading outcome the session wins. It also shows that two agents with one `name` register once, that
+a plugin whose manifest sets `defaultEnabled: false` registers nothing, and that `init.output_style`
+only echoes the setting; each has a row in `spec/judgments.md`.
 
 The corpus run (`bun run corpus:load`, docs/TESTING.md, "Loading oracle") also shows what the
 oracle does not settle: `plugin details` lists a shallow inventory, so the kit does not follow it
