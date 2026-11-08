@@ -6,10 +6,11 @@
  * `pgrep`, `jq -e`, `cmp`) and § Exit code 1 from searches and `git diff` in PowerShell (`findstr`
  * instead of `find` and `diff`).
  */
-import { describe, expect, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { run } from '../support/shell-run.ts';
+import { spec } from '../support/spec.ts';
 
-describe('"exit code 1 from search and comparison commands is a normal result" (bash)', () => {
+spec('skills.behavior.When an injected command fails', () => {
   const benign = [
     'grep foo file',
     'rg foo',
@@ -22,8 +23,6 @@ describe('"exit code 1 from search and comparison commands is a normal result" (
     'git diff --quiet',
     'git grep foo',
     'cat file | grep foo',
-    'timeout 5 grep foo file',
-    'FOO=1 grep foo file',
     'echo a && grep foo file',
   ];
   test.each(benign)('%s exits 1 and its output is injected', async (command) => {
@@ -38,6 +37,10 @@ describe('"exit code 1 from search and comparison commands is a normal result" (
     'git status',
     'npm test',
     'grep foo file | wc -l | cmp - x',
+    // judgment (spec/judgments.md): the Bash tool reads a command behind a wrapper or an
+    // assignment as written, and an injected command runs "the same way" as Claude's own
+    'timeout 5 grep foo file',
+    'FOO=1 grep foo file',
   ];
   test.each(failing)(
     '%s exits 1 and fails (the docs name pgrep, jq -e and cmp)',
@@ -55,7 +58,7 @@ describe('"exit code 1 from search and comparison commands is a normal result" (
   });
 });
 
-describe('the PowerShell list differs (tools-reference.md)', () => {
+spec('skills.behavior.When an injected command fails', () => {
   const powershell = { context: { shell: 'powershell' } } as const;
 
   test('grep, rg, egrep, fgrep, findstr, git grep and git diff are results at exit 1', async () => {

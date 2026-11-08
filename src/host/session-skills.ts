@@ -1,5 +1,4 @@
 import { error, warning, type PluginIssue } from '../format/issues.ts';
-import type { Command, Skill } from '../format/skill-types.ts';
 import type { SlashCommand } from '../protocol/official.ts';
 import { hookSessionGates } from '../settings/hooks/index.ts';
 import { createSkillSettingsPolicy } from '../settings/skills/index.ts';
@@ -14,6 +13,7 @@ import {
   menuEntries,
   modelListing,
   type ExpandPorts,
+  type ExpandRequest,
   type ExpandSession,
   type Expansion,
   type Invocable,
@@ -25,12 +25,12 @@ import {
 import type { SessionDirectories } from './session-directories.ts';
 import {
   createFolderSkills,
-  type FolderEntry,
   type FolderSkillSources,
   type SkillsReload,
 } from './session-folders.ts';
 import type { SkillHooksRegistrar } from './session-hooks.ts';
-import type { ActivePlugin, HostState } from './state.ts';
+import { pluginEntries, type Entry } from './session-skill-entries.ts';
+import type { HostState } from './state.ts';
 import type { SessionOptions } from './types.ts';
 
 /** Who asks for the skill: the user typing `/name`, or the model calling it. */
@@ -42,6 +42,10 @@ export interface ExpandOptions {
   readonly signal: AbortSignal;
   /** Default `user`: the skill is checked against `user-invocable`; `model` against `disable-model-invocation`. */
   readonly invoker?: SkillInvoker;
+  /** The `bashOutputMaxChars` setting: how much of an injected command's result arrives inline. */
+  readonly bashOutputMaxChars?: number;
+  /** Bare mode: an injected command that reaches its timeout stops instead of moving to the background. */
+  readonly bare?: boolean;
 }
 
 /** What the model is told and what the `/` menu offers; `usage`, `activated` and the budget as `modelListing`. */
@@ -87,47 +91,6 @@ export interface SkillPart {
    * name (skills.md, "When a synced skill name matches another command").
    */
   skillSources(): FolderSkillSources;
-}
-
-/** A plugin's skill or command, or one of the folders' (`plugin` absent). */
-interface Entry extends FolderEntry {
-  readonly plugin?: ActivePlugin;
-}
-
-/** Without an answer from the host a shell placeholder asks, and an `ask` aborts the expansion (skills.md, "Permission checks on injected commands"). */
-const ASKS: ShellPermission = () => 'ask';
-
-const folderName = (dir: string): string =>
-  dir.slice(Math.max(dir.lastIndexOf('/'), dir.lastIndexOf('\\')) + 1);
-
-/**
- * The name a plugin skill's frontmatter `name` also gives it without the plugin prefix: "The bare
- * `/fancy` also invokes the skill unless another command already uses that name" (skills.md, "How a
- * skill gets its command name"). A skill that keeps its folder's name has no bare name (judgment: the
- * docs state it for a `name`), and neither has a plugin's root `SKILL.md`.
- */
-function bareName(invocable: Skill | Command): string | undefined {
-  const { origin } = invocable;
-  if (!('plugin' in origin) || origin.rootSkill === true || !('dir' in invocable)) return undefined;
-  const bare = invocable.command.slice(`${origin.plugin}:`.length);
-  return bare === folderName(invocable.dir) ? undefined : bare;
-}
-
-function pluginEntries(state: HostState): readonly Entry[] {
-  const entries = state.active.flatMap((plugin) =>
-    [...plugin.catalog.skills, ...plugin.catalog.commands].map((invocable) => ({
-      plugin,
-      invocable,
-      names: [invocable.command],
-    })),
-  );
-  const used = new Set(entries.map((entry) => entry.invocable.command));
-  return entries.map((entry) => {
-    const bare = bareName(entry.invocable);
-    if (bare === undefined || used.has(bare)) return entry;
-    used.add(bare);
-    return { ...entry, names: [...entry.names, bare] };
-  });
 }
 
 /** What a hook's source is named after: the plugin, else where the skill lives (`user`, `project`). */
@@ -227,6 +190,19 @@ function withHooks(
     : { ...expansion, issues: [...expansion.issues, ...issues] };
 }
 
+/** Without an answer from the host a shell placeholder asks, and an `ask` aborts the expansion (skills.md, "Permission checks on injected commands"). */
+const ASKS: ShellPermission = () => 'ask';
+
+/** What the host says about the shell tool an injected command runs through. */
+const shellLimits = (
+  request: ExpandOptions,
+): Pick<ExpandRequest, 'bashOutputMaxChars' | 'bare'> => ({
+  ...(request.bashOutputMaxChars === undefined
+    ? {}
+    : { bashOutputMaxChars: request.bashOutputMaxChars }),
+  ...(request.bare === undefined ? {} : { bare: request.bare }),
+});
+
 export function createSkillPart(
   state: HostState,
   options: SessionOptions,
@@ -249,6 +225,7 @@ export function createSkillPart(
     locations: ports.locations,
     environment: ports.environment,
     permissions: options.permissions ?? ASKS,
+    ...(ports.scratch === undefined ? {} : { scratch: ports.scratch }),
   };
   return {
     skills: (listing = {}) => {
@@ -288,6 +265,7 @@ export function createSkillPart(
             managedPermissionRulesOnly: managedPermissionRulesOnly(state),
           },
           cwd: directories.cwd(),
+          ...shellLimits(request),
           signal: request.signal,
         },
         expandPorts,

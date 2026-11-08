@@ -1,7 +1,5 @@
 import type { Command, Skill } from '../format/skill-types.ts';
-import { ORIGIN_TRAITS } from '../format/skill-types.ts';
-import type { Settings } from '../protocol/official.ts';
-import type { Assert, Equal } from '../protocol/type-equality.ts';
+import { exposureOf, type ModelListing, type SkillOverrides } from './visibility.ts';
 
 /**
  * Who may invoke a skill and what the model and the `/` menu are told about it (skills.md,
@@ -11,24 +9,6 @@ import type { Assert, Equal } from '../protocol/type-equality.ts';
 
 /** A skill or a command file: both carry the two frontmatter fields (skills.md, "Choose where skills load"). */
 export type Invocable = Skill | Command;
-
-/** `skillOverrides` as the SDK types it: skill name to one of four states. */
-export type SkillOverrides = NonNullable<Settings['skillOverrides']>;
-export type OverrideState = SkillOverrides[string];
-
-/** The four states, in the order the docs list them. */
-export const OVERRIDE_STATES = [
-  'on',
-  'name-only',
-  'user-invocable-only',
-  'off',
-] as const satisfies readonly OverrideState[];
-
-/** @public A compile-time drift guard: a state Anthropic adds fails the typecheck here. */
-export type OverrideStatesMatchSdk = Assert<Equal<(typeof OVERRIDE_STATES)[number], OverrideState>>;
-
-/** What the model is told about a skill: name and description, name only, or nothing. */
-export type ModelListing = 'description' | 'name' | 'hidden';
 
 /**
  * Who starts a skill: the user typing `/name`, Claude through the Skill tool, a subagent's `skills`
@@ -52,22 +32,6 @@ export interface InvocationPolicy {
   readonly scheduledPrompt: boolean;
 }
 
-/** What a `skillOverrides` state leaves visible: to the model, and to the user. */
-const OVERRIDE_EXPOSURE: {
-  readonly [S in OverrideState]: { readonly model: ModelListing; readonly user: boolean };
-} = {
-  on: { model: 'description', user: true },
-  'name-only': { model: 'name', user: true },
-  'user-invocable-only': { model: 'hidden', user: true },
-  off: { model: 'hidden', user: false },
-};
-
-/** The state in force for a skill: absent from `skillOverrides` is `on`, and a plugin skill is never overridden. */
-export function overrideState(skill: Invocable, overrides: SkillOverrides = {}): OverrideState {
-  if (!ORIGIN_TRAITS[skill.origin.kind].honoursSkillOverrides) return 'on';
-  return Object.hasOwn(overrides, skill.name) ? (overrides[skill.name] ?? 'on') : 'on';
-}
-
 /**
  * The whole matrix for one skill: the frontmatter and the override together. "Description not in
  * context" for `disable-model-invocation: true`; a skill the model cannot invoke is also not
@@ -78,7 +42,7 @@ export function invocationPolicy(
   skill: Invocable,
   overrides: SkillOverrides = {},
 ): InvocationPolicy {
-  const exposure = OVERRIDE_EXPOSURE[overrideState(skill, overrides)];
+  const exposure = exposureOf(skill, overrides);
   const listedToModel = skill.disableModelInvocation ? 'hidden' : exposure.model;
   const model = listedToModel !== 'hidden';
   const user = skill.userInvocable && exposure.user;

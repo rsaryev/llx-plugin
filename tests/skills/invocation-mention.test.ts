@@ -4,7 +4,8 @@
  * judges from your wording whether you asked it to". The default matrix is in invocation.test.ts.
  */
 import { describe, expect, test } from 'bun:test';
-import { checkInvocation, type SkillOverrides } from '../../src/skills/invocation.ts';
+import { checkInvocation } from '../../src/skills/invocation.ts';
+import type { SkillOverrides } from '../../src/skills/visibility.ts';
 import { readSkillMentions } from '../../src/skills/mention.ts';
 import { skillWith } from '../support/skills.ts';
 import { spec } from '../support/spec.ts';

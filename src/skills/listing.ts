@@ -1,6 +1,7 @@
 import { escapeAngleBrackets } from '../format/skill-fields.ts';
 import type { SlashCommand } from '../protocol/official.ts';
-import { invocationPolicy, type Invocable, type SkillOverrides } from './invocation.ts';
+import { invocationPolicy, type Invocable } from './invocation.ts';
+import type { SkillOverrides } from './visibility.ts';
 
 /**
  * What the model and the `/` menu are told about the skills (skills.md, "Skill descriptions are cut

@@ -13,6 +13,18 @@
 
 ### Added
 
+- Skills: visibility, access, injection, lifecycle. `skills/visibility` holds the four `skillOverrides`
+  states as one registry that the listing, the menu and the invocation check read (`overrideMenuLabel` is
+  the `/skills` label); `skillNamesOf` gives the names a `Skill(...)` deny rule sees (nested unqualified
+  name, synced and plugin forms, aliases); `stackSkills` expands the first skill plus five stacked after it;
+  `invokeSkill`, `startTurn` and `reattachAfterCompaction` keep skill content, grants and the compaction
+  budget (5,000 tokens each, 25,000 in all); `launchFork` says what a `context: fork` skill starts;
+  `frontmatterIssues` gives the upload error for fields outside the Agent Skills spec. Injected commands
+  now follow the Bash tool: output past the inline ceiling is saved through `ExpandPorts.scratch` and
+  injected as a path and a preview (`bashOutputMaxChars`), a command moved to the background at its
+  timeout renders the skill with a note, exit 1 is classified like Claude's own commands, and
+  `disableSkillShellExecution` leaves managed skills alone. `Expansion.ignoredGrants` lists the grants
+  the managed settings withheld.
 - Sub-agents: the catalog. `scanAgents` reads the `.claude/agents/` folders of the managed directory, the
   project and its parents, the added directories and `~` through `FolderScan`, skipping the files Claude
   Code skips; `readFlagAgents` reads the `--agents` JSON; `builtinAgents` lists Explore, Plan, general-purpose

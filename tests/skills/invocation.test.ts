@@ -7,7 +7,8 @@
  * own"), skills.md § Override skill visibility from settings and § Restrict Claude's skill access.
  */
 import { describe, expect, test } from 'bun:test';
-import { OVERRIDE_STATES, checkInvocation, invocationPolicy } from '../../src/skills/invocation.ts';
+import { checkInvocation, invocationPolicy } from '../../src/skills/invocation.ts';
+import { OVERRIDE_STATES } from '../../src/skills/visibility.ts';
 import { PLUGIN, skillWith } from '../support/skills.ts';
 import { spec } from '../support/spec.ts';
 

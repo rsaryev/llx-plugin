@@ -233,7 +233,7 @@ resolveExecution(skill, { interactive: true, backgroundTasksDisabled: false, tri
 model catalogue (`availableModels`, the family substitution, auto mode support) is the host's:
 `ModelAvailability` is the three questions the kit asks.
 
-### Skill expansion (done: `skills/shell-scan`, `shell-exit`, `shell-run`, `expand`, `expand-policy`, `hook-limits`)
+### Skill expansion (done: `skills/shell-scan`, `shell-run`, `shell-result`, `shell-refusal`, `shell-ports`, `expand`, `expand-shell`, `expand-types`, `expand-policy`, `hook-limits`)
 
 What a skill becomes when it is invoked: the text the model receives and what the host must apply
 for the turn (skills.md, "Inject dynamic context", "How injected commands run", "Pre-approve tools
@@ -265,9 +265,31 @@ whitespace (`KEY=!`cmd`` stays literal); with bash a non-zero exit fails except 
 `rg`, `egrep`, `fgrep`, `find`, `diff`, `test`, `[`, `git diff` and `git grep` (PowerShell: no `find`
 or `diff`, plus `findstr`); each command runs under the `BASH_DEFAULT_TIMEOUT_MS` timeout (2 minutes by default) with stderr merged for bash;
 a synced skill's commands are not run on the owner's machine (`isolatedSession` says otherwise).
-The host owns registering and firing the hooks, the process, the working directory after a `cd`,
-moving a long command to the background, saving output past the inline ceiling to a file, and
-keeping `EndConversation` out of `disallowed` while another tool remains.
+The commands follow the Bash tool's rules: a command that reaches its timeout is moved to the
+background when the runner reports it (`SkillCommandResult.background`; the kit asks for the move with
+`moveToBackgroundOnTimeout` unless the line starts with `sleep`, background tasks are disabled or the
+session is bare), and the skill renders with a note that names the task and its file, otherwise the
+invocation aborts; a valid result past the inline ceiling is written through `ExpandPorts.scratch` and
+injected as a path and a preview (`bashOutputMaxChars` sizes the ceiling); a failure past 10,000
+characters is a head-and-tail excerpt. `disableSkillShellExecution` leaves a `managed` skill alone.
+`Expansion.ignoredGrants` lists the `allowed-tools` the managed settings withheld. The host owns
+registering and firing the hooks, the process, the working directory after a `cd`, starting the
+background task, and keeping `EndConversation` out of `disallowed` while another tool remains.
+
+### Skill visibility, access, stacking, lifecycle and forks (done: `skills/visibility`, `skill-rule`, `stack`, `lifecycle`, `fork`, `portable`)
+
+```ts
+import { stackSkills, skillNamesOf, invokeSkill, reattachAfterCompaction, launchFork } from '@rsaryev/claude-plugin-kit';
+```
+
+| Name                                          | Does                                                                                                   |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `OVERRIDE_EXPOSURE`, `exposureOf(skill, overrides)` | the `skillOverrides` table as a registry over `on`, `name-only`, `user-invocable-only`, `off`: what Claude is told and whether the `/` menu lists the skill; the listing, the menu and `checkInvocation` all read it; `overrideMenuLabel` is the `/skills` label (`user-only`) |
+| `skillNamesOf(skill, aliases?)`               | every name a skill goes by (command, nested unqualified name, synced forms, the host's aliases) for `PreparedCall.skillNames`, which a `Skill(...)` deny rule reads |
+| `stackSkills(message, catalog, options?)`     | the first skill plus up to five stacked after it and the argument text they share; a fork, an open-ended command (`takesCommandArguments`), a hidden or unknown name ends the stack; non-interactive loads the first only |
+| `invokeSkill`, `startTurn`, `reattachAfterCompaction` | the ledger of skill content in a conversation: a repeated identical rendering gets a note, a different one the full content again, grants clear at the next message, compaction keeps the latest invocation of each skill (5,000 tokens each, 25,000 in all, newest first) |
+| `launchFork(execution, command, text, agents)` | what a `context: fork` skill starts: the agent type, the content as its task, its startup context (Explore and Plan load no CLAUDE.md), waiting or background, the tool set; an unknown agent is an error |
+| `frontmatterIssues(text, path)`               | the hard error an upload, the Skills API or `package_skill.py` gives a field outside the Agent Skills spec; Claude Code accepts every field |
 
 ### Output styles (done: `format/output-style`, `skills/output-style-select`)
 
