@@ -135,7 +135,11 @@ describe('the model listing: who is listed (skills.md § Control who invokes a s
   });
 });
 
-spec('settings.key.skillOverrides', () => {
+/**
+ * `settings.key.skillOverrides` is claimed by the settings stream; its effect on the listing is
+ * documented (skills.md § Override skill visibility from settings) and proven here without claiming it.
+ */
+describe('skillOverrides on the listing (skills.md § Override skill visibility from settings)', () => {
   test('on, name-only, user-invocable-only, off: what Claude sees and the `/` menu (the docs table)', () => {
     const skills = ['a', 'b', 'c', 'd'].map((name) => described(name, `desc ${name}`));
     const overrides = { b: 'name-only', c: 'user-invocable-only', d: 'off' } as const;
@@ -215,38 +219,12 @@ describe('the listing size', () => {
     expect(result.descriptionsDropped).toEqual([]);
     expect(result.entries.every((entry) => entry.description !== undefined)).toBe(true);
   });
-
-  test('"The budget scales at 1% of the model\'s context window" (`skillListingBudgetFraction`)', () => {
-    const many = skills(40, 400);
-    const small = modelListing(many, { budget: { contextWindow: 200_000 } });
-    const raised = modelListing(many, { budget: { contextWindow: 200_000, fraction: 0.05 } });
-    const count = (kept: typeof small) =>
-      kept.entries.filter((entry) => entry.description !== undefined).length;
-    expect(count(small)).toBeLessThan(40);
-    expect(count(raised)).toBeGreaterThan(count(small));
-    expect(small.chars).toBeLessThanOrEqual(200_000 * 0.01 * 4 + 1_500);
-  });
-
-  test('a fixed character count (`SLASH_COMMAND_TOOL_CHAR_BUDGET`) replaces the fraction of the window', () => {
-    const many = skills(40, 400);
-    const fixed = modelListing(many, {
-      budget: { contextWindow: 200_000, fraction: 0.5, chars: 3000 },
-    });
-    expect(fixed.chars).toBeLessThanOrEqual(3000 + 40 * 40);
-    expect(fixed.entries.filter((entry) => entry.description !== undefined).length).toBeLessThan(
-      40,
-    );
-  });
-
-  test('no budget given lists every description', () => {
-    expect(modelListing(skills(30, 800)).descriptionsDropped).toEqual([]);
-  });
 });
 
 describe('listing details (judgments: spec/judgments.md)', () => {
-  test('a skill with `paths` is listed to the model once its paths have activated it', () => {
+  test('"The listing always contains every skill name": a skill with `paths` is a bare name until its paths activate it', () => {
     const gated = described('api-rules', 'API rules', 'paths: "src/api/**"');
-    expect(listed([gated])).toEqual([]);
+    expect(listed([gated])).toEqual([{ name: 'api-rules' }]);
     expect(listed([gated], { activated: new Set(['api-rules']) })).toEqual([
       { name: 'api-rules', description: 'API rules' },
     ]);

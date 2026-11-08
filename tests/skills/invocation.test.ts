@@ -174,10 +174,12 @@ describe('skillOverrides on invocation (skills.md § Override skill visibility f
 
   test('a skill hidden from Claude by an override is not run by a scheduled fire or preloaded', () => {
     // scheduled-tasks.md: "Skills withheld from Claude by a `skillOverrides` setting ... reach
-    // Claude as plain text instead of executing"
+    // Claude as plain text instead of executing"; sub-agents.md: preloading draws from the set
+    // Claude can invoke
     for (const state of ['user-invocable-only', 'off'] as const) {
-      expect(checkInvocation(ABSENT, 'scheduled-task', overridden(state)).allowed).toBe(false);
-      expect(checkInvocation(ABSENT, 'model', overridden(state)).allowed).toBe(false);
+      for (const by of ['scheduled-task', 'preload', 'model'] as const) {
+        expect(checkInvocation(ABSENT, by, overridden(state)).allowed).toBe(false);
+      }
     }
   });
 
@@ -217,6 +219,21 @@ describe('invocation verdicts (judgments: spec/judgments.md)', () => {
     if (verdict.allowed) throw new Error('unreachable');
     expect(verdict.message).toMatch(/ask the user/i);
     expect(verdict.message).toMatch(/do not/i);
+  });
+
+  test("a scheduled fire and a preload are told their own refusal, not the model's", () => {
+    const fire = checkInvocation(MANUAL_ONLY, 'scheduled-task');
+    const preload = checkInvocation(MANUAL_ONLY, 'preload');
+    if (fire.allowed || preload.allowed) throw new Error('unreachable');
+    // scheduled-tasks.md: the prompt "reaches Claude as plain text instead of executing"
+    expect(fire.message).toMatch(/plain text instead of executing/);
+    expect(fire.message).not.toMatch(/ask the user/i);
+    expect(preload.message).toMatch(/not preloaded/);
+    expect(preload.message).not.toMatch(/ask the user/i);
+    expect(fire.reason).toBe('disable-model-invocation');
+    const overrideFire = checkInvocation(ABSENT, 'scheduled-task', overridden('off'));
+    if (overrideFire.allowed) throw new Error('unreachable');
+    expect(overrideFire.message).toContain('skillOverrides');
   });
 
   test('a plugin skill is addressed by its command, with the plugin prefix', () => {

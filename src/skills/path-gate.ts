@@ -49,22 +49,69 @@ function alternatives(body: string): string[] {
 }
 
 /**
- * `src/**\/*.{ts,tsx}` to `src/**\/*.ts` and `src/**\/*.tsx` ("use brace expansion to match multiple
- * extensions in one pattern", memory.md). Judgment (spec/judgments.md): a group with no comma, or one
- * that never closes, is literal text, as in a shell.
+ * "A rule's whole `paths` list shares one budget of 1,000 expanded patterns and 4 MiB, and patterns
+ * without braces don't count against it" (memory.md, "Path-specific rules").
  */
-function expandBraces(pattern: string): string[] {
+const MAX_EXPANDED_PATTERNS = 1000;
+const MAX_EXPANDED_BYTES = 4 * 1024 * 1024;
+
+/**
+ * `src/**\/*.{ts,tsx}` to `src/**\/*.ts` and `src/**\/*.tsx` ("use brace expansion to match multiple
+ * extensions in one pattern", memory.md), or `undefined` when it would give more than `limit`
+ * patterns (it stops at the first one over, so the cost is bounded by the limit). Judgment
+ * (spec/judgments.md): a group with no comma, or one that never closes, is literal text, as in a shell.
+ */
+function expandBraces(pattern: string, limit: number): string[] | undefined {
   const open = pattern.indexOf('{');
-  if (open < 0) return [pattern];
-  const close = closingBrace(pattern, open);
-  if (close < 0) return [pattern];
+  const close = open < 0 ? -1 : closingBrace(pattern, open);
+  if (close < 0) return limit >= 1 ? [pattern] : undefined;
   const options = alternatives(pattern.slice(open + 1, close));
   const head = pattern.slice(0, open);
   const tail = pattern.slice(close + 1);
   if (options.length < 2) {
-    return expandBraces(tail).map((rest) => `${head}{${options[0] ?? ''}}${rest}`);
+    const rest = expandBraces(tail, limit);
+    return rest?.map((text) => `${head}{${options[0] ?? ''}}${text}`);
   }
-  return options.flatMap((option) => expandBraces(`${head}${option}${tail}`));
+  const expanded: string[] = [];
+  for (const option of options) {
+    const part = expandBraces(`${head}${option}${tail}`, limit - expanded.length);
+    if (part === undefined) return undefined;
+    expanded.push(...part);
+  }
+  return expanded;
+}
+
+const byteLength = (patterns: readonly string[]): number =>
+  patterns.reduce((sum, pattern) => sum + Buffer.byteLength(pattern), 0);
+
+/**
+ * The patterns of a `paths` list with their braces expanded, within the list's shared budget. A
+ * pattern that would go over it is kept as written, and its literal braces match no files.
+ */
+function expandPaths(patterns: readonly string[]): string[] {
+  let patternsLeft = MAX_EXPANDED_PATTERNS;
+  let bytesLeft = MAX_EXPANDED_BYTES;
+  return patterns.flatMap((pattern) => {
+    if (!pattern.includes('{')) return [pattern];
+    const expanded = expandBraces(pattern, patternsLeft);
+    if (expanded === undefined || byteLength(expanded) > bytesLeft) return [pattern];
+    patternsLeft -= expanded.length;
+    bytesLeft -= byteLength(expanded);
+    return expanded;
+  });
+}
+
+/**
+ * Whether the glob engine can compile the pattern at all: a pattern too large for a regular expression
+ * is invalid, which "matches nothing" while "the rule's other patterns keep working" (memory.md).
+ */
+function compiles(pattern: string, platform: Platform): boolean {
+  try {
+    globMatches(compileGlobs([{ pattern, negated: false }], platform), 'probe', false);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -83,9 +130,9 @@ export function skillActivatesFor(
   const file = resolvePath(base, toPosixPath(filePath, platform));
   const relative = relativeWithin(base, file);
   if (relative === undefined || relative === '') return false;
-  const entries = skill.paths
-    .flatMap(expandBraces)
+  const entries = expandPaths(skill.paths)
     .filter(isUsablePattern)
+    .filter((pattern) => compiles(pattern, platform))
     .map((pattern) => ({ pattern, negated: false }));
   return globMatches(compileGlobs(entries, platform), relative, false);
 }

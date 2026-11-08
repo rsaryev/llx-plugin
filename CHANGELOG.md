@@ -4,6 +4,15 @@
 
 ### Fixed
 
+- Skills: review fixes for invocation, listing and execution. A skill named after plain text now
+  permits the model's run of a `disable-model-invocation` skill (`permittedByMention`);
+  `readSkillMentions` stacks up to six skills at the start of a message with the shared trailing
+  arguments (`stacked`, the host's `stackable` stop rule, `interactive: false` for `-p`); the
+  listing budget falls back to 8,000 characters instead of no limit, and a path-scoped skill is
+  listed by name until its paths activate it; `paths` brace expansion shares the documented budget of
+  1,000 patterns and 4 MiB (a pattern over it is used unexpanded) and an uncompilable pattern matches
+  nothing instead of throwing; `TurnSession.supportedEfforts` clamps the effort to the highest
+  supported level at or below; a scheduled fire and a preload get their own refusal text.
 - Skills: a refused name or folder is reported once by field (`folder name has ...`, not `folder
   folder name has ...`); outside a plugin a name or folder `anthropic-skills` or
   `anthropic-skills:<name>`, and a user or project folder `synced` (any case), refuse the skill.

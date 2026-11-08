@@ -111,31 +111,63 @@ const DENIAL_REASON: { readonly [I in Invoker]: (skill: Invocable) => DenialReas
     skill.disableModelInvocation ? 'disable-model-invocation' : 'skill-override',
 };
 
+/** Why the skill is withheld, as a clause: used in the texts of the invokers that are not the model. */
+const DENIAL_CLAUSE: { readonly [R in DenialReason]: string } = {
+  'disable-model-invocation': 'it sets disable-model-invocation, so Claude cannot invoke it',
+  'user-invocable-false': 'it sets user-invocable: false',
+  'skill-override': 'the skillOverrides setting hides it from Claude',
+};
+
 /**
  * What the refused party is told. Judgment (spec/judgments.md): the docs say Claude "is told ... not
  * to reproduce the deploy steps another way", so it suggests `/deploy`, and that the `skillOverrides`
- * error is returned, but they quote neither text.
+ * error is returned, but they quote neither text. A scheduled fire withheld from a skill "reaches
+ * Claude as plain text instead of executing" (scheduled-tasks.md), so its text says that; a preload
+ * is simply not injected.
  */
-const DENIAL_MESSAGE: { readonly [R in DenialReason]: (command: string) => string } = {
-  'disable-model-invocation': (command) =>
-    `/${command} sets disable-model-invocation: Claude cannot run it on its own. Ask the user to run /${command} themselves. Do not carry out its steps another way.`,
-  'user-invocable-false': (command) =>
-    `/${command} sets user-invocable: false: only Claude can invoke it, so typing /${command} does not run it.`,
-  'skill-override': (command) =>
-    `/${command} is hidden by the skillOverrides setting, so it is not run. Ask the user to change skillOverrides if it should run.`,
+const DENIAL_MESSAGE: {
+  readonly [I in Invoker]: (command: string, reason: DenialReason) => string;
+} = {
+  user: (command, reason) =>
+    reason === 'user-invocable-false'
+      ? `/${command} sets user-invocable: false: only Claude can invoke it, so typing /${command} does not run it.`
+      : `/${command} is hidden by the skillOverrides setting, so it is not run. Ask the user to change skillOverrides if it should run.`,
+  model: (command, reason) =>
+    reason === 'skill-override'
+      ? `/${command} is hidden by the skillOverrides setting, so it is not run. Ask the user to change skillOverrides if it should run.`
+      : `/${command} sets disable-model-invocation: Claude cannot run it on its own. Ask the user to run /${command} themselves. Do not carry out its steps another way.`,
+  preload: (command, reason) =>
+    `/${command} is not preloaded into the subagent: ${DENIAL_CLAUSE[reason]}.`,
+  'scheduled-task': (command, reason) =>
+    `/${command} is not run by the scheduled task: ${DENIAL_CLAUSE[reason]}. The prompt reaches Claude as plain text instead of executing.`,
 };
 
 export type InvocationVerdict =
   | { readonly allowed: true }
   | { readonly allowed: false; readonly reason: DenialReason; readonly message: string };
 
+export interface InvocationOptions {
+  /**
+   * The user's message names the skill after plain text (`go ahead and /deploy`, see
+   * `readSkillMentions`): "The name counts as your permission for that message". Judgment
+   * (spec/judgments.md): it lifts `disable-model-invocation` for the model's invocation in that
+   * message only, never a `skillOverrides` state, and never a preload or a scheduled fire.
+   */
+  readonly permittedByMention?: boolean;
+}
+
 /** Whether `by` may start `skill`, with the reason and the text to give back when not. */
 export function checkInvocation(
   skill: Invocable,
   by: Invoker,
   overrides: SkillOverrides = {},
+  options: InvocationOptions = {},
 ): InvocationVerdict {
   if (POLICY_ALLOWS[by](invocationPolicy(skill, overrides))) return { allowed: true };
+  if (by === 'model' && options.permittedByMention === true && skill.disableModelInvocation) {
+    const withoutFlag = { ...skill, disableModelInvocation: false };
+    if (invocationPolicy(withoutFlag, overrides).model) return { allowed: true };
+  }
   const reason = DENIAL_REASON[by](skill);
-  return { allowed: false, reason, message: DENIAL_MESSAGE[reason](skill.command) };
+  return { allowed: false, reason, message: DENIAL_MESSAGE[by](skill.command, reason) };
 }

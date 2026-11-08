@@ -158,6 +158,34 @@ spec('skills.frontmatter.effort', () => {
     ).toEqual({ target: 'turn', effort: { level: 'medium', source: 'environment' } });
   });
 
+  test('"falls back to the highest supported level at or below the one you set" (`xhigh` runs as `high`)', () => {
+    const noXhigh = ['low', 'medium', 'high'] as const;
+    expect(
+      resolveTurnOverrides(skillWith(`${RESEARCH}effort: xhigh`), { supportedEfforts: noXhigh }),
+    ).toEqual({ target: 'turn', effort: { level: 'high', source: 'skill' } });
+    expect(
+      resolveTurnOverrides(skillWith(`${RESEARCH}effort: max`), { supportedEfforts: noXhigh }),
+    ).toMatchObject({ effort: { level: 'high' } });
+    expect(
+      resolveTurnOverrides(skillWith(`${RESEARCH}effort: medium`), { supportedEfforts: noXhigh }),
+    ).toMatchObject({ effort: { level: 'medium' } });
+    expect(
+      resolveTurnOverrides(skillWith(`${RESEARCH}effort: low`), {
+        effortEnvironment: 'xhigh',
+        supportedEfforts: noXhigh,
+      }),
+    ).toEqual({ target: 'turn', effort: { level: 'high', source: 'environment' } });
+  });
+
+  test('the fallback applies to the level the cap left, and a skipped level is not used (`max` with only `low` and `max`)', () => {
+    expect(
+      resolveTurnOverrides(skillWith(`${RESEARCH}effort: max`), {
+        maxEffort: 'high',
+        supportedEfforts: ['low', 'max'],
+      }),
+    ).toMatchObject({ effort: { level: 'low' } });
+  });
+
   test('the five levels are the options, lowest first', () => {
     for (const level of ['low', 'medium', 'high', 'xhigh', 'max'] as const) {
       expect(resolveTurnOverrides(skillWith(`${RESEARCH}effort: ${level}`), {})).toMatchObject({
@@ -217,6 +245,18 @@ describe('execution details (judgments: spec/judgments.md)', () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('unreachable');
     expect(result.message).toContain('build');
+  });
+
+  test('no supported level at or below the one asked sends no level (an empty list or only higher ones)', () => {
+    const asked = skillWith(`${RESEARCH}effort: low`);
+    expect(resolveTurnOverrides(asked, { supportedEfforts: ['high'] })).toEqual({
+      target: 'turn',
+      effort: { source: 'skill' },
+    });
+    expect(resolveTurnOverrides(asked, { supportedEfforts: [] })).toEqual({
+      target: 'turn',
+      effort: { source: 'skill' },
+    });
   });
 
   test('an effort variable that is not a level is ignored', () => {

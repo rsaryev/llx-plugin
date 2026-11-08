@@ -108,8 +108,8 @@ export interface ExecutionEnvironment {
   readonly effort?: EffortLevel | 'none';
 }
 
-const isEffortLevel = (value: string): value is EffortLevel =>
-  (EFFORT_LEVELS as readonly string[]).includes(value);
+const effortLevelOf = (value: string): EffortLevel | undefined =>
+  EFFORT_LEVELS.find((level) => level === value);
 
 /** `auto` and `unset` "do the same thing": Claude Code sends no effort level (model-config.md). */
 const NO_LEVEL = ['auto', 'unset'];
@@ -126,7 +126,7 @@ export function readExecutionEnvironment(environment: Environment): ExecutionEnv
 /** Judgment (spec/judgments.md): a value that is neither a level nor `auto`/`unset` is ignored. */
 function readEffortValue(value: string): EffortLevel | 'none' | undefined {
   if (NO_LEVEL.includes(value)) return 'none';
-  return isEffortLevel(value) ? value : undefined;
+  return effortLevelOf(value);
 }
 
 /** What the host knows about which models may run (`availableModels`, the permission mode). */
@@ -145,12 +145,17 @@ export interface TurnSession {
   readonly effortEnvironment?: EffortLevel | 'none' | undefined;
   /** `maxEffortLevel` or an organization cap: "still limits the level the skill ... runs at". */
   readonly maxEffort?: EffortLevel;
+  /**
+   * The levels the active model supports; an unsupported level "falls back to the highest supported
+   * level at or below" (`xhigh` runs as `high`). Absent: all. Judgment: none at or below sends no level.
+   */
+  readonly supportedEfforts?: readonly EffortLevel[];
 }
 
 export type ModelKept = 'excluded' | 'unsupported-in-mode';
 
 export interface EffortChoice {
-  /** Absent when the environment says to send no level. */
+  /** Absent when the environment says to send no level, or the model supports none at or below it. */
   readonly level?: EffortLevel;
   readonly source: 'skill' | 'environment';
 }
@@ -196,15 +201,38 @@ const ANY_MODEL: ModelAvailability = { allowed: () => true };
 const capped = (level: EffortLevel, max: EffortLevel | undefined): EffortLevel =>
   max !== undefined && EFFORT_LEVELS.indexOf(level) > EFFORT_LEVELS.indexOf(max) ? max : level;
 
-/** The environment variable wins over the skill; the cap lowers either. */
+/** The highest level the model supports at or below `level`, or `undefined` when there is none. */
+function supported(
+  level: EffortLevel,
+  levels: readonly EffortLevel[] | undefined,
+): EffortLevel | undefined {
+  if (levels === undefined) return level;
+  return EFFORT_LEVELS.slice(0, EFFORT_LEVELS.indexOf(level) + 1)
+    .toReversed()
+    .find((candidate) => levels.includes(candidate));
+}
+
+/** The cap lowers the level, then the model's support lowers it again. */
+function settle(
+  level: EffortLevel,
+  source: EffortChoice['source'],
+  session: TurnSession,
+): EffortChoice {
+  const settled = supported(capped(level, session.maxEffort), session.supportedEfforts);
+  return settled === undefined ? { source } : { level: settled, source };
+}
+
+/** The environment variable wins over the skill; the cap and the model's support lower either. */
 function chooseEffort(skillLevel: EffortLevel, session: TurnSession): EffortChoice {
   const fromEnvironment = session.effortEnvironment;
   if (fromEnvironment === 'none') return { source: 'environment' };
-  if (fromEnvironment !== undefined) {
-    return { level: capped(fromEnvironment, session.maxEffort), source: 'environment' };
-  }
-  return { level: capped(skillLevel, session.maxEffort), source: 'skill' };
+  if (fromEnvironment !== undefined) return settle(fromEnvironment, 'environment', session);
+  return settle(skillLevel, 'skill', session);
 }
+
+/** The skill's own `model`: `inherit` and no value both keep the model the session would use. */
+const requestedModel = (skill: Runnable): string | undefined =>
+  skill.model === 'inherit' ? undefined : skill.model;
 
 /**
  * The model and effort a skill sets for the rest of the turn, or for its forked subagent. Absent
@@ -212,10 +240,9 @@ function chooseEffort(skillLevel: EffortLevel, session: TurnSession): EffortChoi
  */
 export function resolveTurnOverrides(skill: Runnable, session: TurnSession): TurnOverrides {
   const target = skill.context === undefined ? 'turn' : 'subagent';
-  const keepsModel = skill.model === undefined || skill.model === 'inherit';
-  const model = keepsModel
-    ? {}
-    : MODEL_RULES[target](skill.model ?? '', session.models ?? ANY_MODEL);
+  const requested = requestedModel(skill);
+  const model =
+    requested === undefined ? {} : MODEL_RULES[target](requested, session.models ?? ANY_MODEL);
   const effort = skill.effort === undefined ? {} : { effort: chooseEffort(skill.effort, session) };
   return { target, ...model, ...effort };
 }

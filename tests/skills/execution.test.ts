@@ -42,9 +42,17 @@ spec('skills.frontmatter.context', () => {
 
   test('the model and effort of a forked skill go to the subagent, not the turn', () => {
     const forked = skillWith(`${FORK}model: haiku\neffort: low`);
-    expect(resolveTurnOverrides(forked, {})).toMatchObject({ target: 'subagent', model: 'haiku' });
+    expect(resolveTurnOverrides(forked, {})).toMatchObject({
+      target: 'subagent',
+      model: 'haiku',
+      effort: { level: 'low', source: 'skill' },
+    });
     const inline = skillWith(`${RESEARCH}model: haiku\neffort: low`);
-    expect(resolveTurnOverrides(inline, {})).toMatchObject({ target: 'turn', model: 'haiku' });
+    expect(resolveTurnOverrides(inline, {})).toMatchObject({
+      target: 'turn',
+      model: 'haiku',
+      effort: { level: 'low', source: 'skill' },
+    });
   });
 });
 

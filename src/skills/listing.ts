@@ -19,6 +19,11 @@ const DEFAULT_BUDGET_FRACTION = 0.01;
  * characters. The kit uses four characters to a token.
  */
 const CHARS_PER_TOKEN = 4;
+/**
+ * `SLASH_COMMAND_TOOL_CHAR_BUDGET`: "The budget scales dynamically at 1% of the context window, with a
+ * fallback of 8,000 characters." The fallback applies when the host gives neither a window nor a count.
+ */
+export const FALLBACK_BUDGET_CHARS = 8000;
 
 export interface ListingBudget {
   /** The model's context window in tokens. */
@@ -34,11 +39,14 @@ export interface ListingOptions {
   readonly overrides?: SkillOverrides;
   /** `skillListingMaxDescChars` (default 1536). */
   readonly maxDescChars?: number;
-  /** With neither a window nor a character count there is no limit. */
+  /** With neither a window nor a character count the budget is 8,000 characters. */
   readonly budget?: ListingBudget;
   /** How often each skill (by command name) was invoked; absent counts as never. */
   readonly usage?: ReadonlyMap<string, number>;
-  /** The command names of skills whose `paths` have activated them in this session. */
+  /**
+   * The command names of skills whose `paths` have activated them in this session. Until then a
+   * path-scoped skill is listed by name alone (the listing "always contains every skill name").
+   */
   readonly activated?: ReadonlySet<string>;
 }
 
@@ -81,11 +89,11 @@ function describe(skill: Invocable, cap: number): string {
   return escapeAngleBrackets(firstCharacters(text, cap));
 }
 
-/** The character budget, or `undefined` for no limit. */
-function budgetChars(budget: ListingBudget | undefined): number | undefined {
-  if (budget === undefined) return undefined;
+/** The character budget. */
+function budgetChars(budget: ListingBudget | undefined): number {
+  if (budget === undefined) return FALLBACK_BUDGET_CHARS;
   if (isPositiveInteger(budget.chars)) return budget.chars;
-  if (!isPositiveInteger(budget.contextWindow)) return undefined;
+  if (!isPositiveInteger(budget.contextWindow)) return FALLBACK_BUDGET_CHARS;
   const fraction = budget.fraction ?? DEFAULT_BUDGET_FRACTION;
   const valid = fraction > 0 && fraction <= 1 ? fraction : DEFAULT_BUDGET_FRACTION;
   return Math.floor(budget.contextWindow * valid * CHARS_PER_TOKEN);
@@ -98,9 +106,9 @@ function listedEntry(
   cap: number,
 ): ListingEntry | undefined {
   const { listedToModel } = invocationPolicy(skill, options.overrides);
+  if (listedToModel === 'hidden') return undefined;
   const waiting = skill.paths.length > 0 && !options.activated?.has(skill.command);
-  if (listedToModel === 'hidden' || waiting) return undefined;
-  return listedToModel === 'name'
+  return listedToModel === 'name' || waiting
     ? { name: skill.command }
     : { name: skill.command, description: describe(skill, cap) };
 }
@@ -130,7 +138,7 @@ export function modelListing(
 function fitBudget(
   entries: ListingEntry[],
   used: readonly number[],
-  limit: number | undefined,
+  limit: number,
 ): ModelListingResult {
   const order = entries
     .map((entry, at) => ({ at, uses: used[at] ?? 0, described: entry.description !== undefined }))
@@ -139,7 +147,7 @@ function fitBudget(
   let chars = entries.reduce((sum, entry) => sum + lineCost(entry), 0);
   const dropped: string[] = [];
   for (const candidate of order) {
-    if (limit === undefined || chars <= limit) break;
+    if (chars <= limit) break;
     const entry = entries[candidate.at];
     if (entry === undefined) continue;
     const bare = { name: entry.name };
@@ -151,7 +159,7 @@ function fitBudget(
     entries,
     descriptionsDropped: dropped,
     chars,
-    overBudget: limit !== undefined && chars > limit,
+    overBudget: chars > limit,
   };
 }
 
