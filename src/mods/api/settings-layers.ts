@@ -1,6 +1,6 @@
 import { toJsonValue, type JsonObject } from '../../foundation/index.ts';
 import { orderedLayers, type PolicyLayer, type PolicyScope } from '../../settings/index.ts';
-import type { SettingsLayer } from './ports.ts';
+import type { ModSettingsReader, SettingsLayer } from './ports.ts';
 
 /**
  * `e.layers` of a `settings.read` event (events.md, "What a `settings.read` hook receives"): "One
@@ -38,7 +38,10 @@ export function settingsLayersForMods(
   layers: readonly PolicyLayer[],
   pluginSettings: readonly unknown[] = [],
 ): readonly SettingsLayer[] {
-  const plugin = Object.assign({}, ...pluginSettings.map(objectOf));
+  const plugin = pluginSettings.reduce<JsonObject>(
+    (merged, settings) => ({ ...merged, ...objectOf(settings) }),
+    {},
+  );
   const fromPlugins: SettingsLayer[] = isEmpty(plugin)
     ? []
     : [{ source: 'plugin', settings: plugin }];
@@ -50,4 +53,16 @@ export function settingsLayersForMods(
       return source === undefined || isEmpty(settings) ? [] : [{ source, settings }];
     });
   return [...fromPlugins, ...fromSources];
+}
+
+/** Builds the reader used by both engine and mod reads from the settings layers the kit owns. */
+export function createModSettingsReader(input: {
+  readonly layers: () => readonly PolicyLayer[];
+  readonly plugins?: () => readonly unknown[];
+  readonly merged: ModSettingsReader['merged'];
+}): ModSettingsReader {
+  return {
+    layers: () => Promise.resolve(settingsLayersForMods(input.layers(), input.plugins?.() ?? [])),
+    merged: input.merged,
+  };
 }

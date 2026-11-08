@@ -115,19 +115,22 @@ describe('troubleshooting a settings.read hook', () => {
     `mods.troubleshoot.A key your settings.read hook returns doesn't take effect.settings.read: refused to the engine`,
     () => {
       test('your value did not apply because another hook refused Claude Code own read: the line carries its reason and the settings own values stand', async () => {
+        const ran: string[] = [];
         const { value, debug } = await engineRead(
           [
             fn('settings.read', async (_$, e, next) => {
-              const read = record(await next(e));
-              return read.value ? { value: { ...record(read.value), model: 'mine' } } : read;
+              await next(e);
+              ran.push('mine returned a value');
+              return { value: { ...MERGED, model: 'mine' } };
             }),
           ],
           {
-            mods: [
+            afterMine: [
               ['acme-policy', 'user', [fn('settings.read', () => ({ deny: 'acme says no' }))]],
             ],
           },
         );
+        expect(ran).toEqual(['mine returned a value']);
         expect(value).toEqual(MERGED);
         expect(debug).toContain(
           "settings.read: refused to the engine (engine: $.settings.read: acme says no); the settings' own values stand",

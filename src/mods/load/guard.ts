@@ -50,12 +50,6 @@ export interface GuardOptions {
 
 const decisionOf = (result: unknown): unknown => (isRecord(result) ? result.decision : undefined);
 
-/**
- * A call a user's mod approved, judged against the deny rules (admin.md: "a user's mod can't
- * approve a call that a `deny` rule refuses or an `ask` rule prompts for"; with
- * `allowModsToOverrideDenyRules` a `deny` rule yields, an `ask` rule does not). "If it can't check
- * the deny rules for a call that a user's mod approved, it refuses the call."
- */
 /** The line of a lift the guard refused: to the debug log and the transcript, once for each mod in a session. */
 function tell(options: GuardOptions, line: string, mod: string): void {
   const told = options.told;
@@ -65,6 +59,12 @@ function tell(options: GuardOptions, line: string, mod: string): void {
   options.notice?.(line);
 }
 
+/**
+ * A call a user's mod approved, judged against the deny rules (admin.md: "a user's mod can't
+ * approve a call that a `deny` rule refuses or an `ask` rule prompts for"; with
+ * `allowModsToOverrideDenyRules` a `deny` rule yields, an `ask` rule does not). "If it can't check
+ * the deny rules for a call that a user's mod approved, it refuses the call."
+ */
 async function checkApproval(options: GuardOptions, e: unknown, result: unknown): Promise<unknown> {
   const approvers = options.ledger.approvers;
   if (approvers.length === 0 || !isRecord(e)) return result;

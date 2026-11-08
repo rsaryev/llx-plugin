@@ -209,6 +209,32 @@ describe('handle a hook that fails (events.md)', () => {
     });
   });
 
+  test('a hook timing out after next keeps the command result when catch calls next again', async () => {
+    const h = typed();
+    let runs = 0;
+    h.mod('slow', 'user', [
+      fn(
+        'tool.call',
+        async (_$, e, next) => {
+          await next(e);
+          return new Promise(() => undefined);
+        },
+        { handler: (_$, e, next) => next(e) },
+      ),
+    ]);
+    const pending = h.fire(
+      'tool.call',
+      { tool: 'Bash' },
+      {
+        core: () => Promise.resolve({ stdout: `run ${++runs}` }),
+      },
+    );
+    await flush();
+    h.clock.advance(MOD_LIMITS.hookMs);
+    expect(await pending).toEqual({ stdout: 'run 1' });
+    expect(runs).toBe(1);
+  });
+
   spec('mods.events.Handle a hook that fails.plugin.register', () => {
     const user = registerOf((on) => {
       on('tool.call', () => ({ result: 'x' }));

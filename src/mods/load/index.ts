@@ -95,3 +95,6 @@ export {
   type CrashPlan,
   type WorkerHealth,
 } from './health.ts';
+
+export { runModToolCall, type ModToolFlow, type ModToolFlowResult } from './tool-flow.ts';
+export { runModPromptSubmit } from './prompt-flow.ts';

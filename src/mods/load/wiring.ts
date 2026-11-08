@@ -28,7 +28,8 @@ import { GUARD_ID, GUARD_NAME } from '../../protocol/mods-settings.ts';
 import { MOD_LIMITS } from '../../protocol/mods-limits.ts';
 
 /** Who owns a toast Claude Code raises itself (judgment: the docs name no owner; no mod's name fits). */
-const ENGINE_TOAST_OWNER = 'claude-code';
+// A slash cannot occur in a mod name, so this UI owner cannot collide with a plugin.
+const ENGINE_TOAST_OWNER = '/engine';
 
 /** What the host is given (see `ModsHostOptions`, which adds nothing to it). */
 export interface Wires {

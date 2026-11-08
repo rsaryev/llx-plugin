@@ -1,9 +1,6 @@
 /**
- * Turns, prompts and a stopped turn. plugins/mods/events.md § Follow a turn (and "Send a request to a
- * different model") and § Rewrite or add to a prompt; plugins/mods/troubleshoot.md § `Stopped: type a
- * message to continue; a mod cannot resume work after Stop` and § `a hook changed this call's input
- * after the model wrote it`. Where a turn starts and ends and what the model answers are the host's:
- * the tests fire the events through the chain the way a host will.
+ * plugins/mods/events.md § Follow a turn and Send a request to a different model.
+ * Tests fire events through the kit chain; the host starts turns and supplies model answers.
  */
 import { describe, expect, test } from 'bun:test';
 import { consume, fn, gen, record } from '../../support/mods-chain.ts';

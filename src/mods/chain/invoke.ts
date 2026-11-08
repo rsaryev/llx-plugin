@@ -98,7 +98,10 @@ function resultFailure(site: Site, value: unknown): Failure | undefined {
 /** The outcome of a hook that returned `value`: refused when it does not fit, else the value as it counts. */
 function judged(site: Site, value: unknown): Outcome {
   const failed = resultFailure(site, value);
-  return failed === undefined ? { value: site.ctx.rules.settle(site.ctx.name, value) } : { failed };
+  if (failed !== undefined) return { failed };
+  const settled = site.ctx.rules.settle(site.ctx.name, value);
+  site.ctx.options.observeResult?.(settled);
+  return { value: settled };
 }
 
 /** One run of a hook or of its handler, under its time limit, until it returns or fails. */

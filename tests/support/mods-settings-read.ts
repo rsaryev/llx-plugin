@@ -20,6 +20,7 @@ export const ORIGIN = { plugin: 'engine', tier: 'core' };
 export async function engineRead(
   hooks: Parameters<Awaited<ReturnType<typeof apiHarness>>['mod']>[2],
   options: {
+    afterMine?: readonly [string, 'prepend' | 'user', typeof hooks][];
     fits?: (key: string, value: unknown) => boolean;
     mods?: readonly [string, 'prepend' | 'user', typeof hooks][];
   } = {},
@@ -27,6 +28,8 @@ export async function engineRead(
   const h = await apiHarness({ ports: { settings: settings() } });
   for (const [name, tier, registered] of options.mods ?? []) await h.mod(name, tier, registered);
   await h.mod('my-mod', 'user', hooks);
+  for (const [name, tier, registered] of options.afterMine ?? [])
+    await h.mod(name, tier, registered);
   const debug: string[] = [];
   const reports: string[] = [];
   const value = await readEngineSettings({

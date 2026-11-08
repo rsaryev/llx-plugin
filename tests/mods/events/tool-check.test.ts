@@ -130,25 +130,6 @@ describe('approve or refuse a tool call before the user is asked', () => {
           expect(seen).toEqual({ decision });
         }
       });
-
-      test('no permission prompt appears while next(e) runs: the prompt comes after the chain, for an ask', async () => {
-        const h = eventHarness();
-        const prompts: string[] = [];
-        const promptsWhileNextRuns: number[] = [];
-        h.mod('watcher', 'user', [
-          fn('tool.check', async (_$, e, next) => {
-            const decided = await next(e);
-            promptsWhileNextRuns.push(prompts.length);
-            return decided;
-          }),
-        ]);
-        const decided = record(
-          await h.fire('tool.check', check, { core: () => Promise.resolve({ decision: 'ask' }) }),
-        );
-        if (decided.decision === 'ask') prompts.push('permission prompt');
-        expect(promptsWhileNextRuns).toEqual([0]);
-        expect(prompts).toEqual(['permission prompt']);
-      });
     },
   );
 

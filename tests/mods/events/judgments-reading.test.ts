@@ -172,11 +172,11 @@ describe('the toast of a stopped turn', () => {
     expect(s.host.ui.toasts.visible()).toEqual([]);
   });
 
-  test('the toast belongs to claude-code, not to the mod that was refused', async () => {
+  test('the toast belongs to the engine, never a valid mod name', async () => {
     const s = open();
     await s.host.load([modPlugin(inline('resumer'), resumer)]);
     s.host.input.interrupt();
     await s.host.fire('classic.Stop', { hook_event_name: 'Stop' });
-    expect(s.host.ui.toasts.visible().map((toast) => toast.plugin)).toEqual(['claude-code']);
+    expect(s.host.ui.toasts.visible().map((toast) => toast.plugin)).toEqual(['/engine']);
   });
 });

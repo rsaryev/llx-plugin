@@ -136,6 +136,10 @@ describe('turn.step', () => {
   });
 });
 
+test('turn.step refuses a numeric turnId', () => {
+  expect(eventInputProblem('turn.step', { turnId: 7 })).toContain('turnId');
+});
+
 describe('turn.complete', () => {
   const complete = {
     turnId: 't-1',

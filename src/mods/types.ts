@@ -230,6 +230,8 @@ export interface DispatchOptions {
   readonly debug?: (line: string) => void;
   /** The limit all the hooks of the event share, in milliseconds; `session.end` has one by default. */
   readonly groupMs?: number;
+  /** Observes each valid hook result before outer hooks can replace it (engine settings refusals). */
+  readonly observeResult?: (value: unknown) => void;
 }
 
 export interface ModChain {

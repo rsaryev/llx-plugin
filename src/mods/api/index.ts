@@ -48,7 +48,7 @@ export { createScope, type CallContext, type Scope } from './scope.ts';
 export { createStateStore, type StateStore } from './state.ts';
 export { atom, read, update, type Atom, type AtomKey, type StateHost } from './state-library.ts';
 export { isValidModName, nameProblem } from './names.ts';
-export { settingsLayersForMods } from './settings-layers.ts';
+export { settingsLayersForMods, createModSettingsReader } from './settings-layers.ts';
 export { readEngineSettings, type EngineReadOptions } from './engine-settings.ts';
 export { apiEventRules, withApiRules } from './rules.ts';
 export type { ScopeBook } from './engine-create.ts';

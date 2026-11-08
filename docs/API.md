@@ -1254,3 +1254,7 @@ const web = recordingHttp({ status: 200, body: '{}' }); // HttpClient, `requests
 `runAgent`, `fakeMcp({ connected, tools })` an `McpCaller`, `fixedClock(start)` a `Clock` that moves
 only on `advance(ms)`, `locations(options)` fixed POSIX paths (`<plugins>/<id>`), `fakeEnvironment(record)`
 an `Environment`, `memoryScratch()` the `ScratchFiles`. The mods test kit stays `modsTesting`.
+
+Engine settings reads retain any valid hook refusal for that dispatch, even when an outer hook replaces the result. `DispatchOptions.observeResult` observes valid hook results before outer hooks replace them. The engine toast's internal UI owner cannot collide with a plugin name.
+
+`runModToolCall` owns managed hooks → mod tool.call → other PreToolUse hooks → mod tool.check → classifier/PermissionRequest/prompt → execution. Pass these effects as callbacks; `decide` must not prompt. It returns the withheld-result model text as well as the raw result, adds the read-only report, and enforces auto-mode input review and session-review repeats. `runModPromptSubmit` returns the dropped-prompt notice and text to restore. `createModSettingsReader` supplies real kit policy layers (and plugin defaults) to engine/mod settings reads.

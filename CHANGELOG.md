@@ -1147,3 +1147,7 @@
   PowerShell, the path and option variables the process receives) and `substituteContent` (path
   variables and non-sensitive options in a skill, command or agent body, a placeholder for a
   sensitive one), with the `HOOK_GUARD` message.
+
+### Fixed (mods review completion)
+
+- Preserve a refusal of the engine settings read even when an outer hook returns a value; use a typed plugin-layer merge, isolate engine toast ownership and cover a timeout after next.
