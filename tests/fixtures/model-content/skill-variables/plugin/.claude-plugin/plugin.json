@@ -1,0 +1,9 @@
+{
+  "name": "mp",
+  "version": "1.0.0",
+  "userConfig": {
+    "region": { "type": "string", "title": "Region", "description": "r" },
+    "secret": { "type": "string", "title": "Secret", "description": "s", "sensitive": true },
+    "unset": { "type": "string", "title": "Unset", "description": "u" }
+  }
+}

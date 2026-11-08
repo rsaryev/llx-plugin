@@ -41,8 +41,8 @@ spec('skills.substitution.${CLAUDE_SKILL_DIR}', () => {
       'render-chart',
     );
     const run = await expandWith(skill);
+    expect(textOf(run.expansion)).toBe(`Run \`${SKILL_DIR}/scripts/render.sh <csv-file>\`.`);
     expect(run.expansion).toMatchObject({
-      text: `Run \`${SKILL_DIR}/scripts/render.sh <csv-file>\`.`,
       grants: [`Bash(${SKILL_DIR}/scripts/render.sh *)`],
     });
   });

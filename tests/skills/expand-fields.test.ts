@@ -126,8 +126,8 @@ spec('skills.frontmatter.effort', () => {
   test('"Overrides the session effort level": the expansion carries it, and `${CLAUDE_EFFORT}` in the text is that level', async () => {
     const skill = skillFrom('effort: max', 'Think at ${CLAUDE_EFFORT}.');
     const run = await expandWith(skill, { request: { effort: 'low' } });
+    expect(textOf(run.expansion)).toBe('Think at max.');
     expect(run.expansion).toMatchObject({
-      text: 'Think at max.',
       turn: { effort: { level: 'max', source: 'skill' } },
     });
   });
@@ -138,8 +138,8 @@ spec('skills.frontmatter.effort', () => {
       env: { CLAUDE_CODE_EFFORT_LEVEL: 'low' },
       request: { effort: 'high' },
     });
+    expect(textOf(run.expansion)).toBe('Think at low.');
     expect(run.expansion).toMatchObject({
-      text: 'Think at low.',
       turn: { effort: { level: 'low', source: 'environment' } },
     });
   });

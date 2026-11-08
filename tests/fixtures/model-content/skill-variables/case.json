@@ -1,0 +1,6 @@
+{
+  "prompt": "/mp:greet hello world",
+  "skill": "mp:greet",
+  "arguments": "hello world",
+  "settings": { "pluginConfigs": { "mp@inline": { "options": { "region": "eu" } } } }
+}

@@ -9,6 +9,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { createPolicyView } from '../../src/settings/index.ts';
+import { bodyOf } from '../support/expand.ts';
 import { hostOf, loaded, SESSION, signal } from '../support/host.ts';
 import { layerOf } from '../support/settings-layers.ts';
 
@@ -83,8 +84,10 @@ describe('session.expandSkill()', () => {
       .expandSkill('formatter:review', { arguments: 'src/', signal: signal() });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
+    // A skill's text opens with its folder (oracle 2.1.319, `bun run oracle:model-content`).
     expect(result.text).toBe(
-      'Review src/ using the rules in /plugins/formatter@acme-tools/rules.md.',
+      'Base directory for this skill: /plugins/formatter@acme-tools/skills/review\n\n' +
+        'Review src/ using the rules in /plugins/formatter@acme-tools/rules.md.',
     );
   });
 
@@ -104,7 +107,7 @@ describe('session.expandSkill()', () => {
     });
     expect(asked).toEqual(['git rev-parse --abbrev-ref HEAD']);
     expect(runner.calls).toHaveLength(1);
-    expect(result.ok && result.text).toBe('Branch: main');
+    expect(result.ok && bodyOf(result.text)).toBe('Branch: main');
   });
 
   test('without a permission answer a shell placeholder is not run', async () => {
@@ -122,7 +125,9 @@ describe('session.expandSkill()', () => {
     const result = await host
       .openSession(SESSION)
       .expandSkill('formatter:status', { arguments: '', signal: signal() });
-    expect(result.ok && result.text).toBe('Branch: [shell command execution disabled by policy]');
+    expect(result.ok && bodyOf(result.text)).toBe(
+      'Branch: [shell command execution disabled by policy]',
+    );
     expect(runner.calls).toHaveLength(0);
   });
 

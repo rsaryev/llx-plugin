@@ -12,6 +12,7 @@ import type { ShellCall, ShellPermission } from '../../src/skills/shell-run.ts';
 import { asks, covers, denies } from './bash-rules.ts';
 import { fakeEnvironment, locations } from './ports.ts';
 import { scriptedRunner, type RunnerReply } from './ports.ts';
+import { BASE_DIRECTORY } from '../../src/skills/folder-line.ts';
 
 export const PLUGIN: SkillOrigin = { kind: 'plugin', plugin: 'my-plugin' };
 
@@ -37,7 +38,8 @@ export function commandFrom(
   origin: SkillOrigin = { kind: 'project' },
   name = 'pr-summary',
 ): Command {
-  const fields = skillFrom(frontmatter, body, origin, name);
+  // A command is one file, not a folder: it has no `dir`, so no `${CLAUDE_SKILL_DIR}` (oracle).
+  const { dir: _folder, ...fields } = skillFrom(frontmatter, body, origin, name);
   return { ...fields, kind: 'command', path: `.claude/commands/${name}.md` };
 }
 
@@ -111,10 +113,21 @@ export async function expandWith(skill: Skill | Command, options: RunOptions = {
   return { expansion, runs: runner.calls, asked };
 }
 
-/** The text of a successful expansion; the test fails on an abort. */
+/**
+ * The body of a successful expansion: its text after the `Base directory for this skill:` line a
+ * skill opens with (tests/skills/expand-base-directory.test.ts holds that line). The test fails on
+ * an abort.
+ */
 export function textOf(expansion: Expansion): string {
   if (!expansion.ok) throw new Error(expansion.issues.map((found) => found.message).join('; '));
-  return expansion.text;
+  return bodyOf(expansion.text);
+}
+
+/** A skill's text without its first `Base directory` line, a command's as it is. */
+export function bodyOf(text: string): string {
+  if (!text.startsWith(BASE_DIRECTORY)) return text;
+  const end = text.indexOf('\n\n');
+  return end === -1 ? '' : text.slice(end + 2);
 }
 
 /** The message of an aborted expansion. */

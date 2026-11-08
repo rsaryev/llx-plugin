@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- An expanded skill's text opens with `Base directory for this skill: <folder>`, and a sensitive option in skill or command content reads `[sensitive option '<key>' not available in skill content]` whether or not it is saved, as Claude Code sends the model (`bun run oracle:model-content`).
 - A remote MCP server's `url` and `headers` read as empty the credential names Claude Code empties (61 names and 5 name families, without regard to case), not only the five the docs give as examples; `bun run oracle:remote-mcp-env` re-observes them.
 - A link inside a plugin to another agent, command or skill folder of the same plugin registers it once, as Claude Code does (runtime fixture `symlinked-duplicates`).
 - Of a file and a link to it, the agent or command file itself stays whatever their order; a skill folder keeps folder order.

@@ -82,10 +82,13 @@ const DISPOSITIONS: {
 };
 
 /**
- * What stands for a sensitive value in skill and agent content, where "a sensitive value there
- * becomes a placeholder" (plugins/manifest-reference.md). The docs give no text; judgment.
+ * What stands for a sensitive value in skill, command and agent content, where "a sensitive value
+ * there becomes a placeholder" (plugins/manifest-reference.md). The docs give no text; Claude Code
+ * 2.1.319 sends the model this one, a command's body included, saved value or not
+ * (`bun run oracle:model-content`).
  */
-export const SENSITIVE_PLACEHOLDER = (key: string): string => `[sensitive option ${key}]`;
+export const SENSITIVE_PLACEHOLDER = (key: string): string =>
+  `[sensitive option '${key}' not available in skill content]`;
 
 const RENDERINGS: {
   readonly [D in Disposition]: (raw: string, key: string, value: UserConfigValue) => string;
@@ -104,6 +107,9 @@ const userConfigToken: TokenParser = (inner, { scope, policy }) => {
   return {
     reference: { kind: 'user-config', key },
     resolve: () => {
+      // A sensitive option is never shown, so whether it has a value does not matter (oracle).
+      if (disposition === 'placeholder')
+        return Promise.resolve({ text: SENSITIVE_PLACEHOLDER(key) });
       const value = userConfigValue(scope.userConfig, key);
       if (value === undefined && disposition !== 'keep') {
         const why = declared === undefined ? 'is not declared in userConfig' : 'has no value';

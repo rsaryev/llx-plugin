@@ -31,6 +31,7 @@ import {
   type SkillSession,
   type SkillVariables,
 } from './variables.ts';
+import { withFolderLine } from './folder-line.ts';
 
 export type { ExpandPolicy, SkillPluginSource } from './expand-policy.ts';
 export type { ShellCall, ShellPermission } from './shell-run.ts';
@@ -281,7 +282,10 @@ export async function expandSkill(
   if (!rendered.ok) return { ok: false, issues: [rendered.issue] };
   return {
     ok: true,
-    text: assemble(body.pieces, rendered.replacements),
+    text: withFolderLine(
+      assemble(body.pieces, rendered.replacements),
+      vars.scope.extra?.['CLAUDE_SKILL_DIR'],
+    ),
     grants: allowed.rules,
     disallowed: skill.disallowedTools,
     execution,

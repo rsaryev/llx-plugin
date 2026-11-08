@@ -141,6 +141,18 @@ of `tests/fixtures/headers-helper-env/candidates.txt` is set to a dummy value in
 received to a local HTTP server through `claude mcp get`, and the result is committed as
 `expected.json`; `tests/loading/helper-credentials.test.ts` checks the kit's rule against it.
 
+## Model-request oracle
+
+`bun run oracle:model-content` reads what Claude Code sends the model when a plugin's skill or
+command is invoked. `scripts/oracle/model-request.ts` runs `claude -p "/<plugin>:<skill> <args>"`
+with `ANTHROPIC_BASE_URL` pointing at a local fake Messages API that records each request and
+streams back one word, so no model is called; the config and working folders are private and the
+environment is bare. Each case of `tests/fixtures/model-content/<case>/` is a tiny plugin of its own
+and a `case.json`; the user message blocks Claude Code sent, with the run's paths and session id
+normalized, are committed as `expected.json`. `tests/skills/model-content-oracle.test.ts` compares the
+kit's `expandSkill` with the block after `<command-message>` without running Claude Code. The run
+executes the plugin: point it only at fixtures written for it.
+
 ## Runtime oracle
 
 `bun run oracle:runtime` compares what the kit's SESSION registers with what a Claude Code session
