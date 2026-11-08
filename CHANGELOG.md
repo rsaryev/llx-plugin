@@ -59,6 +59,13 @@
   describes (events, matcher groups, the five handler types and their fields), into the official
   `HooksSettings`; and `matchesMatcher`, the matcher grammar of hooks.md (match-all, exact list,
   unanchored regular expression, the narrower set of `FileChanged` and `StopFailure`).
+- Marketplace contracts: the `Marketplace`, `MarketplaceEntry`, `PluginSource` and
+  `MarketplaceSource` shapes (with the closed `PLUGIN_SOURCE_KINDS` and `MARKETPLACE_SOURCE_KINDS`
+  lists), the fetch plans (`FetchPlan`, `MarketplaceFetchPlan`, `ArchiveLimits`), the ports only
+  marketplaces need (`Sha256`, `ArchiveReader`, `GitTags`, `SourceFetcher`), and the plugin id
+  grammar shared by names, rename targets and dependencies (`PLUGIN_ID_PART`, `pluginIdIssues` with
+  the documented "Claude Code cannot install plugin" and "cannot contain spaces" messages,
+  `desktopNameIssues` for the Claude Desktop warnings).
 
 ### Fixed
 

@@ -36,7 +36,7 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | ----------------------------------- | ------- | --------------------------------------------------------------------- |
 | `readManifest(raw)`                 | done    | `plugin.json` as loaded: unknown keys stripped, any error blocks load |
 | `validateManifest(raw)`             | done    | plus the validator: reserved names, kebab-case, missing metadata      |
-| `readMarketplace(raw)`              | planned | `marketplace.json`: entries, sources, strict mode                     |
+| `readMarketplace(raw)`              | planned | `marketplace.json`: entries, sources, strict mode (contracts done: see Marketplace) |
 | `readSkill(path, text)`             | planned | `SKILL.md` frontmatter and body                                       |
 | `readCommand(path, text)`           | planned | a command file (the older skill format)                               |
 | `readAgent(path, text)`             | planned | an agent file → official `AgentDefinition`                            |
@@ -45,6 +45,41 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `matchesMatcher(matcher, value, mode?)` | done | a hook `matcher` against the field its event filters on: match-all, exact list, unanchored regex; `'narrow'` for FileChanged and StopFailure |
 | `readMcpConfig(raw)`                | planned | `.mcp.json` → official `McpServerConfig` map                          |
 | `readLspConfig(raw)`, `readMonitors(raw)`, `readOutputStyle(...)` | planned | the remaining component files |
+
+## Marketplace (planned: contracts done)
+
+`marketplace.json` and where plugins come from (plugins/marketplace-reference.md,
+plugins/host-marketplace.md, plugins/dependencies.md). The shapes below are fixed first, in
+`src/format/marketplace/types.ts` and `src/marketplace/types.ts`, so the readers, the fetch
+planners and the decisions are written against one contract. Reading and planning are pure; the
+engines that download, run a command or hash take their effect through ports.
+
+```ts
+import { readMarketplace, planPluginFetch } from '@rsaryev/claude-plugin-kit';
+
+const { marketplace, issues } = readMarketplace(JSON.parse(text), { origin }); // bad entries dropped alone
+const { plan } = planPluginFetch(entry.source, { platform: 'posix' }); // data: git, npm, archive, command, local
+```
+
+| Name                                            | Status  | Does                                                                              |
+| ----------------------------------------------- | ------- | --------------------------------------------------------------------------------- |
+| `Marketplace`, `MarketplaceEntry`, `Owner`, `Relevance` | done | the parsed file: top-level fields, entries with `strict`, `components` and `display` |
+| `PluginSource`, `PLUGIN_SOURCE_KINDS`           | done    | the seven plugin sources as a union on `kind`; a registry is typed over the kinds |
+| `MarketplaceSource`, `MARKETPLACE_SOURCE_KINDS` | done    | the ten marketplace sources, three valid only in policy lists                     |
+| `PLUGIN_ID_PART`, `isPluginIdPart`, `pluginIdIssues(part, name, path)` | done | each part of `plugin@marketplace`: the grammar, the documented messages (`part` is `'marketplace'` or `'plugin'`) |
+| `desktopNameIssues(part, name, path)`           | done    | the Claude Desktop warnings: reserved marketplace names, 128-character grammar    |
+| `FetchPlan`, `FetchPlanContext`, `ArchiveLimits`, `MarketplaceFetchPlan` | done | what planning returns, as data a host executes                    |
+| `Sha256`, `ArchiveReader`, `GitTags`, `SourceFetcher` | done | ports only marketplaces use (`src/ports/marketplace.ts`, `src/marketplace/ports.ts`), exported by the marketplace barrel |
+| `NormalizedDependency`, `RenameStatus`          | done    | values the dependency and rename decisions return                                 |
+| `readMarketplace`, `validateMarketplace`, `parsePluginSource`, `mergeEntryWithManifest` | planned | the readers and the strict-mode merge |
+| `planPluginFetch`, `planMarketplaceFetch`, `parseMarketplaceInput` | planned | pure plans and the `marketplace add` input forms                |
+| `runCommandSource`, `fetchArchive`, `mergeHeaders`, `helperAllowed` | planned | engines through `CommandRunner`, `HttpClient` and the ports above |
+| `validateRenames`, `resolveRename`, `migrateSettingsKeys`, `removedPlugins` | planned | renames and removal                                          |
+| `normalizeDependency`, `selectTag`, `combineRanges`, `checkInstalledDependency` | planned | dependency ranges against release tags                     |
+
+`SourceFetcher` is for what only a host can do (a git clone with sparse checkout, an `npm pack`):
+it takes the git and npm plans and returns the fetched files or a `PluginIssue`. A missing port is
+a `PluginIssue` for that source only.
 
 ## Loading (planned)
 
