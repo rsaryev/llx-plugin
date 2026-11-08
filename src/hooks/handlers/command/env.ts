@@ -10,11 +10,16 @@ import { substitutionScope } from './placeholders.ts';
  * and `CLAUDE_PLUGIN_DATA`"; a plugin hook also gets `CLAUDE_PLUGIN_OPTION_<KEY>` for each option
  * (plugins/manifest-reference.md, "Reference a saved value").
  *
+ * Judgment (spec/judgments.md): the exported variables replace an inherited one of the same name,
+ * and the `OTEL_` prefix is matched without regard to case on a Windows host, whose environment
+ * names are case-insensitive, and exactly elsewhere.
+ *
  * Not done here: `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` and the HIPAA credential removal name no
  * variable list in the docs, so they are the host's (it implements `Environment`).
  */
 
 const OTEL = /^OTEL_/;
+const OTEL_ANY_CASE = /^OTEL_/i;
 
 /** The variables a plugin's hooks receive; a handler of no plugin has only the project folder. */
 async function exported(
@@ -32,8 +37,9 @@ export async function processEnvironment(
   entry: HandlerEntry<'command'>,
   context: RunContext,
 ): Promise<Readonly<Record<string, string>>> {
+  const exporter = context.windows ? OTEL_ANY_CASE : OTEL;
   const inherited = Object.entries(context.ports.environment.snapshot()).filter(
-    ([name]) => !OTEL.test(name),
+    ([name]) => !exporter.test(name),
   );
   return { ...Object.fromEntries(inherited), ...(await exported(entry, context)) };
 }

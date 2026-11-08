@@ -34,11 +34,13 @@ const WAKE_EXIT_CODE = 2;
 
 /**
  * "The hook's stderr, or stdout if stderr is empty, is shown to Claude as a system reminder."
- * Judgment (spec/judgments.md): stderr of only whitespace is empty.
+ * Judgment (spec/judgments.md): stderr of only whitespace is empty, and when the text that is left
+ * is blank too there is nothing to say, so Claude is not woken.
  */
 function wakeMessage(run: ForegroundRun): string | undefined {
   if (!('exitCode' in run) || run.exitCode !== WAKE_EXIT_CODE) return undefined;
-  return run.stderr.trim() === '' ? run.stdout : run.stderr;
+  const text = run.stderr.trim() === '' ? run.stdout : run.stderr;
+  return text.trim() === '' ? undefined : text;
 }
 
 /** The port's answer as the run the interpreter reads. */

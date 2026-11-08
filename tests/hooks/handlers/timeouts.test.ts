@@ -162,7 +162,6 @@ spec('hooks.handler.common.timeout', () => {
 
     test('timeouts set on plugin-provided hooks do not raise the budget', () => {
       const plugin = sessionEnd(30, pluginSource());
-      expect(ms(plugin)).toBe(1500);
       expect(ms(sessionEnd(), fakeEnvironment(), [plugin])).toBe(1500);
     });
 
@@ -234,6 +233,10 @@ describe('judgments', () => {
     const agent = handlerOf('SessionEnd', 'command', 30, { source: agentSource });
     expect(ms(skill)).toBe(1500);
     expect(ms(agent)).toBe(1500);
+  });
+
+  test('a plugin hook with a longer timeout is capped at the budget that settings left', () => {
+    expect(ms(sessionEnd(30, pluginSource()))).toBe(1500);
   });
 
   test('a hook never runs longer than the shared budget', () => {

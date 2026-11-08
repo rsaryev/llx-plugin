@@ -11,7 +11,7 @@
  * `spec(...)`; the judgments are rows in spec/judgments.md.
  */
 import { describe, expect, test } from 'bun:test';
-import { runHandler } from '../../../../src/hooks/handlers/index.ts';
+import { HANDLERS, runHandler } from '../../../../src/hooks/handlers/index.ts';
 import { entry } from '../../../support/hooks-select.ts';
 import { pluginCommand, runContext, settingsCommand } from '../../../support/hooks-run.ts';
 import type { RunnerReply } from '../../../support/runner.ts';
@@ -105,6 +105,24 @@ describe('environment', () => {
     });
   });
 
+  test('the OTEL_ prefix is matched exactly off Windows, where names are case-sensitive', async () => {
+    const env = await envOf({ otel_lower: '1', OTEL_UPPER: '2' });
+    expect(env).toEqual({ otel_lower: '1', CLAUDE_PROJECT_DIR: '/work/app' });
+  });
+
+  test('the OTEL_ prefix is matched in any case on Windows, where names are case-insensitive', async () => {
+    const runner = scriptedRunner({});
+    await runHandler(
+      settingsCommand({ command: './h.sh' }),
+      runContext({
+        runner,
+        windows: true,
+        environment: fakeEnvironment({ Otel_Mixed: '1', OTEL_UPPER: '2', Path: 'C:\\Windows' }),
+      }),
+    );
+    expect(runner.calls[0]?.env).toEqual({ Path: 'C:\\Windows', CLAUDE_PROJECT_DIR: '/work/app' });
+  });
+
   test('the exported variables win over an inherited one of the same name', async () => {
     expect((await envOf({ CLAUDE_PROJECT_DIR: '/elsewhere' }))?.['CLAUDE_PROJECT_DIR']).toBe(
       '/work/app',
@@ -196,9 +214,22 @@ describe('the run the port reports', () => {
   });
 
   test('stderr is kept apart from stdout', async () => {
-    const runner = scriptedRunner({});
-    await runHandler(settingsCommand({ command: './h.sh' }), runContext({ runner }));
-    expect(runner.calls[0]).not.toHaveProperty('mergeStderr');
+    expect(await report({ exitCode: 1, stdout: 'to stdout', stderr: 'to stderr' })).toEqual({
+      kind: 'exited',
+      exitCode: 1,
+      stdout: 'to stdout',
+      stderr: 'to stderr',
+    });
+  });
+});
+
+describe('a runner handed a hook of another type', () => {
+  test('reports it as not run instead of reading a shape it does not have', async () => {
+    const { run } = await HANDLERS.command(
+      entry('Stop', { handler: { type: 'http', url: 'https://x.test' } }),
+      runContext({ runner: scriptedRunner() }),
+    );
+    expect(run).toEqual({ kind: 'skipped', reason: 'The command runner was given a http hook.' });
   });
 });
 

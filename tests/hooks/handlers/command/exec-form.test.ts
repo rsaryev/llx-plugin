@@ -96,6 +96,18 @@ spec('hooks.handler.command.args', () => {
     });
   });
 
+  test('${user_config.*} is substituted into command too, as one string', async () => {
+    const { call } = await ran(
+      pluginCommand({ command: '${user_config.webhook_url}', args: ['--check'] }),
+      { userConfigOf },
+    );
+    expect(call.spec).toEqual({
+      form: 'exec',
+      command: 'https://hooks.example.com/a b;$(id)',
+      args: ['--check'],
+    });
+  });
+
   test('on Windows the paths are native, as the host reports them', async () => {
     const { call } = await ran(
       pluginCommand({
@@ -218,7 +230,11 @@ describe('both forms export the placeholders as environment variables', () => {
           'https://hooks.example.com/a b;$(id)',
         );
       });
+    }
+  });
 
+  describe('judgment: a handler of no plugin', () => {
+    for (const [form, hook] of FORMS) {
       test(`a settings hook in ${form} form receives CLAUDE_PROJECT_DIR and no plugin variable`, async () => {
         const { call } = await ran(settingsCommand(hook), {
           environment: fakeEnvironment({ HOME: '/home/user' }),
@@ -226,5 +242,17 @@ describe('both forms export the placeholders as environment variables', () => {
         expect(call.env).toEqual({ HOME: '/home/user', CLAUDE_PROJECT_DIR: '/work/app' });
       });
     }
+  });
+
+  test('on Windows the exported paths are native, as the host reports them', async () => {
+    const { call } = await ran(pluginCommand({ command: 'run' }), {
+      locations: windowsLocations(),
+      windows: true,
+    });
+    expect(call.env).toMatchObject({
+      CLAUDE_PROJECT_DIR: 'C:\\Users\\you\\app',
+      CLAUDE_PLUGIN_ROOT: 'C:\\Users\\you\\.claude\\plugins\\cache\\formatter@acme-tools',
+      CLAUDE_PLUGIN_DATA: 'C:\\Users\\you\\.claude\\plugins\\data\\formatter-acme-tools',
+    });
   });
 });

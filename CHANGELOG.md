@@ -153,3 +153,10 @@
   build no longer relies on casts beyond one commented join, and tests now cover `mcp_server`,
   `permission_suggestions`, `tool_calls`, the optional titles and the Elicitation and ConfigChange
   enums.
+- Command handler: an `asyncRewake` hook that exits with code 2 and writes only blank output no
+  longer wakes Claude with an empty reminder; the `OTEL_` exporter variables are removed in any
+  case on a Windows host; the handler registry dispatches without a type assertion; the PowerShell
+  rewrite of a settings hook's plugin placeholders, the override of inherited variables, and the
+  host-chosen default shell are recorded as judgments. Tests: judgments moved out of `spec(...)`,
+  and added for `${user_config.*}` in `command`, Git Bash path normalization and Windows exported
+  paths.

@@ -154,6 +154,18 @@ spec('hooks.handler.command.asyncRewake', () => {
 });
 
 describe('judgment: the wake text', () => {
+  test('exit code 2 with no stderr and no stdout does not wake Claude with a blank reminder', async () => {
+    const { runner, result } = await start({ asyncRewake: true });
+    runner.finish(0, { exitCode: 2, stderr: '', stdout: '' });
+    expect((await settled(result.run)).wake).toBeUndefined();
+  });
+
+  test('exit code 2 with only whitespace on both streams does not wake Claude either', async () => {
+    const { runner, result } = await start({ asyncRewake: true });
+    runner.finish(0, { exitCode: 2, stderr: ' \n', stdout: '\t' });
+    expect((await settled(result.run)).wake).toBeUndefined();
+  });
+
   test('a stderr of only whitespace is empty: the stdout wakes Claude', async () => {
     const { runner, result } = await start({ asyncRewake: true });
     runner.finish(0, { exitCode: 2, stderr: ' \n', stdout: 'from stdout' });

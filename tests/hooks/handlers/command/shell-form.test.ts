@@ -13,6 +13,7 @@ import { runHandler } from '../../../../src/hooks/handlers/index.ts';
 import { pluginCommand, runContext, settingsCommand } from '../../../support/hooks-run.ts';
 import { scriptedRunner } from '../../../support/ports.ts';
 import { spec } from '../../../support/spec.ts';
+import { windowsLocations } from '../../../support/windows-locations.ts';
 
 async function run(
   hook: ReturnType<typeof settingsCommand>,
@@ -45,13 +46,6 @@ spec('hooks.handler.command.shell', () => {
       defaultShell: 'powershell',
     });
     expect(calls[0]?.spec).toEqual({ form: 'shell', command: 'echo hi', shell: 'bash' });
-  });
-
-  test('without the field, a host without Git Bash runs the hook in PowerShell', async () => {
-    const { calls } = await run(settingsCommand({ command: 'echo hi' }), {
-      defaultShell: 'powershell',
-    });
-    expect(calls[0]?.spec).toEqual({ form: 'shell', command: 'echo hi', shell: 'powershell' });
   });
 
   test('is ignored when args is set: exec form has no shell', async () => {
@@ -114,23 +108,59 @@ spec('hooks.handler.command.shell', () => {
   });
 });
 
+describe('judgment: the shell of a hook with no shell field', () => {
+  test('is the host default: finding Git Bash is the host, so the kit takes its word', async () => {
+    for (const defaultShell of ['bash', 'powershell'] as const) {
+      const { calls } = await run(settingsCommand({ command: 'echo hi' }), { defaultShell });
+      expect(calls[0]?.spec).toEqual({ form: 'shell', command: 'echo hi', shell: defaultShell });
+    }
+  });
+
+  test('an explicit shell is not the host default', async () => {
+    const { calls } = await run(settingsCommand({ command: 'echo hi', shell: 'powershell' }), {
+      defaultShell: 'bash',
+    });
+    expect(calls[0]?.spec).toEqual({ form: 'shell', command: 'echo hi', shell: 'powershell' });
+  });
+});
+
+describe('Git Bash on Windows', () => {
+  test('the path placeholders of a shell-form command use forward slashes', async () => {
+    const { calls } = await run(
+      pluginCommand({ command: '"${CLAUDE_PLUGIN_ROOT}/bin/run" "${CLAUDE_PROJECT_DIR}"' }),
+      { locations: windowsLocations(), windows: true },
+    );
+    expect(calls[0]?.spec).toEqual({
+      form: 'shell',
+      shell: 'bash',
+      command:
+        '"C:/Users/you/.claude/plugins/cache/formatter@acme-tools/bin/run" "C:/Users/you/app"',
+    });
+  });
+});
+
 spec(['hooks.handler.command.command', 'hooks.handler.command.shell'], () => {
   describe('a shell-form plugin hook that references ${user_config.*}', () => {
     const command = './scripts/notify.sh ${user_config.webhook_url}';
 
+    const message =
+      'Hook from plugin formatter@acme-tools references ${user_config.*} in a shell-form command. ' +
+      'The substituted value would be re-parsed by the shell. Use exec form instead — ' +
+      '{"command": "<executable>", "args": ["${user_config.KEY}", ...]} — ' +
+      "or read $CLAUDE_PLUGIN_OPTION_<KEY> from the hook's environment. " +
+      `Command: ${command}`;
+
     test('fails with the documented error instead of running', async () => {
       const { result, calls } = await run(pluginCommand({ command }));
       expect(calls).toHaveLength(0);
-      expect(result.run).toEqual({
-        kind: 'skipped',
-        reason:
-          'Hook from plugin formatter@acme-tools references ${user_config.*} in a shell-form command. ' +
-          'The substituted value would be re-parsed by the shell. Use exec form instead — ' +
-          '{"command": "<executable>", "args": ["${user_config.KEY}", ...]} — ' +
-          "or read $CLAUDE_PLUGIN_OPTION_<KEY> from the hook's environment. " +
-          `Command: ${command}`,
-      });
-      expect(result.issues.map(({ severity }) => severity)).toEqual(['error']);
+      expect(result.issues).toEqual([
+        { severity: 'error', path: 'hooks.PostToolUse.command', message },
+      ]);
+    });
+
+    test('judgment: is reported as a skipped run carrying the message, not a not-started one', async () => {
+      const { result } = await run(pluginCommand({ command }));
+      expect(result.run).toEqual({ kind: 'skipped', reason: message });
     });
 
     test('fails even when no value is configured yet: the check reads the template', async () => {
@@ -138,12 +168,14 @@ spec(['hooks.handler.command.command', 'hooks.handler.command.shell'], () => {
         userConfigOf: () => ({ declared: {}, values: {} }),
       });
       expect(calls).toHaveLength(0);
-      expect(result.run.kind).toBe('skipped');
+      expect(result.issues.map(({ severity }) => severity)).toEqual(['error']);
     });
 
     test('fails under PowerShell too', async () => {
-      const { calls } = await run(pluginCommand({ command, shell: 'powershell' }));
+      const { calls, result } = await run(pluginCommand({ command, shell: 'powershell' }));
       expect(calls).toHaveLength(0);
+      expect(result.run.kind).toBe('skipped');
+      expect(result.issues.map(({ severity }) => severity)).toEqual(['error']);
     });
 
     test('runs in exec form once args is set, with the value as one argument', async () => {
@@ -177,10 +209,26 @@ spec(['hooks.handler.command.command', 'hooks.handler.command.shell'], () => {
       expect(calls[0]?.spec.form).toBe('shell');
       expect(calls[0]?.env['CLAUDE_PLUGIN_OPTION_WEBHOOK_URL']).toBe('https://x.test');
     });
+  });
+});
 
-    test('a hook of a settings file is not a plugin hook: it runs, the text untouched', async () => {
-      const { calls } = await run(settingsCommand({ command }));
-      expect(calls[0]?.spec.command).toBe(command);
-    });
+describe('judgment: a hook of a settings file', () => {
+  test('is not a plugin hook: it runs, the ${user_config.*} text untouched', async () => {
+    const command = './scripts/notify.sh ${user_config.webhook_url}';
+    const { calls } = await run(settingsCommand({ command }));
+    expect(calls[0]?.spec.command).toBe(command);
+  });
+
+  test('under PowerShell its plugin placeholders are rewritten, and no such variable is exported', async () => {
+    const { calls } = await run(
+      settingsCommand({
+        shell: 'powershell',
+        command: 'Write-Host "${CLAUDE_PLUGIN_ROOT} ${CLAUDE_PLUGIN_DATA}"',
+      }),
+    );
+    expect(calls[0]?.spec.command).toBe(
+      'Write-Host "${env:CLAUDE_PLUGIN_ROOT} ${env:CLAUDE_PLUGIN_DATA}"',
+    );
+    expect(Object.keys(calls[0]?.env ?? {})).toEqual(['CLAUDE_PROJECT_DIR']);
   });
 });

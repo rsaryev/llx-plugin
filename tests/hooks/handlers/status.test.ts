@@ -16,7 +16,7 @@ const observed = () => {
 };
 
 spec('hooks.handler.common.statusMessage', () => {
-  test('a command hook announces its statusMessage when it starts', async () => {
+  test('a command hook announces its own statusMessage, verbatim, once, when it starts', async () => {
     const { started, observer } = observed();
     const hook = settingsCommand(
       { command: './lint.sh', statusMessage: 'Linting...' },
@@ -74,15 +74,6 @@ spec('hooks.handler.common.statusMessage', () => {
     ]);
   });
 
-  test('an async hook announces it too: it is running', async () => {
-    const { started, observer } = observed();
-    await runHandler(
-      settingsCommand({ command: './t.sh', async: true, statusMessage: 'Testing...' }),
-      runContext({ runner: scriptedRunner({}), observer }),
-    );
-    expect(started.map(({ statusMessage }) => statusMessage)).toEqual(['Testing...']);
-  });
-
   describe('without an observer', () => {
     test('the hook still runs', async () => {
       const runner = scriptedRunner({});
@@ -95,11 +86,23 @@ spec('hooks.handler.common.statusMessage', () => {
   });
 });
 
-describe('statusMessage plumbing', () => {
-  test('an observer with no started callback is fine', async () => {
+describe('judgment: statusMessage plumbing', () => {
+  test('an async hook announces it too: it is running', async () => {
+    const { started, observer } = observed();
     await runHandler(
-      settingsCommand({ command: './lint.sh' }),
-      runContext({ runner: scriptedRunner({}), observer: {} }),
+      settingsCommand({ command: './t.sh', async: true, statusMessage: 'Testing...' }),
+      runContext({ runner: scriptedRunner({}), observer }),
     );
+    expect(started.map(({ statusMessage }) => statusMessage)).toEqual(['Testing...']);
+  });
+
+  test('an observer with no started callback is fine: the hook still runs', async () => {
+    const runner = scriptedRunner({});
+    const { run } = await runHandler(
+      settingsCommand({ command: './lint.sh' }),
+      runContext({ runner, observer: {} }),
+    );
+    expect(run.kind).toBe('exited');
+    expect(runner.calls).toHaveLength(1);
   });
 });

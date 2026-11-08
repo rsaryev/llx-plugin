@@ -13,31 +13,51 @@ type Handler<T extends HookHandlerType> = (
   context: RunContext,
 ) => Promise<HandlerResult>;
 
+/** What the registry holds: a runner that takes any registered handler. */
+type Runner = (entry: RegisteredHandler, context: RunContext) => Promise<HandlerResult>;
+
+const isEntryOf = <T extends HookHandlerType>(
+  type: T,
+  entry: RegisteredHandler,
+): entry is HandlerEntry<T> => entry.handler.type === type;
+
+/**
+ * Pairs a runner with the type it reads: the entry is narrowed by the predicate, so no assertion
+ * is needed. A handler of another type never reaches it (the registry is keyed by type); if one
+ * does, the hook is reported as not run instead of being read as a shape it does not have.
+ */
+const runnerOf =
+  <T extends HookHandlerType>(type: T, run: Handler<T>): Runner =>
+  (entry, context) =>
+    isEntryOf(type, entry)
+      ? run(entry, context)
+      : Promise.resolve({
+          run: {
+            kind: 'skipped',
+            reason: `The ${type} runner was given a ${entry.handler.type} hook.`,
+          },
+          issues: [],
+        });
+
 /** A type whose runner is not part of this build: the hook is reported as not run. */
 const notRun =
-  <T extends HookHandlerType>(type: T): Handler<T> =>
+  (type: HookHandlerType): Runner =>
   () =>
     Promise.resolve({
       run: { kind: 'skipped', reason: `${type} hooks are not run by this build.` },
       issues: [],
     });
 
-export const HANDLERS: { readonly [T in HookHandlerType]: Handler<T> } = {
-  command: runCommand,
+export const HANDLERS: { readonly [T in HookHandlerType]: Runner } = {
+  command: runnerOf('command', runCommand),
   http: notRun('http'),
   mcp_tool: notRun('mcp_tool'),
   prompt: notRun('prompt'),
   agent: notRun('agent'),
 };
 
-/**
- * Runs one handler: tells the host it started (`statusMessage`), then hands it to the runner of
- * its type. `HANDLERS[entry.handler.type]` is the runner for exactly this entry's handler, a
- * correlation TypeScript cannot follow through an index, so the call is asserted once, here.
- */
+/** Runs one handler: tells the host it started (`statusMessage`), then hands it to the runner of its type. */
 export function runHandler(entry: RegisteredHandler, context: RunContext): Promise<HandlerResult> {
   announceStart(context.ports.observer, entry);
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the runner of the entry's own handler type, see above
-  const run = HANDLERS[entry.handler.type] as Handler<HookHandlerType>;
-  return run(entry, context);
+  return HANDLERS[entry.handler.type](entry, context);
 }
