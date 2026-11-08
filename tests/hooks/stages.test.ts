@@ -31,9 +31,10 @@ test("the merge receives each hook's output, and a Monitor call's effects flagge
     },
     output: {
       parse: fakeOutput.parse,
-      merge: (event, outputs) => {
+      limit: (event, outputs, signal) => fakeOutput.limit(event, outputs, signal),
+      merge: (event, outputs, facts) => {
         seen.push(...outputs);
-        return fakeOutput.merge(event, outputs);
+        return fakeOutput.merge(event, outputs, facts);
       },
     },
   };

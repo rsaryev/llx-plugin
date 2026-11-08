@@ -18,3 +18,4 @@ export { createHookEngine } from './engine.ts';
 export type { HookEngine, HookEngineOptions, HookPorts } from './engine.ts';
 export type { DispatchRequest, HandlerRun, HookOutcome } from './outcome.ts';
 export * from './verdict/index.ts';
+export * from './output/index.ts';

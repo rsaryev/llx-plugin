@@ -1,6 +1,7 @@
 import type { PluginIssue } from '../../format/issues.ts';
 import type { HookEvent } from '../../protocol/official.ts';
 import type { RegisteredHandler } from '../contracts.ts';
+import type { EventEffects } from '../output/effects.ts';
 import type { StartObserver } from '../handlers/status.ts';
 
 /** The host's window onto a dispatch: `started` is the run stage's, the others the engine's. */
@@ -124,8 +125,7 @@ export interface TaggedOutput {
   readonly effectsIgnored?: boolean;
 }
 
-/** What the per-event effects of a merged output are; typed by the output stage. */
-export type EventEffects = Readonly<Record<string, unknown>>;
+export type { EventEffects };
 
 /** The merge of every hook's output on one event (hooks hold no knowledge of its rules). */
 export interface MergedBlock {
@@ -142,10 +142,25 @@ export interface MergedOutput {
   readonly additionalContext: readonly string[];
   readonly terminalSequences: readonly string[];
   readonly effects: EventEffects;
+  /** What the merge dropped and why (a replacement that does not fit, a sequence off the allowlist). */
+  readonly issues: readonly PluginIssue[];
+}
+
+/** The strings of every hook, kept within the cap (hooks.md, "JSON output"). */
+export interface LimitedOutputs {
+  readonly outputs: readonly TaggedOutput[];
+  readonly issues: readonly PluginIssue[];
 }
 
 /** The output stage the verdict and the dispatch lean on: `hooks/output` implements it. */
 export interface OutputStage {
   readonly parse: ParseOutput;
-  merge(event: HookEvent, outputs: readonly TaggedOutput[]): MergedOutput;
+  /** Spills or cuts each hook's text over the cap; runs before `merge`. */
+  limit(
+    event: HookEvent,
+    outputs: readonly TaggedOutput[],
+    signal: AbortSignal,
+  ): Promise<LimitedOutputs>;
+  /** `facts` are the event's own, for the rules that depend on them (`policy_settings`, the tool's name). */
+  merge(event: HookEvent, outputs: readonly TaggedOutput[], facts: object): MergedOutput;
 }

@@ -1,5 +1,6 @@
 import type { PluginIssue } from '../format/issues.ts';
 import type { HookEvent } from '../protocol/official.ts';
+import { finalizeEffects } from './output/finalize.ts';
 import { consumedByRun } from './select/once.ts';
 import type { HookOutcome } from './outcome.ts';
 import { routedBlock } from './verdict/route.ts';
@@ -80,7 +81,7 @@ export function assemble<E extends HookEvent>(
     ...(stopReason === undefined ? {} : { stopReason }),
     systemMessages: merged.systemMessages,
     additionalContext: merged.additionalContext,
-    effects: merged.effects,
+    effects: finalizeEffects(event, merged.effects, block),
     terminalSequences: merged.terminalSequences,
     notices: present(verdicts.map((verdict) => verdict.notice)),
     feedback: present(verdicts.map((verdict) => verdict.feedback)),
@@ -94,7 +95,7 @@ export function assemble<E extends HookEvent>(
       .filter((verdict) => consumedByRun(verdict.handler, verdict.succeeded))
       .map((verdict) => verdict.handler.id),
     background: present(verdicts.map((verdict) => verdict.delivery)),
-    issues: [...issues, ...verdicts.flatMap((verdict) => verdict.issues)],
+    issues: [...issues, ...merged.issues, ...verdicts.flatMap((verdict) => verdict.issues)],
   };
 }
 

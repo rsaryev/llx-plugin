@@ -17,6 +17,7 @@ const merged = (block?: MergedOutput['block']): MergedOutput => ({
   additionalContext: [],
   terminalSequences: [],
   effects: {},
+  issues: [],
 });
 
 const exit2From = (id: string, stderr: string): HandlerVerdict =>

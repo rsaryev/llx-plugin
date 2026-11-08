@@ -6,6 +6,7 @@ import type {
   Locations,
   McpCaller,
   ModelRunner,
+  ScratchFiles,
   ShellKind,
 } from '../ports/index.ts';
 import type { HookEvent } from '../protocol/official.ts';
@@ -15,6 +16,7 @@ import { dispatchEvent, type DispatchConfig } from './dispatch.ts';
 import { runHandler } from './handlers/registry.ts';
 import { buildHookInput } from './input/build.ts';
 import type { DispatchRequest, HookOutcome } from './outcome.ts';
+import { createOutputStage } from './output/stage.ts';
 import type { IfEvaluator } from './select/if-guard.ts';
 import { selectHandlers } from './select/select.ts';
 import type { HookObserver, OutputStage } from './verdict/types.ts';
@@ -30,15 +32,21 @@ export interface HookPorts {
   readonly mcp?: McpCaller;
   /** `prompt` and `agent` hooks. */
   readonly models?: ModelRunner;
+  /** Where a hook's text over the 10,000-character cap is saved; without it such text is cut. */
+  readonly scratch?: ScratchFiles;
   readonly clock?: Clock;
   readonly observer?: HookObserver;
   readonly modelCatalog?: ModelCatalog;
 }
 
+/** The output stage's one option: where to save text over the cap. */
+const scratchOf = (ports: HookPorts) =>
+  ports.scratch === undefined ? {} : { scratch: ports.scratch };
+
 /** What the engine cannot read off a port: the machine, and the output stage. */
 export interface HookEngineOptions {
-  /** Reads the JSON output of each hook and merges them (`hooks/output`). */
-  readonly output: OutputStage;
+  /** Reads the JSON output of each hook and merges them; by default the real one (`createOutputStage`). */
+  readonly output?: OutputStage;
   /** Reads a handler's `if`; without one a handler with `if` runs and a warning says why. */
   readonly ifEvaluator?: IfEvaluator;
   readonly windows?: boolean;
@@ -78,13 +86,13 @@ const hostOf = (options: HookEngineOptions) => ({
 });
 
 /** The engine over the real stages: select, build, run through the ports, read, merge. */
-export function createHookEngine(ports: HookPorts, options: HookEngineOptions): HookEngine {
+export function createHookEngine(ports: HookPorts, options: HookEngineOptions = {}): HookEngine {
   const config: DispatchConfig = {
     stages: {
       select: selectHandlers,
       build: buildHookInput,
       run: runHandler,
-      output: options.output,
+      output: options.output ?? createOutputStage(scratchOf(ports)),
     },
     ports: runPortsOf(ports),
     windows: options.windows ?? false,

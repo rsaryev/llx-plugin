@@ -95,6 +95,20 @@
   response handling, `ok: false` of prompt and agent hooks, background deliveries), and
   `createHookEngine` dispatches an event through select, input, run, read and merge into a
   `HookOutcome`.
+- Hook output (`hooks/output`): `parseHookOutput` reads a hook's JSON against the schema of its
+  event (the universal fields and a `hookSpecificOutput` bound to the official types, a value of the
+  wrong type is a validation failure, a key no schema names is dropped); `OUTPUT_CAPS` says which of
+  `continue`, `systemMessage`, `terminalSequence`, `decision` and the event's own fields each of the
+  33 events honours; `mergeOutputs` merges every hook's output in registry order (`PreToolUse` deny >
+  defer > ask > allow, `PreModelSwitch` deny > ask > allow, `PermissionRequest`, `PostToolUse`
+  rewrites checked against the Bash, Glob, Grep, WebFetch and WebSearch output shapes, the classifier
+  note capped at 2,000 characters, `Elicitation` where any decline wins) into typed `effects`;
+  `allowedTerminalSequence` keeps `terminalSequence` to OSC 0/1/2/9/99/777 and BEL;
+  `parsePermissionUpdates` validates the six permission update entries (`manual` is `default`);
+  `createOutputStage` caps each string of a hook at 10,000 characters, saving the rest through
+  `ScratchFiles` with a 2,000-character preview, and is the engine's default output stage
+  (`HookPorts.scratch`); `OutputStage` gains `limit`, `merge` takes the event's facts, and
+  `MergedOutput` carries `issues`.
 
 ### Fixed
 

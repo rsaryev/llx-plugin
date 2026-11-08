@@ -3,6 +3,7 @@ import {
   createHookEngine,
   createHookRegistry,
   type HookObserver,
+  type OutputStage,
   type RegisteredHandler,
 } from '../../src/hooks/index.ts';
 import type { EventFactsOf } from '../../src/hooks/index.ts';
@@ -26,7 +27,13 @@ export async function fire<E extends HookEvent>(
   event: E,
   entries: readonly RegisteredHandler[],
   replies: readonly RunnerReply[],
-  options: { observer?: HookObserver; facts?: EventFactsOf<E>; http?: HttpReply[] } = {},
+  options: {
+    observer?: HookObserver;
+    facts?: EventFactsOf<E>;
+    http?: HttpReply[];
+    /** The output stage; the stand-in `fakeOutput` when absent. */
+    output?: OutputStage;
+  } = {},
 ) {
   const runner = scriptedRunner(...replies);
   const engine = createHookEngine(
@@ -37,7 +44,7 @@ export async function fire<E extends HookEvent>(
       ...(options.http === undefined ? {} : { http: recordingHttp(...options.http) }),
       ...(options.observer === undefined ? {} : { observer: options.observer }),
     },
-    { output: fakeOutput, ifEvaluator: ifEvaluatorFor(matchContext) },
+    { output: options.output ?? fakeOutput, ifEvaluator: ifEvaluatorFor(matchContext) },
   );
   const facts: EventFactsOf<E> = options.facts ?? FACTS[event];
   const outcome = await engine.dispatch(createHookRegistry(entries), {

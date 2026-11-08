@@ -168,7 +168,7 @@ applied) and the host starts them. Tests use the fakes in `tests/support/ports.t
 `scriptedRunner`, `recordingHttp`, `fakeModel`, `fakeMcp`, `fixedClock`, `locations`,
 `fakeEnvironment`, `memoryScratch`).
 
-## Hooks (select, input, handlers, verdict and engine done; output planned)
+## Hooks (select, input, handlers, verdict, engine and output done)
 
 The hook engine picks the handlers an event runs, runs them through ports, and merges what they
 return. The first stage, selection, is pure over data: no port, no I/O.
@@ -207,7 +207,13 @@ const { selected, issues, monitor } = selectHandlers(registry, {
 | `EXIT2_RULES`, `EXIT_TABLE`, `exitClassOf`  | done    | the "Exit code 2 behavior per event" table for all 33 events (can it block, what it does, where stderr goes, the events' own rules) and the "Exit code output" table as data |
 | `readStdout`, `readBody`, `readAsyncResponse` | done  | the stdout parsing rule of exit 0 (one JSON object; `{`...`}` text that is not one is a parse failure; arrays and quoted strings are plain text), an HTTP body, an async hook's one-line response |
 | `createHookEngine(ports, options)`         | done    | `dispatch(registry, { event, facts, session, signal })`: select, build the input, run every handler (at most 12 prompt or agent hooks at once), read each run, merge; returns a `HookOutcome` |
-| `parseHookOutput`, `mergeOutputs`          | planned | the JSON output schemas, caps and merge rules (the output stream); the engine takes them as `options.output` |
+| `parseHookOutput(event, json)`, `checkOutput` | done | a hook's JSON output against the schema of the event (the universal fields and the `hookSpecificOutput` of the event, bound to the official types): the checked output, or the validation message the `<hook name> hook error` notice carries. A key no schema names is dropped; a wrong type fails; `hookEventName` must name the event |
+| `mergeOutputs(event, outputs, facts)`      | done    | the merge of every hook's output, in registry order: what the event honours (`OUTPUT_CAPS`), `continue` and `stopReason`, `systemMessages`, `additionalContext` (with `<system-reminder>` tags defused), `terminalSequences`, the event's own rule (`PreToolUse` deny > defer > ask > allow, `PreModelSwitch` deny > ask > allow, `PermissionRequest`, `PostToolUse` rewrites and the classifier note, `Elicitation`) as `effects`, and the `issues` of what it dropped |
+| `OUTPUT_CAPS`                              | done    | per event, which of `continue`, `systemMessage`, `terminalSequence`, `decision` and `hookSpecificOutput` it accepts and which it discards |
+| `createOutputStage({ scratch })`           | done    | the `OutputStage` the engine uses by default: `parse`, `limit` (the 10,000-character cap per string, spilled to `ScratchFiles` with a 2,000-character preview, or cut when there is no port) and `merge` |
+| `allowedTerminalSequence(value)`           | done    | the value when it is only OSC `0`/`1`/`2`/`9`/`99`/`777` and BEL, ended by BEL or ST; else `undefined` and the field is ignored |
+| `parsePermissionUpdates(raw)`              | done    | the six permission update entries of `updatedPermissions` and `permission_suggestions`: the valid ones (`manual` is `default`) and an issue per entry that is not |
+| `finalizeEffects(event, effects, block)`   | done    | makes the effects agree with a block that is not a JSON decision: an exit-2 `PreToolUse` is a `deny`, a decline of one `Elicitation` hook beats the accept of another |
 
 Selection also applies the gates of hooks.md: `disableAllHooks` (managed hooks survive it unless the
 managed level sets it), workspace trust for settings-file hooks (and for a project skill's), the
@@ -243,8 +249,8 @@ is `skipped` with a warning) and `httpHookAllowedEnvVars` (a header variable nee
 settings stream reads and merges the two keys, the host passes the result.
 
 `createHookEngine(ports, options)` takes the run ports (`commands`, `locations`, `environment`, and the
-optional `http`, `mcp`, `models`, `clock`, `observer`, `modelCatalog`) and `options.output`, an
-`OutputStage` (`parse` of one JSON value, `merge` of every hook's output) the output stream provides;
+optional `http`, `mcp`, `models`, `scratch`, `clock`, `observer`, `modelCatalog`) and `options.output`,
+an `OutputStage` (`parse`, `limit`, `merge`) that defaults to `createOutputStage` over `ports.scratch`;
 `windows`, `defaultShell`, the two fallback directories, `userConfigOf`, `httpPolicy` and `ifEvaluator`
 are the host's facts. A `HookOutcome` says `proceed` (false: the guarded action must not happen) with
 `block` (`via`: `exit2`, `decision`, `failure`, `continue-false` or `timeout`; the hook error line the
@@ -256,6 +262,21 @@ hook error` `notices`, `feedback` (stderr that goes to Claude or the user withou
 (a `WorktreeCreate` command hook's, whose last line is the path), `runs`, `consumedOnce` (the ids a
 session removes) and `background` (the `additionalContext`, `systemMessage` or `wake` text of each
 `async` or `asyncRewake` hook once its process ends).
+
+`effects` carries what the merged output asks the host to do, one optional field per thing:
+`permissionDecision` with `permissionDecisionReason`, `updatedInput` and, for `defer`, the
+`deferCondition` the host applies (`-p` and a single tool call); `permissionRequest` (the `decision`
+object: `allow` with `updatedInput` and `updatedPermissions`, or `deny` with `message` and
+`interrupt`); `updatedToolOutput` (a built-in tool's value that does not match its output shape, for
+Bash, Glob, Grep, WebFetch and WebSearch, is dropped with an issue; MCP output and the other tools
+pass through) and `classifierContext` (at most 2,000 characters over every hook); `elicitation`
+(`action` and `content` the MCP server receives: any decline wins); `initialUserMessage`,
+`sessionTitle`, `reloadSkills`, `suppressOriginalPrompt`, `watchPaths`, `displayContent`, `retry`,
+`worktreePath`, `compactionInstructions` and `continuesTurn` (a `Stop` hook's `additionalContext`).
+Applying them (writing a title, watching a file, answering the server) is the host's. Each string of
+a hook (`additionalContext`, `systemMessage`, `initialUserMessage`, plain stdout) is capped at 10,000
+characters; over it the text goes to `ScratchFiles` and the model gets the path and a preview, except
+`PreCompact` stdout, which is cut.
 
 How a run is read (hooks.md, "Exit code output"): exit 0 applies valid JSON, and plain stdout reaches
 Claude on `UserPromptSubmit`, `UserPromptExpansion`, `SessionStart` and `PostModelSwitch` (the

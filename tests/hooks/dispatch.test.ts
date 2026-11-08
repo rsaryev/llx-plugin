@@ -36,12 +36,12 @@ spec('hooks.exit2.PreToolUse', () => {
     expect(outcome.block).toBeUndefined();
   });
 
-  // The output stage is a stub (`fakeOutput`, tests/support/hooks-verdict.ts), and the stub defines
-  // `by`: it reports a top-level `decision: 'block'` as the merged block of that hook. PreToolUse's
-  // real decision field is `hookSpecificOutput.permissionDecision`; when `hooks/output` lands this
-  // test must run through the real merge with `permissionDecision: "deny"` and
-  // `permissionDecisionReason`. What this proves is only the engine's side: the merged block of the
-  // same hook replaces the stderr (tests/hooks/assemble.test.ts covers a block of another hook).
+  // The output stage is a stub here (`fakeOutput`, tests/support/hooks-verdict.ts), and the stub
+  // defines `by`: it reports a top-level `decision: 'block'` as the merged block of that hook.
+  // PreToolUse's real decision field is `hookSpecificOutput.permissionDecision`, which
+  // tests/hooks/output/dispatch.test.ts runs through the real stage. What this proves is only the
+  // engine's side: the merged block of the same hook replaces the stderr (tests/hooks/assemble.test.ts
+  // covers a block of another hook).
   test("a hook that exits 2 with a JSON decision: the decision's reason replaces the stderr", async () => {
     const hook = entry('PreToolUse', { handler: cmd() });
     const json = JSON.stringify({ decision: 'block', reason: 'Policy says no' });

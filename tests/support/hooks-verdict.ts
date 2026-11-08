@@ -56,7 +56,8 @@ function contextOf(tagged: TaggedOutput): string[] {
 
 export const fakeOutput: OutputStage = {
   parse: fakeParse,
-  merge(_event, outputs): MergedOutput {
+  limit: (_event, outputs) => Promise.resolve({ outputs, issues: [] }),
+  merge(_event, outputs, _facts): MergedOutput {
     const blocking = outputs.find((tagged) => field(tagged, 'decision') === 'block');
     const stopping = outputs.find((tagged) => field(tagged, 'continue') === false);
     const reason = blocking === undefined ? undefined : field(blocking, 'reason');
@@ -80,6 +81,7 @@ export const fakeOutput: OutputStage = {
       additionalContext: outputs.flatMap(contextOf),
       terminalSequences: [],
       effects: {},
+      issues: [],
     };
   },
 };

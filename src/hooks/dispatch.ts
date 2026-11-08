@@ -130,6 +130,7 @@ export async function dispatchEvent<E extends HookEvent>(
     issues: result.issues,
   }));
   report(config.observer, event, verdicts);
-  const merged = stages.output.merge(event, verdicts.map(tagged));
-  return assemble(event, verdicts, merged, issues);
+  const limited = await stages.output.limit(event, verdicts.map(tagged), request.signal);
+  const merged = stages.output.merge(event, limited.outputs, facts);
+  return assemble(event, verdicts, merged, [...issues, ...limited.issues]);
 }
