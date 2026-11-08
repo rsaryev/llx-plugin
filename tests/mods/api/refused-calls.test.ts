@@ -4,13 +4,16 @@
  * § What refused calls return (the table: `$.prompt.submit` resolves with `{ drop }`, `$.command.run`
  * rejects, `$.agent.spawn` resolves with `{ deny }`, `$.tool.call` of Bash with `run_in_background:
  * true`, Monitor or CronCreate resolves with `{ deny: '<tool> was not run: it starts background work,
- * a schedule or a goal, and <reason>' }`); plugins/mods/troubleshoot.md § `$.agent.register refused:
+ * a schedule or a goal, and <reason>' }`, and `$.session.send` to a subagent that finished or to a
+ * teammate resolves with `{ isDelivered: false, reason }`); plugins/mods/troubleshoot.md § `$.agent.register refused:
  * the hooks module that made the call is no longer loaded`.
  */
 import { expect, test } from 'bun:test';
+import { createRunGate, unsentReason, type ModHostPorts } from '../../../src/mods/api/index.ts';
+import { fakePorts } from '../../../src/testing/mods/index.ts';
 import { apiHarness } from '../../support/mods-api.ts';
 import { flush, fn } from '../../support/mods-chain.ts';
-import { interrupted, STOPPED } from '../../support/mods-refusal.ts';
+import { interrupted, numbers, STOPPED } from '../../support/mods-refusal.ts';
 import { inline, modPlugin, registerOf, session } from '../../support/mods-load.ts';
 import { rejection } from '../../support/rejection.ts';
 import { spec } from '../../support/spec.ts';
@@ -110,7 +113,78 @@ spec('mods.apiGuide.What refused calls return.$.tool.call', () => {
   });
 });
 
-/** A queue that does not answer until the test lets it: a prompt waiting for the session to be idle. */
+spec('mods.apiGuide.What refused calls return.$.session.send', () => {
+  /**
+   * The host's roster: `done` is a subagent that finished, `busy` one that is running, `mate` a
+   * teammate. The kit gives the port the reason; the port words what each target answers.
+   */
+  async function roster() {
+    const delivered: string[] = [];
+    const base = fakePorts().ports;
+    const ports: Partial<ModHostPorts> = {
+      session: {
+        ...base.session,
+        send: (to, _text, _signal, refusal) => {
+          if (refusal !== undefined && to === 'done') {
+            return Promise.resolve({
+              isDelivered: false,
+              reason: unsentReason.subagent(to, refusal),
+            });
+          }
+          if (refusal !== undefined && to === 'mate') {
+            return Promise.resolve({
+              isDelivered: false,
+              reason: unsentReason.teammate(to, refusal),
+            });
+          }
+          delivered.push(to);
+          return Promise.resolve({ isDelivered: true });
+        },
+      },
+    };
+    const gate = createRunGate(numbers().port);
+    const h = await apiHarness({ ports, options: { gate } });
+    return { h, gate, delivered };
+  }
+
+  test('after an interruption a send to a subagent that finished resolves with { isDelivered: false } and the reason of the page', async () => {
+    const { h, gate, delivered } = await roster();
+    gate.interrupt();
+    expect(await h.api.session.send({ to: { agentId: 'done' }, text: 'continue' })).toEqual({
+      isDelivered: false,
+      reason: `Agent "done" was not resumed: ${STOPPED}.`,
+    });
+    expect(delivered).toEqual([]);
+  });
+
+  test('after an interruption a send to an agent team teammate resolves with { isDelivered: false } and the reason of the page', async () => {
+    const { h, gate } = await roster();
+    gate.interrupt();
+    expect(await h.api.session.send({ to: { agentId: 'mate' }, text: 'status?' })).toEqual({
+      isDelivered: false,
+      reason: `Teammate "mate" was not messaged: ${STOPPED}.`,
+    });
+  });
+
+  test('a subagent that is still running receives the message', async () => {
+    const { h, gate, delivered } = await roster();
+    gate.interrupt();
+    expect(await h.api.session.send({ to: { agentId: 'busy' }, text: 'continue' })).toEqual({
+      isDelivered: true,
+    });
+    expect(delivered).toEqual(['busy']);
+  });
+
+  test("before an interruption, and after the user's next input, the send to the finished subagent is delivered", async () => {
+    const { h, gate, delivered } = await roster();
+    await h.api.session.send({ to: { agentId: 'done' }, text: 'before' });
+    gate.interrupt();
+    await gate.userInput();
+    await h.api.session.send({ to: { agentId: 'done' }, text: 'after' });
+    expect(delivered).toEqual(['done', 'done']);
+  });
+});
+
 spec(
   'mods.troubleshoot.$.agent.register refused: the hooks module that made the call is no longer loaded',
   () => {

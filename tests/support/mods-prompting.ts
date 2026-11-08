@@ -1,8 +1,8 @@
 import type { ModHostPorts } from '../../src/mods/api/index.ts';
 import { fakePorts } from '../../src/testing/mods/index.ts';
 
-export /** A prompt port that records what reaches it and, while `holding`, does not answer: the session is busy. */
-function prompting() {
+/** A prompt port that records what reaches it and, while `holding`, does not answer: the session is busy. */
+export function prompting() {
   const submitted: { text: string; from?: string; asUser?: true }[] = [];
   const state = { holding: false, turns: 0 };
   const release: (() => void)[] = [];

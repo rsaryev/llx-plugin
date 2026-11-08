@@ -39,7 +39,11 @@ export function toolApi(deps: Deps): ModsNamespaceApi<'tool'> {
         'tool.call',
         parse('$.tool.call', toolCall, args[0]),
         refusing(deps, 'tool.call', (e) =>
-          deps.ports.tools.call(parse('$.tool.call', toolCall, e), deps.signal),
+          deps.ports.tools.call(
+            parse('$.tool.call', toolCall, e),
+            deps.signal,
+            async () => (await deps.gate.refusal()) !== undefined,
+          ),
         ),
       ),
     check: async (...args) =>

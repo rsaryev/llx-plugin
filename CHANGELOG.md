@@ -4,6 +4,20 @@
 
 ### Fixed
 
+- Mods, review of crash behaviour and refused calls. `ModSession.send` receives the reason the
+  session refuses new work (`send(to, text, signal, refusal?)`) and `unsentReason.subagent` /
+  `unsentReason.teammate` word the `{ isDelivered: false, reason }` of the page's table. `ModTools.call`
+  receives `held()` and `HELD_AT_TIMEOUT` words the line of a foreground Bash or PowerShell command
+  ended at its timeout while input is held. `ModsHost.input.setLimits(limits)` changes
+  `--max-turns` and `--max-budget-usd` for the next run of a long-lived host. Changes to the mod set
+  (`load`, `reload`, a stop of the worker...) run one at a time, so a stop during `reload()` or two
+  stops in a row no longer rewrite the loaded mods together; a mod that is unloaded or unloaded for
+  a crash is forgotten by the replay ledger; a fresh copy the loader has no record of says so instead
+  of vanishing. Judgments record the latest-release-only model of the version-gated behaviour, the
+  host's part of "Work your mod started before the interruption" and the order of a replayed call
+  among the mods before it. Tests: a spawned subagent's turns reach the `--max-turns` count, a stop
+  traced to a built-in mod is untraced, and casts and a stray comment left the test support.
+
 - Mods, review of per-mod load and where mods run. A refusal by another mod reaches the transcript of
   an interactive session that loads a plugin directory or hot-reloads (it was the debug log in every
   session). `ModsHostOptions.hotReload` is a getter, so the answer to the hot-reloading question moves

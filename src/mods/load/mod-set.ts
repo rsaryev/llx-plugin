@@ -48,6 +48,8 @@ export interface ModSetDeps {
   readonly debug: (line: string) => void;
   /** `session.start` for the mods just loaded, or nothing where the host does not fire it. */
   readonly announce: (mods: readonly LoadedMod[], mode: ReplayMode) => Promise<void>;
+  /** Forgets what the replay ledger kept of a mod that is gone (`ReplayLedger.forget`). */
+  readonly forget: (name: string) => void;
   /** A line for people that comes outside a call to the set: the worker stopped, a call was not made again. */
   readonly notify: (notice: ModNotice) => void;
   /** The session as it is now: read for every line, as hot reloading can be turned on in the middle of it. */
@@ -242,23 +244,42 @@ async function reloadModNamed(ctx: Ctx, name: string): Promise<ReloadOutcome | u
   return done.outcome;
 }
 
+async function unloadOne(ctx: Ctx, name: string): Promise<boolean> {
+  const names = new Set([name]);
+  ctx.known = without(ctx, names);
+  const gone = (await unloadNamed(ctx, names)).has(name);
+  ctx.forget(name);
+  return gone;
+}
+
+/**
+ * Every change to the set runs after the one before it ends (judgment): a stop of the worker that
+ * comes in the middle of `reload`, or a second stop in a row, would otherwise both rewrite `loaded`.
+ */
+const inTurn = (): (<T>(run: () => Promise<T>) => Promise<T>) => {
+  let tail: Promise<unknown> = Promise.resolve();
+  return (run) => {
+    const next = tail.then(run);
+    tail = next.catch(() => undefined);
+    return next;
+  };
+};
+
 export function createModSet(deps: ModSetDeps): ModSet {
   const ctx: Ctx = { ...deps, loaded: [], known: [], health: createWorkerHealth() };
+  const serial = inTurn();
   return {
     loaded: () => ctx.loaded,
-    load: (given) => load(ctx, given),
-    loadMod: (plugin) => loadMod(ctx, plugin),
-    async unloadMod(name) {
-      const names = new Set([name]);
-      ctx.known = without(ctx, names);
-      return (await unloadNamed(ctx, names)).has(name);
-    },
-    async reload() {
-      ctx.health.reset();
-      return loadAll(ctx, ctx.known, await unloadEverything(ctx));
-    },
-    reloadMod: (name) => reloadModNamed(ctx, name),
-    crashed: (crash) => recoverFromCrash(ctx, crash),
-    unloadAll: async () => void (await unloadEverything(ctx)),
+    load: (given) => serial(() => load(ctx, given)),
+    loadMod: (plugin) => serial(() => loadMod(ctx, plugin)),
+    unloadMod: (name) => serial(() => unloadOne(ctx, name)),
+    reload: () =>
+      serial(async () => {
+        ctx.health.reset();
+        return loadAll(ctx, ctx.known, await unloadEverything(ctx));
+      }),
+    reloadMod: (name) => serial(() => reloadModNamed(ctx, name)),
+    crashed: (crash) => serial(() => recoverFromCrash(ctx, crash)),
+    unloadAll: () => serial(async () => void (await unloadEverything(ctx))),
   };
 }

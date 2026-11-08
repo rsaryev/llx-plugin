@@ -18,11 +18,11 @@ export function numbers(start = { turns: 0, cost: 0 }) {
 
 /** The host side of a prompt and a command: what reached it, and the signals of the queue. */
 export function recording() {
-  const reached = {
-    prompts: [] as string[],
-    commands: [] as string[],
+  const reached: { prompts: string[]; commands: string[]; agents: number; tools: string[] } = {
+    prompts: [],
+    commands: [],
     agents: 0,
-    tools: [] as string[],
+    tools: [],
   };
   const queues: AbortSignal[] = [];
   const base = fakePorts().ports;

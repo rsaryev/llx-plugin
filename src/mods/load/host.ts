@@ -134,9 +134,9 @@ export interface ModsHost {
   /**
    * Tells the session what happened to its input, which decides what its mods' calls return: after
    * `interrupt` the calls that start new work are refused until `userInput`; after `endInput` they are
-   * refused for good.
+   * refused for good. `setLimits` replaces `limits` for the next run of a host that outlives one.
    */
-  readonly input: Pick<RunGate, 'interrupt' | 'userInput' | 'endInput'>;
+  readonly input: Pick<RunGate, 'interrupt' | 'userInput' | 'endInput' | 'setLimits'>;
   readonly ui: ModsUi;
   readonly chain: ModChain;
   active(): readonly LoadedMod[];
@@ -179,6 +179,7 @@ export function createModsHost(options: ModsHostOptions): ModsHost {
         : announceSessionStart({ options, chain, dispatchOptions, replay }, started, mode),
     session: sessionNow,
     notify,
+    forget: (name) => replay.forget(name),
   });
   /** The worker's replacement is handled before the runtime goes on (`ModRuntime.onCrash`). */
   const stopListening = options.runtime.onCrash?.((crash) => mods.crashed(crash));

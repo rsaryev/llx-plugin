@@ -23,7 +23,7 @@ export interface ReplayLedger {
    * the result of the first copy's call at the same place. A call outside `session.start` is `run`.
    */
   once(mod: string, kind: ReplayedCall, run: () => Promise<unknown>): Promise<unknown>;
-  /** Forgets the calls of `mod`: it was loaded for the first time, or it is gone. */
+  /** Forgets the calls of `mod`: it is gone (unloaded by the host or for a crash), so its results are not kept. */
   forget(mod: string): void;
 }
 

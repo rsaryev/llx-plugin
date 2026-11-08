@@ -49,9 +49,10 @@ export function sessionApi(deps: Deps): ModsNamespaceApi<'session'> {
     compact: async () => call(deps, 'session.compact', {}, () => session.compact(deps.signal)),
     send: async (...args) => {
       const sent = parse('$.session.send', send, args[0]);
-      return call(deps, 'session.send', { to: address(sent.to), text: sent.text }, (e) => {
+      return call(deps, 'session.send', { to: address(sent.to), text: sent.text }, async (e) => {
         const { to, text } = parse('$.session.send', sendEvent, e);
-        return session.send(to, text, deps.signal);
+        // The kit never refuses a send: the host knows whether the target finished, and words the answer from the reason.
+        return session.send(to, text, deps.signal, await deps.gate.refusal());
       });
     },
     append: async (...args) => {

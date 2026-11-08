@@ -21,7 +21,11 @@ const line = (kind: string): string =>
 /** Ports that count what reaches the host, answering each call with its own number. */
 function counting() {
   const base = fakePorts().ports;
-  const reached = { prompts: [] as string[], commands: [] as string[], agents: [] as string[] };
+  const reached: { prompts: string[]; commands: string[]; agents: string[] } = {
+    prompts: [],
+    commands: [],
+    agents: [],
+  };
   const ports: Partial<ModHostPorts> = {
     prompts: {
       ...base.prompts,
@@ -175,30 +179,6 @@ spec('mods.troubleshoot.its session.start ran again in a fresh copy', () => {
     expect(after).toEqual(['rest of the hook', 'rest of the hook']);
   });
 
-  test('a mod before this one sees the first call only: the repeated call is not fired through the chain again', async () => {
-    const { ports } = counting();
-    const watched: string[] = [];
-    const first = registerOf((on) => {
-      on('session.start', async ($: ModsApi, e: unknown) => {
-        await $.prompt.submit({ text: 'a' });
-        return e;
-      });
-    });
-    const watcher = registerOf((on) => {
-      on('prompt.submit', (_$: unknown, e: { text: string }, next: (e: unknown) => unknown) => {
-        watched.push(e.text);
-        return next(e);
-      });
-    });
-    const s = crashSession({ 'first-mod': first, watcher }, ports);
-    await s.host.load([
-      modPlugin(inline('watcher'), watcher),
-      modPlugin(inline('first-mod'), first),
-    ]);
-    await s.worker.crash(untraced);
-    expect(watched).toEqual(['a']);
-  });
-
   test('a call made outside session.start is made every time', async () => {
     const { ports, reached } = counting();
     const registers = {
@@ -238,6 +218,30 @@ spec('mods.troubleshoot.its session.start ran again in a fresh copy', () => {
 });
 
 describe('a fresh copy: judgments (spec/judgments.md)', () => {
+  test('a mod before this one sees the first call only: the repeated call is not fired through the chain again', async () => {
+    const { ports } = counting();
+    const watched: string[] = [];
+    const first = registerOf((on) => {
+      on('session.start', async ($: ModsApi, e: unknown) => {
+        await $.prompt.submit({ text: 'a' });
+        return e;
+      });
+    });
+    const watcher = registerOf((on) => {
+      on('prompt.submit', (_$: unknown, e: { text: string }, next: (e: unknown) => unknown) => {
+        watched.push(e.text);
+        return next(e);
+      });
+    });
+    const s = crashSession({ 'first-mod': first, watcher }, ports);
+    await s.host.load([
+      modPlugin(inline('watcher'), watcher),
+      modPlugin(inline('first-mod'), first),
+    ]);
+    await s.worker.crash(untraced);
+    expect(watched).toEqual(['a']);
+  });
+
   test('a call that failed was not made: the fresh copy makes it for real', async () => {
     const base = counting();
     let attempts = 0;

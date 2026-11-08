@@ -62,7 +62,7 @@ const dropOf = (result: unknown): string =>
 
 describe('Retry a refused or dropped call', () => {
   /** What the page's example keeps: the text of the last refused or dropped prompt, or null. */
-  const kept = { text: null as string | null };
+  const kept: { text: string | null } = { text: null };
 
   async function submitPrompt($: ModsApi, text: string): Promise<void> {
     let reason: string;

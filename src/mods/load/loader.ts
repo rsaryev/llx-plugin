@@ -235,7 +235,10 @@ export async function restartMod(
 ): Promise<LoadOutcome> {
   const prepared = preparedOf.get(current);
   await unload(current);
-  return prepared ? start(env, mod, prepared) : {};
+  // Every mod the loader returns was prepared; a mod that is not stays off, and says so (judgment).
+  if (!prepared)
+    return didNotLoad(mod.candidate.name, 'the module it was loaded from is not known');
+  return start(env, mod, prepared);
 }
 
 /** What reloading one mod came to. */

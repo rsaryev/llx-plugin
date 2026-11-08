@@ -12,11 +12,29 @@ export const REFUSAL_REASONS = {
   inputEnded: 'the host has ended its input',
 } as const;
 
+/**
+ * The reason of a `$.session.send` that was not delivered while the session refuses new work (api.md,
+ * "What refused calls return"): to a subagent that finished, and to a teammate of an agent team.
+ */
+export const unsentReason = {
+  subagent: (id: string, reason: string): string => `Agent "${id}" was not resumed: ${reason}.`,
+  teammate: (name: string, reason: string): string =>
+    `Teammate "${name}" was not messaged: ${reason}.`,
+};
+
 /** What a call that waited in the queue gives when the user stops the turn before it ran. */
 export const QUEUE_DROPS = {
   prompt: 'the prompt was removed from the queue before it ran',
   command: 'the command was removed from the queue before it ran',
 } as const;
+
+/**
+ * The line a foreground Bash or PowerShell command gets when it reaches its timeout while the
+ * session's input is held (api.md, "Work your mod started before the interruption"): the host ends
+ * the command and puts this line in its output.
+ */
+export const HELD_AT_TIMEOUT =
+  "Ended instead of moving to the background: plugins' input is held, by a Stop or by the host's limits.";
 
 /** `--max-turns` and `--max-budget-usd` of a `claude -p` run, or the Agent SDK's turn and spend limits. */
 export interface RunLimits {
@@ -40,6 +58,8 @@ export interface RunGate {
   endInput(): void;
   /** Aborts at the next interruption: for a call that waits in the queue, which the interruption drops. */
   interrupted(): AbortSignal;
+  /** Replaces the run's limits, for a host that lives longer than one run: the next call is judged by them. */
+  setLimits(limits: RunLimits): void;
 }
 
 /** A gate that never refuses and has no limits, for a mods API built without a host. */
@@ -49,6 +69,7 @@ export const openGate: RunGate = {
   userInput: () => Promise.resolve(),
   endInput: () => undefined,
   interrupted: () => new AbortController().signal,
+  setLimits: () => undefined,
 };
 
 const costOf = (usage: unknown): number | undefined => {
@@ -63,18 +84,22 @@ const costOf = (usage: unknown): number | undefined => {
  */
 export function createRunGate(
   session: Pick<ModSession, 'turns' | 'usage'>,
-  limits: RunLimits = {},
+  initial: RunLimits = {},
 ): RunGate {
+  let limits = initial;
   let stopped = false;
   let ended = false;
   let turnsBefore = 0;
   let epoch = new AbortController();
   const overBudget = async (): Promise<boolean> => {
-    if (limits.maxBudgetUsd === undefined) return false;
-    return (costOf(await session.usage()) ?? 0) > limits.maxBudgetUsd;
+    const { maxBudgetUsd } = limits;
+    if (maxBudgetUsd === undefined) return false;
+    return (costOf(await session.usage()) ?? 0) > maxBudgetUsd;
   };
-  const atTurnLimit = async (): Promise<boolean> =>
-    limits.maxTurns !== undefined && (await session.turns()) - turnsBefore >= limits.maxTurns;
+  const atTurnLimit = async (): Promise<boolean> => {
+    const { maxTurns } = limits;
+    return maxTurns !== undefined && (await session.turns()) - turnsBefore >= maxTurns;
+  };
   return {
     async refusal() {
       if (ended) return REFUSAL_REASONS.inputEnded;
@@ -94,5 +119,6 @@ export function createRunGate(
     },
     endInput: () => void (ended = true),
     interrupted: () => epoch.signal,
+    setLimits: (next) => void (limits = next),
   };
 }

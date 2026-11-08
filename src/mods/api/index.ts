@@ -25,9 +25,11 @@ export {
 } from './replay.ts';
 export {
   createRunGate,
+  HELD_AT_TIMEOUT,
   openGate,
   QUEUE_DROPS,
   REFUSAL_REASONS,
+  unsentReason,
   type RunGate,
   type RunLimits,
 } from './gate.ts';

@@ -79,6 +79,8 @@ export interface ModRuntime {
    * has one calls every listener when the worker stopped responding or crashed and has been replaced:
    * the modules it held are gone, and the kit loads each mod's module again in the new worker. The
    * returned promise settles once the kit has done that, so the runtime can hold its events until then.
+   * The kit handles one stop at a time, after any load or reload in progress ends, so a call of the
+   * runtime that loads a module must settle when the worker stops, not wait for its listeners.
    * Returns the function that removes the listener.
    */
   onCrash?(listener: (crash: WorkerCrash) => Promise<void>): () => void;

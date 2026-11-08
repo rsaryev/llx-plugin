@@ -17,6 +17,8 @@ export interface CrashCtx {
   readonly wired: { readonly env: LoaderEnv };
   readonly health: WorkerHealth;
   readonly debug: (line: string) => void;
+  /** Forgets what the replay ledger kept of a mod that is gone. */
+  readonly forget: (name: string) => void;
   readonly notify: (notice: ModNotice) => void;
   readonly session: () => ModLineSession;
   /** `session.start` for the mods just given a fresh copy, whose repeated calls are not made again. */
@@ -35,6 +37,7 @@ async function unloadAll(ctx: CrashCtx, names: ReadonlySet<string>): Promise<voi
   const gone = ctx.loaded.filter((mod) => names.has(mod.name));
   for (const mod of gone.toReversed()) await unloaded(mod);
   ctx.loaded = ctx.loaded.filter((mod) => !gone.includes(mod));
+  for (const mod of gone) ctx.forget(mod.name);
 }
 
 /** A fresh copy of `current`: in its place in the running order, or gone when the module no longer loads. */

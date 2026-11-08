@@ -55,6 +55,37 @@ describe('the reasons of a run (api.md, "Calls refused in `claude -p` runs and A
       expect(await h.api.prompt.submit({ text: 'd' })).toEqual({ drop: MAX_TURNS });
     });
 
+    test("turns from the subagents a mod spawns count toward --max-turns with those of its prompts: the count is the session's own", async () => {
+      // The host runs the subagent's two turns; the kit reads the session's total, which includes them.
+      const base = fakePorts().ports;
+      const turns = { count: 0 };
+      const ports: Partial<ModHostPorts> = {
+        session: { ...base.session, turns: () => Promise.resolve(turns.count) },
+        agents: {
+          list: () => Promise.resolve([]),
+          spawn: () => ((turns.count += 2), Promise.resolve({ agentId: 'a-1' })),
+        },
+        prompts: {
+          ...base.prompts,
+          submit: () => ((turns.count += 1), Promise.resolve({})),
+        },
+      };
+      const gate = createRunGate(
+        { ...numbers().port, turns: () => Promise.resolve(turns.count) },
+        { maxTurns: 4 },
+      );
+      const h = await apiHarness({ ports, options: { gate } });
+      expect(await h.api.agent.spawn({ type: 'reviewer', prompt: 'look' })).toEqual({
+        agentId: 'a-1',
+      });
+      expect(await h.api.prompt.submit({ text: 'a' })).toEqual({});
+      expect(await h.api.prompt.submit({ text: 'b' })).toEqual({});
+      expect(await h.api.prompt.submit({ text: 'c' })).toEqual({ drop: MAX_TURNS });
+      expect(await h.api.agent.spawn({ type: 'reviewer', prompt: 'again' })).toEqual({
+        deny: MAX_TURNS,
+      });
+    });
+
     test('the run is past its --max-budget-usd limit: the total keeps adding up, so the next prompt of the user does not lift it', async () => {
       const { h, gate, world } = await run({ maxBudgetUsd: 1 });
       world.state.cost = 1;
@@ -137,5 +168,50 @@ describe('the reasons of a run (api.md, "Calls refused in `claude -p` runs and A
       const answers = await loop({ maxTurns: 5 }, 25);
       expect(answers).toEqual([{}, {}, {}, {}, { drop: MAX_TURNS }]);
     });
+  });
+});
+
+describe('a host that outlives one run: judgments (spec/judgments.md)', () => {
+  test('input.setLimits replaces --max-turns and --max-budget-usd for the next call', async () => {
+    const base = fakePorts().ports;
+    const world = { turns: 5, cost: 0 };
+    const ports: Partial<ModHostPorts> = {
+      session: {
+        ...base.session,
+        turns: () => Promise.resolve(world.turns),
+        usage: () => Promise.resolve({ cost: world.cost }),
+      },
+      prompts: { ...base.prompts, submit: () => Promise.resolve({}) },
+    };
+    const answers: unknown[] = [];
+    const mod = registerOf((on) => {
+      on('tool.call', async ($: ModsApi, e: unknown) => {
+        answers.push(await $.prompt.submit({ text: 'again' }));
+        return e;
+      });
+    });
+    const s = session(
+      { 'first-mod': mod },
+      { ports: fakePorts(ports).ports, limits: { maxTurns: 10 } },
+    );
+    await s.host.load([modPlugin(inline('first-mod'), mod)]);
+    const fire = () => s.host.fire('tool.call', { tool: 'Bash' });
+    await fire();
+    s.host.input.setLimits({ maxTurns: 5 });
+    await fire();
+    s.host.input.setLimits({ maxTurns: 20 });
+    await fire();
+    world.cost = 2;
+    s.host.input.setLimits({ maxBudgetUsd: 1 });
+    await fire();
+    s.host.input.setLimits({});
+    await fire();
+    expect(answers).toEqual([
+      {},
+      { drop: 'the run reached its --max-turns limit' },
+      {},
+      { drop: 'the run is past its --max-budget-usd limit' },
+      {},
+    ]);
   });
 });

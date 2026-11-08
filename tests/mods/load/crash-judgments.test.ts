@@ -38,6 +38,22 @@ describe('the worker ledger', () => {
     expect(s.notices).toHaveLength(1);
   });
 
+  test('a stop traced to a built-in mod counts as untraced: three of them unload the installed mods, never the built-in one', async () => {
+    const register = quiet();
+    const s = crashSession({ 'first-mod': register });
+    await s.host.registerBuiltIn('native', 'builtin', [
+      { event: 'tool.call', isGenerator: false, run: () => ({ result: 'native' }) },
+    ]);
+    await s.host.load([modPlugin(inline('first-mod'), register)]);
+    await s.worker.crash({ reason: 'blocked', culprit: 'native' });
+    await s.worker.crash({ reason: 'blocked', culprit: 'native' });
+    expect(s.host.active().map((mod) => mod.name)).toEqual(['native', 'first-mod']);
+    expect(s.notices).toEqual([]);
+    await s.worker.crash({ reason: 'blocked', culprit: 'native' });
+    expect(s.host.active().map((mod) => mod.name)).toEqual(['native']);
+    expect(s.notices).toHaveLength(1);
+  });
+
   test('a fresh copy that does not load says why in the debug log and stays off', async () => {
     let loads = 0;
     const register = registerOf((on) => {
