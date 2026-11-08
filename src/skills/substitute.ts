@@ -139,13 +139,29 @@ function scan(content: string, typed: Typed): Scanned {
 const APPENDED = (rawArguments: string): string => `\n\nARGUMENTS: ${rawArguments}`;
 
 /**
+ * `substituteArguments` over the pieces of one text, for a text cut at its `` !`command` ``
+ * placeholders (`skills/expand`): a placeholder in any piece counts as receiving the arguments, and
+ * the `ARGUMENTS:` line, when none did, ends the last piece. Each piece is scanned alone, so an
+ * argument value inserted into one can never reach another.
+ */
+export function substituteArgumentPieces(
+  pieces: readonly string[],
+  input: ArgumentInput,
+): readonly string[] {
+  const typed: Typed = { ...input, args: parseArguments(input.rawArguments) };
+  const scanned = pieces.map((piece) => scan(piece, typed));
+  const append = !scanned.some((piece) => piece.received) && input.rawArguments.trim() !== '';
+  return scanned.map((piece, index) =>
+    append && index === scanned.length - 1 ? piece.text + APPENDED(input.rawArguments) : piece.text,
+  );
+}
+
+/**
  * `$ARGUMENTS`, `$ARGUMENTS[N]`, `$N` and `$name` in `content`. With arguments typed and no
  * placeholder receiving one, `ARGUMENTS: <value>` is appended to the end.
  */
 export function substituteArguments(content: string, input: ArgumentInput): string {
-  const typed: Typed = { ...input, args: parseArguments(input.rawArguments) };
-  const { text, received } = scan(content, typed);
-  return received || input.rawArguments.trim() === '' ? text : text + APPENDED(input.rawArguments);
+  return substituteArgumentPieces([content], input).join('');
 }
 
 export interface SubstitutionInput extends ArgumentInput {

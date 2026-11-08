@@ -136,6 +136,41 @@ resolveExecution(skill, { interactive: true, backgroundTasksDisabled: false, tri
 model catalogue (`availableModels`, the family substitution, auto mode support) is the host's:
 `ModelAvailability` is the three questions the kit asks.
 
+### Skill expansion (done: `skills/shell-scan`, `shell-exit`, `shell-run`, `expand`, `expand-policy`, `hook-limits`)
+
+What a skill becomes when it is invoked: the text the model receives and what the host must apply
+for the turn (skills.md, "Inject dynamic context", "How injected commands run", "Pre-approve tools
+for a skill", "Run skills in a subagent"; hooks.md, "Hooks in skills and agents"). The placeholders
+are found in the original text, arguments and `${CLAUDE_*}` are substituted, the commands run
+through the `CommandRunner` port, and their output is never scanned again.
+
+```ts
+import { expandSkill } from '@rsaryev/claude-plugin-kit';
+
+const out = await expandSkill(skill, {
+  arguments: '123', sessionId, effort: 'high', permissionMode, disableShellExecution: false,
+  shells: { bash: true, powershell: false },
+  context: { interactive: true, trigger: 'user' }, signal,
+}, { runner, locations, environment, permissions });
+if (out.ok) { out.text; out.grants; out.disallowed; out.execution; out.turn; out.hooks; }
+else out.issues; // the invocation aborted: Claude never sees the skill
+```
+
+| Name                                   | Does                                                                                           |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `expandSkill(skill, request, ports)`   | `text` with commands replaced by their output; `grants` (`allowed-tools`, Bash rules with `${CLAUDE_*}` substituted) and `disallowed` for this turn; `execution` and `turn` from `resolveExecution` and `resolveTurnOverrides` (the environment variables are read through `Environment`); `hooks` to register for the session, present only when the skill declares them; warnings in `issues`. A failed command, a refused permission check, a refused character or a missing shell returns `{ ok: false, issues }` and no text |
+| `ExpandRequest`                        | the typed arguments, the session id and effort, `permissionMode` (auto mode turns an unapproved command into an instruction to run it first, except in a forked skill that sets `agent`), `disableShellExecution` (every command becomes `[shell command execution disabled by policy]`), the shell tools available, `cwd`, `limits` (model allowlist, effort cap), `session` (plugin id, `userConfig`, `isolatedSession`...) and `policy` (`hooksLockedToPlugins`, `managedPermissionRulesOnly`) |
+| `ShellPermission`                      | the host's answer for one command, `(call: { tool, command, grants }) => 'allow' \| 'deny' \| 'ask'`: its rules (deny and ask beat the grants), then the skill's `grants`, then the mode. Tests build it from `matchRule`; the kit holds no rule engine here |
+| `countSkillHooks`, `admitSkillHooks`, `hookSourceOf` | the hook limits per source and session (1,024 hooks, 16,384 matcher characters, a matcher counted once per hook); a skill past a limit registers none of its hooks |
+
+Behaviour worth knowing: the inline form is recognized only at the start of a line or after
+whitespace (`KEY=!`cmd`` stays literal); with bash a non-zero exit fails except exit 1 of `grep`,
+`rg`, `egrep`, `fgrep`, `find`, `diff`, `test`, `[`, `git diff` and `git grep` (PowerShell: no `find`
+or `diff`, plus `findstr`); each command runs under a 2-minute timeout with stderr merged for bash;
+a synced skill's commands are not run on the owner's machine (`isolatedSession` says otherwise).
+The host owns registering and firing the hooks, the process, the working directory after a `cd`, and
+moving a long command to the background.
+
 ### Output styles (done: `format/output-style`, `skills/output-style-select`)
 
 ```ts

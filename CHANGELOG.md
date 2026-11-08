@@ -24,6 +24,16 @@
 
 ### Added
 
+- Skills: dynamic context and `expandSkill`. `expandSkill` turns a skill or command into the text
+  the model receives plus its grants (`allowed-tools` with `${CLAUDE_*}` substituted in the Bash
+  rules, the docs' same-variable pattern), `disallowed-tools`, execution (inline or fork), model and
+  effort overrides (and `${CLAUDE_EFFORT}` as the level the skill runs at) and hooks. `!`cmd`` and
+  ```` ```! ```` placeholders are found in the original text and run through the `CommandRunner` port
+  (the `shell` field picks the tool, exit 1 of search and comparison commands is a result, a failure
+  or a refused permission check aborts the invocation, auto mode and forked skills as documented),
+  `disableSkillShellExecution` and synced skills replace or keep them as literal text, and output is
+  never re-scanned. `countSkillHooks`, `admitSkillHooks` and `hookSourceOf` apply the documented
+  limits on skill hooks. `substituteArgumentPieces` backs the expansion.
 - Skills: invocation, listing and execution. `invocationPolicy` and `checkInvocation` give the
   default / `disable-model-invocation` / `user-invocable: false` matrix (who may run a skill, what
   the model is told, the `/` menu, subagent preloading, a scheduled-task prompt) and apply

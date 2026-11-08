@@ -145,3 +145,23 @@ export {
   type VariableSource,
   type VariablesSubstituted,
 } from './skills/variables.ts';
+export {
+  expandSkill,
+  type ExpandPolicy,
+  type ExpandPorts,
+  type ExpandRequest,
+  type ExpandSession,
+  type Expansion,
+  type SessionLimits,
+  type ShellCall,
+  type ShellPermission,
+} from './skills/expand.ts';
+export {
+  admitSkillHooks,
+  countSkillHooks,
+  hookSourceOf,
+  NO_HOOKS_YET,
+  SKILL_HOOK_LIMITS,
+  type HooksAdmission,
+  type HookUsage,
+} from './skills/hook-limits.ts';
