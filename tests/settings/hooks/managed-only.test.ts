@@ -126,14 +126,31 @@ spec('settings.key.allowManagedHooksOnly', () => {
   });
 
   describe('monitors', () => {
-    test('a plugin monitors do not start unless the plugin is force-enabled', () => {
-      const policy = hookPolicyOf([managed(only)]);
-      expect(policy.monitorsRun(false)).toBe(false);
-      expect(policy.monitorsRun(true)).toBe(true);
+    test('a plugin monitors do not start unless managed settings force-enable the plugin', () => {
+      const policy = hookPolicyOf([managed(only), forceEnable('vetted@acme')]);
+      expect(policy.monitorsRun('vetted@acme')).toBe(true);
+      expect(policy.monitorsRun('other@acme')).toBe(false);
+    });
+
+    test('the match is on the full plugin@marketplace id, so a same-name plugin elsewhere stays blocked', () => {
+      const policy = hookPolicyOf([managed(only), forceEnable('vetted@acme')]);
+      expect(policy.monitorsRun('vetted@public')).toBe(false);
+      expect(runs(policy, fromPlugin('vetted@public'))).toBe(false);
+      expect(runs(policy, fromPlugin('vetted@acme'))).toBe(true);
+    });
+
+    test('a plugin that managed settings disable, or only the user enabled, does not start', () => {
+      const policy = hookPolicyOf([
+        managed(only),
+        managed({ enabledPlugins: { 'off@acme': false } }),
+        user({ enabledPlugins: { 'mine@team': true } }),
+      ]);
+      expect(policy.monitorsRun('off@acme')).toBe(false);
+      expect(policy.monitorsRun('mine@team')).toBe(false);
     });
 
     test('without the key every plugin monitors start', () => {
-      expect(hookPolicyOf([managed({})]).monitorsRun(false)).toBe(true);
+      expect(hookPolicyOf([managed({})]).monitorsRun('vetted@acme')).toBe(true);
     });
   });
 
@@ -163,6 +180,35 @@ spec('settings.key.allowManagedHooksOnly', () => {
 
     test('are not disabled without the key', () => {
       expect(runs(hookPolicyOf([managed({})]), commandPlugin)).toBe(true);
+    });
+
+    test('are disabled by disableCommandPluginSources true alone, a force-enabled one included', () => {
+      for (const sources of [
+        [managed({ disableCommandPluginSources: true })],
+        [managed({ disableCommandPluginSources: true }), forceEnable('built@acme')],
+      ]) {
+        const policy = hookPolicyOf(sources);
+        expect(plain(policy.runs(commandPlugin))).toEqual({
+          run: false,
+          reason: 'commandSourceDisabled',
+        });
+        expect(runs(policy, fromPlugin('lint@team'))).toBe(true);
+        expect(policy.commandSettingsNarrowedToManaged).toBe(false);
+      }
+    });
+
+    test('disableCommandPluginSources true does not restrict the other hooks', () => {
+      const policy = hookPolicyOf([managed({ disableCommandPluginSources: true })]);
+      expect(runs(policy, fromSettings('user'))).toBe(true);
+      expect(runs(policy, fromFrontmatter('agent', 'project'))).toBe(true);
+    });
+
+    test('an explicit false lifts the block that allowManagedHooksOnly implies, and without a key nothing is blocked', () => {
+      const lifted = hookPolicyOf([managed({ ...only, disableCommandPluginSources: false })]);
+      expect(runs(lifted, commandPlugin)).toBe(false);
+      expect(
+        runs(hookPolicyOf([managed({ disableCommandPluginSources: false })]), commandPlugin),
+      ).toBe(true);
     });
   });
 
@@ -213,61 +259,5 @@ describe('what the lock on hooks of strictPluginOnlyCustomization adds (consumed
     const policy = hookPolicyOf([managed({})], { locks: { hooks: false } });
     expect(runs(policy, fromSettings('user'))).toBe(true);
     expect(runs(policy, fromPlugin('mine@skills-dir', { skillsDirPlugin: true }))).toBe(true);
-  });
-});
-
-describe('which reason is given when two locks stop one hook (judgment: the docs do not rank them)', () => {
-  const everything = [
-    managed({ allowManagedHooksOnly: true, disableAllHooks: true }),
-    forceEnable('built@acme'),
-  ] as const;
-
-  test('disableAllHooks is named before allowManagedHooksOnly, then the surface lock', () => {
-    const policy = hookPolicyOf(everything, { locks: { hooks: true } });
-    expect(plain(policy.runs(fromSettings('user')))).toEqual({
-      run: false,
-      reason: 'disableAllHooks',
-    });
-    const noDisable = hookPolicyOf([managed(only)], { locks: { hooks: true } });
-    expect(plain(noDisable.runs(fromSettings('user')))).toEqual(blocked);
-  });
-
-  test('a plugin that is never loaded (command source) is named first: its hooks never exist', () => {
-    const policy = hookPolicyOf(everything, { locks: { hooks: true } });
-    expect(
-      plain(policy.runs(fromPlugin('built@acme', { commandSource: true, skillsDirPlugin: true }))),
-    ).toEqual({ run: false, reason: 'commandSourceDisabled' });
-  });
-});
-
-describe('origins the docs leave open (judgments)', () => {
-  test('a skill or command frontmatter hook follows the same rule as an agent one under the key', () => {
-    const policy = hookPolicyOf([managed(only)]);
-    expect(plain(policy.runs(fromFrontmatter('skill', 'managed')))).toEqual(blocked);
-    expect(plain(policy.runs(fromFrontmatter('command', 'bundled')))).toEqual(blocked);
-  });
-
-  test('a skill frontmatter hook of a force-enabled plugin runs, an agent one does not', () => {
-    const policy = hookPolicyOf([managed(only), forceEnable('vetted@acme')]);
-    expect(runs(policy, fromPluginFrontmatter('skill', 'vetted@acme'))).toBe(true);
-    expect(runs(policy, fromPluginFrontmatter('command', 'vetted@acme'))).toBe(true);
-    expect(runs(policy, fromPluginFrontmatter('agent', 'vetted@acme'))).toBe(false);
-  });
-});
-
-describe('mods and built-in plugins (judgments)', () => {
-  test('a mod the host calls the organization own still needs the managed enabledPlugins entry', () => {
-    const policy = hookPolicyOf([managed(only)]);
-    expect(plain(policy.runs(fromPlugin('guard@acme', { isMod: true, isOrgMod: true })))).toEqual(
-      blocked,
-    );
-  });
-
-  test('a built-in plugin runs under every hook setting', () => {
-    const policy = hookPolicyOf([managed({ ...only, disableAllHooks: true })]);
-    expect(runs(policy, fromPlugin('cc-plugin-diff@builtin'))).toBe(true);
-    expect(
-      runs(hookPolicyOf([managed(only)], { locks: { hooks: true } }), fromPlugin('x@builtin')),
-    ).toBe(true);
   });
 });

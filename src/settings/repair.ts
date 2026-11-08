@@ -10,6 +10,7 @@ import type { Repair } from './repair-support.ts';
 import {
   boolean,
   enabledPlugins,
+  hooksSwitch,
   lockBoolean,
   marketplaceMap,
   pluginOnly,
@@ -28,6 +29,7 @@ import {
 export const REPAIR_KINDS = [
   'boolean',
   'lockBoolean',
+  'hooksSwitch',
   'string',
   'stringList',
   'closedStringList',
@@ -47,6 +49,7 @@ export type RepairKind = (typeof REPAIR_KINDS)[number];
 export const REPAIRS: { readonly [R in RepairKind]: Repair } = {
   boolean,
   lockBoolean,
+  hooksSwitch,
   string,
   stringList,
   closedStringList,

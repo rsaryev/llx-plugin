@@ -14,7 +14,15 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { issuesOf, plain } from '../../support/settings-layers.ts';
-import { hookPolicyOf, local, managed, project, user } from '../../support/hook-policy.ts';
+import {
+  fromManaged,
+  hookPolicyOf,
+  local,
+  managed,
+  project,
+  runs,
+  user,
+} from '../../support/hook-policy.ts';
 import { spec } from '../../support/spec.ts';
 
 const url = 'https://hooks.example.com/notify';
@@ -103,8 +111,13 @@ spec('settings.key.httpHookAllowedEnvVars', () => {
   });
 
   describe('applies to hooks from every source, managed settings included', () => {
-    test('the limit is a function of the hook list alone, whoever configured the hook', () => {
-      const policy = hookPolicyOf([managed({ httpHookAllowedEnvVars: ['OK'] })]);
+    // Design: `httpHook` takes no origin, so no origin can be exempt from the limit. It composes with
+    // `runs(origin)`, which keeps a managed hook running while the variables are still limited.
+    test('a managed HTTP hook runs by origin and still loses the unlisted variables', () => {
+      const policy = hookPolicyOf([
+        managed({ allowManagedHooksOnly: true, httpHookAllowedEnvVars: ['OK'] }),
+      ]);
+      expect(runs(policy, fromManaged)).toBe(true);
       expect(interpolated(policy, ['OK', 'NOT_OK'])).toEqual(['OK']);
     });
   });

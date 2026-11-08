@@ -11,9 +11,13 @@
  * "can include only environment variables another settings source lists"), claude-apps-gateway.md §
  * "Set the opt-in" (`parentSettingsBehavior: "merge"`), settings-reference.md § `disableAllHooks` ("In
  * the Agent SDK's `managedSettings` option ... An administrator's managed hooks, force-enabled plugins'
- * hooks, and your SDK hook callbacks keep running"), § `allowedHttpHookUrls` and
+ * hooks, and your SDK hook callbacks keep running"), § `disableCommandPluginSources` ("An application
+ * that passes `disableAllHooks: true` in the Agent SDK's `managedSettings` option doesn't by itself
+ * disable command sources"), § `allowedHttpHookUrls` and
  * § `httpHookAllowedEnvVars` ("In the Agent SDK's `managedSettings` option, Claude Code ignores a list
- * with entries, so pass it in the SDK's `settings` option instead").
+ * with entries, so pass it in the SDK's `settings` option instead"), and the SDK's `managedSettings`
+ * option (sdk.d.ts: `disableAllHooks: true` "binds as `allowManagedHooksOnly: true`", and "any value
+ * but `false` and `"false"` binds it the same way").
  */
 import { describe, expect, test } from 'bun:test';
 import { issuesOf, plain } from '../../support/settings-layers.ts';
@@ -132,13 +136,18 @@ spec(
       });
     });
 
-    describe('managed settings rank above the parent', () => {
-      test('a managed false is the value left over a true in managedSettings', () => {
+    describe('managed settings rank above the parent, but a parent true is a lock', () => {
+      // The SDK's `managedSettings` option: `disableAllHooks: true` "binds as `allowManagedHooksOnly:
+      // true`", so a `disableAllHooks: false` in managed settings cannot lift it.
+      test("an administrator's false does not lift a true in managedSettings", () => {
         const policy = hookPolicyOf(
           [managed({ disableAllHooks: false }), parent({ disableAllHooks: true })],
           merging,
         );
-        expect(runs(policy, fromSettings('user'))).toBe(true);
+        expect(runs(policy, fromSettings('user'))).toBe(false);
+        expect(runs(policy, fromSettings('project'))).toBe(false);
+        expect(runs(policy, fromManaged)).toBe(true);
+        expect(runs(policy, fromSdk)).toBe(true);
       });
 
       test('the parent true beats a user file false', () => {
@@ -155,6 +164,24 @@ spec(
           parent({ disableAllHooks: true }),
         ]);
         expect(runs(policy, fromSettings('user'))).toBe(false);
+      });
+
+      test('a false in managedSettings is an ordinary value: it ranks over a user true', () => {
+        const policy = hookPolicyOf([
+          user({ disableAllHooks: true }),
+          parent({ disableAllHooks: false }),
+        ]);
+        expect(runs(policy, fromSettings('user'))).toBe(true);
+        expect(policy.commandSettingsNarrowedToManaged).toBe(false);
+      });
+
+      test('a managed true still disables the managed hooks next to the parent', () => {
+        const policy = hookPolicyOf(
+          [managed({ disableAllHooks: true }), parent({ disableAllHooks: true })],
+          merging,
+        );
+        expect(plain(policy.runs(fromManaged))).toEqual({ run: false, reason: 'disableAllHooks' });
+        expect(policy.commandsDisabled.statusLine).toBe(true);
       });
     });
 

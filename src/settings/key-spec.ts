@@ -95,7 +95,7 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     repair: 'blockedSources',
   },
   channelsEnabled: { scopes: 'managed', merge: MERGES.highestWins, repair: 'boolean' },
-  disableAllHooks: { scopes: 'anyAndParent', merge: MERGES.highestWins, repair: 'boolean' },
+  disableAllHooks: { scopes: 'anyAndParent', merge: MERGES.highestWins, repair: 'hooksSwitch' },
   disableBundledSkills: { scopes: 'any', merge: MERGES.highestWins, repair: 'lockBoolean' },
   disableCommandPluginSources: {
     scopes: 'managed',

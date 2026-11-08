@@ -149,6 +149,23 @@ spec('settings.key.disableAllHooks', () => {
       expect(runs(policy, fromFrontmatter('skill', 'user'))).toBe(false);
     });
 
+    test('hooks of the --settings file and of the SDK settings option stop too, whichever file carries the key', () => {
+      for (const source of [user(off), project(off), local(off), flag(off)]) {
+        const policy = hookPolicyOf([source]);
+        expect(plain(policy.runs(fromSettings('flag')))).toEqual({
+          run: false,
+          reason: 'disableAllHooks',
+        });
+        expect(runs(policy, fromSettings('sdkSettingsOption'))).toBe(false);
+      }
+    });
+
+    test('the --settings and SDK settings hooks run when the value left after precedence is false', () => {
+      const policy = hookPolicyOf([user(off), flag(on)]);
+      expect(runs(policy, fromSettings('flag'))).toBe(true);
+      expect(runs(policy, fromSettings('sdkSettingsOption'))).toBe(true);
+    });
+
     test('a plugin is force-enabled by its full plugin@marketplace id', () => {
       const policy = hookPolicyOf([user(off), forceEnable('vetted@acme')]);
       expect(runs(policy, fromPlugin('vetted@acme'))).toBe(true);

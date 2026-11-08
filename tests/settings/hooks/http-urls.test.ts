@@ -50,6 +50,11 @@ spec('settings.key.allowedHttpHookUrls', () => {
       expect(allowed(policy, 'http://localhost:8080')).toBe(true);
     });
 
+    test('allows any http://localhost URL, the port or none, as the example says', () => {
+      expect(allowed(policy, 'http://localhost/hook')).toBe(true);
+      expect(allowed(policy, 'http://localhost')).toBe(true);
+    });
+
     test('blocks the rest without running them', () => {
       for (const url of [
         'https://evil.example.com/notify',
@@ -144,11 +149,25 @@ spec('settings.key.allowedHttpHookUrls', () => {
   });
 
   describe('applies to hooks from every source, managed settings included', () => {
-    test('the check takes the URL alone, so no origin is exempt', () => {
-      const policy = hookPolicyOf([managed({ allowedHttpHookUrls: ['https://a.test/*'] })]);
+    // Design: `httpHook` takes no origin, so no origin can be exempt from the allowlist. The two
+    // checks compose: `runs(origin)` says whether the origin may run hooks at all, `httpHook` whether
+    // the URL may be sent to.
+    test('an HTTP hook of the managed origin is stopped by httpHook while runs(managed) stays true', () => {
+      const policy = hookPolicyOf([
+        managed({ allowManagedHooksOnly: true, allowedHttpHookUrls: ['https://a.test/*'] }),
+      ]);
       expect(runs(policy, fromManaged)).toBe(true);
+      expect(plain(policy.httpHook('https://managed-hook.test/', []))).toEqual({
+        run: false,
+        message: expect.any(String),
+      });
+      expect(allowed(policy, 'https://a.test/x')).toBe(true);
+    });
+
+    test('a user hook is judged by the same list as a managed one', () => {
+      const policy = hookPolicyOf([managed({ allowedHttpHookUrls: ['https://a.test/*'] })]);
       expect(runs(policy, fromSettings('user'))).toBe(true);
-      expect(allowed(policy, 'https://managed-hook.test/')).toBe(false);
+      expect(allowed(policy, 'https://user-hook.test/')).toBe(false);
     });
   });
 
@@ -231,9 +250,25 @@ describe('judgments on the URL form (the docs leave them open)', () => {
     expect(matchUrlPattern('https://hooks.example.com/', 'https://hooks.example.com')).toBe(true);
   });
 
-  test('the port and the default port are not folded: the text counts', () => {
+  test('the default port is not folded: the text counts', () => {
     expect(matchUrlPattern('https://a.test/*', 'https://a.test:443/x')).toBe(false);
-    expect(matchUrlPattern('http://localhost:*', 'http://localhost/x')).toBe(false);
+    expect(matchUrlPattern('https://a.test:443/*', 'https://a.test/x')).toBe(false);
+  });
+
+  test('a wildcard port also matches the host with no port, as the docs example reads', () => {
+    expect(matchUrlPattern('http://localhost:*', 'http://localhost/x')).toBe(true);
+    expect(matchUrlPattern('http://localhost:*', 'http://localhost')).toBe(true);
+    expect(matchUrlPattern('http://localhost:*', 'http://LOCALHOST./x?y=1')).toBe(true);
+    expect(matchUrlPattern('http://[::1]:*', 'http://[::1]/x')).toBe(true);
+    expect(matchUrlPattern('http://localhost:*/hook', 'http://localhost/hook')).toBe(true);
+    expect(matchUrlPattern('http://localhost:*/hook', 'http://localhost/other')).toBe(false);
+  });
+
+  test('a wildcard port does not widen the host', () => {
+    expect(matchUrlPattern('http://localhost:*', 'http://localhost.evil.test/x')).toBe(false);
+    expect(matchUrlPattern('http://localhost:*', 'http://localhostx/x')).toBe(false);
+    expect(matchUrlPattern('http://localhost:*', 'http://localhost@evil.test/x')).toBe(false);
+    expect(matchUrlPattern('http://localhost:*', 'https://localhost/x')).toBe(false);
   });
 
   test('user information in the address is not part of the host that is folded', () => {

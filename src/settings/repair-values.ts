@@ -1,6 +1,14 @@
 import { warning, type PluginIssue } from '../format/issues.ts';
 import { SKILL_OVERRIDE_STATES, WORKFLOW_SIZES } from '../protocol/settings-keys.ts';
-import { dropped, entryDropped, failedClosed, kept, where, type Repair } from './repair-support.ts';
+import {
+  dropped,
+  entryDropped,
+  failedClosed,
+  isParent,
+  kept,
+  where,
+  type Repair,
+} from './repair-support.ts';
 import { isRecord } from './record.ts';
 
 /** A Boolean: anything else is dropped with a warning, even the text `"true"` (the docs' `disableAllHooks` case). */
@@ -22,6 +30,20 @@ export const lockBoolean: Repair = (value, at) => {
     ]);
   }
   return failedClosed(at, true, 'true');
+};
+
+/**
+ * `disableAllHooks`. In the SDK's `managedSettings` "any value but `false` and `"false"` binds" as
+ * `allowManagedHooksOnly: true`, "because an enterprise configuration often yields a boolean as
+ * text", so there an unreadable value reads as `true`, with a warning. Every other source reads a
+ * Boolean and drops anything else.
+ */
+export const hooksSwitch: Repair = (value, at) => {
+  if (typeof value === 'boolean' || !isParent(at)) return boolean(value, at);
+  if (value === 'false') {
+    return kept(false, [warning(where(at), `"${at.key}" is the text "false": drop the quotes`)]);
+  }
+  return failedClosed(at, true, 'true: it binds as "allowManagedHooksOnly": true');
 };
 
 export const string: Repair = (value, at) =>

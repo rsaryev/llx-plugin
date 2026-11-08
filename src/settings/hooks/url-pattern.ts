@@ -6,7 +6,9 @@
  * The pattern and the address are compared as text after one normalization, which is the kit's
  * judgment where the docs are silent (spec/judgments.md): the scheme and the host are lower case, a
  * trailing dot on the host is dropped, and an address whose path is empty or a lone `/` is tried in
- * both spellings. The path, the port and the user information are compared as written. `*` stands for
+ * both spellings. The path, the port and the user information are compared as written, with one
+ * exception: a pattern whose port is the wildcard (`http://localhost:*`) also matches the same host
+ * with no port, because the docs read that example as "any `http://localhost` URL". `*` stands for
  * any run of characters, `/` included, and every other character matches itself.
  */
 const ADDRESS = /^([a-z][a-z0-9+.-]*:\/\/)([^/?#]*)([\s\S]*)$/i;
@@ -55,7 +57,20 @@ function matchesWildcards(pattern: string, text: string): boolean {
   return true;
 }
 
+/** `scheme://[user@]host`, then a port that is a lone `*`, then the rest of the pattern. */
+const PORT_WILDCARD = /^([a-z][a-z0-9+.-]*:\/\/(?:[^/?#@]*@)?(?:\[[^\]]*\]|[^/?#:]+)):\*([\s\S]*)$/;
+
+/** The patterns that stand for the host with no port: the `*` of the port then stood for a path. */
+function withoutPort(pattern: string): readonly string[] {
+  const [, origin, rest] = PORT_WILDCARD.exec(pattern) ?? [];
+  if (origin === undefined || rest === undefined) return [];
+  return [`${origin}${rest}`, `${origin}/*${rest}`];
+}
+
 export function matchUrlPattern(pattern: string, url: string): boolean {
   const wanted = normalize(pattern).text;
-  return spellings(url).some((spelling) => matchesWildcards(wanted, spelling));
+  const addresses = spellings(url);
+  return [wanted, ...withoutPort(wanted)].some((each) =>
+    addresses.some((address) => matchesWildcards(each, address)),
+  );
 }

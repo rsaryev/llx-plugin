@@ -14,6 +14,9 @@ export interface RepairAt {
   readonly closed: boolean;
 }
 
+/** The value comes from the SDK's `managedSettings`, which the host passes as parent settings. */
+export const isParent = (at: RepairAt): boolean => at.scope === 'parent';
+
 /** The repaired value (`undefined`: the key does not apply) and what was said about it. */
 export interface Repaired {
   readonly value: unknown;

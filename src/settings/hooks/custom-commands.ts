@@ -1,3 +1,4 @@
+import type { PluginId } from '../plugins/plugin-id.ts';
 import type { HookGate } from './hook-gate.ts';
 
 /**
@@ -22,8 +23,11 @@ export interface CommandGates {
    * skipped without a warning.
    */
   readonly commandSettingsNarrowedToManaged: boolean;
-  /** A plugin's monitors do not start under `allowManagedHooksOnly` unless the plugin is force-enabled. */
-  monitorsRun(pluginForceEnabled: boolean): boolean;
+  /**
+   * A plugin's monitors do not start under `allowManagedHooksOnly` unless managed settings
+   * force-enable the plugin, matched on the whole `plugin@marketplace` id.
+   */
+  monitorsRun(plugin: PluginId): boolean;
   /** `/goal` "depends on hooks": not while hooks are disabled, restricted to managed ones, or untrusted. */
   readonly goalCommandAvailable: boolean;
 }
@@ -43,7 +47,7 @@ export function createCommandGates(gate: HookGate, session: CommandSessionFacts)
     commandsDisabled: { statusLine: off, fileSuggestion: off, subagentStatusLine: off },
     commandSettingsNarrowedToManaged:
       gate.managedOnly || gate.otherDisable || (session.safeMode ?? false),
-    monitorsRun: (pluginForceEnabled) => !gate.managedOnly || pluginForceEnabled,
+    monitorsRun: (plugin) => !gate.managedOnly || gate.forceEnabled(plugin),
     goalCommandAvailable:
       trusted && !gate.managedOnly && !gate.managedDisable && !gate.otherDisable,
   };

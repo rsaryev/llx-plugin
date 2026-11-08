@@ -102,6 +102,16 @@
 
 ### Fixed
 
+- Settings, hook policy: `allowedHttpHookUrls` pattern `http://localhost:*` now also matches
+  `http://localhost/x` (a wildcard port also stands for no port), as the docs example says; a
+  `disableAllHooks: true` in the SDK's `managedSettings` is a lock that binds as
+  `allowManagedHooksOnly: true` (an administrator's `false` no longer lifts it, plugin monitors and
+  agent frontmatter follow it, command sources stay enabled), and a non-Boolean value there other than
+  `false` and `"false"` binds the same way with a warning instead of being dropped; `monitorsRun`
+  takes the plugin id and matches managed `enabledPlugins` on the whole `plugin@marketplace`; tests
+  cover `--settings` and SDK-option hooks and `--add-dir` and synced frontmatter under the `hooks`
+  lock, `disableCommandPluginSources: true` alone, and the managed origin under the HTTP allowlists.
+
 - Settings, marketplace registry: `autoUpdate` defaults off for `knowledge-work-plugins` and
   `first-party-plugins` whatever the host lists as official; routing and identity headers (`Host`,
   `Cookie`, `X-Forwarded-*`) are dropped from an inline plugin entry's `headers` in a project, local

@@ -25,9 +25,12 @@ export interface HookGate {
   runs(origin: HookSource): HookVerdict;
   /** `disableAllHooks` is `true` after precedence, in managed settings. */
   readonly managedDisable: boolean;
-  /** `disableAllHooks` is `true` after precedence, in any other file or in the SDK's `managedSettings`. */
+  /**
+   * `disableAllHooks` is `true` after precedence, in any other file, or the SDK's `managedSettings`
+   * carries it as `true`, which is a lock and not a ranked value.
+   */
   readonly otherDisable: boolean;
-  /** `allowManagedHooksOnly` is `true`. */
+  /** `allowManagedHooksOnly` is `true`, or `managedSettings` carries `disableAllHooks: true`, which binds as it. */
   readonly managedOnly: boolean;
   readonly forceEnabled: ForceEnabled;
 }
@@ -52,13 +55,23 @@ const APPLIES: { readonly [R in HookBlockReason]: Applies } = {
   'strictPluginOnlyCustomization.hooks': (stops, _gate, locks) => locks.hooks && stops.pluginOnly,
 };
 
+/**
+ * `disableAllHooks: true` in the SDK's `managedSettings` "binds as `allowManagedHooksOnly: true`"
+ * (the SDK's `managedSettings` option), so it is a lock that no `disableAllHooks` of another file can
+ * lift. A `false` there is an ordinary value and ranks like any other.
+ */
+const bindsAsLock = (holder: { readonly scope: string; readonly value: boolean }): boolean =>
+  holder.scope === 'parent' && holder.value;
+
 export function createHookGate(view: PolicyView, locks: HookLocks): HookGate {
-  const disable = view.winner('disableAllHooks');
-  const disabled = disable?.value === true;
+  const holders = view.eachFromHighest('disableAllHooks');
+  const ranked = holders.find((holder) => !bindsAsLock(holder));
+  const parentLock = holders.some(bindsAsLock);
+  const disabled = ranked?.value === true;
   const state = {
-    managedDisable: disabled && disable.scope === 'managed',
-    otherDisable: disabled && disable.scope !== 'managed',
-    managedOnly: view.get('allowManagedHooksOnly') === true,
+    managedDisable: disabled && ranked.scope === 'managed',
+    otherDisable: parentLock || (disabled && ranked.scope !== 'managed'),
+    managedOnly: parentLock || view.get('allowManagedHooksOnly') === true,
     forceEnabled: (id: string): boolean => forceEnabledByManaged(view, id),
   };
   const commands = createCommandSourcePolicy(view).disabled;
