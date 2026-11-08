@@ -391,6 +391,120 @@ out of the rules before it in the same source and list; `evaluateRules` applies 
 `Glob(...)`, `Grep(...)` and `NotebookEdit(...)` rules with a path never match; write `Edit(...)` or
 `Read(...)`. A host asks `readsNetworkPath` before it trusts any allow rule, hook or classifier.
 
+## Mods (in progress: the hook chain, the events, the API, the interface, loading and the test kit)
+
+A mod is a plugin whose hooks module registers event handlers (plugins/mods/overview.md). The kit
+never runs a module's source: the host evaluates it in an isolate it chooses through the
+`ModRuntime` port, and the kit runs the hooks it hands back through one chain per event.
+
+```ts
+import { createModChain, ENGINE_ORIGIN } from '@rsaryev/claude-plugin-kit';
+
+const chain = createModChain({ clock });
+const issues = chain.register({ name: 'my-mod', api }, 'user', hooks); // [] or why the module is refused
+const result = await chain.dispatch('tool.call', event, {
+  origin: ENGINE_ORIGIN,
+  signal,
+  core: (e) => runTheTool(e), // Claude Code's own behaviour, at the end of the chain
+  report: (report) => log(report.line), // my-mod: tool.call hook skipped: threw Error: boom
+});
+```
+
+| Piece                                 | Status  | Does                                                                                  |
+| ------------------------------------- | ------- | ------------------------------------------------------------------------------------- |
+| `createModChain(options)`             | done    | middleware chain by tier, matchers, `*` and `classic.*`, `next`, `next.to`, `.catch`, time and nesting limits; streams for `turn.step` and `process.spawn` through `dispatchStream` |
+| `MOD_LIMITS`, `MOD_NAME_PATTERN`      | done    | every number of the reference's Limits table                                          |
+| `MOD_EVENT_NAMES`, `MODS_API`, `MOD_TIERS`, `CLASSIC_EVENT_NAMES`, `API_EVENT_NAMES` | done | the 48 events, the 21 namespaces, the tiers, and the names derived from them (`plugin.name` and `plugin.root` are values, so not events) |
+| `createBudget`, `deepFreeze`, `plainDataProblem`, `jsonChars`, `jsonBytes` | done | `foundation`: a time budget on the `Clock` port that stops while code waits, in-place deep freeze, a stack-safe walk with depth, node and character limits, JSON sizes |
+| `createEventRules()`, `EVENT_SPECS`   | done    | what the chain knows of the tool, prompt, command, `/config`, turn, session and subagent events: documented input fields, the shapes a hook can answer with, refused changes, what Claude Code receives, the cut reason (`createModChain({ clock, rules })`) |
+| `eventResultProblem`, `eventInputProblem` | done | why a result or an input does not fit an event, or `undefined`; unknown events are not checked |
+| `clampReason`, `mergeToolCheck`, `skillPromptEvent`, `autocompleteRows` | done | the 4,096-character reason cut; the `tool.check` decision with plan mode (a mod can tighten a call that is not read-only, not approve it) and the organization's `ceiling: 'ask'` (an `allow` still asks); the `skill.prompt` event from a skill and its parsed frontmatter; Claude Code's autocomplete rows then the mods' |
+| `createModsApi(options, plugin)`      | done    | the `$` of one mod: every namespace of the reference, each call an event through the chain and then a port; `engine.create` fires once and may add or withhold a namespace; `dispose()` stops its timers and forgets its registrations |
+| `createRegistries()`, `createStateStore()`, `readEngineSettings(options)`, `withApiRules(rules)`, `isValidModName`, `atom`, `read`, `update` | done | what mods registered (commands, tools as `mcp__<plugin>__<name>`, subagent types), `$.state`, Claude Code's own `settings.read`, the shape rule for API calls, the 64-character name rule, the state helpers |
+| `createModsUi(options)`, `withUiRules(rules)`, `uiApi(deps, parts)` | done | the interface part: the `$.ui` of a mod (`ModsApiOptions.ui = ui.api`), `draw` a render site (fires `ui.render`, folds the answer), `loadMod` (fires `ui.resolve`), `fault(plugin, report)` and `message(plugin, data)` (each reaches only that mod's hooks), `change` (focus and scroll), the panes, the toast board and the redraw throttle; the chain takes `withUiRules(withApiRules(createEventRules()))` |
+| `defaultElementTable(surface)`, `treeProblem`, `sizeProblem`, `foldRender`, `renderEvent`, `decideSite` | done | the 12 elements an app draws, why a tree is not valid for a site and app, which size limit refuses it, what a site shows once the chain settled (tree, Claude Code's own drawing, refused), and the `ui.render` event for a site |
+| `routeControl`, `hotkeyTable`, `digitButton`, `actionButtons`, `collectControls` | done | a press, typing or a pick routed to a control by its key through `ui.press`, `ui.input`, `ui.select` before its callback; hotkeys (later duplicate wins, none in VS Code or a collapsed band), the band's digit hotkey, `action` bindings |
+| `placePane`, `createPaneRegistry`, `parseOpen`, `createRedrawGate`, `createToastBoard` | done | where a pane appears (any width for the user, 144 or 110 columns for a mod), `ui.close` origins, the `ui.open` fields, redraws throttled and coalesced, toasts by renderer |
+| `createModsHost(options)`             | done    | the mods runtime of one session: `load(plugins)` decides which hooks modules load and in which tier (policy), runs each through manifest, `hooks.json`, compile, scan, options, `plugin.register` and `runtime.load`, and returns every refusal as a line (`hooks module <id> not loaded: <reason>`, `<mod>: refused by <mod>: <reason>`); `session.start` fires for each loaded mod after `load` and `reload`; `reload()` for `/reload-plugins` (mods the host registered with `registerBuiltIn` stay); `reloadMod(name)` for a save in a `--plugin-dir` directory (a broken save keeps the version loaded before); `pluginDirs()`, `watchesPluginDirs(isInteractive)`; `fire`, `fireStream`, `registerBuiltIn`, `active()` |
+| `decideModLoad`, `orderMods`, `hooksModulesOff`, `parsePluginDirs`, `sideloadRefusal`, `modOptions` | done | policy over plain settings data: `disableAllHooks`, `allowManagedHooksOnly`, `disableSideloadFlags`, `prependPlugins`, `appendPlugins`, `pluginConfigs`, `CLAUDE_CODE_PLUGIN_DIRS` and `_DIR_WATCH`, the built-in guard `sec-default@builtin` and its two options |
+| `scanHooksModule(source, file, options)`, `validateMod(input, options)`, `activeModsLine(mods)` | done | the static scan (events handled, `$` calls, env and state use, the 2,000-scope limit) behind `plugin.register`'s `e.uses` and `claude plugin validate`; the `/plugin` line `1 mod active · first-mod` |
+| `readHooksJsonModules(raw)`, `isHooksModuleName`, `isModTestFile`, `resolveTypesPath` | done | `hooks/hooks.json` `modules`, the hooks module and `.test.ts` file names, the `types/index.d.ts` path |
+| `modsTesting.*` (`runModTests`, `createTestKit`, `inlineTests`, `inlineRuntime`, `fakePorts`, `mock`, `expect`) | done | `claude plugin test [directory]` and the `claude-code/testing` module: the host binds `claude-code/testing` to `createTestKit()` per test file and evaluates the compiled file through `ModTestRuntime.loadTests`; the kit builds each test's world (fake ports, stubs, mock clock), runs it under the 5 s limit and prints what Bun's runner prints |
+
+`ModRuntime` and `ModTestRuntime` are the only places a hooks module or a test file runs. `HookCall.direct`
+lets a runtime that evaluates in this process (the kit's `inlineRuntime`) call a hook with the mod's own `$` and the chain's own `next`.
+
+`register` takes the tier `prepend`, `user`, `append` or `builtin` (never `core`, which is Claude Code's own
+behaviour); the built-in guard `sec-default@builtin` registers first in `prepend`. It refuses a whole module (and adds none of its hooks) when `on("x")` is registered twice
+without a matcher, when a hook's form does not fit its event, when a telemetry hook lacks
+`{ to: 'collector' }`, or when a matcher's expression does not compile. `dispatch` takes the
+`DispatchOptions`: `core` is what runs after the last hook, `report` receives the line for every
+hook skipped, `caller` names the mod whose API call fired the event (only the hooks of the mods that run before it, and its own, handle the event), `reentry` names the mod whose own API call fired the event (its hooks are skipped
+as `re-entry`; the host passes the `rewritten` and `lent` flags and a handler's `next.error.cause` is `rewritten`, or `lent` unless `rewritten` also applies), and `groupMs` the time all `session.end`
+hooks share (default 1.5 s, counted from the first hook that has the floor; pass more when settings raise the SessionEnd budget). A hook's own
+time excludes `next` and mods API calls except `$.clock.sleep`; the chain wraps the mod's `$` to
+meter that and to reject an argument nested past 28000 levels. The ports for mods that name
+`PluginIssue` live in `src/mods/ports.ts`, not `src/ports`.
+
+The events part gives the chain what is specific to an event: `createModChain({ clock, rules:
+createEventRules() })`. A hook's result must fit the "A hook can return" column of the reference
+(`{ deny }`, `{ decision }`, `{ drop }`, `{ text }`, `{ suggestions }`, `{ skip }`, `{ consumed }`,
+`{ isDelivered: false, reason }`, `{ isOffered: false }`...); one that does not fails the hook like a
+throw, and Claude Code's own answer (`core`) is an object of the same shape. An event whose only
+answer is `next(e)` takes any result. The fields the docs name are typed on an event's input, any
+other field is carried. The firing is the host's: the kit proves what it does with each answer, not
+when Claude Code raises the event.
+
+### The mods API
+
+```ts
+const chain = createModChain({ clock, rules: withApiRules(createEventRules()) });
+const scopes = new Map();
+const { api, dispose } = await createModsApi(
+  { chain, ports, registries: createRegistries(), state: createStateStore(), scopes, report, debug },
+  { name: 'my-mod', tier: 'user' },
+);
+chain.register({ name: 'my-mod', api }, 'user', hooks); // hooks see `api` as `$`
+```
+
+`ports` is a `ModHostPorts`: the shared `Clock`, `Locations`, `CommandRunner` and `McpCaller` and the
+mods ports `ModFs`, `ModSpawner`, `ModFetcher` (any method, and the kit judges each redirect),
+`ModModels`, `ModSession`, `ModPrompts`, `ModAgents`, `ModCommands`, `ModTools`, `ModTurns`,
+`ModConfig`, `ModSettingsReader`, `ModAudio`, `ModEnv`, `ModStore` and `TelemetrySink`. The kit owns
+what the docs say about a call (paths against the working directory, the 4 MiB limits, `isStdoutTruncated`, the 4 MiB cut of a fetch body,
+the redirect and header rules, prompt blocks and cache breakpoints, the newest 4,096 messages) and the
+port does the effect. A call fires the event named for it (`fs.read`, `store.get`...); a mod before the
+caller can rewrite it, answer `{ value }` or refuse with `{ deny }`, which rejects the call. A
+call whose result is its event's own (`tool.call`, `command.run`, `prompt.submit`, `session.send`...)
+resolves to that result. A hook on a call runs only for the mods after it (the chain's `caller`
+option). `$.clock.after` and `$.clock.every` return their timer at once, not a promise. `$.ui` is built by `createModsUi(...).api` and passed as `options.ui`.
+Judgments are in `spec/judgments.md`.
+
+### The interface
+
+```ts
+const ui = createModsUi({ chain, clock, iface, signal, report, debug }); // iface: a ModInterface
+const chain = createModChain({ clock, rules: withUiRules(withApiRules(createEventRules())) });
+await createModsApi({ chain, ports, registries, state, scopes, report, debug, ui: ui.api }, ref);
+await ui.loadMod('my-mod'); // ui.resolve, once for each app and render site
+const drawn = await ui.draw({ site: 'Pane', surface: 'terminal', requestId: 'hello-tabs' });
+// { tree } | { engine } | { refused, line }
+await routeControl({ chain, tree, surface, signal, report }, 'press', 'more'); // { issues, ran }
+```
+
+`ModInterface` is the one port: what only the host knows (the app, the measured window, the
+renderer, whether the user caused the call) and what it draws (status and log lines, notify, ask,
+copy, selection, blit, focus, scroll). The kit owns what the docs say about each call and the
+tree. A hook's tree is judged when it returns: an element or prop the element does not take, a
+child where none goes, a missing or doubled key, a field over its limit, an element the app does
+not draw, or (in the band) a forbidden prop on a `Box` around another mod's tree fails the hook as
+`returned the wrong shape (a tree Pane refuses: ...)`. The size limits (32 levels, 20,000 nodes,
+262,144 `Raster` cells, 2 MiB of `Image` bytes) refuse the settled tree at its site, and the first
+100,000 characters of text are drawn. Firing is the host's: it passes the site, the viewport and
+the gesture, and the kit proves what the hooks receive and what is drawn from what they answer. It
+draws nothing, so no claim here is about pixels or terminal cells. Judgments are in
+`spec/judgments.md`.
+
 ## Testing kit (planned)
 
 `@rsaryev/claude-plugin-kit/testing`: in-memory `PluginFiles`, a scripted `CommandRunner`, a

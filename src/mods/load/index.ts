@@ -1,0 +1,52 @@
+/** Loading mods: policy, order, the scan, the loader, `claude plugin validate`, `claude plugin test` and the host that wires the mods runtime together (plugins/mods/reference.md, "Settings and environment variables", "Commands"). */
+export {
+  createModsHost,
+  type FireOptions,
+  type ModLoadReport,
+  type ModsHost,
+  type ModsHostOptions,
+} from './host.ts';
+export { type LoadedMod, type ModPlugin } from './loader.ts';
+export {
+  decideModLoad,
+  countsAsOrganizations,
+  guardLoads,
+  hooksModulesOff,
+  isGuardId,
+  type ModCandidate,
+  type ModLoadDecision,
+} from './policy.ts';
+export type { Credential, ModsPolicyInput, ModsSettingsFile } from './policy-input.ts';
+export {
+  orderMods,
+  GUARD_CANDIDATE,
+  type ModOrder,
+  type OrderedMod,
+  type SkippedMod,
+} from './order.ts';
+export {
+  parsePluginDirs,
+  pluginDirsOf,
+  sideloadRefusal,
+  watchesPluginDirs,
+} from './plugin-dirs.ts';
+export {
+  scanHooksModule,
+  callLabel,
+  hookLabel,
+  type ModScan,
+  type ModUses,
+  type ScannedCall,
+  type ScannedHook,
+} from './scan/index.ts';
+export { declaredState } from './types-decl.ts';
+export { modOptions, OPTIONS_DO_NOT_FIT, type ModOptions } from './options.ts';
+export { REGISTER_EVENT, withRegisterRules, type RegisterEvent } from './register-call.ts';
+export { activeModsLine } from './commands/active-line.ts';
+export {
+  scanLines,
+  validateMod,
+  type FileReport,
+  type ValidateInput,
+  type ValidateReport,
+} from './commands/validate.ts';

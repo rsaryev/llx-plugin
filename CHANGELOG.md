@@ -147,6 +147,91 @@
   call share one hook `timeout` (`timed-out` when the wait used it up); tests assert all 33 values
   of `WAITS_FOR_SERVER`, the exact appended prompt, malformed and reason-less replies for agent hooks
   too, and keep judgment tests out of the `spec(...)` blocks of other ids.
+- Mods hook chain (`mods/chain`): `createModChain` runs hooks as middleware by tier (`prepend`, `user`,
+  `append`, `builtin`, then Claude Code) with `e` deeply frozen, `next(e)`, `next.signal`,
+  `next.origin`, `next.budget`, `next.to(e, tier)`, matchers, `*` and `classic.*`, the failure
+  policy with `.catch` handlers (`next.error`, `next.error.cause`, `next.called`), re-entry, the
+  10 s, 50 ms (`prompt.edit`), 1 s (`.catch`) and shared `session.end` time limits measured on the
+  `Clock` port (a hook's time stops inside `next` and mods API calls except `$.clock.sleep`), the
+  28000-level nesting limits, async generator hooks for `turn.step` and `process.spawn`, and the
+  telemetry events' `{ to: 'collector' }` filter. Foundations for the other parts of mods:
+  `MOD_LIMITS`, `MOD_EVENT_NAMES` (48 events), `MODS_API`, `MOD_TIERS`, `foundation`
+  (`createBudget`, `deepFreeze`, `plainDataProblem`, `jsonChars`), and the mods ports (`ModRuntime`,
+  `ModCompiler`, `ModStore`, `TelemetrySink`, `ModWatcher`, `DenyRuleChecker`).
+- Mods events (`mods/events`): `EVENT_SPECS` for the tool, prompt, command, `/config`, turn, session
+  and subagent events (the documented input fields and the shapes a hook can answer with),
+  `createEventRules` for the chain (`createModChain({ clock, rules })`: a result of the wrong shape
+  fails the hook, a `drop` after `next` was answered fails it, `skill.prompt` refuses a change
+  other than `text` and `frontmatter`, a resumed `agent.spawn` ignores a change, `session.append`
+  takes only a changed `message.content`, a `drop` or `config.set` `deny` reason is cut at 4,096
+  characters), `eventResultProblem`, `eventInputProblem`, `clampReason`, `mergeToolCheck` (plan mode
+  lets a mod tighten a call that is not read-only, not approve it), `skillPromptEvent` (source,
+  plugin name, path, frontmatter and its problem) and `autocompleteRows`.
+- Mods API (`mods/api`): `createModsApi` builds the `$` of one mod from ports. Every call is an
+  event through the chain and then a port (`$.fs`, `$.process`, `$.http`, `$.model`, `$.store`,
+  `$.state`, `$.session`, `$.prompt`, `$.turn`, `$.config`, `$.settings`, `$.env`, `$.clock`,
+  `$.mcp`, `$.audio`, `$.telemetry`, `$.command`, `$.tool`, `$.agent`, `$.plugin`), with the
+  documented limits: 4 MiB for a file, a request body, a response, command output and the store,
+  `isStdoutTruncated` and `isStderrTruncated`, the 30 second and 10 minute timeouts, five redirects
+  and the dropped headers, `HEAD` and the `Content-Length` reason, `maxTokens` 1024 to 64,000 with
+  prompt blocks and cache breakpoints, the newest 4,096 messages, and names of up to 64 letters,
+  digits, `_` and `-` (`isValidModName`). `engine.create` adds or withholds a namespace and lends
+  its methods the caller's context; `settings.read` has layers, sources and the own-read versus
+  mod-read origin (`readEngineSettings`); registries of commands, tools (as `mcp__<plugin>__<name>`)
+  and subagent types; `$.state` with `atom`, `read` and `update`; `withApiRules` composes the shape
+  of API calls with `createEventRules()`; `AGENT_STATUSES`; and the ports behind it (`ModFs`,
+  `ModFetcher`, `ModSpawner`, `ModModels`, `ModSession`...).
+- The interface part of mods (`createModsUi`, `withUiRules`, `uiApi`): the 12 elements with their
+  props, the apps that draw them and the props the VS Code extension ignores, the 15 render sites,
+  tree validation (`treeProblem`, the documented `a tree Pane refuses:` lines) and the size limits
+  (nesting 32, 20,000 nodes, `Raster` cells, `Image` bytes, 100,000 characters of text),
+  `foldRender` (a tree, `next(e)`'s reference, the band and `AskUserQuestion` rules), panes
+  (`$.ui.open` placement at 144 and 110 columns, `ui.close` origins), controls routed by key
+  (`routeControl`, hotkeys, `action`, the collapsed band), the redraw throttle (10 and 30 a
+  second, coalesced), `$.ui.toast` (4 seconds, `timeoutMs`, classic and fullscreen) and `$.ui`.
+- Mods loading (`createModsHost`, `decideModLoad`, `orderMods`, `scanHooksModule`, `validateMod`, `activeModsLine`): which hooks modules load and in which tier under `disableAllHooks`, `allowManagedHooksOnly`, `disableSideloadFlags`, `prependPlugins`, `appendPlugins`, `pluginConfigs`, `CLAUDE_CODE_PLUGIN_DIRS` and the built-in guard `sec-default@builtin` (`allowManagedModsOnly`, `allowModsToOverrideDenyRules`); the `plugin.register` refusal; `/reload-plugins`; the static scan with the 2,000-scope limit; and the file names of a mod (`hooks/hooks.json`, `hooks/register.js`, `types/index.d.ts`, `.test.ts`).
+- The mods test kit (`modsTesting`): `runModTests` for `claude plugin test [directory]` with Bun-style output, the 5-second limit and `timeoutMs`; `createTestKit` for `claude-code/testing` (`test`, `tier`, `expect`, `mock.clock`, `mock.store`, `mock.env`, `mock.session`, `$.ui.mount`); the `ModTestRuntime` port and the in-process `inlineRuntime` and `inlineTests`.
+
+### Fixed
+
+- Mods loading, policy, scan and test kit: the test kit fails a mods API call no stub answers with
+  `no implementation for <name>` (not only `fs.read`), leaves `ui.invalidate`, `$.state` and
+  `session.append` to itself, and reads `hooks.json` as JSON instead of searching its text; an
+  inline mod written as method shorthand (`register(on) { ... }`, also `async`) loads; the host
+  fires `session.start` for each loaded mod after `load` and `reload`, a reload leaves the mods
+  the host registered itself, and `reloadMod(name)` keeps the version loaded before when a save
+  breaks the module (`reload failed, the previous version stays loaded:`); an id in both
+  `prependPlugins` and `appendPlugins` is prepended; the rollout switch refuses installed mods with
+  the documented `for installed plugins` lines; `isTrusted: false` keeps mods out until the trust
+  prompt is answered; `disableSideloadFlags` also rejects `--plugin-url`; the loader asks for the
+  types file where `claude plugin validate` does and an import that leaves the plugin directory is
+  refused; `validate` leaves out a file with nothing to report; the debug line lists the events;
+  `ModsSettingsFile` is typed from the SDK's `Settings`; the judgments row for gating events names
+  the five events of events.md.
+- Mods interface: `$.ui.ask` goes through a `tool.call` of `AskUserQuestion` and reads
+  `result.answers`, so the documented stub works and a dismissed question rejects; `ui.message` and
+  `ui.fault` reach only the mod that drew the `Client` (`DispatchOptions.only`); a toast raised
+  during a hold of toasts waits for the hold to end instead of timing out, and only the terminal
+  holds; a failed `Client` has its dimmed line (`clientFailure`); a hook that answers `ui.render`
+  without `next` writes `<mod> (<tier>) answered ui.render without next()` to the debug log;
+  `drawsAsLink` accepts a missing `/` before a query or fragment; hotkeys press only while the pane
+  or band has keyboard focus and no `Input` does; a `ui.render` hook that writes a value it read no
+  longer redraws in a loop.
+- Mods API: `$.clock.after` and `$.clock.every` return their timer at once (`timer.cancel()` needs
+  no `await`, and also stops a timer whose event is still in the chain); a hook on a mods API call
+  intercepts only the calls of the mods that run after it (`DispatchOptions.caller`); a pass-through
+  hook on `process.spawn` is no longer reported as failed; `$.http.fetch` lower-cases response header
+  names (a `Content-Length` in any case is honoured) and cuts `text` to 4 MiB of bytes itself;
+  `asUser: false` is a plain submit; `effort` is an SDK `EffortLevel`; `$.fs.list` and `stat`
+  carry only the documented fields; `$.agent.list` rows are checked against the reference's
+  statuses; casts on JSON data are replaced by parses. The maximum process timeout and `maxTokens`
+  are proven under `spec(...)`, the tests that only echoed a stub are now real, and the new
+  judgments are rows in `spec/judgments.md`.
+- Mods events: `mergeToolCheck` honours `e.ceiling` (`ask` caps a mod's `allow` at `ask`, as
+  permissions.md says for connector tools an organization set to `ask`); `SESSION_END_REASONS` now
+  lives in `src/protocol/exit-reasons.ts`, tied to the SDK's `ExitReason`; tests prove that a hook's
+  `next(e)` rejects when a session message is not delivered, and the ordering, resumed-run and
+  input-shape assertions moved out of `spec(...)` into judgments (new rows in `spec/judgments.md`).
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
   parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
   (and `skill`) read `name:value` as a parameter.
@@ -224,3 +309,12 @@
   host-chosen default shell are recorded as judgments. Tests: judgments moved out of `spec(...)`,
   and added for `${user_config.*}` in `command`, Git Bash path normalization and Windows exported
   paths.
+- Mods chain: a synchronous mods API call gives the hook's time budget back, so a hook's own
+  10 s, 50 ms or 1 s limit still fires after one; `walkPlainData` measures a sub-structure
+  reached twice at its deepest place, so a shared sub-tree can no longer slip past the 28,000-level
+  limits; a hook whose `.catch` handler fails too is reported with the hook's own reason, as if it
+  had no handler; the host passes `rewritten` and `lent` flags in `ReentryInfo` and the chain
+  picks `next.error.cause` (`rewritten` wins); `plugin.name` and `plugin.root` are values and no
+  longer events (`API_EVENT_NAMES`, `ApiEventName`); `register` no longer takes the `core` tier.
+  The speculative ports `ModSurface`, `ModEnv`, `ModWatcher`, `ModTurnPort` are removed, and the
+  mods name and limit tables are compared with the pulled reference.
