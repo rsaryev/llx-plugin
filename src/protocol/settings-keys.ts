@@ -18,11 +18,14 @@ type DeclaredSettingsKey = keyof {
  */
 export const POLICY_KEYS = [
   'allowManagedHooksOnly',
+  'allowManagedMcpServersOnly',
   'allowedChannelPlugins',
   'allowedHttpHookUrls',
+  'allowedMcpServers',
   'appendPlugins',
   'blockedMarketplaces',
   'channelsEnabled',
+  'deniedMcpServers',
   'disableAllHooks',
   'disableBundledSkills',
   'disableCommandPluginSources',

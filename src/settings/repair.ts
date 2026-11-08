@@ -6,6 +6,7 @@ import {
   strictSources,
 } from './repair-lists.ts';
 import { hooks } from './repair-hooks.ts';
+import { allowedMcpServers, deniedMcpServers } from './mcp/entries.ts';
 import type { Repair } from './repair-support.ts';
 import {
   boolean,
@@ -34,6 +35,8 @@ export const REPAIR_KINDS = [
   'stringList',
   'closedStringList',
   'channelAllowlist',
+  'allowedMcpServers',
+  'deniedMcpServers',
   'strictSources',
   'blockedSources',
   'enabledPlugins',
@@ -54,6 +57,8 @@ export const REPAIRS: { readonly [R in RepairKind]: Repair } = {
   stringList,
   closedStringList,
   channelAllowlist,
+  allowedMcpServers,
+  deniedMcpServers,
   strictSources,
   blockedSources,
   enabledPlugins,

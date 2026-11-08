@@ -7,7 +7,8 @@
  * be parsed" (the verbatim message), permissions.md § "Additional directories grant file access,
  * not configuration" (a `--add-dir` directory's settings carry `enabledPlugins` and
  * `extraKnownMarketplaces` only), claude-apps-gateway.md § "How hook and skill keys in parent
- * settings take effect" (which keys a parent passes). The keys have ids of their own, proven where
+ * settings take effect" (which keys a parent passes) and managed-settings.md § "Let an embedding
+ * host add policy" (a parent-supplied `allowedMcpServers` and `deniedMcpServers`). The keys have ids of their own, proven where
  * their behaviour is, so this file is not under spec().
  */
 import { describe, expect, test } from 'bun:test';
@@ -18,11 +19,14 @@ import { issuesOf, layerOf, plain } from '../support/settings-layers.ts';
 /** A valid value for each key: one the key's repair keeps as it is. */
 const VALID: Readonly<Record<PolicyKey, unknown>> = {
   allowManagedHooksOnly: true,
+  allowManagedMcpServersOnly: true,
   allowedChannelPlugins: [{ marketplace: 'claude-plugins-official', plugin: 'telegram' }],
   allowedHttpHookUrls: ['https://hooks.example.com/*'],
+  allowedMcpServers: [{ serverUrl: 'https://mcp.example.com/*' }],
   appendPlugins: ['audit@acme'],
   blockedMarketplaces: [{ source: 'github', repo: 'evil/plugins' }],
   channelsEnabled: true,
+  deniedMcpServers: [{ serverName: 'filesystem' }],
   disableAllHooks: true,
   disableBundledSkills: true,
   disableCommandPluginSources: true,
@@ -54,6 +58,8 @@ const FILES: readonly PolicyScope[] = ['managed', 'flag', 'local', 'project', 'u
 /** The files each key's **Scope** line allows, copied by hand from settings-reference.md. */
 const ANY: readonly PolicyKey[] = [
   'allowedHttpHookUrls',
+  'allowedMcpServers',
+  'deniedMcpServers',
   'disableAllHooks',
   'disableBundledSkills',
   'disableSkillShellExecution',
@@ -73,6 +79,7 @@ const ANY: readonly PolicyKey[] = [
 const MANAGED: readonly PolicyKey[] = [
   'allowedChannelPlugins',
   'allowManagedHooksOnly',
+  'allowManagedMcpServersOnly',
   'blockedMarketplaces',
   'channelsEnabled',
   'disableCommandPluginSources',
@@ -86,6 +93,8 @@ const USER_LOCAL_MANAGED_FLAG: readonly PolicyKey[] = ['syncClaudeAiPlugins', 's
 
 /** Where a parent (the SDK `managedSettings`) is documented to pass a key. */
 const PARENT_KEYS: readonly PolicyKey[] = [
+  'allowedMcpServers',
+  'deniedMcpServers',
   'disableAllHooks',
   'disableSkillShellExecution',
   'strictKnownMarketplaces',

@@ -16,6 +16,15 @@
   `enabledMcpjsonServers` and `disabledMcpjsonServers` join the policy keys, and `resolvePolicy`
   returns an `mcp` area.
 
+- MCP allow and deny lists: `createMcpServerPolicy` (and `resolvePolicy(...).mcp.serverPolicy()`)
+  decides whether a server may load from `allowedMcpServers`, `deniedMcpServers` and
+  `allowManagedMcpServersOnly`: the denylist of every file first and always, the allowlist of every file
+  or only the highest managed one under the lock (a `true` in any admin source locks), `serverUrl`
+  patterns with the port rule, exact `serverCommand` arrays, `serverName` only where the list has no
+  entry of the server's kind, `${VAR}` expansion of entries (pinned environment) and servers (live
+  environment), the servers that skip the allowlist, and the verdict with the messages users see.
+  Invalid entries are stripped per the fail-closed rules; the three keys join the policy keys.
+
 ### Fixed
 
 - MCP settings review: `managedServerEntries(layers, { desktopManaged })` reads no managed entry in the

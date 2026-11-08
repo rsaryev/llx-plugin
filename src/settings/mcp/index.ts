@@ -40,3 +40,12 @@ export {
   type PromptSession,
 } from './approvals.ts';
 export { createMcpSettingsPolicy, type McpSettingsPolicy } from './policy.ts';
+export {
+  createMcpServerPolicy,
+  type McpBlockedBy,
+  type McpPolicyEnv,
+  type McpPolicySubject,
+  type McpServerPolicy,
+  type McpServerVerdict,
+} from './allow-deny.ts';
+export { MCP_SERVER_ORIGINS, type McpServerOrigin } from './origins.ts';

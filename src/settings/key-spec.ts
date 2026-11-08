@@ -78,6 +78,13 @@ export const admits = (key: PolicyKey, scope: PolicyScope, value: unknown): bool
 
 export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
   allowManagedHooksOnly: { scopes: 'managed', merge: MERGES.highestWins, repair: 'lockBoolean' },
+  // "Scope: Managed"; the lock itself is read from every admin source (managed-settings.md, "Keys read
+  // from every admin source"), which the MCP policy does by walking the holders, not through `get`.
+  allowManagedMcpServersOnly: {
+    scopes: 'managed',
+    merge: MERGES.highestWins,
+    repair: 'lockBoolean',
+  },
   allowedChannelPlugins: {
     scopes: 'managed',
     merge: MERGES.highestWins,
@@ -88,6 +95,13 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     merge: MERGES.unionArrays,
     repair: 'closedStringList',
   },
+  // "Scope: Any file. Entries from every file merge into one allowlist"; the parent settings an embedding
+  // host passes take part too (spec/judgments.md).
+  allowedMcpServers: {
+    scopes: 'anyAndParent',
+    merge: MERGES.unionArrays,
+    repair: 'allowedMcpServers',
+  },
   appendPlugins: { scopes: 'userOrManaged', merge: MERGES.highestWins, repair: 'stringList' },
   blockedMarketplaces: {
     scopes: 'managedAndParent',
@@ -95,6 +109,12 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     repair: 'blockedSources',
   },
   channelsEnabled: { scopes: 'managed', merge: MERGES.highestWins, repair: 'boolean' },
+  // "Scope: Any file. Entries from every file merge into one denylist".
+  deniedMcpServers: {
+    scopes: 'anyAndParent',
+    merge: MERGES.unionArrays,
+    repair: 'deniedMcpServers',
+  },
   disableAllHooks: { scopes: 'anyAndParent', merge: MERGES.highestWins, repair: 'hooksSwitch' },
   disableBundledSkills: { scopes: 'any', merge: MERGES.highestWins, repair: 'lockBoolean' },
   disableCommandPluginSources: {
