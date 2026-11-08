@@ -64,11 +64,21 @@ spec('environment.rule.Quoting and path separators', () => {
     expect(await text('monitor-command', quoted, windows)).toBe(`"${FORWARD}"/scripts/process.sh`);
   });
 
-  test('an exec-form hook keeps its native backslashes, and a PowerShell hook gets the environment reference', async () => {
+  test('an exec-form hook keeps its native backslashes', async () => {
     expect(await text('hook-exec', '${CLAUDE_PLUGIN_ROOT}', windows)).toBe(NATIVE);
-    expect(await text('hook-powershell', '${CLAUDE_PLUGIN_ROOT}', windows)).toBe(
-      '${env:CLAUDE_PLUGIN_ROOT}',
+  });
+
+  test('a PowerShell hook keeps the native backslashes: the placeholder is the environment reference and the exported value is the native path', async () => {
+    const resolution = await resolveHookCommand(
+      { type: 'command', command: '& "${CLAUDE_PLUGIN_ROOT}\\run.ps1"', shell: 'powershell' },
+      windows,
     );
+    expect(resolution.resolved?.spec).toEqual({
+      form: 'shell',
+      command: '& "${env:CLAUDE_PLUGIN_ROOT}\\run.ps1"',
+      shell: 'powershell',
+    });
+    expect(resolution.resolved?.environment.CLAUDE_PLUGIN_ROOT).toBe(NATIVE);
   });
 
   test('an exec-form hook passes each path as one argument with no quoting', async () => {
@@ -97,14 +107,6 @@ spec('environment.rule.Quoting and path separators', () => {
 spec('environment.component.Monitor commands', () => {
   const everywhere = '${CLAUDE_PLUGIN_ROOT}|${CLAUDE_PLUGIN_DATA}|${CLAUDE_PROJECT_DIR}';
 
-  test('with monitorPaths: environment-reference the command names the variables and the environment carries the values', async () => {
-    const resolved = await resolve(`echo ${everywhere}`, reference());
-    expect(resolved.command).toBe(
-      'echo ${CLAUDE_PLUGIN_ROOT}|${CLAUDE_PLUGIN_DATA}|${CLAUDE_PROJECT_DIR}',
-    );
-    expect(resolved.environment).toEqual(PATHS);
-  });
-
   test('the documented pasted form stays the default', async () => {
     const { resolved } = await resolveMonitor(
       monitor('"${CLAUDE_PLUGIN_ROOT}"/poll.sh'),
@@ -112,6 +114,37 @@ spec('environment.component.Monitor commands', () => {
     );
     expect(resolved?.command).toBe(`"${PATHS.CLAUDE_PLUGIN_ROOT}"/poll.sh`);
     expect(resolved?.environment).toEqual({});
+  });
+
+  test('no configured option is exported to the monitor: the pasted form carries no environment', async () => {
+    const { resolved } = await resolveMonitor(monitor(`echo ${everywhere}`), scopeOf());
+    expect(resolved?.command).toBe(
+      `echo ${PATHS.CLAUDE_PLUGIN_ROOT}|${PATHS.CLAUDE_PLUGIN_DATA}|${PATHS.CLAUDE_PROJECT_DIR}`,
+    );
+    expect(resolved?.environment).toEqual({});
+  });
+
+  test('${ENV_VAR} and its default expand, and user_config is refused', async () => {
+    const { resolved, issues } = await resolveMonitor(
+      monitor('psql ${DB_URL} -c "${QUERY:-select 1}"'),
+      scopeOf(),
+    );
+    expect(issues).toEqual([]);
+    expect(resolved?.command).toBe('psql postgres://db -c "select 1"');
+    const refused = await resolveMonitor(monitor('./poll.sh ${user_config.region}'), scopeOf());
+    expect(refused.resolved).toBeUndefined();
+  });
+});
+
+describe("monitorPaths: environment-reference (judgment, the kit's opt-in)", () => {
+  const everywhere = '${CLAUDE_PLUGIN_ROOT}|${CLAUDE_PLUGIN_DATA}|${CLAUDE_PROJECT_DIR}';
+
+  test('the command names the variables and the environment carries the values', async () => {
+    const resolved = await resolve(`echo ${everywhere}`, reference());
+    expect(resolved.command).toBe(
+      'echo ${CLAUDE_PLUGIN_ROOT}|${CLAUDE_PLUGIN_DATA}|${CLAUDE_PROJECT_DIR}',
+    );
+    expect(resolved.environment).toEqual(PATHS);
   });
 
   test('only the variables the command references are exported, so the data folder is created on demand', async () => {
@@ -123,7 +156,7 @@ spec('environment.component.Monitor commands', () => {
     expect(host.dataCreated).toEqual(['my-plugin-acme-tools']);
   });
 
-  test('no configured option reaches the monitor in either form', async () => {
+  test('no configured option reaches the monitor in the reference form either', async () => {
     const resolved = await resolve(`echo ${everywhere}`, reference());
     expect(
       Object.keys(resolved.environment).some((name) => name.startsWith('CLAUDE_PLUGIN_OPTION_')),

@@ -17,7 +17,7 @@ describe('REDACTED edge cases (judgment)', () => {
   test('a URL-encoded embedding is redacted too, and an empty value never matches', () => {
     const environment = { ...SNAPSHOT, MY_REGISTRY_TOKEN: 'a b/c', EMPTY_TOKEN: '' };
     const plan = planHeadersHelper(
-      serverOf({ url: 'https://h.test/?t=a%20b%2Fc' }),
+      serverOf({ url: 'https://h.test/?t=a%20b%2Fc', expandedVariables: ['MY_REGISTRY_TOKEN'] }),
       'plugin',
       TRUSTED,
       contextOf({ environment }),
@@ -28,7 +28,10 @@ describe('REDACTED edge cases (judgment)', () => {
   test('the longer of two overlapping values is replaced first', () => {
     const environment = { SHORT_TOKEN: 'abc', LONG_TOKEN: 'abcdef' };
     const plan = planHeadersHelper(
-      serverOf({ url: 'https://h.test/?a=abcdef&b=abc' }),
+      serverOf({
+        url: 'https://h.test/?a=abcdef&b=abc',
+        expandedVariables: ['SHORT_TOKEN', 'LONG_TOKEN'],
+      }),
       'plugin',
       TRUSTED,
       contextOf({ environment }),
@@ -36,6 +39,30 @@ describe('REDACTED edge cases (judgment)', () => {
     expect(ran(plan).environment.CLAUDE_CODE_MCP_SERVER_URL).toBe(
       'https://h.test/?a=REDACTED&b=REDACTED',
     );
+  });
+});
+
+describe('REDACTED touches only what the URL expanded (judgment)', () => {
+  test('a short removed value the URL did not expand never touches the URL', () => {
+    const environment = { SOME_API_KEY: '8', FLAG_AUTH: 'true', PROXY_TOKEN: 'http' };
+    const plan = planHeadersHelper(
+      serverOf({ url: 'https://h:8/x?on=true' }),
+      'plugin',
+      TRUSTED,
+      contextOf({ environment }),
+    );
+    expect(ran(plan).environment.CLAUDE_CODE_MCP_SERVER_URL).toBe('https://h:8/x?on=true');
+  });
+
+  test('only the expanded variable is redacted when another removed one holds the same text', () => {
+    const environment = { USED_TOKEN: 'abc', OTHER_TOKEN: 'abc', UNUSED_TOKEN: 'xyz' };
+    const plan = planHeadersHelper(
+      serverOf({ url: 'https://h.test/abc/xyz', expandedVariables: ['USED_TOKEN'] }),
+      'plugin',
+      TRUSTED,
+      contextOf({ environment }),
+    );
+    expect(ran(plan).environment.CLAUDE_CODE_MCP_SERVER_URL).toBe('https://h.test/REDACTED/xyz');
   });
 });
 

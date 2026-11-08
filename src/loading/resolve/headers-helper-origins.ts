@@ -40,6 +40,8 @@ export interface OriginRule {
   /** "Removed" in the "Which variables a helper can read" lists. */
   readonly removesCredentials: boolean;
   readonly gate: TrustGate;
+  /** A plugin-provided server has a plugin root: the helper gets `CLAUDE_PLUGIN_ROOT`. */
+  readonly providesPluginRoot: boolean;
 }
 
 /**
@@ -48,19 +50,84 @@ export interface OriginRule {
  * configuration directory; the docs list both only under "Not removed".
  */
 export const ORIGIN_RULES: { readonly [O in HeadersHelperOrigin]: OriginRule } = {
-  plugin: { directory: 'plugin-root', removesCredentials: true, gate: 'none' },
-  project: { directory: 'project-directory', removesCredentials: true, gate: 'helper' },
-  local: { directory: 'project-directory', removesCredentials: false, gate: 'helper' },
-  user: { directory: 'config-directory', removesCredentials: false, gate: 'none' },
-  managed: { directory: 'config-directory', removesCredentials: false, gate: 'none' },
-  connector: { directory: 'config-directory', removesCredentials: false, gate: 'none' },
-  sdk: { directory: 'primary-directory', removesCredentials: false, gate: 'none' },
-  'mcp-config': { directory: 'primary-directory', removesCredentials: false, gate: 'none' },
-  'agent-project': { directory: 'primary-directory', removesCredentials: true, gate: 'load' },
-  'agent-add-dir': { directory: 'config-directory', removesCredentials: true, gate: 'load' },
-  'agent-user': { directory: 'config-directory', removesCredentials: false, gate: 'none' },
-  'agent-managed': { directory: 'config-directory', removesCredentials: false, gate: 'none' },
-  'agent-flag': { directory: 'config-directory', removesCredentials: false, gate: 'none' },
+  plugin: {
+    directory: 'plugin-root',
+    removesCredentials: true,
+    gate: 'none',
+    providesPluginRoot: true,
+  },
+  project: {
+    directory: 'project-directory',
+    removesCredentials: true,
+    gate: 'helper',
+    providesPluginRoot: false,
+  },
+  local: {
+    directory: 'project-directory',
+    removesCredentials: false,
+    gate: 'helper',
+    providesPluginRoot: false,
+  },
+  user: {
+    directory: 'config-directory',
+    removesCredentials: false,
+    gate: 'none',
+    providesPluginRoot: false,
+  },
+  managed: {
+    directory: 'config-directory',
+    removesCredentials: false,
+    gate: 'none',
+    providesPluginRoot: false,
+  },
+  connector: {
+    directory: 'config-directory',
+    removesCredentials: false,
+    gate: 'none',
+    providesPluginRoot: false,
+  },
+  sdk: {
+    directory: 'primary-directory',
+    removesCredentials: false,
+    gate: 'none',
+    providesPluginRoot: false,
+  },
+  'mcp-config': {
+    directory: 'primary-directory',
+    removesCredentials: false,
+    gate: 'none',
+    providesPluginRoot: false,
+  },
+  'agent-project': {
+    directory: 'primary-directory',
+    removesCredentials: true,
+    gate: 'load',
+    providesPluginRoot: false,
+  },
+  'agent-add-dir': {
+    directory: 'config-directory',
+    removesCredentials: true,
+    gate: 'load',
+    providesPluginRoot: false,
+  },
+  'agent-user': {
+    directory: 'config-directory',
+    removesCredentials: false,
+    gate: 'none',
+    providesPluginRoot: false,
+  },
+  'agent-managed': {
+    directory: 'config-directory',
+    removesCredentials: false,
+    gate: 'none',
+    providesPluginRoot: false,
+  },
+  'agent-flag': {
+    directory: 'config-directory',
+    removesCredentials: false,
+    gate: 'none',
+    providesPluginRoot: false,
+  },
 };
 
 /** What the plan reads from the host: the environment it inherits and the directories it picks from. */

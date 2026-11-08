@@ -6,12 +6,23 @@ import {
   type HeadersHelperOrigin,
   type HelperContext,
 } from './headers-helper-origins.ts';
-import { passGate, type HelperNotice, type HelperTrust } from './headers-helper-trust.ts';
+import {
+  passGate,
+  type GateResult,
+  type HelperNotice,
+  type HelperTrust,
+} from './headers-helper-trust.ts';
 
 /** The server a helper belongs to: the name Claude Code shows, its URL as expanded, and the command. */
 export interface HelperServer {
   readonly name: string;
   readonly url: string;
+  /**
+   * The environment variables the expansion of `url` substituted (the `environment` entries of
+   * `Substituted.referenced`). Only their live values are redacted from the URL the helper
+   * receives; a value that merely occurs in the URL is not.
+   */
+  readonly expandedVariables: readonly string[];
   readonly headersHelper?: string | undefined;
 }
 
@@ -41,13 +52,18 @@ const REDACTED = 'REDACTED';
 
 /**
  * "The `CLAUDE_CODE_MCP_SERVER_URL` value the helper receives has that part replaced with `REDACTED`":
- * each removed variable's live value, longest first, in the URL as written and URL-encoded
- * (judgment: an embedded value with a space or a slash is written encoded). An empty value matches
- * nothing.
+ * the live value of each removed variable the URL expanded, longest first, in the URL as written and
+ * URL-encoded (judgment: an embedded value with a space or a slash is written encoded). An empty
+ * value matches nothing, and a removed variable the URL did not expand is never looked for.
  */
-function redacted(url: string, removed: readonly string[]): string {
+function redacted(
+  url: string,
+  removed: readonly (readonly [string, string])[],
+  expanded: readonly string[],
+): string {
   const values = removed
-    .filter((value) => value !== '')
+    .filter(([name, value]) => value !== '' && expanded.includes(name))
+    .map(([, value]) => value)
     .flatMap((value) => [value, encodeURIComponent(value)])
     .toSorted((a, b) => b.length - a.length);
   return values.reduce((text, value) => text.split(value).join(REDACTED), url);
@@ -73,11 +89,8 @@ function helperEnvironment(
     ...Object.fromEntries(kept),
     ...helperVariables({
       name: server.name,
-      url: redacted(
-        server.url,
-        removed.map(([, value]) => value),
-      ),
-      ...(origin === 'plugin' && context.pluginRoot !== undefined
+      url: redacted(server.url, removed, server.expandedVariables),
+      ...(rule.providesPluginRoot && context.pluginRoot !== undefined
         ? { pluginRoot: context.pluginRoot }
         : {}),
     }),
@@ -116,6 +129,19 @@ export type HeadersHelperPlan = HelperRun | HelperSkipped | HelperNotLoaded;
 const NO_HELPER: HelperSkipped = { run: false, loaded: true, headersOnly: true };
 
 /**
+ * A closed gate: an unloaded server stays unloaded whatever it holds; a loaded one connects with its
+ * static headers, and the notice is printed only for a server whose helper was skipped (errors.md,
+ * "headersHelper not run"), so a server with no helper gets none.
+ */
+function refused(
+  gate: Exclude<GateResult, { readonly open: true }>,
+  server: HelperServer,
+): HelperSkipped | HelperNotLoaded {
+  if (!gate.loaded) return { run: false, loaded: false };
+  return server.headersHelper === undefined ? NO_HELPER : { ...NO_HELPER, notice: gate.notice };
+}
+
+/**
  * What to do with a server's `headersHelper` each time the server connects (mcp.md, "Use dynamic
  * headers for custom authentication"): where to run it, with what environment, or that it does not
  * run. Pure; the host runs it through `runHeadersHelper` and the plan is made again on every
@@ -129,8 +155,7 @@ export function planHeadersHelper(
 ): HeadersHelperPlan {
   const rule = ORIGIN_RULES[origin];
   const gate = passGate(rule.gate, server.name, trust, context);
-  if (!gate.open)
-    return gate.loaded ? { ...NO_HELPER, notice: gate.notice } : { run: false, loaded: false };
+  if (!gate.open) return refused(gate, server);
   const cwd = DIRECTORIES[rule.directory](context);
   if (server.headersHelper === undefined || cwd === undefined) return NO_HELPER;
   return {

@@ -58,6 +58,19 @@
 
 ### Fixed
 
+- MCP `headersHelper` review: a project or local server with no helper in an untrusted folder no
+  longer gets the `headersHelper not run` notice (an agent file's server stays unloaded);
+  `CLAUDE_CODE_MCP_SERVER_URL` redacts only the removed variables the URL expanded
+  (`HelperServer.expandedVariables`), so a short unrelated value such as `8` no longer corrupts it;
+  `attemptWithHeadersHelper` takes the server name and reports errors.md's `Server rejected the
+  Authorization header minted by the configured headersHelper (HTTP <status>)` when a connection is
+  rejected after the helper supplied `Authorization`, and `produce` now gives the helper's headers
+  alone (`send` merges the static ones); the origin rules carry `providesPluginRoot` instead of a
+  comparison with `'plugin'`; the monitor opt-in tests moved out of `spec(...)`, the PowerShell path
+  test asserts the native exported path, and the helper tests assert the per-cause messages, the
+  re-plan on a re-run and that every settings scope is an origin; the `docs/API.md` snippet narrows
+  its union.
+
 - Managed MCP review: the startup exits follow the page's order (`--mcp-config` before
   `--strict-mcp-config`, a judgment when both apply); `/mcp` toggles no longer reach the servers of
   `managed-mcp.json` (the page documents them for provided servers only); an entry that fails several

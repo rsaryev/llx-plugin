@@ -26,6 +26,18 @@ spec('mcp.behavior.Trust a folder before its headersHelper runs.Until you trust 
     }
   });
 
+  test('a server with no headersHelper has nothing skipped, so it gets no notice', () => {
+    for (const origin of ['project', 'local'] as const) {
+      const plan = planHeadersHelper(
+        serverOf({ headersHelper: undefined }),
+        origin,
+        untrusted,
+        contextOf(),
+      );
+      expect(plan).toEqual({ run: false, loaded: true, headersOnly: true });
+    }
+  });
+
   test('a claude -p or SDK session prints one line per server to stderr that tells how to grant the trust', () => {
     const plan = planHeadersHelper(serverOf(), 'project', untrusted, contextOf());
     expect(noticeOf(plan)?.channel).toBe('stderr');
@@ -136,6 +148,18 @@ describe("trust for an agent file's inline server", () => {
       run: false,
       loaded: false,
     });
+  });
+
+  test("a server with no helper is not loaded either: loading is the folder's, whatever the server holds", () => {
+    for (const origin of ['agent-project', 'agent-add-dir'] as const) {
+      const plan = planHeadersHelper(
+        serverOf({ headersHelper: undefined }),
+        origin,
+        trustOf({ source: 'none' }),
+        contextOf(),
+      );
+      expect(plan).toEqual({ run: false, loaded: false });
+    }
   });
 
   test('trusted, it runs (an --add-dir agent in the configuration directory)', () => {

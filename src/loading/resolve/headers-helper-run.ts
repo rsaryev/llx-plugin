@@ -63,7 +63,13 @@ export interface ConnectionHeaders {
   readonly oauthFallback: boolean;
 }
 
-/** "Dynamic headers override any static `headers` with the same name": names compare without regard to case. */
+const hasAuthorization = (headers: Readonly<Record<string, string>>): boolean =>
+  Object.keys(headers).some((name) => name.toLowerCase() === 'authorization');
+
+/**
+ * "Dynamic headers override any static `headers` with the same name": names compare without regard
+ * to case (judgment, spec/judgments.md).
+ */
 export function connectionHeaders(
   staticHeaders: Readonly<Record<string, string>>,
   dynamicHeaders: Readonly<Record<string, string>>,
@@ -75,10 +81,7 @@ export function connectionHeaders(
     ),
     ...dynamicHeaders,
   };
-  const oauthFallback = !Object.keys(headers).some(
-    (name) => name.toLowerCase() === 'authorization',
-  );
-  return { headers, oauthFallback };
+  return { headers, oauthFallback: !hasAuthorization(headers) };
 }
 
 /** "A `401 Unauthorized` or `403 Forbidden`". */
@@ -86,7 +89,8 @@ const REJECTED: ReadonlySet<number> = new Set([401, 403]);
 
 /**
  * How an attempt ended. `needs-authentication`: the retry after a rejected call was rejected too.
- * `failed`: the helper failed, or the server rejected the helper's credential while connecting.
+ * `failed`: the helper failed, or the server rejected the helper's credential while connecting; the
+ * issue then carries the errors.md message when the helper supplied `Authorization`.
  */
 export interface HelperAttempt<T> {
   readonly outcome: 'ok' | 'needs-authentication' | 'failed';
@@ -96,14 +100,42 @@ export interface HelperAttempt<T> {
   readonly issue?: PluginIssue;
 }
 
+/**
+ * errors.md, "Server rejected the Authorization header minted by the configured headersHelper": the
+ * line Claude Code reports for a connection a server answered with 401 or 403 while the helper
+ * supplied `Authorization`.
+ */
+const rejectedAuthorization = (server: string, status: number): PluginIssue =>
+  problem(
+    server,
+    `Server rejected the Authorization header minted by the configured headersHelper (HTTP ${status}). Check that the helper command returns a valid credential for this MCP endpoint — OAuth fallback is disabled when the helper supplies Authorization.`,
+  );
+
 /** What one run of the helper gives: the headers to send, or why there are none. */
 export type HelperOutput = { readonly headers: Record<string, string> } | PluginIssue;
 
 const isIssue = (output: HelperOutput): output is PluginIssue => 'severity' in output;
 
+function rejectedWhileConnecting<T extends { readonly status: number }>(
+  helperHeaders: Readonly<Record<string, string>>,
+  response: T,
+  server: string,
+): HelperAttempt<T> {
+  return hasAuthorization(helperHeaders)
+    ? {
+        outcome: 'failed',
+        response,
+        reruns: 0,
+        issue: rejectedAuthorization(server, response.status),
+      }
+    : { outcome: 'failed', response, reruns: 0 };
+}
+
 /**
- * One call or one connection with a helper (mcp.md): `produce` runs the helper (fresh, with the
- * static headers merged by the host) and `send` makes the request with its headers.
+ * One call or one connection with a helper (mcp.md): `produce` runs the helper fresh and gives the
+ * headers it printed (`runMcpHeadersHelper`'s output, or none where the plan skipped it), and `send`
+ * makes the request with them, merging the server's static headers (`connectionHeaders`). `server` is
+ * the name Claude Code shows, for the issue.
  *
  * - `call`: on a 401 or 403 the helper runs again once, the request is retried once with the fresh
  *   headers, and "Claude Code marks the server as needing authentication in `/mcp` only if that retry
@@ -116,12 +148,13 @@ export async function attemptWithHeadersHelper<T extends { readonly status: numb
   phase: 'connect' | 'call',
   produce: () => Promise<HelperOutput>,
   send: (headers: Record<string, string>) => Promise<T>,
+  server: string,
 ): Promise<HelperAttempt<T>> {
   const first = await produce();
   if (isIssue(first)) return { outcome: 'failed', reruns: 0, issue: first };
   const response = await send(first.headers);
   if (!REJECTED.has(response.status)) return { outcome: 'ok', response, reruns: 0 };
-  if (phase === 'connect') return { outcome: 'failed', response, reruns: 0 };
+  if (phase === 'connect') return rejectedWhileConnecting(first.headers, response, server);
   const again = await produce();
   if (isIssue(again)) return { outcome: 'failed', reruns: 1, issue: again };
   const retried = await send(again.headers);

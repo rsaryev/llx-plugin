@@ -451,19 +451,24 @@ variable for `claude-code-action`.
 import { persistedTrust, planHeadersHelper, runMcpHeadersHelper, connectionHeaders } from '@rsaryev/claude-plugin-kit';
 
 const trust = { source: persistedTrust(claudeJson, projectDir), key: projectDir, interactive: false };
-const plan = planHeadersHelper({ name, url, headersHelper }, 'project', trust, context);
-if (!plan.run) return plan.headersOnly ? staticHeadersOnly(plan.notice) : skipServer(); // not trusted
+// `expandedVariables`: the environment variables the expansion of `url` substituted
+// (the `environment` entries of `substituteSurface(...).referenced`); only those are redacted
+const server = { name, url, expandedVariables, headersHelper };
+const plan = planHeadersHelper(server, 'project', trust, context);
+if (!plan.loaded) return skipServer(); // an agent file's server in an untrusted folder
+if (!plan.run) return connectWith(staticHeaders, plan.notice); // helper skipped: static headers alone
 const output = await runMcpHeadersHelper(plan, runner, signal); // { headers } | PluginIssue
+if ('severity' in output) return reportIssue(output); // the helper failed
 const { headers, oauthFallback } = connectionHeaders(staticHeaders, output.headers);
 ```
 
 | API | What it does |
 | --- | --- |
-| `planHeadersHelper(server, origin, trust, context)` | pure, made again on every connection: where to run (`cwd`: plugin root; project directory for `project` and `local`; primary working directory for `agent-project`, `sdk`, `mcp-config`; configuration directory, `CLAUDE_CONFIG_DIR` or `~/.claude`, for `user`, `managed`, `connector`, `agent-user`, `agent-managed`, `agent-flag`, `agent-add-dir`), the environment (credentials removed for `project`, `plugin`, `agent-project`, `agent-add-dir`; `CLAUDE_CODE_MCP_SERVER_NAME`, `CLAUDE_CODE_MCP_SERVER_URL` with a removed variable's live value replaced by `REDACTED`, and `CLAUDE_PLUGIN_ROOT` for a plugin only), the 10 second limit; or `{ run: false, loaded: true, headersOnly: true, notice }` for a project or local server in a folder without persisted trust, or `{ run: false, loaded: false }` for an agent file's server in an untrusted project or `--add-dir` directory |
+| `planHeadersHelper(server, origin, trust, context)` | pure, made again on every connection: where to run (`cwd`: plugin root; project directory for `project` and `local`; primary working directory for `agent-project`, `sdk`, `mcp-config`; configuration directory, `CLAUDE_CONFIG_DIR` or `~/.claude`, for `user`, `managed`, `connector`, `agent-user`, `agent-managed`, `agent-flag`, `agent-add-dir`), the environment (credentials removed for `project`, `plugin`, `agent-project`, `agent-add-dir`; `CLAUDE_CODE_MCP_SERVER_NAME`, `CLAUDE_CODE_MCP_SERVER_URL` with the live value of each removed variable the URL expanded (`server.expandedVariables`) replaced by `REDACTED`, and `CLAUDE_PLUGIN_ROOT` for a plugin only), the 10 second limit; or `{ run: false, loaded: true, headersOnly: true, notice }` for a project or local server with a helper in a folder without persisted trust (a server with no helper gets no notice), or `{ run: false, loaded: false }` for an agent file's server in an untrusted project or `--add-dir` directory |
 | `persistedTrust(claudeJson, key)`, `TrustSource` | `projects["<key>"].hasTrustDialogAccepted === true` is `persisted`; only that counts: `parent-folder` and `automatic-session` (the `-p` and SDK trust for settings hooks) never do |
 | `runMcpHeadersHelper(plan, runner, signal)` | runs the command through `CommandRunner` (shell form, `bash`; the host maps the shell on Windows), no cache; a failure, a timeout or output that is not a JSON object of strings is a `PluginIssue` |
 | `connectionHeaders(static, dynamic)` | dynamic headers override static ones of the same name (any letter case); `oauthFallback` is `false` once either holds an `Authorization` header |
-| `attemptWithHeadersHelper(phase, produce, send)` | a call answering 401 or 403 re-runs the helper once and retries once (`needs-authentication` only if that fails too); a rejection while connecting is `failed`, with no re-run |
+| `attemptWithHeadersHelper(phase, produce, send, server)` | `produce` runs the helper (plan and run, made again each time) and gives its headers; `send` merges the static ones. A call answering 401 or 403 re-runs the helper once and retries once (`needs-authentication` only if that fails too); a rejection while connecting is `failed`, with no re-run, and carries errors.md's `Server rejected the Authorization header minted by the configured headersHelper (HTTP <status>)` issue when the helper supplied `Authorization` |
 
 The origins are the settings scopes plus the places the three tables of mcp.md name; a ranked
 candidate's `scope` is one of them. Where the notice goes (`stderr` in `-p` and SDK sessions, the debug

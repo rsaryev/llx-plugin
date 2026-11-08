@@ -32,6 +32,7 @@ export const contextOf = (overrides: Partial<HelperContext> = {}): HelperContext
 export const serverOf = (overrides: Partial<HelperServer> = {}): HelperServer => ({
   name: 'internal-api',
   url: 'https://mcp.internal.example.com',
+  expandedVariables: [],
   headersHelper: '/opt/bin/get-mcp-auth-headers.sh',
   ...overrides,
 });

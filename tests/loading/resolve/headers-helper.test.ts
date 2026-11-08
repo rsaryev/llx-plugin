@@ -15,6 +15,7 @@ import {
   type HeadersHelperOrigin,
   type HeadersHelperPlan,
 } from '../../../src/index.ts';
+import { MCP_SCOPES } from '../../../src/settings/mcp/index.ts';
 import { locations } from '../../support/ports.ts';
 import {
   contextOf,
@@ -187,6 +188,12 @@ describe('where the helper runs, in places the page leaves open (judgment)', () 
       expect(planHeadersHelper(serverOf(), origin, TRUSTED, contextOf()).run).toBe(true);
     }
   });
+
+  test('every scope of the settings is an origin (the origins repeat their names)', () => {
+    for (const scope of MCP_SCOPES) {
+      expect(HEADERS_HELPER_ORIGINS).toContain(scope);
+    }
+  });
 });
 
 spec('mcp.behavior.Which variables a helper can read', () => {
@@ -241,7 +248,7 @@ spec('mcp.behavior.Which variables a helper can read', () => {
 
   test('the URL the helper receives has the live value of a removed variable replaced with REDACTED', () => {
     const url = 'https://registry.example.com/mcp?token=tok-live-123&team=blue';
-    const run = ran(planOf('project', { url }));
+    const run = ran(planOf('project', { url, expandedVariables: ['MY_REGISTRY_TOKEN'] }));
     expect(run.environment.CLAUDE_CODE_MCP_SERVER_URL).toBe(
       'https://registry.example.com/mcp?token=REDACTED&team=blue',
     );
