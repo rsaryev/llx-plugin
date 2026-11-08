@@ -19,9 +19,9 @@ import {
 const strings = (list: readonly string[]): readonly string[] => list;
 
 describe('settings keys', () => {
-  test('are the 33 top-level keys the settings requirements name, each once', () => {
+  test('are the 37 top-level keys the settings requirements name, each once', () => {
     expect(new Set(POLICY_KEYS).size).toBe(POLICY_KEYS.length);
-    expect(POLICY_KEYS).toHaveLength(33);
+    expect(POLICY_KEYS).toHaveLength(37);
   });
 
   test('the strictPluginOnlyCustomization surfaces are skills, agents, hooks, mcp in the docs order', () => {

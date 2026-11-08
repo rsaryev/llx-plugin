@@ -17,6 +17,8 @@ type DeclaredSettingsKey = keyof {
  * `satisfies` checks at compile time.
  */
 export const POLICY_KEYS = [
+  'allowAllClaudeAiMcps',
+  'allowClaudeInChromeWithManagedMcp',
   'allowManagedHooksOnly',
   'allowManagedMcpServersOnly',
   'allowedChannelPlugins',
@@ -28,6 +30,7 @@ export const POLICY_KEYS = [
   'deniedMcpServers',
   'disableAllHooks',
   'disableBundledSkills',
+  'disableClaudeAiConnectors',
   'disableCommandPluginSources',
   'disableSkillShellExecution',
   'disableWorkflows',
@@ -39,6 +42,7 @@ export const POLICY_KEYS = [
   'extraKnownMarketplaces',
   'hooks',
   'httpHookAllowedEnvVars',
+  'managedMcpServers',
   'pluginConfigs',
   'pluginSuggestionMarketplaces',
   'pluginTrustMessage',

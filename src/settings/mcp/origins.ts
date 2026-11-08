@@ -16,7 +16,8 @@ export const MCP_SERVER_ORIGINS = [
 ] as const;
 export type McpServerOrigin = (typeof MCP_SERVER_ORIGINS)[number];
 
-const mentionsVariable = (text: string): boolean =>
+/** Whether `text` holds a `${VAR}` reference (a braced reference whose name is a variable name). */
+export const mentionsVariable = (text: string): boolean =>
   [...text.matchAll(BRACED_REFERENCE)].some((found) =>
     isVariableName(splitDefault(found[1] ?? '').name),
   );

@@ -44,6 +44,11 @@ export interface ResolveInput {
   readonly context: PolicyContext;
   /** The issues `readSettingsLayer` returned for those layers, carried through to `issues`. */
   readonly issues?: readonly PluginIssue[];
+  /**
+   * The layers of the device's own managed sources (an MDM plist, an HKLM registry key, a system
+   * `managed-settings.json`): `allowClaudeInChromeWithManagedMcp` is read from these only.
+   */
+  readonly deviceManaged?: readonly PolicyLayer[];
 }
 
 function marketplacesOf(view: PolicyView, context: PolicyContext): MarketplaceSettingsPolicy {
@@ -90,7 +95,10 @@ export function resolvePolicy(input: ResolveInput): ResolvedPolicy {
     }),
     channels: createChannelSettingsPolicy(view, context),
     customization,
-    mcp: createMcpSettingsPolicy(view, context),
+    mcp: createMcpSettingsPolicy(view, context, {
+      pluginOnlyMcp: customization.locked.has('mcp'),
+      deviceManaged: input.deviceManaged ?? [],
+    }),
     issues: [
       ...(input.issues ?? []),
       ...marketplaces.registry.registrations().flatMap((each) => each.issues),

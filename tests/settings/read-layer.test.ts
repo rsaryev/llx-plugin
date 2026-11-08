@@ -18,6 +18,8 @@ import { issuesOf, layerOf, plain } from '../support/settings-layers.ts';
 
 /** A valid value for each key: one the key's repair keeps as it is. */
 const VALID: Readonly<Record<PolicyKey, unknown>> = {
+  allowAllClaudeAiMcps: true,
+  allowClaudeInChromeWithManagedMcp: true,
   allowManagedHooksOnly: true,
   allowManagedMcpServersOnly: true,
   allowedChannelPlugins: [{ marketplace: 'claude-plugins-official', plugin: 'telegram' }],
@@ -29,6 +31,7 @@ const VALID: Readonly<Record<PolicyKey, unknown>> = {
   deniedMcpServers: [{ serverName: 'filesystem' }],
   disableAllHooks: true,
   disableBundledSkills: true,
+  disableClaudeAiConnectors: true,
   disableCommandPluginSources: true,
   disableSkillShellExecution: true,
   disableWorkflows: true,
@@ -40,6 +43,7 @@ const VALID: Readonly<Record<PolicyKey, unknown>> = {
   extraKnownMarketplaces: { acme: { source: { source: 'github', repo: 'acme/plugins' } } },
   hooks: { Stop: [{ hooks: [{ type: 'command', command: 'x.sh' }] }] },
   httpHookAllowedEnvVars: ['MY_TOKEN'],
+  managedMcpServers: { search: { type: 'http', url: 'https://search.example.com/mcp' } },
   pluginConfigs: { 'formatter@team-tools': { options: { style: 'tabs' } } },
   pluginSuggestionMarketplaces: ['acme'],
   pluginTrustMessage: 'Plugins here are reviewed by security.',
@@ -62,6 +66,7 @@ const ANY: readonly PolicyKey[] = [
   'deniedMcpServers',
   'disableAllHooks',
   'disableBundledSkills',
+  'disableClaudeAiConnectors',
   'disableSkillShellExecution',
   'disableWorkflows',
   'disabledMcpjsonServers',
@@ -77,12 +82,15 @@ const ANY: readonly PolicyKey[] = [
   'workflowSizeGuideline',
 ];
 const MANAGED: readonly PolicyKey[] = [
+  'allowAllClaudeAiMcps',
+  'allowClaudeInChromeWithManagedMcp',
   'allowedChannelPlugins',
   'allowManagedHooksOnly',
   'allowManagedMcpServersOnly',
   'blockedMarketplaces',
   'channelsEnabled',
   'disableCommandPluginSources',
+  'managedMcpServers',
   'pluginSuggestionMarketplaces',
   'pluginTrustMessage',
   'strictKnownMarketplaces',

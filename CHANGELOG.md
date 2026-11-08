@@ -4,6 +4,18 @@
 
 ### Added
 
+- Managed MCP: `readManagedMcpFile` and `loadManagedMcpFile` read `managed-mcp.json` from the path of
+  each platform; `readManagedMcpServers` validates `managedMcpServers` entries (remote `https` only, no
+  program, no `${VAR}`, plain names and characters) with a notice for each dropped one;
+  `mcpLoadPlan` (and `resolvePolicy(...).mcp.loadPlan`) decides what loads under exclusive control: an
+  empty map blocks every other server, `claude mcp add` gets the enterprise-policy error, `--mcp-config`
+  and `--strict-mcp-config` exit on a workstation (a cloud session keeps the managed servers and warns),
+  connectors need `allowAllClaudeAiMcps`, Claude in Chrome needs `allowClaudeInChromeWithManagedMcp` from
+  device sources; `providedServersTiming` and `reconcileManagedServers` say when provided servers connect
+  and what a running session adds, reconnects or drops. The keys `managedMcpServers`,
+  `allowAllClaudeAiMcps`, `allowClaudeInChromeWithManagedMcp` and `disableClaudeAiConnectors` join the
+  policy keys, and `resolvePolicy` takes `deviceManaged` layers.
+
 - MCP settings: scope ranking, per-project toggles, project approvals and workspace trust, pure over
   data the host read. `rankMcpServers` loads each server once from the highest of managed, local,
   project, user, plugin and claude.ai connector (names across the three scopes, endpoints for plugins

@@ -39,7 +39,57 @@ export {
   type ProjectServerStatus,
   type PromptSession,
 } from './approvals.ts';
-export { createMcpSettingsPolicy, type McpSettingsPolicy } from './policy.ts';
+export {
+  createMcpSettingsPolicy,
+  type McpPlanFacts,
+  type McpPolicyExtras,
+  type McpSettingsPolicy,
+} from './policy.ts';
+export {
+  MANAGED_MCP_FILE_PATHS,
+  MANAGED_MCP_PLATFORMS,
+  loadManagedMcpFile,
+  managedMcpFilePath,
+  readManagedMcpFile,
+  type ManagedMcpFile,
+  type ManagedMcpFileRead,
+  type ManagedMcpPlatform,
+} from './managed-file.ts';
+export {
+  MANAGED_MCP_GROUP,
+  describeManagedServer,
+  managedServerRemoval,
+  readManagedMcpServers,
+  type ManagedServerDescription,
+  type ProvidedServers,
+} from './managed-servers.ts';
+export {
+  MANAGED_DELIVERIES,
+  providedServersTiming,
+  reconcileManagedServers,
+  type ManagedDelivery,
+  type ManagedServerChanges,
+  type ProvidedTiming,
+  type ProvidedTimingInput,
+} from './managed-timing.ts';
+export { readMcpLoadSettings, type McpLoadFacts, type McpLoadSettings } from './load-settings.ts';
+export {
+  CHROME_BLOCKED_ERROR,
+  CHROME_SERVER_NAME,
+  EXCLUSIVE_ADD_ERROR,
+  MCP_CONFIG_EXIT,
+  PLAN_SOURCES,
+  STRICT_MCP_CONFIG_EXIT,
+  mcpLoadPlan,
+  type BlockedServer,
+  type ConfiguredCandidate,
+  type McpLoadInput,
+  type McpLoadPlan,
+  type McpSessionFacts,
+  type NamedMcpServer,
+  type PlanSource,
+  type PlannedServer,
+} from './exclusive.ts';
 export {
   createMcpServerPolicy,
   type McpBlockedBy,
