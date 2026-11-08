@@ -1,0 +1,12 @@
+# Bun is the only JavaScript runtime here: tools whose launcher says `node` run on Bun too.
+[run]
+bun = true
+
+# Each package sees the versions it declares (the quality lint's sonarjs needs TypeScript 6's
+# JS API beside the project's TypeScript 7), and added versions are pinned exactly.
+[install]
+linker = "isolated"
+exact = true
+
+[test]
+root = "tests"

@@ -1,0 +1,37 @@
+# Git hooks (https://lefthook.dev). Installed by `bun install` through the `prepare` script.
+pre-commit:
+  parallel: true
+  jobs:
+    - name: format
+      glob: '*.{ts,js,json}'
+      run: bunx oxfmt --check {staged_files}
+    - name: lint
+      glob: '*.ts'
+      run: bunx oxlint --type-aware {staged_files}
+    - name: file-size
+      run: bun scripts/check-file-size.ts
+    - name: layers
+      glob: '*.ts'
+      run: bun scripts/check-layers.ts
+    - name: test-layout
+      run: bun scripts/check-test-layout.ts
+    - name: focused-tests
+      glob: '*.test.ts'
+      run: bun scripts/check-focused-tests.ts {staged_files}
+    - name: spec
+      glob: '{spec/**,tests/**/*.ts}'
+      run: bun scripts/spec/check.ts
+    - name: docs
+      glob: '*.{md,ts}'
+      run: bun scripts/check-docs.ts
+
+commit-msg:
+  jobs:
+    - name: conventional-commit
+      run: bun scripts/check-commit-msg.ts {1}
+
+# Everything CI runs: the gates, the types, every test, and the compatibility report kept current.
+pre-push:
+  jobs:
+    - name: check
+      run: bun run check

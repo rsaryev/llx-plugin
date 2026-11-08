@@ -1,0 +1,22 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import"],
+  "jsPlugins": ["eslint-plugin-sonarjs", "./kit-rules.js"],
+  "categories": {},
+  "rules": {
+    "kit/no-switch": "error",
+    "kit/no-kind-literal": "error",
+    "kit/no-member-guard": "error",
+    "sonarjs/cognitive-complexity": ["error", 15],
+    "eslint/complexity": ["error", { "max": 10 }],
+    "eslint/max-depth": ["error", { "max": 3 }],
+    "eslint/max-params": ["error", { "max": 4 }],
+    "eslint/max-statements": ["error", { "max": 25 }],
+    "eslint/max-lines-per-function": [
+      "error",
+      { "max": 80, "skipBlankLines": true, "skipComments": true }
+    ],
+    "eslint/max-nested-callbacks": ["error", { "max": 3 }]
+  },
+  "ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/*.d.ts"]
+}

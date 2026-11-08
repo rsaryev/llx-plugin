@@ -1,0 +1,10 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreExportsUsedInFile": {
+    "interface": true,
+    "type": true
+  },
+  "entry": ["src/index.ts", "scripts/**/*.ts", "config/lint/kit-rules.js"],
+  "project": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"],
+  "ignoreDependencies": ["oxlint-tsgolint", "eslint-plugin-sonarjs"]
+}

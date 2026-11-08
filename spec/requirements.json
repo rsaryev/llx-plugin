@@ -1,0 +1,5009 @@
+{
+  "claudeCode": "2.1.319",
+  "requirements": [
+    {
+      "id": "agents.frontmatter.autoCompactWindow",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.background",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.color",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.description",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.disallowedTools",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.effort",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.experimental",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.hooks",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.initialPrompt",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.isolation",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.maxTurns",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.mcpServers",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.memory",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.model",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.name",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.omitClaudeMd",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.permissionMode",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.skills",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.frontmatter.tools",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "agents.hookEvent.PostToolUse",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Hooks in subagent frontmatter"
+    },
+    {
+      "id": "agents.hookEvent.PreToolUse",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Hooks in subagent frontmatter"
+    },
+    {
+      "id": "agents.hookEvent.Stop",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Hooks in subagent frontmatter"
+    },
+    {
+      "id": "agents.permissionMode.acceptEdits",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Permission modes"
+    },
+    {
+      "id": "agents.permissionMode.auto",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Permission modes"
+    },
+    {
+      "id": "agents.permissionMode.bypassPermissions",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Permission modes"
+    },
+    {
+      "id": "agents.permissionMode.default",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Permission modes"
+    },
+    {
+      "id": "agents.permissionMode.dontAsk",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Permission modes"
+    },
+    {
+      "id": "agents.permissionMode.plan",
+      "category": "agents",
+      "page": "sub-agents.md",
+      "section": "Permission modes"
+    },
+    {
+      "id": "channels.field.displayName",
+      "category": "channels",
+      "page": "plugins/manifest-reference.md",
+      "section": "Channels"
+    },
+    {
+      "id": "channels.field.server",
+      "category": "channels",
+      "page": "plugins/manifest-reference.md",
+      "section": "Channels"
+    },
+    {
+      "id": "channels.field.userConfig",
+      "category": "channels",
+      "page": "plugins/manifest-reference.md",
+      "section": "Channels"
+    },
+    {
+      "id": "commands.entry.allowedTools",
+      "category": "commands",
+      "page": "plugins/manifest-reference.md",
+      "section": "commands"
+    },
+    {
+      "id": "commands.entry.argumentHint",
+      "category": "commands",
+      "page": "plugins/manifest-reference.md",
+      "section": "commands"
+    },
+    {
+      "id": "commands.entry.content",
+      "category": "commands",
+      "page": "plugins/manifest-reference.md",
+      "section": "commands"
+    },
+    {
+      "id": "commands.entry.description",
+      "category": "commands",
+      "page": "plugins/manifest-reference.md",
+      "section": "commands"
+    },
+    {
+      "id": "commands.entry.model",
+      "category": "commands",
+      "page": "plugins/manifest-reference.md",
+      "section": "commands"
+    },
+    {
+      "id": "commands.entry.source",
+      "category": "commands",
+      "page": "plugins/manifest-reference.md",
+      "section": "commands"
+    },
+    {
+      "id": "dependencies.field.marketplace",
+      "category": "dependencies",
+      "page": "plugins/dependencies.md",
+      "section": "Declare a dependency with a version constraint"
+    },
+    {
+      "id": "dependencies.field.name",
+      "category": "dependencies",
+      "page": "plugins/dependencies.md",
+      "section": "Declare a dependency with a version constraint"
+    },
+    {
+      "id": "dependencies.field.version",
+      "category": "dependencies",
+      "page": "plugins/dependencies.md",
+      "section": "Declare a dependency with a version constraint"
+    },
+    {
+      "id": "environment.component.Hook commands",
+      "category": "environment",
+      "page": "plugins/manifest-reference.md",
+      "section": "Where each variable resolves"
+    },
+    {
+      "id": "environment.component.http",
+      "category": "environment",
+      "page": "plugins/manifest-reference.md",
+      "section": "Where each variable resolves"
+    },
+    {
+      "id": "environment.component.LSP servers",
+      "category": "environment",
+      "page": "plugins/manifest-reference.md",
+      "section": "Where each variable resolves"
+    },
+    {
+      "id": "environment.component.Monitor commands",
+      "category": "environment",
+      "page": "plugins/manifest-reference.md",
+      "section": "Where each variable resolves"
+    },
+    {
+      "id": "environment.component.Skill, command, and agent content",
+      "category": "environment",
+      "page": "plugins/manifest-reference.md",
+      "section": "Where each variable resolves"
+    },
+    {
+      "id": "environment.component.stdio",
+      "category": "environment",
+      "page": "plugins/manifest-reference.md",
+      "section": "Where each variable resolves"
+    },
+    {
+      "id": "environment.variable.${CLAUDE_PLUGIN_DATA}",
+      "category": "environment",
+      "page": "plugins/manifest-reference.md",
+      "section": "Environment variables"
+    },
+    {
+      "id": "environment.variable.${CLAUDE_PLUGIN_ROOT}",
+      "category": "environment",
+      "page": "plugins/manifest-reference.md",
+      "section": "Environment variables"
+    },
+    {
+      "id": "environment.variable.${CLAUDE_PROJECT_DIR}",
+      "category": "environment",
+      "page": "plugins/manifest-reference.md",
+      "section": "Environment variables"
+    },
+    {
+      "id": "hooks.event.ConfigChange",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "ConfigChange"
+    },
+    {
+      "id": "hooks.event.CwdChanged",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "CwdChanged"
+    },
+    {
+      "id": "hooks.event.DirectoryAdded",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "DirectoryAdded"
+    },
+    {
+      "id": "hooks.event.Elicitation",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Elicitation"
+    },
+    {
+      "id": "hooks.event.ElicitationResult",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "ElicitationResult"
+    },
+    {
+      "id": "hooks.event.FileChanged",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "FileChanged"
+    },
+    {
+      "id": "hooks.event.InstructionsLoaded",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "InstructionsLoaded"
+    },
+    {
+      "id": "hooks.event.MessageDisplay",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "MessageDisplay"
+    },
+    {
+      "id": "hooks.event.Notification",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Notification"
+    },
+    {
+      "id": "hooks.event.PermissionDenied",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PermissionDenied"
+    },
+    {
+      "id": "hooks.event.PermissionRequest",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PermissionRequest"
+    },
+    {
+      "id": "hooks.event.PostCompact",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostCompact"
+    },
+    {
+      "id": "hooks.event.PostModelSwitch",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostModelSwitch"
+    },
+    {
+      "id": "hooks.event.PostToolBatch",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostToolBatch"
+    },
+    {
+      "id": "hooks.event.PostToolUse",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostToolUse"
+    },
+    {
+      "id": "hooks.event.PostToolUseFailure",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostToolUseFailure"
+    },
+    {
+      "id": "hooks.event.PreCompact",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreCompact"
+    },
+    {
+      "id": "hooks.event.PreModelSwitch",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreModelSwitch"
+    },
+    {
+      "id": "hooks.event.PreToolUse",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreToolUse"
+    },
+    {
+      "id": "hooks.event.SessionEnd",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionEnd"
+    },
+    {
+      "id": "hooks.event.SessionStart",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart"
+    },
+    {
+      "id": "hooks.event.Setup",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Setup"
+    },
+    {
+      "id": "hooks.event.Stop",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Stop"
+    },
+    {
+      "id": "hooks.event.StopFailure",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "StopFailure"
+    },
+    {
+      "id": "hooks.event.SubagentStart",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SubagentStart"
+    },
+    {
+      "id": "hooks.event.SubagentStop",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SubagentStop"
+    },
+    {
+      "id": "hooks.event.TaskCompleted",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TaskCompleted"
+    },
+    {
+      "id": "hooks.event.TaskCreated",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TaskCreated"
+    },
+    {
+      "id": "hooks.event.TeammateIdle",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TeammateIdle"
+    },
+    {
+      "id": "hooks.event.UserPromptExpansion",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "UserPromptExpansion"
+    },
+    {
+      "id": "hooks.event.UserPromptSubmit",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "UserPromptSubmit"
+    },
+    {
+      "id": "hooks.event.WorktreeCreate",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "WorktreeCreate"
+    },
+    {
+      "id": "hooks.event.WorktreeRemove",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "WorktreeRemove"
+    },
+    {
+      "id": "hooks.exit2.ConfigChange",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.CwdChanged",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.DirectoryAdded",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.Elicitation",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.ElicitationResult",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.FileChanged",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.InstructionsLoaded",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.MessageDisplay",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.Notification",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.PermissionDenied",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.PermissionRequest",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.PostCompact",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.PostModelSwitch",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.PostToolBatch",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.PostToolUse",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.PostToolUseFailure",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.PreCompact",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.PreModelSwitch",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.PreToolUse",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.SessionEnd",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.SessionStart",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.Setup",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.Stop",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.StopFailure",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.SubagentStart",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.SubagentStop",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.TaskCompleted",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.TaskCreated",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.TeammateIdle",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.UserPromptExpansion",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.UserPromptSubmit",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.WorktreeCreate",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.exit2.WorktreeRemove",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Exit code 2 behavior per event"
+    },
+    {
+      "id": "hooks.handler.command.args",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Command hook fields"
+    },
+    {
+      "id": "hooks.handler.command.async",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Command hook fields"
+    },
+    {
+      "id": "hooks.handler.command.asyncRewake",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Command hook fields"
+    },
+    {
+      "id": "hooks.handler.command.command",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Command hook fields"
+    },
+    {
+      "id": "hooks.handler.command.onFailure",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Command hook fields"
+    },
+    {
+      "id": "hooks.handler.command.shell",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Command hook fields"
+    },
+    {
+      "id": "hooks.handler.common.if",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Common fields"
+    },
+    {
+      "id": "hooks.handler.common.once",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Common fields"
+    },
+    {
+      "id": "hooks.handler.common.statusMessage",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Common fields"
+    },
+    {
+      "id": "hooks.handler.common.timeout",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Common fields"
+    },
+    {
+      "id": "hooks.handler.common.type",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Common fields"
+    },
+    {
+      "id": "hooks.handler.http.allowedEnvVars",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "HTTP hook fields"
+    },
+    {
+      "id": "hooks.handler.http.headers",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "HTTP hook fields"
+    },
+    {
+      "id": "hooks.handler.http.onFailure",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "HTTP hook fields"
+    },
+    {
+      "id": "hooks.handler.http.url",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "HTTP hook fields"
+    },
+    {
+      "id": "hooks.handler.mcp_tool.input",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "MCP tool hook fields"
+    },
+    {
+      "id": "hooks.handler.mcp_tool.server",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "MCP tool hook fields"
+    },
+    {
+      "id": "hooks.handler.mcp_tool.tool",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "MCP tool hook fields"
+    },
+    {
+      "id": "hooks.handler.prompt.model",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Prompt and agent hook fields"
+    },
+    {
+      "id": "hooks.handler.prompt.prompt",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Prompt and agent hook fields"
+    },
+    {
+      "id": "hooks.input.common.agent_id",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Common input fields"
+    },
+    {
+      "id": "hooks.input.common.agent_type",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Common input fields"
+    },
+    {
+      "id": "hooks.input.common.cwd",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Common input fields"
+    },
+    {
+      "id": "hooks.input.common.effort",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Common input fields"
+    },
+    {
+      "id": "hooks.input.common.hook_event_name",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Common input fields"
+    },
+    {
+      "id": "hooks.input.common.permission_mode",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Common input fields"
+    },
+    {
+      "id": "hooks.input.common.prompt_id",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Common input fields"
+    },
+    {
+      "id": "hooks.input.common.scratchpad_dir",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Common input fields"
+    },
+    {
+      "id": "hooks.input.common.session_id",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Common input fields"
+    },
+    {
+      "id": "hooks.input.common.transcript_path",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Common input fields"
+    },
+    {
+      "id": "hooks.input.DirectoryAdded.directory",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "DirectoryAdded input"
+    },
+    {
+      "id": "hooks.input.DirectoryAdded.source",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "DirectoryAdded input"
+    },
+    {
+      "id": "hooks.input.FileChanged.event",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "FileChanged input"
+    },
+    {
+      "id": "hooks.input.FileChanged.file_path",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "FileChanged input"
+    },
+    {
+      "id": "hooks.input.InstructionsLoaded.file_path",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "InstructionsLoaded input"
+    },
+    {
+      "id": "hooks.input.InstructionsLoaded.globs",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "InstructionsLoaded input"
+    },
+    {
+      "id": "hooks.input.InstructionsLoaded.load_reason",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "InstructionsLoaded input"
+    },
+    {
+      "id": "hooks.input.InstructionsLoaded.memory_type",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "InstructionsLoaded input"
+    },
+    {
+      "id": "hooks.input.InstructionsLoaded.parent_file_path",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "InstructionsLoaded input"
+    },
+    {
+      "id": "hooks.input.InstructionsLoaded.trigger_file_path",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "InstructionsLoaded input"
+    },
+    {
+      "id": "hooks.input.MessageDisplay.delta",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "MessageDisplay input"
+    },
+    {
+      "id": "hooks.input.MessageDisplay.final",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "MessageDisplay input"
+    },
+    {
+      "id": "hooks.input.MessageDisplay.index",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "MessageDisplay input"
+    },
+    {
+      "id": "hooks.input.MessageDisplay.message_id",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "MessageDisplay input"
+    },
+    {
+      "id": "hooks.input.MessageDisplay.turn_id",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "MessageDisplay input"
+    },
+    {
+      "id": "hooks.input.PermissionDenied.reason",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PermissionDenied input"
+    },
+    {
+      "id": "hooks.input.PostToolUse.duration_ms",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostToolUse input"
+    },
+    {
+      "id": "hooks.input.PostToolUseFailure.duration_ms",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostToolUseFailure input"
+    },
+    {
+      "id": "hooks.input.PostToolUseFailure.error",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostToolUseFailure input"
+    },
+    {
+      "id": "hooks.input.PostToolUseFailure.is_interrupt",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostToolUseFailure input"
+    },
+    {
+      "id": "hooks.input.PreModelSwitch.cache_ttl",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreModelSwitch input"
+    },
+    {
+      "id": "hooks.input.PreModelSwitch.context_tokens",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreModelSwitch input"
+    },
+    {
+      "id": "hooks.input.PreModelSwitch.estimated_cache_write_usd",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreModelSwitch input"
+    },
+    {
+      "id": "hooks.input.PreModelSwitch.from_model",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreModelSwitch input"
+    },
+    {
+      "id": "hooks.input.PreModelSwitch.pricing",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreModelSwitch input"
+    },
+    {
+      "id": "hooks.input.PreModelSwitch.prompt_cache_warm",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreModelSwitch input"
+    },
+    {
+      "id": "hooks.input.PreModelSwitch.requested_model",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreModelSwitch input"
+    },
+    {
+      "id": "hooks.input.PreModelSwitch.source",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreModelSwitch input"
+    },
+    {
+      "id": "hooks.input.PreModelSwitch.to_model",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreModelSwitch input"
+    },
+    {
+      "id": "hooks.input.SessionStart.agent_type",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart input"
+    },
+    {
+      "id": "hooks.input.SessionStart.context_tokens",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart input"
+    },
+    {
+      "id": "hooks.input.SessionStart.estimated_cache_write_usd",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart input"
+    },
+    {
+      "id": "hooks.input.SessionStart.model",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart input"
+    },
+    {
+      "id": "hooks.input.SessionStart.prompt_cache_likely_expired",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart input"
+    },
+    {
+      "id": "hooks.input.SessionStart.seconds_since_last_response",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart input"
+    },
+    {
+      "id": "hooks.input.SessionStart.session_title",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart input"
+    },
+    {
+      "id": "hooks.input.SessionStart.source",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart input"
+    },
+    {
+      "id": "hooks.input.Stop.agent_type",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Stop input"
+    },
+    {
+      "id": "hooks.input.Stop.command",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Stop input"
+    },
+    {
+      "id": "hooks.input.Stop.description",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Stop input"
+    },
+    {
+      "id": "hooks.input.Stop.id",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Stop input"
+    },
+    {
+      "id": "hooks.input.Stop.name",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Stop input"
+    },
+    {
+      "id": "hooks.input.Stop.prompt",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Stop input"
+    },
+    {
+      "id": "hooks.input.Stop.recurring",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Stop input"
+    },
+    {
+      "id": "hooks.input.Stop.schedule",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Stop input"
+    },
+    {
+      "id": "hooks.input.Stop.server",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Stop input"
+    },
+    {
+      "id": "hooks.input.Stop.status",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Stop input"
+    },
+    {
+      "id": "hooks.input.Stop.tool",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Stop input"
+    },
+    {
+      "id": "hooks.input.Stop.type",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Stop input"
+    },
+    {
+      "id": "hooks.input.StopFailure.error",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "StopFailure input"
+    },
+    {
+      "id": "hooks.input.StopFailure.error_details",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "StopFailure input"
+    },
+    {
+      "id": "hooks.input.StopFailure.last_assistant_message",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "StopFailure input"
+    },
+    {
+      "id": "hooks.input.SubagentStart.additionalContext",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SubagentStart input"
+    },
+    {
+      "id": "hooks.input.TaskCompleted.agent_id",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TaskCompleted input"
+    },
+    {
+      "id": "hooks.input.TaskCompleted.task_description",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TaskCompleted input"
+    },
+    {
+      "id": "hooks.input.TaskCompleted.task_id",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TaskCompleted input"
+    },
+    {
+      "id": "hooks.input.TaskCompleted.task_subject",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TaskCompleted input"
+    },
+    {
+      "id": "hooks.input.TaskCompleted.team_name",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TaskCompleted input"
+    },
+    {
+      "id": "hooks.input.TaskCompleted.teammate_name",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TaskCompleted input"
+    },
+    {
+      "id": "hooks.input.TaskCreated.agent_id",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TaskCreated input"
+    },
+    {
+      "id": "hooks.input.TaskCreated.task_description",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TaskCreated input"
+    },
+    {
+      "id": "hooks.input.TaskCreated.task_id",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TaskCreated input"
+    },
+    {
+      "id": "hooks.input.TaskCreated.task_subject",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TaskCreated input"
+    },
+    {
+      "id": "hooks.input.TaskCreated.team_name",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TaskCreated input"
+    },
+    {
+      "id": "hooks.input.TaskCreated.teammate_name",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TaskCreated input"
+    },
+    {
+      "id": "hooks.input.TeammateIdle.agent_id",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TeammateIdle input"
+    },
+    {
+      "id": "hooks.input.TeammateIdle.team_name",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TeammateIdle input"
+    },
+    {
+      "id": "hooks.input.TeammateIdle.teammate_name",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "TeammateIdle input"
+    },
+    {
+      "id": "hooks.matcher.ConfigChange",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.CwdChanged",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.DirectoryAdded",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.Elicitation",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.ElicitationResult",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.FileChanged",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.InstructionsLoaded",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.MessageDisplay",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.Notification",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.PermissionDenied",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.PermissionRequest",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.PostCompact",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.PostModelSwitch",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.PostToolBatch",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.PostToolUse",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.PostToolUseFailure",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.PreCompact",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.PreModelSwitch",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.PreToolUse",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.SessionEnd",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.SessionStart",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.Setup",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.Stop",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.StopFailure",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.SubagentStart",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.SubagentStop",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.TaskCompleted",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.TaskCreated",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.TeammateIdle",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.UserPromptExpansion",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.UserPromptSubmit",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.WorktreeCreate",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcher.WorktreeRemove",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Matcher patterns"
+    },
+    {
+      "id": "hooks.matcherValue.ConfigChange.local_settings",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "ConfigChange"
+    },
+    {
+      "id": "hooks.matcherValue.ConfigChange.policy_settings",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "ConfigChange"
+    },
+    {
+      "id": "hooks.matcherValue.ConfigChange.project_settings",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "ConfigChange"
+    },
+    {
+      "id": "hooks.matcherValue.ConfigChange.skills",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "ConfigChange"
+    },
+    {
+      "id": "hooks.matcherValue.ConfigChange.user_settings",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "ConfigChange"
+    },
+    {
+      "id": "hooks.matcherValue.DirectoryAdded.register_repo_root",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "DirectoryAdded"
+    },
+    {
+      "id": "hooks.matcherValue.DirectoryAdded.slash_command",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "DirectoryAdded"
+    },
+    {
+      "id": "hooks.matcherValue.Notification.agent_completed",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Notification"
+    },
+    {
+      "id": "hooks.matcherValue.Notification.agent_needs_input",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Notification"
+    },
+    {
+      "id": "hooks.matcherValue.Notification.auth_storage_failure",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Notification"
+    },
+    {
+      "id": "hooks.matcherValue.Notification.auth_success",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Notification"
+    },
+    {
+      "id": "hooks.matcherValue.Notification.elicitation_complete",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Notification"
+    },
+    {
+      "id": "hooks.matcherValue.Notification.elicitation_dialog",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Notification"
+    },
+    {
+      "id": "hooks.matcherValue.Notification.elicitation_response",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Notification"
+    },
+    {
+      "id": "hooks.matcherValue.Notification.elicitation_url_dialog",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Notification"
+    },
+    {
+      "id": "hooks.matcherValue.Notification.idle_prompt",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Notification"
+    },
+    {
+      "id": "hooks.matcherValue.Notification.permission_prompt",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Notification"
+    },
+    {
+      "id": "hooks.matcherValue.Notification.plugin_notification",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Notification"
+    },
+    {
+      "id": "hooks.matcherValue.Notification.quota_auto_resume_disabled",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Notification"
+    },
+    {
+      "id": "hooks.matcherValue.Notification.quota_auto_resume_fired",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Notification"
+    },
+    {
+      "id": "hooks.matcherValue.Notification.quota_auto_resume_stale",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Notification"
+    },
+    {
+      "id": "hooks.matcherValue.PostCompact.auto",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostCompact"
+    },
+    {
+      "id": "hooks.matcherValue.PostCompact.manual",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostCompact"
+    },
+    {
+      "id": "hooks.matcherValue.PreCompact.auto",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreCompact"
+    },
+    {
+      "id": "hooks.matcherValue.PreCompact.manual",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreCompact"
+    },
+    {
+      "id": "hooks.matcherValue.SessionStart.clear",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart"
+    },
+    {
+      "id": "hooks.matcherValue.SessionStart.compact",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart"
+    },
+    {
+      "id": "hooks.matcherValue.SessionStart.fork",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart"
+    },
+    {
+      "id": "hooks.matcherValue.SessionStart.resume",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart"
+    },
+    {
+      "id": "hooks.matcherValue.SessionStart.startup",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart"
+    },
+    {
+      "id": "hooks.matcherValue.Setup.init",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Setup"
+    },
+    {
+      "id": "hooks.matcherValue.Setup.maintenance",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Setup"
+    },
+    {
+      "id": "hooks.output.common.continue",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "JSON output"
+    },
+    {
+      "id": "hooks.output.common.stopReason",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "JSON output"
+    },
+    {
+      "id": "hooks.output.common.suppressOutput",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "JSON output"
+    },
+    {
+      "id": "hooks.output.common.systemMessage",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "JSON output"
+    },
+    {
+      "id": "hooks.output.common.terminalSequence",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "JSON output"
+    },
+    {
+      "id": "hooks.output.ConfigChange.decision",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "ConfigChange decision control"
+    },
+    {
+      "id": "hooks.output.ConfigChange.reason",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "ConfigChange decision control"
+    },
+    {
+      "id": "hooks.output.CwdChanged.watchPaths",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "CwdChanged output"
+    },
+    {
+      "id": "hooks.output.Elicitation.Answer for the user",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Elicitation output"
+    },
+    {
+      "id": "hooks.output.Elicitation.Cancel the request",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Elicitation output"
+    },
+    {
+      "id": "hooks.output.Elicitation.Decline the request",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Elicitation output"
+    },
+    {
+      "id": "hooks.output.Elicitation.Leave the request to the user",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Elicitation output"
+    },
+    {
+      "id": "hooks.output.ElicitationResult.Block the response",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "ElicitationResult output"
+    },
+    {
+      "id": "hooks.output.ElicitationResult.Cancel the request",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "ElicitationResult output"
+    },
+    {
+      "id": "hooks.output.ElicitationResult.Change the submitted values",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "ElicitationResult output"
+    },
+    {
+      "id": "hooks.output.ElicitationResult.Let the response through",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "ElicitationResult output"
+    },
+    {
+      "id": "hooks.output.FileChanged.watchPaths",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "FileChanged output"
+    },
+    {
+      "id": "hooks.output.JSON.continue",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "JSON output"
+    },
+    {
+      "id": "hooks.output.JSON.stopReason",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "JSON output"
+    },
+    {
+      "id": "hooks.output.JSON.suppressOutput",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "JSON output"
+    },
+    {
+      "id": "hooks.output.JSON.systemMessage",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "JSON output"
+    },
+    {
+      "id": "hooks.output.JSON.terminalSequence",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "JSON output"
+    },
+    {
+      "id": "hooks.output.MessageDisplay.displayContent",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "MessageDisplay output"
+    },
+    {
+      "id": "hooks.output.PermissionRequest.behavior",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PermissionRequest decision control"
+    },
+    {
+      "id": "hooks.output.PermissionRequest.interrupt",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PermissionRequest decision control"
+    },
+    {
+      "id": "hooks.output.PermissionRequest.message",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PermissionRequest decision control"
+    },
+    {
+      "id": "hooks.output.PermissionRequest.updatedInput",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PermissionRequest decision control"
+    },
+    {
+      "id": "hooks.output.PermissionRequest.updatedPermissions",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PermissionRequest decision control"
+    },
+    {
+      "id": "hooks.output.PostModelSwitch.additionalContext",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostModelSwitch decision control"
+    },
+    {
+      "id": "hooks.output.PostToolBatch.additionalContext",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostToolBatch decision control"
+    },
+    {
+      "id": "hooks.output.PostToolUse.additionalContext",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostToolUse decision control"
+    },
+    {
+      "id": "hooks.output.PostToolUse.classifierContext",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostToolUse decision control"
+    },
+    {
+      "id": "hooks.output.PostToolUse.decision",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostToolUse decision control"
+    },
+    {
+      "id": "hooks.output.PostToolUse.reason",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostToolUse decision control"
+    },
+    {
+      "id": "hooks.output.PostToolUse.updatedMCPToolOutput",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostToolUse decision control"
+    },
+    {
+      "id": "hooks.output.PostToolUse.updatedToolOutput",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostToolUse decision control"
+    },
+    {
+      "id": "hooks.output.PostToolUseFailure.additionalContext",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PostToolUseFailure decision control"
+    },
+    {
+      "id": "hooks.output.PreModelSwitch.permissionDecision",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreModelSwitch decision control"
+    },
+    {
+      "id": "hooks.output.PreModelSwitch.permissionDecisionReason",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreModelSwitch decision control"
+    },
+    {
+      "id": "hooks.output.PreToolUse.additionalContext",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreToolUse decision control"
+    },
+    {
+      "id": "hooks.output.PreToolUse.permissionDecision",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreToolUse decision control"
+    },
+    {
+      "id": "hooks.output.PreToolUse.permissionDecisionReason",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreToolUse decision control"
+    },
+    {
+      "id": "hooks.output.PreToolUse.updatedInput",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "PreToolUse decision control"
+    },
+    {
+      "id": "hooks.output.SessionStart.additionalContext",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart decision control"
+    },
+    {
+      "id": "hooks.output.SessionStart.initialUserMessage",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart decision control"
+    },
+    {
+      "id": "hooks.output.SessionStart.reloadSkills",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart decision control"
+    },
+    {
+      "id": "hooks.output.SessionStart.sessionTitle",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart decision control"
+    },
+    {
+      "id": "hooks.output.SessionStart.watchPaths",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "SessionStart decision control"
+    },
+    {
+      "id": "hooks.output.Stop.decision",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Stop decision control"
+    },
+    {
+      "id": "hooks.output.Stop.hookSpecificOutput.additionalContext",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Stop decision control"
+    },
+    {
+      "id": "hooks.output.Stop.reason",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Stop decision control"
+    },
+    {
+      "id": "hooks.output.UserPromptExpansion.additionalContext",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "UserPromptExpansion decision control"
+    },
+    {
+      "id": "hooks.output.UserPromptExpansion.decision",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "UserPromptExpansion decision control"
+    },
+    {
+      "id": "hooks.output.UserPromptExpansion.reason",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "UserPromptExpansion decision control"
+    },
+    {
+      "id": "hooks.output.UserPromptSubmit.additionalContext",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "UserPromptSubmit decision control"
+    },
+    {
+      "id": "hooks.output.UserPromptSubmit.decision",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "UserPromptSubmit decision control"
+    },
+    {
+      "id": "hooks.output.UserPromptSubmit.reason",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "UserPromptSubmit decision control"
+    },
+    {
+      "id": "hooks.output.UserPromptSubmit.sessionTitle",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "UserPromptSubmit decision control"
+    },
+    {
+      "id": "hooks.output.UserPromptSubmit.suppressOriginalPrompt",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "UserPromptSubmit decision control"
+    },
+    {
+      "id": "hooks.permissionUpdate.addDirectories",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Permission update entries"
+    },
+    {
+      "id": "hooks.permissionUpdate.addRules",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Permission update entries"
+    },
+    {
+      "id": "hooks.permissionUpdate.removeDirectories",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Permission update entries"
+    },
+    {
+      "id": "hooks.permissionUpdate.removeRules",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Permission update entries"
+    },
+    {
+      "id": "hooks.permissionUpdate.replaceRules",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Permission update entries"
+    },
+    {
+      "id": "hooks.permissionUpdate.setMode",
+      "category": "hooks",
+      "page": "hooks.md",
+      "section": "Permission update entries"
+    },
+    {
+      "id": "layout.Agents",
+      "category": "layout",
+      "page": "plugins/manifest-reference.md",
+      "section": "Standard layout"
+    },
+    {
+      "id": "layout.Commands",
+      "category": "layout",
+      "page": "plugins/manifest-reference.md",
+      "section": "Standard layout"
+    },
+    {
+      "id": "layout.Executables",
+      "category": "layout",
+      "page": "plugins/manifest-reference.md",
+      "section": "Standard layout"
+    },
+    {
+      "id": "layout.Hooks",
+      "category": "layout",
+      "page": "plugins/manifest-reference.md",
+      "section": "Standard layout"
+    },
+    {
+      "id": "layout.LSP servers",
+      "category": "layout",
+      "page": "plugins/manifest-reference.md",
+      "section": "Standard layout"
+    },
+    {
+      "id": "layout.Manifest",
+      "category": "layout",
+      "page": "plugins/manifest-reference.md",
+      "section": "Standard layout"
+    },
+    {
+      "id": "layout.MCP servers",
+      "category": "layout",
+      "page": "plugins/manifest-reference.md",
+      "section": "Standard layout"
+    },
+    {
+      "id": "layout.Monitors",
+      "category": "layout",
+      "page": "plugins/manifest-reference.md",
+      "section": "Standard layout"
+    },
+    {
+      "id": "layout.Output styles",
+      "category": "layout",
+      "page": "plugins/manifest-reference.md",
+      "section": "Standard layout"
+    },
+    {
+      "id": "layout.Settings",
+      "category": "layout",
+      "page": "plugins/manifest-reference.md",
+      "section": "Standard layout"
+    },
+    {
+      "id": "layout.Skills",
+      "category": "layout",
+      "page": "plugins/manifest-reference.md",
+      "section": "Standard layout"
+    },
+    {
+      "id": "layout.Themes",
+      "category": "layout",
+      "page": "plugins/manifest-reference.md",
+      "section": "Standard layout"
+    },
+    {
+      "id": "layout.Workflows",
+      "category": "layout",
+      "page": "plugins/manifest-reference.md",
+      "section": "Standard layout"
+    },
+    {
+      "id": "lsp.field.args",
+      "category": "lsp",
+      "page": "plugins/manifest-reference.md",
+      "section": "lspServers"
+    },
+    {
+      "id": "lsp.field.command",
+      "category": "lsp",
+      "page": "plugins/manifest-reference.md",
+      "section": "lspServers"
+    },
+    {
+      "id": "lsp.field.diagnostics",
+      "category": "lsp",
+      "page": "plugins/manifest-reference.md",
+      "section": "lspServers"
+    },
+    {
+      "id": "lsp.field.env",
+      "category": "lsp",
+      "page": "plugins/manifest-reference.md",
+      "section": "lspServers"
+    },
+    {
+      "id": "lsp.field.extensionToLanguage",
+      "category": "lsp",
+      "page": "plugins/manifest-reference.md",
+      "section": "lspServers"
+    },
+    {
+      "id": "lsp.field.initializationOptions",
+      "category": "lsp",
+      "page": "plugins/manifest-reference.md",
+      "section": "lspServers"
+    },
+    {
+      "id": "lsp.field.maxRestarts",
+      "category": "lsp",
+      "page": "plugins/manifest-reference.md",
+      "section": "lspServers"
+    },
+    {
+      "id": "lsp.field.requestTimeout",
+      "category": "lsp",
+      "page": "plugins/manifest-reference.md",
+      "section": "lspServers"
+    },
+    {
+      "id": "lsp.field.restartOnCrash",
+      "category": "lsp",
+      "page": "plugins/manifest-reference.md",
+      "section": "lspServers"
+    },
+    {
+      "id": "lsp.field.settings",
+      "category": "lsp",
+      "page": "plugins/manifest-reference.md",
+      "section": "lspServers"
+    },
+    {
+      "id": "lsp.field.shutdownTimeout",
+      "category": "lsp",
+      "page": "plugins/manifest-reference.md",
+      "section": "lspServers"
+    },
+    {
+      "id": "lsp.field.startupTimeout",
+      "category": "lsp",
+      "page": "plugins/manifest-reference.md",
+      "section": "lspServers"
+    },
+    {
+      "id": "lsp.field.transport",
+      "category": "lsp",
+      "page": "plugins/manifest-reference.md",
+      "section": "lspServers"
+    },
+    {
+      "id": "lsp.field.workspaceFolder",
+      "category": "lsp",
+      "page": "plugins/manifest-reference.md",
+      "section": "lspServers"
+    },
+    {
+      "id": "manifest.field.$schema",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.agents",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.author",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.channels",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.commands",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.defaultEnabled",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.dependencies",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.description",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.displayName",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.documentationUrl",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.experimental",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.experimental.evals",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.experimental.monitors",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.experimental.themes",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.homepage",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.hooks",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.icon",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.keywords",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.license",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.lspServers",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.mcpServers",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.metadata",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.name",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.outputStyles",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.privacyPolicyUrl",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.repository",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.settings",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.skills",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.supportUrl",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.termsOfServiceUrl",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.types",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.userConfig",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.version",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "manifest.field.workflows",
+      "category": "manifest",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields"
+    },
+    {
+      "id": "marketplace.entry.category",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin entries"
+    },
+    {
+      "id": "marketplace.entry.defaultEnabled",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin entries"
+    },
+    {
+      "id": "marketplace.entry.dependencies",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin entries"
+    },
+    {
+      "id": "marketplace.entry.description",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin entries"
+    },
+    {
+      "id": "marketplace.entry.displayName",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin entries"
+    },
+    {
+      "id": "marketplace.entry.headers",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin entries"
+    },
+    {
+      "id": "marketplace.entry.headersHelper",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin entries"
+    },
+    {
+      "id": "marketplace.entry.metadata",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin entries"
+    },
+    {
+      "id": "marketplace.entry.name",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin entries"
+    },
+    {
+      "id": "marketplace.entry.relevance",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin entries"
+    },
+    {
+      "id": "marketplace.entry.source",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin entries"
+    },
+    {
+      "id": "marketplace.entry.strict",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin entries"
+    },
+    {
+      "id": "marketplace.entry.tags",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin entries"
+    },
+    {
+      "id": "marketplace.entry.version",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin entries"
+    },
+    {
+      "id": "marketplace.field.$schema",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Top-level fields"
+    },
+    {
+      "id": "marketplace.field.allowCrossMarketplaceDependenciesOn",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Top-level fields"
+    },
+    {
+      "id": "marketplace.field.description",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Top-level fields"
+    },
+    {
+      "id": "marketplace.field.forceRemoveDeletedPlugins",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Top-level fields"
+    },
+    {
+      "id": "marketplace.field.metadata.description",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Top-level fields"
+    },
+    {
+      "id": "marketplace.field.metadata.pluginRoot",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Top-level fields"
+    },
+    {
+      "id": "marketplace.field.metadata.version",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Top-level fields"
+    },
+    {
+      "id": "marketplace.field.name",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Top-level fields"
+    },
+    {
+      "id": "marketplace.field.owner",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Top-level fields"
+    },
+    {
+      "id": "marketplace.field.plugins",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Top-level fields"
+    },
+    {
+      "id": "marketplace.field.renames",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Top-level fields"
+    },
+    {
+      "id": "marketplace.field.version",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Top-level fields"
+    },
+    {
+      "id": "marketplace.source.archive",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin sources"
+    },
+    {
+      "id": "marketplace.source.command",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin sources"
+    },
+    {
+      "id": "marketplace.source.git-subdir",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin sources"
+    },
+    {
+      "id": "marketplace.source.github",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin sources"
+    },
+    {
+      "id": "marketplace.source.npm",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin sources"
+    },
+    {
+      "id": "marketplace.source.Relative path",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin sources"
+    },
+    {
+      "id": "marketplace.source.url",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Plugin sources"
+    },
+    {
+      "id": "marketplace.sourceField.headers",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Fields by type"
+    },
+    {
+      "id": "marketplace.sourceField.headersHelper",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Fields by type"
+    },
+    {
+      "id": "marketplace.sourceField.name",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Fields by type"
+    },
+    {
+      "id": "marketplace.sourceField.path",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Fields by type"
+    },
+    {
+      "id": "marketplace.sourceField.plugins",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Fields by type"
+    },
+    {
+      "id": "marketplace.sourceField.ref",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Fields by type"
+    },
+    {
+      "id": "marketplace.sourceField.repo",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Fields by type"
+    },
+    {
+      "id": "marketplace.sourceField.skipLfs",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Fields by type"
+    },
+    {
+      "id": "marketplace.sourceField.sparsePaths",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Fields by type"
+    },
+    {
+      "id": "marketplace.sourceField.url",
+      "category": "marketplace",
+      "page": "plugins/marketplace-reference.md",
+      "section": "Fields by type"
+    },
+    {
+      "id": "mcp.source..json",
+      "category": "mcp",
+      "page": "plugins/manifest-reference.md",
+      "section": "mcpServers"
+    },
+    {
+      "id": "mcp.source.Inline map",
+      "category": "mcp",
+      "page": "plugins/manifest-reference.md",
+      "section": "mcpServers"
+    },
+    {
+      "id": "mcp.source.MCP bundle path",
+      "category": "mcp",
+      "page": "plugins/manifest-reference.md",
+      "section": "mcpServers"
+    },
+    {
+      "id": "mcp.source.MCP bundle URL",
+      "category": "mcp",
+      "page": "plugins/manifest-reference.md",
+      "section": "mcpServers"
+    },
+    {
+      "id": "mods.api.$.agent",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.audio",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.clock",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.command",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.config",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.env",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.fs",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.http",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.mcp",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.model",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.plugin",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.process",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.prompt",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.session",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.settings",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.state",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.store",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.telemetry",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.tool",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.turn",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.api.$.ui",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Mods API methods"
+    },
+    {
+      "id": "mods.command./plugin",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Commands"
+    },
+    {
+      "id": "mods.command./reload-plugins",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Commands"
+    },
+    {
+      "id": "mods.command.claude --plugin-dir <directory>",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Commands"
+    },
+    {
+      "id": "mods.command.claude plugin test [directory]",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Commands"
+    },
+    {
+      "id": "mods.command.claude plugin validate <directory>",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Commands"
+    },
+    {
+      "id": "mods.element.Box",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Elements"
+    },
+    {
+      "id": "mods.element.Button",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Elements"
+    },
+    {
+      "id": "mods.element.Client",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Elements"
+    },
+    {
+      "id": "mods.element.Code",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Elements"
+    },
+    {
+      "id": "mods.element.Image",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Elements"
+    },
+    {
+      "id": "mods.element.Input",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Elements"
+    },
+    {
+      "id": "mods.element.Link",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Elements"
+    },
+    {
+      "id": "mods.element.Markdown",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Elements"
+    },
+    {
+      "id": "mods.element.Raster",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Elements"
+    },
+    {
+      "id": "mods.element.Select",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Elements"
+    },
+    {
+      "id": "mods.element.Svg",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Elements"
+    },
+    {
+      "id": "mods.element.Text",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Elements"
+    },
+    {
+      "id": "mods.event.agent.offer",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Subagents"
+    },
+    {
+      "id": "mods.event.agent.spawn",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Subagents"
+    },
+    {
+      "id": "mods.event.attribution.text",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Prompts and what Claude reads"
+    },
+    {
+      "id": "mods.event.command.describe",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Commands and configuration"
+    },
+    {
+      "id": "mods.event.command.run",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Commands and configuration"
+    },
+    {
+      "id": "mods.event.config.describe",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Commands and configuration"
+    },
+    {
+      "id": "mods.event.config.set",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Commands and configuration"
+    },
+    {
+      "id": "mods.event.engine.create",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Other mods"
+    },
+    {
+      "id": "mods.event.plugin.register",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Other mods"
+    },
+    {
+      "id": "mods.event.prompt.attachment",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Prompts and what Claude reads"
+    },
+    {
+      "id": "mods.event.prompt.autocomplete",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Prompts and what Claude reads"
+    },
+    {
+      "id": "mods.event.prompt.compose",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Prompts and what Claude reads"
+    },
+    {
+      "id": "mods.event.prompt.context",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Prompts and what Claude reads"
+    },
+    {
+      "id": "mods.event.prompt.edit",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Prompts and what Claude reads"
+    },
+    {
+      "id": "mods.event.prompt.fill",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Prompts and what Claude reads"
+    },
+    {
+      "id": "mods.event.prompt.mention",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Prompts and what Claude reads"
+    },
+    {
+      "id": "mods.event.prompt.section",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Prompts and what Claude reads"
+    },
+    {
+      "id": "mods.event.prompt.submit",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Prompts and what Claude reads"
+    },
+    {
+      "id": "mods.event.prompt.suggest",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Prompts and what Claude reads"
+    },
+    {
+      "id": "mods.event.session.append",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Session"
+    },
+    {
+      "id": "mods.event.session.attach",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Session"
+    },
+    {
+      "id": "mods.event.session.compact",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Session"
+    },
+    {
+      "id": "mods.event.session.detach",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Session"
+    },
+    {
+      "id": "mods.event.session.end",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Session"
+    },
+    {
+      "id": "mods.event.session.measure",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Session"
+    },
+    {
+      "id": "mods.event.session.receive",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Session"
+    },
+    {
+      "id": "mods.event.session.send",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Session"
+    },
+    {
+      "id": "mods.event.session.start",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Session"
+    },
+    {
+      "id": "mods.event.settings.read",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Commands and configuration"
+    },
+    {
+      "id": "mods.event.skill.prompt",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Prompts and what Claude reads"
+    },
+    {
+      "id": "mods.event.telemetry.log",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Telemetry"
+    },
+    {
+      "id": "mods.event.telemetry.mark",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Telemetry"
+    },
+    {
+      "id": "mods.event.tool.call",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Tools"
+    },
+    {
+      "id": "mods.event.tool.check",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Tools"
+    },
+    {
+      "id": "mods.event.tool.describe",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Tools"
+    },
+    {
+      "id": "mods.event.turn.complete",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Turns"
+    },
+    {
+      "id": "mods.event.turn.start",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Turns"
+    },
+    {
+      "id": "mods.event.turn.step",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Turns"
+    },
+    {
+      "id": "mods.event.ui.close",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Interface"
+    },
+    {
+      "id": "mods.event.ui.fault",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Interface"
+    },
+    {
+      "id": "mods.event.ui.focus",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Interface"
+    },
+    {
+      "id": "mods.event.ui.input",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Interface"
+    },
+    {
+      "id": "mods.event.ui.message",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Interface"
+    },
+    {
+      "id": "mods.event.ui.press",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Interface"
+    },
+    {
+      "id": "mods.event.ui.render",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Interface"
+    },
+    {
+      "id": "mods.event.ui.resolve",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Interface"
+    },
+    {
+      "id": "mods.event.ui.scroll",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Interface"
+    },
+    {
+      "id": "mods.event.ui.select",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Interface"
+    },
+    {
+      "id": "mods.file..claude-plugin/plugin.json",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Files"
+    },
+    {
+      "id": "mods.file..test.ts",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Files"
+    },
+    {
+      "id": "mods.file.hooks/hooks.json",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Files"
+    },
+    {
+      "id": "mods.file.hooks/register.js",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Files"
+    },
+    {
+      "id": "mods.file.types/index.d.ts",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Files"
+    },
+    {
+      "id": "mods.hookArgument.$",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "The hook function"
+    },
+    {
+      "id": "mods.hookArgument.e",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "The hook function"
+    },
+    {
+      "id": "mods.hookArgument.next.budget",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "The hook function"
+    },
+    {
+      "id": "mods.hookArgument.next.called",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "The hook function"
+    },
+    {
+      "id": "mods.hookArgument.next.error",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "The hook function"
+    },
+    {
+      "id": "mods.hookArgument.next.error.cause",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "The hook function"
+    },
+    {
+      "id": "mods.hookArgument.next.origin",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "The hook function"
+    },
+    {
+      "id": "mods.hookArgument.next.signal",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "The hook function"
+    },
+    {
+      "id": "mods.hookArgument.next.to(e, tier)",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "The hook function"
+    },
+    {
+      "id": "mods.hookArgument.next(e)",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "The hook function"
+    },
+    {
+      "id": "mods.limit..catch",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.$.fs.read",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.$.fs.write",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.$.http.fetch",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.$.model.complete",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.$.process.run",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.$.session.messages()",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.$.store",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.$.ui.invalidate('ui.render')",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.$.ui.toast",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.A pane opened without the user asking",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.claude plugin test",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.Code",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.Command, tool, subagent type, and pane names",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.drop",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.Elements and text children in one tree",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.Image",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.Link",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.maxTokens",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.Nesting depth of a mods API call's arguments",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.Nesting depth of one tree",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.next",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.Raster",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.Scopes, such as functions, blocks, and loops, nested inside one another in one file of a hooks module",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.session.end",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.stderr",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.stdout",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.Text in one tree",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.limit.ui.render",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Limits"
+    },
+    {
+      "id": "mods.setting.allowManagedHooksOnly",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Settings and environment variables"
+    },
+    {
+      "id": "mods.setting.allowManagedModsOnly",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Settings and environment variables"
+    },
+    {
+      "id": "mods.setting.allowModsToOverrideDenyRules",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Settings and environment variables"
+    },
+    {
+      "id": "mods.setting.appendPlugins",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Settings and environment variables"
+    },
+    {
+      "id": "mods.setting.CLAUDE_CODE_PLUGIN_DIR_WATCH",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Settings and environment variables"
+    },
+    {
+      "id": "mods.setting.CLAUDE_CODE_PLUGIN_DIRS",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Settings and environment variables"
+    },
+    {
+      "id": "mods.setting.disableAllHooks",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Settings and environment variables"
+    },
+    {
+      "id": "mods.setting.disableSideloadFlags",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Settings and environment variables"
+    },
+    {
+      "id": "mods.setting.pluginConfigs",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Settings and environment variables"
+    },
+    {
+      "id": "mods.setting.prependPlugins",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Settings and environment variables"
+    },
+    {
+      "id": "mods.site.AbovePrompt",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Render sites"
+    },
+    {
+      "id": "mods.site.AskUserQuestion",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Render sites"
+    },
+    {
+      "id": "mods.site.AssistantMessage",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Render sites"
+    },
+    {
+      "id": "mods.site.CommandOutput",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Render sites"
+    },
+    {
+      "id": "mods.site.InfoNotice",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Render sites"
+    },
+    {
+      "id": "mods.site.Pane",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Render sites"
+    },
+    {
+      "id": "mods.site.PromptHint",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Render sites"
+    },
+    {
+      "id": "mods.site.SessionMode",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Render sites"
+    },
+    {
+      "id": "mods.site.Spinner",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Render sites"
+    },
+    {
+      "id": "mods.site.ToolGroup",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Render sites"
+    },
+    {
+      "id": "mods.site.ToolProgress",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Render sites"
+    },
+    {
+      "id": "mods.site.ToolResult",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Render sites"
+    },
+    {
+      "id": "mods.site.ToolUse",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Render sites"
+    },
+    {
+      "id": "mods.site.TurnDuration",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Render sites"
+    },
+    {
+      "id": "mods.site.UserMessage",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Render sites"
+    },
+    {
+      "id": "mods.skillPrompt.e.frontmatter",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Source and frontmatter fields on skill.prompt"
+    },
+    {
+      "id": "mods.skillPrompt.e.frontmatterProblem",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Source and frontmatter fields on skill.prompt"
+    },
+    {
+      "id": "mods.skillPrompt.e.path",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Source and frontmatter fields on skill.prompt"
+    },
+    {
+      "id": "mods.skillPrompt.e.pluginName",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Source and frontmatter fields on skill.prompt"
+    },
+    {
+      "id": "mods.skillPrompt.e.source",
+      "category": "mods",
+      "page": "plugins/mods/reference.md",
+      "section": "Source and frontmatter fields on skill.prompt"
+    },
+    {
+      "id": "monitors.field.command",
+      "category": "monitors",
+      "page": "plugins/manifest-reference.md",
+      "section": "monitors"
+    },
+    {
+      "id": "monitors.field.description",
+      "category": "monitors",
+      "page": "plugins/manifest-reference.md",
+      "section": "monitors"
+    },
+    {
+      "id": "monitors.field.name",
+      "category": "monitors",
+      "page": "plugins/manifest-reference.md",
+      "section": "monitors"
+    },
+    {
+      "id": "monitors.field.when",
+      "category": "monitors",
+      "page": "plugins/manifest-reference.md",
+      "section": "monitors"
+    },
+    {
+      "id": "outputStyles.frontmatter.description",
+      "category": "output-styles",
+      "page": "output-styles.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "outputStyles.frontmatter.force-for-plugin",
+      "category": "output-styles",
+      "page": "output-styles.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "outputStyles.frontmatter.keep-coding-instructions",
+      "category": "output-styles",
+      "page": "output-styles.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "outputStyles.frontmatter.name",
+      "category": "output-styles",
+      "page": "output-styles.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "permissions.mode.acceptEdits",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Permission modes"
+    },
+    {
+      "id": "permissions.mode.auto",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Permission modes"
+    },
+    {
+      "id": "permissions.mode.bypassPermissions",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Permission modes"
+    },
+    {
+      "id": "permissions.mode.default",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Permission modes"
+    },
+    {
+      "id": "permissions.mode.dontAsk",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Permission modes"
+    },
+    {
+      "id": "permissions.mode.plan",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Permission modes"
+    },
+    {
+      "id": "permissions.rule../path",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "How path patterns match"
+    },
+    {
+      "id": "permissions.rule.//path",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "How path patterns match"
+    },
+    {
+      "id": "permissions.rule./path",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "How path patterns match"
+    },
+    {
+      "id": "permissions.rule.~/path",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "How path patterns match"
+    },
+    {
+      "id": "permissions.rule.Agent(isolation:worktree)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Match by input parameter"
+    },
+    {
+      "id": "permissions.rule.Agent(model:opus)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Match by input parameter"
+    },
+    {
+      "id": "permissions.rule.Bash",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Match all uses of a tool"
+    },
+    {
+      "id": "permissions.rule.Bash(* --help *)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Wildcard patterns"
+    },
+    {
+      "id": "permissions.rule.Bash(* --version)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Wildcard patterns"
+    },
+    {
+      "id": "permissions.rule.Bash(curl *)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "What a Bash rule doesn't match"
+    },
+    {
+      "id": "permissions.rule.Bash(git * main)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Wildcard patterns"
+    },
+    {
+      "id": "permissions.rule.Bash(git log * main)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Wildcard patterns"
+    },
+    {
+      "id": "permissions.rule.Bash(git push *)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "What a Bash rule doesn't match"
+    },
+    {
+      "id": "permissions.rule.Bash(ls *)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Wildcard patterns"
+    },
+    {
+      "id": "permissions.rule.Bash(ls*)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Wildcard patterns"
+    },
+    {
+      "id": "permissions.rule.Bash(npm run *)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Wildcard patterns"
+    },
+    {
+      "id": "permissions.rule.Bash(npm run build)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Use specifiers for fine-grained control"
+    },
+    {
+      "id": "permissions.rule.Bash(rm *)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "What a Bash rule doesn't match"
+    },
+    {
+      "id": "permissions.rule.Bash(run_in_background:true)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Match by input parameter"
+    },
+    {
+      "id": "permissions.rule.Edit(**/src/**)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "How deep a pattern matches"
+    },
+    {
+      "id": "permissions.rule.Edit(/src/**)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "How deep a pattern matches"
+    },
+    {
+      "id": "permissions.rule.Edit(src/**)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "How deep a pattern matches"
+    },
+    {
+      "id": "permissions.rule.path",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "How path patterns match"
+    },
+    {
+      "id": "permissions.rule.Read",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Match all uses of a tool"
+    },
+    {
+      "id": "permissions.rule.Read(./.env)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Use specifiers for fine-grained control"
+    },
+    {
+      "id": "permissions.rule.Read(.env)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "How deep a pattern matches"
+    },
+    {
+      "id": "permissions.rule.Read(**/.env)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "How deep a pattern matches"
+    },
+    {
+      "id": "permissions.rule.Read(//**/.env)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "How deep a pattern matches"
+    },
+    {
+      "id": "permissions.rule.WebFetch",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Match all uses of a tool"
+    },
+    {
+      "id": "permissions.rule.WebFetch(domain:example.com)",
+      "category": "permissions",
+      "page": "permissions.md",
+      "section": "Use specifiers for fine-grained control"
+    },
+    {
+      "id": "settings.key.allowedChannelPlugins",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.allowedHttpHookUrls",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.allowManagedHooksOnly",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.appendPlugins",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.blockedMarketplaces",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.channelsEnabled",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.disableAllHooks",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.disableBundledSkills",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.disableCommandPluginSources",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.disableSkillShellExecution",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.disableWorkflows",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.enabledPlugins",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.enableWorkflows",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.extraKnownMarketplaces",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.hooks",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.httpHookAllowedEnvVars",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.pluginConfigs",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.pluginSuggestionMarketplaces",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.pluginTrustMessage",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.prependPlugins",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.skillOverrides",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.strictKnownMarketplaces",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.strictPluginOnlyCustomization",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.strictPluginOnlyCustomization.agents",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.strictPluginOnlyCustomization.hooks",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.strictPluginOnlyCustomization.mcp",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.strictPluginOnlyCustomization.skills",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.syncClaudeAiPlugins",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.syncClaudeAiSkills",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.workflowKeywordTriggerEnabled",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "settings.key.workflowSizeGuideline",
+      "category": "settings",
+      "page": "settings-reference.md",
+      "section": "Settings index"
+    },
+    {
+      "id": "skills.frontmatter.agent",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.allowed-tools",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.argument-hint",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.arguments",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.background",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.compatibility",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.context",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.description",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.disable-model-invocation",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.disallowed-tools",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.effort",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.hooks",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.license",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.metadata",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.model",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.name",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.paths",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.shell",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.user-invocable",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.frontmatter.when_to_use",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Frontmatter reference"
+    },
+    {
+      "id": "skills.invocation.(default)",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Control who invokes a skill"
+    },
+    {
+      "id": "skills.invocation.disable-model-invocation: true",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Control who invokes a skill"
+    },
+    {
+      "id": "skills.invocation.user-invocable: false",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Control who invokes a skill"
+    },
+    {
+      "id": "skills.substitution.${CLAUDE_EFFORT}",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Available string substitutions"
+    },
+    {
+      "id": "skills.substitution.${CLAUDE_PLUGIN_DATA}",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Available string substitutions"
+    },
+    {
+      "id": "skills.substitution.${CLAUDE_PLUGIN_ROOT}",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Available string substitutions"
+    },
+    {
+      "id": "skills.substitution.${CLAUDE_PROJECT_DIR}",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Available string substitutions"
+    },
+    {
+      "id": "skills.substitution.${CLAUDE_SESSION_ID}",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Available string substitutions"
+    },
+    {
+      "id": "skills.substitution.${CLAUDE_SKILL_DIR}",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Available string substitutions"
+    },
+    {
+      "id": "skills.substitution.$ARGUMENTS",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Available string substitutions"
+    },
+    {
+      "id": "skills.substitution.$ARGUMENTS[N]",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Available string substitutions"
+    },
+    {
+      "id": "skills.substitution.$N",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Available string substitutions"
+    },
+    {
+      "id": "skills.substitution.$name",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Available string substitutions"
+    },
+    {
+      "id": "tools.input.Agent.agentId",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Agent"
+    },
+    {
+      "id": "tools.input.Agent.content",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Agent"
+    },
+    {
+      "id": "tools.input.Agent.description",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Agent"
+    },
+    {
+      "id": "tools.input.Agent.model",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Agent"
+    },
+    {
+      "id": "tools.input.Agent.modelsUsed",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Agent"
+    },
+    {
+      "id": "tools.input.Agent.prompt",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Agent"
+    },
+    {
+      "id": "tools.input.Agent.resolvedModel",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Agent"
+    },
+    {
+      "id": "tools.input.Agent.status",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Agent"
+    },
+    {
+      "id": "tools.input.Agent.subagent_type",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Agent"
+    },
+    {
+      "id": "tools.input.Agent.totalDurationMs",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Agent"
+    },
+    {
+      "id": "tools.input.Agent.totalTokens",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Agent"
+    },
+    {
+      "id": "tools.input.Agent.totalToolUseCount",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Agent"
+    },
+    {
+      "id": "tools.input.Agent.usage",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Agent"
+    },
+    {
+      "id": "tools.input.AskUserQuestion.answers",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "AskUserQuestion"
+    },
+    {
+      "id": "tools.input.AskUserQuestion.questions",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "AskUserQuestion"
+    },
+    {
+      "id": "tools.input.Bash.changedFiles",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Bash"
+    },
+    {
+      "id": "tools.input.Bash.command",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Bash"
+    },
+    {
+      "id": "tools.input.Bash.description",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Bash"
+    },
+    {
+      "id": "tools.input.Bash.files",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Bash"
+    },
+    {
+      "id": "tools.input.Bash.moreFiles",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Bash"
+    },
+    {
+      "id": "tools.input.Bash.run_in_background",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Bash"
+    },
+    {
+      "id": "tools.input.Bash.shared",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Bash"
+    },
+    {
+      "id": "tools.input.Bash.skipped",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Bash"
+    },
+    {
+      "id": "tools.input.Bash.timeout",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Bash"
+    },
+    {
+      "id": "tools.input.Bash.unavailable",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Bash"
+    },
+    {
+      "id": "tools.input.Edit.file_path",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Edit"
+    },
+    {
+      "id": "tools.input.Edit.new_string",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Edit"
+    },
+    {
+      "id": "tools.input.Edit.old_string",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Edit"
+    },
+    {
+      "id": "tools.input.Edit.replace_all",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Edit"
+    },
+    {
+      "id": "tools.input.ExitPlanMode.allowedPrompts",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "ExitPlanMode"
+    },
+    {
+      "id": "tools.input.ExitPlanMode.plan",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "ExitPlanMode"
+    },
+    {
+      "id": "tools.input.ExitPlanMode.planFilePath",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "ExitPlanMode"
+    },
+    {
+      "id": "tools.input.Glob.path",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Glob"
+    },
+    {
+      "id": "tools.input.Glob.pattern",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Glob"
+    },
+    {
+      "id": "tools.input.Grep.-i",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Grep"
+    },
+    {
+      "id": "tools.input.Grep.glob",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Grep"
+    },
+    {
+      "id": "tools.input.Grep.multiline",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Grep"
+    },
+    {
+      "id": "tools.input.Grep.output_mode",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Grep"
+    },
+    {
+      "id": "tools.input.Grep.path",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Grep"
+    },
+    {
+      "id": "tools.input.Grep.pattern",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Grep"
+    },
+    {
+      "id": "tools.input.PowerShell.command",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "PowerShell"
+    },
+    {
+      "id": "tools.input.PowerShell.description",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "PowerShell"
+    },
+    {
+      "id": "tools.input.PowerShell.run_in_background",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "PowerShell"
+    },
+    {
+      "id": "tools.input.PowerShell.timeout",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "PowerShell"
+    },
+    {
+      "id": "tools.input.Read.file_path",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Read"
+    },
+    {
+      "id": "tools.input.Read.limit",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Read"
+    },
+    {
+      "id": "tools.input.Read.offset",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Read"
+    },
+    {
+      "id": "tools.input.WebFetch.offset",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "WebFetch"
+    },
+    {
+      "id": "tools.input.WebFetch.prompt",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "WebFetch"
+    },
+    {
+      "id": "tools.input.WebFetch.url",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "WebFetch"
+    },
+    {
+      "id": "tools.input.WebSearch.allowed_domains",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "WebSearch"
+    },
+    {
+      "id": "tools.input.WebSearch.blocked_domains",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "WebSearch"
+    },
+    {
+      "id": "tools.input.WebSearch.mode",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "WebSearch"
+    },
+    {
+      "id": "tools.input.WebSearch.query",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "WebSearch"
+    },
+    {
+      "id": "tools.input.Write.content",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Write"
+    },
+    {
+      "id": "tools.input.Write.file_path",
+      "category": "tools",
+      "page": "hooks.md",
+      "section": "Write"
+    },
+    {
+      "id": "tools.tool.Agent",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.Artifact",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.AskUserQuestion",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.Bash",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.CronCreate",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.CronDelete",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.CronList",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.Edit",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.EndConversation",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.EnterPlanMode",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.EnterWorktree",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.ExitPlanMode",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.ExitWorktree",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.Glob",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.Grep",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.ListAgents",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.ListMcpResourcesTool",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.LSP",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.Monitor",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.NotebookEdit",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.PowerShell",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.PushNotification",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.Read",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.ReadMcpResourceTool",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.RemoteTrigger",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.ReportFindings",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.ScheduleWakeup",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.SendFeedback",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.SendMessage",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.SendUserFile",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.ShareOnboardingGuide",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.Skill",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.SubagentHandback",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.TaskCreate",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.TaskGet",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.TaskList",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.TaskOutput",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.TaskStop",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.TaskUpdate",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.TodoWrite",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.ToolSearch",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.WaitForMcpServers",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.WebFetch",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.WebSearch",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.Workflow",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "tools.tool.Write",
+      "category": "tools",
+      "page": "tools-reference.md",
+      "section": "Tools reference"
+    },
+    {
+      "id": "userConfig.field.default",
+      "category": "user-config",
+      "page": "plugins/manifest-reference.md",
+      "section": "User configuration"
+    },
+    {
+      "id": "userConfig.field.description",
+      "category": "user-config",
+      "page": "plugins/manifest-reference.md",
+      "section": "User configuration"
+    },
+    {
+      "id": "userConfig.field.max",
+      "category": "user-config",
+      "page": "plugins/manifest-reference.md",
+      "section": "User configuration"
+    },
+    {
+      "id": "userConfig.field.min",
+      "category": "user-config",
+      "page": "plugins/manifest-reference.md",
+      "section": "User configuration"
+    },
+    {
+      "id": "userConfig.field.multiple",
+      "category": "user-config",
+      "page": "plugins/manifest-reference.md",
+      "section": "User configuration"
+    },
+    {
+      "id": "userConfig.field.options",
+      "category": "user-config",
+      "page": "plugins/manifest-reference.md",
+      "section": "User configuration"
+    },
+    {
+      "id": "userConfig.field.required",
+      "category": "user-config",
+      "page": "plugins/manifest-reference.md",
+      "section": "User configuration"
+    },
+    {
+      "id": "userConfig.field.sensitive",
+      "category": "user-config",
+      "page": "plugins/manifest-reference.md",
+      "section": "User configuration"
+    },
+    {
+      "id": "userConfig.field.title",
+      "category": "user-config",
+      "page": "plugins/manifest-reference.md",
+      "section": "User configuration"
+    },
+    {
+      "id": "userConfig.field.type",
+      "category": "user-config",
+      "page": "plugins/manifest-reference.md",
+      "section": "User configuration"
+    },
+    {
+      "id": "userConfig.shell.headersHelper",
+      "category": "user-config",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields that run through a shell"
+    },
+    {
+      "id": "userConfig.shell.Monitor commands",
+      "category": "user-config",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields that run through a shell"
+    },
+    {
+      "id": "userConfig.shell.Shell-form hook commands",
+      "category": "user-config",
+      "page": "plugins/manifest-reference.md",
+      "section": "Fields that run through a shell"
+    }
+  ]
+}
