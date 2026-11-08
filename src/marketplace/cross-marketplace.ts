@@ -31,7 +31,7 @@ export interface CrossMarketplaceQuestion {
   /** The plugin that declares the dependency; `marketplace` is absent for one that has none (loaded from claude.ai). */
   readonly requiredBy: { readonly name: string; readonly marketplace?: string };
   /** The marketplace that hosts the plugin the user is installing: its list alone decides. */
-  readonly root: Marketplace;
+  readonly root: Pick<Marketplace, 'name' | 'allowCrossMarketplaceDependenciesOn'>;
   /**
    * The marketplace of the declaring plugin when it is not the root, for a link deeper in the
    * dependency chain. Its own `allowCrossMarketplaceDependenciesOn` is never consulted: only the

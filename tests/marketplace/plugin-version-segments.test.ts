@@ -1,14 +1,14 @@
 /**
  * plugins/loading.md § How Claude Code computes the version: "The version also names the plugin's
  * cache directory". The docs do not restrict what a version may hold, so the kit keeps any text
- * that is one folder name and skips the rest (spec/judgments.md, `src/marketplace/plugin-version.ts`):
+ * that is one folder name and skips the rest (spec/judgments.md, `src/marketplace/version-resolution.ts`):
  * a `version` such as `../../x` or `a/b` must never leave `cache/<marketplace>/<plugin>/`.
  */
 import { describe, expect, test } from 'bun:test';
-import { isVersionSegment } from '../../src/marketplace/plugin-version.ts';
+import { isVersionSegment } from '../../src/marketplace/version-resolution.ts';
 import { SHA, versionOf } from '../support/plugin-version.ts';
 
-describe('judgments (spec/judgments.md, src/marketplace/plugin-version.ts)', () => {
+describe('judgments (spec/judgments.md, src/marketplace/version-resolution.ts)', () => {
   const UNSAFE = ['../x', 'a/b', '..', '.', 'a\\b', '../../x', 'a\0b'];
 
   test('a version that is not one path segment cannot name the cache folder', () => {

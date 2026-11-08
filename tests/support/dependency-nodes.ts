@@ -1,4 +1,4 @@
-import type { PluginNode } from '../../src/marketplace/dependency-graph.ts';
+import type { PluginNode } from '../../src/marketplace/install-dependency-graph.ts';
 import type { ChosenScope } from '../../src/marketplace/install-scopes.ts';
 
 /**

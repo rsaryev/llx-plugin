@@ -1,13 +1,12 @@
 /** What identifies an installed plugin: its version, its names and its cache folder. */
 export {
-  UNKNOWN_VERSION,
-  computePluginVersion,
+  resolvePluginVersion,
   type PluginVersion,
   isVersionSegment,
   type VersionInput,
   type VersionSource,
   type VersionOrigin,
-} from './plugin-version.ts';
+} from './version-resolution.ts';
 export { copyModeHash, linkModeHash, shortHash12, subdirectoryPathHash } from './version-hash.ts';
 export {
   unknownVersionSteps,

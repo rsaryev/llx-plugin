@@ -6,7 +6,7 @@ import { decideInstallMode, type InstallDecision } from './install-mode.ts';
 import type { InstallScope } from './install-scopes.ts';
 import type { InstalledRecords, InstallRecord } from './installed-plugins.ts';
 import { dirsToOrphan } from './orphan-cleanup.ts';
-import { isVersionSegment, type PluginVersion } from './plugin-version.ts';
+import { isVersionSegment, type PluginVersion } from './version-resolution.ts';
 import type { PathJoin, StoreLayout } from './store-layout.ts';
 import type { FetchPlan, FetchPlanContext } from './types.ts';
 

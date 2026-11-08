@@ -146,6 +146,7 @@ export {
 } from './protocol/mods-ui-names.ts';
 export * from './format/marketplace/index.ts';
 export * from './marketplace/index.ts';
+export * from './updates/index.ts';
 export {
   MARKETPLACE_KEY_ALIASES,
   MARKETPLACE_SOURCE_KINDS,
@@ -219,3 +220,5 @@ export {
   type PluginSettings,
   type PluginSettingsRead,
 } from './format/plugin-settings.ts';
+
+export * from './cli/index.ts';

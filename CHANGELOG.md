@@ -137,6 +137,123 @@
   `JSON Parse error: Unexpected EOF`; the dated copies age out on `cleanupPeriodDays` (`PluginStateStore`
   gains `modifiedAt` and `remove`; the host serialises rewrites of the records); the tests that echoed
   constants now assert the documented decisions (a real SHA-256, failing writes, the `--json` line).
+- CLI plugin lifecycle: `plugin install --marketplace` runs the name checks of `marketplace add` on the
+  marketplace it just added (an impersonating or reserved name, the `claudeai-` prefix, the
+  download-folder rule) and refuses with `invalid_name` (`InstallFound.addedMarketplace.registered`);
+  a bundled MCP server whose bundle is referenced by URL is `InstallOptions.unreadServers`: its keys
+  are not listed and the not-applied line says to configure it in `/plugin`; the `invalid_config`
+  failure lists its keys in `invalidKeys`, not `refused`; `plugin configure --values-stdin --json`
+  leaves `unconfigured` out when `ConfigureFacts.readBack` is `false`; `uninstall --keep-data` keeps
+  the data folder of a plugin `--prune` removes too; the unused `json` field of `ToggleArguments` and
+  `DisableArguments` is gone. The accept-command, configure, `--prune`, scope and enable-dependency
+  tests assert the refusal, the shown command, the pruned cleanup and each missing dependency; the
+  codes and usage errors the docs do not quote, and the deferral of `install_records_unreadable`, are
+  recorded in spec/judgments.md.
+
+- CLI session flags: what an `--add-dir` directory loads is derived from the whole plan, so
+  `--safe-mode`, `--disable-slash-commands`, `--setting-sources` without `project` (and `--restricted`)
+  remove what they remove from it too, `--bare` keeps only skills, and `CLAUDE.local.md` is its own
+  kind that needs `local` (`addDirLoads` takes `skipped` and `settingScopes`); `--agents` validation is
+  skipped by `CLAUDE_CODE_SAFE_MODE=1` and, for an inline value, by `--resume` and `--continue`
+  (`FlagFacts.resume`, `continuing`); `CLAUDE_CODE_FORWARD_SUBAGENT_TEXT=1` forwards subagent text; a
+  `--mcp-config` value holds space-separated files; `--bare` reports `readsStoredCredentials: false`;
+  `--agent` overrides the `agent` setting in the plan (`FlagFacts.agentSetting`). A `fields` key named
+  `command`, `outcome` or `message` no longer replaces the result's own, and `marketplace add` and
+  `remove` match the reserved name the same way. The `--bare`, `--add-dir`, `--agent`,
+  `--forward-subagent-text`, owner/repo and Windows path tests assert the plan, the failure codes
+  of marketplace update and remove are judgments outside `spec(...)`, and the shared JSON, word and
+  record helpers replace three copies.
+
+- Marketplace dependencies: `installClosure` no longer reports a false conflict when an installed
+  root's marketplace entry changed a range (the root's installed range is replaced by its new one,
+  and so is that of any plugin the walk reads from the catalog); a dependency already installed and
+  enabled still has its own missing dependencies planned; an `--plugin-dir` copy meets an entry that
+  names a marketplace only from Claude Code 2.1.242 (`InstallRequest.hostVersion`,
+  `DeclaredDependency.namesMarketplace`); the allowlist bypass and the met check read the plugin's
+  `enabledPlugins` at the install scope, not the winning scope's. The five install operations plan
+  identically (recorded in `spec/judgments.md`) and the tests assert that through the facts, the
+  bundle test runs under `auto-update` and `reload-plugins`, the force-moved tag, `=2.1.0` and
+  no-version tests assert the decision the docs describe, and `Create a release tag` is no longer
+  counted as proven until `claude plugin tag` exists. `docs/API.md` has one
+  `resolveDependencyVersion` row.
+- Marketplace updates: `checkForUpdate` now derives `loaded in place` from `loadsInPlace(source,
+  origin)` instead of trusting the host, and its claude.ai subject has no manifest version field;
+  `upToDateMessage` gives the `already at the latest version` wording; the SHA-256 of a downloaded
+  archive is computed through the `Sha256` port (`archiveFacts`); `sourceFactsOf` and
+  `versionCacheSegment` replace per-host switches; the blank-version rule is one helper. The
+  version, release-channel, renames and release tests assert what each docs section adds, and the
+  host-side messages and negatives are recorded in `spec/judgments.md`.
+- Updates: the version policy ignores `autoUpdatesChannel` and `minimumVersion` from a `--add-dir`
+  directory (`scopeCarries`); `channelSwitch` takes `from` and asks only for `latest` to `stable`;
+  a command source's install or changed-command update is held until the user accepts
+  (`runsAfterAnswer`) and an in-place reload carries the reload notice; `backgroundCheckResult`
+  maps credentials and the remote to a check result, and a provider token never authenticates;
+  `toggleLabel` derives from `AutoUpdateFacts`; `planUpdate` updates only an installed plugin;
+  `KnownMarketplace.seeded` is optional. The tests assert each skip for both install commands, the
+  fleet-wide `DISABLE_AUTOUPDATER` against command sources, and the disabled-plugin runs, and
+  `spec/judgments.md` records the whitespace-tolerant flags and the failing-open start gate.
+
+### Added
+
+- CLI lifecycle commands: `claude plugin install`, `update`, `enable`, `disable`, `prune`,
+  `uninstall` and `configure` as plans over ports. `startInstall`/`planInstall` run the install
+  ladder (already installed at that scope exits 0 with the exact line, a command-source or
+  `headersHelper` entry prints its command and needs `-y` or the `--accept-command` sha256, `Aborted.`
+  and `Aborted — the command was not run.`, `-y` ignored inside a session, the `shownCommand` of a
+  refused `--json` run, `--config` and `<server>.<key>` validated against `userConfig`, the
+  `--marketplace` source added first, the refresh before the install and the dependency closure);
+  `decideAcceptance` counts a sha256 only for the exact command, plugin and the catalog the run read
+  after its own refresh. `planPluginUpdate` detects the scope (local, project, user, managed), matches
+  a bare name and refuses an ambiguous one, reports `already at the latest version` and retries an
+  unfinished dependency install in the cached copy. `planEnable`/`planDisable` write the scope the
+  first mention or an override names, cascade to dependencies and refuse for dependents, a blocked or
+  higher-scope-false dependency or a required synced plugin. `planPruneCommand` covers `--dry-run`,
+  the terminal and `-y` matrix. `startUninstall`/`concludeUninstall` add G8: from the last scope the
+  plugin's options, secrets and data directory go, except with `--keep-data`, for another plugin on the
+  same folder, or when the install records cannot be read back (`savedKept`), with `keptData`,
+  `settings_still_on` and `--prune`. `planConfigure` lists options without saved values, saves
+  `--values-stdin` whole or not at all, and never prints a sensitive value. 27 requirements are proven
+  and the choices the docs leave open are in `spec/judgments.md`.
+
+- CLI: a new `cli` module (layer 5) that models the plugin and marketplace commands as plans over
+  ports. `renderCommand` gives the human line, the exit code and the last-line JSON object of a
+  command (`command`, `outcome`, `message`, `failureCode`, a usage error that prints no result line);
+  `chooseScope` and `writeScope` the scope grammar; `resolveCommand` the command table with its
+  aliases; `startMarketplaceAdd`/`concludeMarketplaceAdd`, `planMarketplaceList`,
+  `planMarketplaceRemove` and `planMarketplaceUpdate` the four marketplace commands; and
+  `planSessionFlags` the 20 session flags of `claude` (`--plugin-dir`, `--plugin-url`, `--bare`,
+  `--safe-mode`, `--restricted`, `--setting-sources`, `--settings`, `--disable-slash-commands`,
+  `--add-dir`, `--agent`, `--agents`, the subagent-prompt flags, `--channels`, the development
+  channels, `--mcp-config`, `--strict-mcp-config`, `--permission-mode`, `--tools`) with the refusals
+  that exit `1` without starting. `scripts/check-layers.ts` gives the module its layer.
+- Marketplace dependencies: a pure dependency graph over plain facts. `installClosure` plans the
+  transitive install of a plugin's dependencies (dependencies first, each step with who asked, every
+  range, what the ranges resolve against and the shown `2.1.0-8713c5b11005` version; cycles end, a
+  diamond combines its ranges, a conflict or an allowlist refusal installs nothing, a `command`
+  source and a `headersHelper` entry are left to the user); `enablePlan` (missing, policy-blocked and
+  higher-scope `false` dependencies), `disableDecision` (the dependents to disable first and the
+  chained command), `orphanedAutoInstalled`, `planPrune` and `planUninstall` (`--prune`, the range
+  released with the last constraining plugin); `checkDeclaredDependency` and `pluginDirFolders` for
+  the `--plugin-dir` copy. The dependencies guide is now proven section by section.
+- Updates: a new `updates` module with the refresh before an install (`refreshBeforeInstall`: named
+  and bare references, the five skips, the managed block that also refuses the install,
+  `refreshFailed`), the auto-update precedence (`marketplaceAutoUpdate`, `autoUpdatePassAllowed`,
+  `toggleDecision`, the plugins a pass skips, the first-pass delay on the `Clock`), the background
+  check of a private marketplace, the re-runs of a `command` source and the Errors-tab entry of a
+  changed command (`commandSourceRuns`, `afterCommandRun`), `Update plugins now` (`planUpdate`) and
+  the version policy of Claude Code (`readVersionPolicy`, `pickAllowedVersion`, `startGate`,
+  `channelSwitch`: `autoUpdatesChannel`, `minimumVersion`, `requiredMinimumVersion`,
+  `requiredMaximumVersion`). `scripts/check-layers.ts` gives the module its layer.
+- Marketplace: the version of a plugin as Claude Code computes it (`computePluginVersion`: manifest,
+  then entry, then the source type's default, a command source from its hash), when a new copy is
+  made (`isUpdate`, `checkForUpdate`, `loadsInPlace`: only a differing version, never for a plugin
+  loaded in place, the claude.ai-recorded version for a synced plugin) and the check of a
+  release-channel pair (`checkReleaseChannels`). The renames migration, `forceRemoveDeletedPlugins`,
+  release tags and the `ref`/`sha`/`#ref` hold on a version are now proven against the pages that
+  describe them (plugins/host-marketplace.md, plugins/publish.md, plugins/org.md).
+
+### Fixed
+
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
   short label and the amounts of each row of the Limits table, not the page's sentences, so the
   repository holds facts and identifiers only.

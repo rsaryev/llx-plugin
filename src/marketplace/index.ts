@@ -110,6 +110,7 @@ export {
   checkDependency,
   checkInstalledDependency,
   dependencyId,
+  namesMarketplace,
   normalizeDependency,
   type DependencyCopies,
   type DependencyErrorType,
@@ -122,6 +123,7 @@ export {
   parseReleaseTag,
   releaseTag,
   resolveDependencyVersion,
+  resolvedVersionLabel,
   selectTag,
   type AutoUpdateDecision,
   type AutoUpdateInput,
@@ -130,168 +132,78 @@ export {
   type ResolvedVersion,
 } from './dependency-tags.ts';
 export {
+  checkDeclaredDependency,
+  constraintsOn,
+  dependentsOf,
+  disableDecision,
+  effectiveEnabled,
+  findDependencyCopy,
+  type CatalogPlugin,
+  type Constraint,
+  type CopyLookup,
+  type DeclaredDependency,
+  type DisableDecision,
+  type EnabledPlugins,
+  type GraphFacts,
+  type InstalledRecord,
+  type LocalCopy,
+} from './dependency-graph.ts';
+export {
+  DEPENDENCY_INSTALL_OPERATIONS,
+  installClosure,
+  type DependencyInstallOperation,
+  type InstallPlan,
+  type InstallRequest,
+  type InstallStep,
+  type StepAction,
+} from './dependency-install-plan.ts';
+export type { LeftOut, LeftOutReason } from './dependency-install-walk.ts';
+export {
+  enablePlan,
+  type EnableBlock,
+  type EnableIssue,
+  type EnablePlan,
+} from './dependency-enable.ts';
+export {
+  orphanedAutoInstalled,
+  planPrune,
+  planUninstall,
+  type PruneOutcome,
+  type PruneRun,
+  type UninstallPlan,
+} from './dependency-prune.ts';
+export { pluginDirFolders, type PluginDirListing } from './plugin-dir-folders.ts';
+export {
   crossMarketplaceDecision,
   type CrossMarketplaceDecision,
   type CrossMarketplaceQuestion,
   type DeclaredIn,
   type RefusalEffect,
 } from './cross-marketplace.ts';
+export * from './install-lifecycle-index.ts';
+
 export {
-  STORE_NAMES,
-  classifyStoreEntry,
-  createStoreLayout,
-  resolvePluginsRoot,
-  type PathJoin,
-  type StoreEntry,
-  type StoreLayout,
-} from './store-layout.ts';
+  UNKNOWN_VERSION,
+  archiveFacts,
+  computePluginVersion,
+  sourceFactsOf,
+  versionCacheSegment,
+  type KnownFacts,
+  type PluginVersionInput,
+  type RepositoryRoot,
+  type SourceFacts,
+} from './plugin-version.ts';
 export {
-  INSTALLED_PLUGINS_VERSION,
-  parseInstalledPlugins,
-  serializeInstalledPlugins,
-  type InstallRecord,
-  type InstalledPluginsRead,
-  type InstalledRecords,
-} from './installed-plugins.ts';
+  checkForUpdate,
+  isUpdate,
+  loadsInPlace,
+  upToDateMessage,
+  type UpdateCheck,
+  type UpdateOutcome,
+  type UpdateSubject,
+} from './update-detection.ts';
 export {
-  loadInstalledPlugins,
-  type InstalledPluginsPorts,
-  type LoadedInstalledPlugins,
-} from './installed-plugins-store.ts';
-export {
-  installLocationFor,
-  parseKnownMarketplaces,
-  sameMarketplaceSource,
-  serializeKnownMarketplaces,
-  type KnownMarketplace,
-  type KnownMarketplaces,
-  type KnownMarketplacesRead,
-  type RegistryFailureCode,
-} from './known-marketplaces.ts';
-export {
-  ignoredLine,
-  ignoredReason,
-  untrustedSource,
-  untrustedSourceMessage,
-  type IgnoreChecks,
-  type IgnoredReason,
-  type IgnoredSurface,
-} from './ignored-marketplace.ts';
-export {
-  RECORDS_UNREADABLE_CODE,
-  listNote,
-  rebuiltNote,
-  recoveryNotes,
-  refuseForUnreadableRecords,
-  refusalResultLine,
-  setAsideNote,
-  unknownFormatMessage,
-  unreadableRecordsMessage,
-  type ErrorsTabEntry,
-  type RecordsRefusal,
-  type RefusingCommand,
-} from './install-messages.ts';
-export {
-  ADD_OFFICIAL,
-  PLUGINS_CHANGED,
-  PLUGIN_ACTIVE,
-  RELOAD_TO_APPLY,
-  alreadyAddedFromDifferentSource,
-  alreadyInstalledAtScope,
-  alreadyInstalledGlobally,
-  describeSource,
-  enabledNotInstalled,
-  failedToInstall,
-  failureOnce,
-  installActivation,
-  isInstalledGlobally,
-  marketplaceDirectoryNotFound,
-  nameTheMarketplace,
-  noMarketplaces,
-  notCached,
-  pluginDirectoryMissingAtRun,
-  pluginDirectoryNotFound,
-  pluginNotFound,
-  pluginNotFoundAnywhere,
-  reinstallCommand,
-  type EmptyView,
-  type InstallActivationFacts,
-  type InstallFailure,
-  type InstallSurface,
-  type PluginNotFound,
-} from './install-errors.ts';
-export {
-  decideEnabledFetch,
-  overriddenUserDisable,
-  type EnableSource,
-  type EnabledFacts,
-  type EnabledFetchDecision,
-  type TrueIn,
-  type UserDisableOverridden,
-} from './enablement-notes.ts';
-export {
-  planMarketplaceStartup,
-  stageReport,
-  unresolvedAfterStart,
-  type Layer,
-  type Stage,
-  type StageFacts,
-  type StageReport,
-  type StartupAction,
-} from './stage-report.ts';
-export {
-  closePanel,
-  marketplaceCommand,
-  marketplaceTabUpdate,
-  planMarketplaceRemoval,
-  planMarketplaceUpdate,
-  pluginActions,
-  uninstallChoice,
-  type CommandSurface,
-  type MarketplaceAction,
-  type MarketplaceRemovalFacts,
-  type MarketplaceRemovalPlan,
-  type MarketplaceTabPlugin,
-  type MarketplaceUpdatePlan,
-  type PanelClose,
-  type PluginActionFacts,
-  type UninstallOption,
-} from './install-plans.ts';
-export {
-  planDisable,
-  planInstall,
-  planPrune,
-  planUninstall,
-  type DisablePlan,
-  type InstallPlan,
-  type UninstallPlan,
-} from './dependency-plans.ts';
-export { planEnable, type EnableOverride, type EnablePlan } from './dependency-enable.ts';
-export { type PluginNode } from './dependency-graph.ts';
-export {
-  parseReloadArguments,
-  reloadAllowed,
-  reloadGate,
-  reloadSummary,
-  skillCount,
-  type ReloadChange,
-  type ReloadCounts,
-  type ReloadGate,
-} from './reload-summary.ts';
-export {
-  ORPHANED_MARKER,
-  ORPHAN_GRACE_MS,
-  dirsToOrphan,
-  orphanMarkerPath,
-  orphanSweep,
-  type Orphan,
-} from './orphan-cleanup.ts';
-export {
-  DEFAULT_CLEANUP_PERIOD_DAYS,
-  agedCopies,
-  sweepAgedCopies,
-  type AgedName,
-  type CopySweep,
-} from './copy-sweep.ts';
-export * from './version-index.ts';
-export * from './install-index.ts';
+  checkReleaseChannels,
+  type ChannelManifestVersions,
+  type ChannelManifests,
+} from './release-channels.ts';

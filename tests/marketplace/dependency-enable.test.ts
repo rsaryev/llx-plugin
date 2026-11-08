@@ -7,7 +7,7 @@
  * missing and overridden failures is a row in spec/judgments.md.
  */
 import { expect, test } from 'bun:test';
-import { planEnable } from '../../src/marketplace/dependency-enable.ts';
+import { planEnable } from '../../src/marketplace/install-dependency-enable.ts';
 import { spec } from '../support/spec.ts';
 import { app, node } from '../support/dependency-nodes.ts';
 

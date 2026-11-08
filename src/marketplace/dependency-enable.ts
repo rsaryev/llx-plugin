@@ -1,116 +1,133 @@
+import { error, type PluginIssue } from '../format/issues.ts';
+import { dependencyId } from './dependencies.ts';
 import {
-  isEnabled,
-  isInstalled,
-  closure,
-  find,
-  installCommand,
-  quotedList,
-  type Graph,
-  type PluginNode,
+  SCOPES_BY_PRECEDENCE,
+  dependenciesOf,
+  effectiveEnabled,
+  recordsOf,
+  type GraphFacts,
 } from './dependency-graph.ts';
-import { SCOPE_PRECEDENCE, type ChosenScope } from './install-scopes.ts';
+import type { InstallScope } from './install-scopes.ts';
 
 /**
- * Enabling a plugin and the dependencies it needs (plugins/install.md, "Plugins with dependencies";
- * plugins/cli-reference.md, "plugin enable"): "Claude Code also enables the plugin's dependencies
- * that are installed but disabled", and the command fails in three cases: a dependency that is not
- * installed (it prints the `claude plugin install` command for each), a dependency blocked by the
- * organization's plugin policy (it names the blocked dependency), and a dependency set to `false`
- * at a scope with higher precedence than the target scope ("Enable the dependency at that scope, or
- * pass `--scope` to write there").
- *
- * Judgments (spec/judgments.md): the wording of the missing and the overridden failures; the policy
- * failure is the docs' `Plugin "<name>" depends on "<dep>", which is blocked by your organization's
- * policy`; a failed plan changes nothing; when several cases hold, the message names the first in
- * the docs' order and every case is listed in its own field.
+ * Enabling a plugin that declares dependencies (plugins/install.md, "Plugins with dependencies":
+ * "Claude Code also enables the plugin's dependencies that are installed but disabled. If a declared
+ * dependency isn't installed, the enable fails and the message tells you to install it first";
+ * plugins/cli-reference.md, `plugin enable`: the three ways it fails). Pure: the host writes the
+ * settings the plan names.
  */
 
-export interface EnableOverride {
-  /** The dependency. */
-  readonly id: string;
-  /** The higher-precedence scope that sets it to `false`. */
-  readonly scope: ChosenScope;
+/** Why a dependency stops an enable. */
+export type EnableBlock = 'not-installed' | 'policy-blocked' | 'disabled-at-higher-scope';
+
+/** One dependency that stops the enable, with what the user can do about it. */
+export interface EnableIssue extends PluginIssue {
+  readonly block: EnableBlock;
+  /** The dependency's id. */
+  readonly dependency: string;
+  /** `not-installed`: the `claude plugin install` command for it. */
+  readonly command?: string;
+  /** `disabled-at-higher-scope`: the scope that holds the `false`, where to enable it or to pass as `--scope`. */
+  readonly scope?: InstallScope;
 }
 
 export interface EnablePlan {
+  readonly ok: boolean;
+  /** The dependencies to enable (installed but disabled), each after its own dependencies. */
   readonly enable: readonly string[];
-  readonly failure?: {
-    /** Plugins that are not installed. */
-    readonly missing: readonly string[];
-    /** Dependencies the organization's plugin policy blocks. */
-    readonly blocked: readonly string[];
-    /** Dependencies set to `false` above the target scope. */
-    readonly overridden: readonly EnableOverride[];
-    readonly message: string;
-    /** `claude plugin install` for each plugin that is missing. */
-    readonly commands: readonly string[];
-  };
+  /** Every dependency that stops the enable; nothing is enabled when there is one. */
+  readonly issues: readonly EnableIssue[];
 }
 
-const failure = (
-  parts: Partial<NonNullable<EnablePlan['failure']>> & { readonly message: string },
-): EnablePlan => ({
-  enable: [],
-  failure: { missing: [], blocked: [], overridden: [], commands: [], ...parts },
+const issueAt = (
+  dependency: string,
+  block: EnableBlock,
+  message: string,
+  extra: { readonly command?: string; readonly scope?: InstallScope } = {},
+): EnableIssue => ({
+  ...error(`dependencies.${dependency}`, message),
+  block,
+  dependency,
+  ...extra,
 });
 
-const missingFailure = (missing: readonly string[]): EnablePlan =>
-  failure({
-    missing,
-    message:
-      missing.length === 1
-        ? `Dependency ${quotedList(missing)} is not installed. Install it first.`
-        : `Dependencies ${quotedList(missing)} are not installed. Install them first.`,
-    commands: missing.map(installCommand),
-  });
-
-/** The missing ones in the order the plugin declares them, then any found deeper. */
-const dependencyOrder = (root: PluginNode, missing: readonly string[]): readonly string[] => [
-  ...root.dependencies.filter((one) => missing.includes(one)),
-  ...missing.filter((one) => !root.dependencies.includes(one)),
-];
-
-/** The scopes that take precedence over `scope`. */
-const above = (scope: ChosenScope): readonly ChosenScope[] =>
-  SCOPE_PRECEDENCE.slice(0, SCOPE_PRECEDENCE.indexOf(scope));
-
-const overrideOf = (node: PluginNode, scope: ChosenScope): EnableOverride | undefined => {
-  const higher = above(scope).find((one) => node.enabledIn[one] === false);
-  return higher === undefined ? undefined : { id: node.id, scope: higher };
+/** The scope that holds a `false` for the dependency and wins over `target`, if there is one. */
+const overriddenAbove = (
+  dependency: string,
+  target: InstallScope,
+  facts: GraphFacts,
+): InstallScope | undefined => {
+  const above = SCOPES_BY_PRECEDENCE.slice(0, SCOPES_BY_PRECEDENCE.indexOf(target));
+  return above.find((scope) => facts.enabled[scope]?.[dependency] === false);
 };
 
-const overrideFailure = (root: string, override: EnableOverride, target: ChosenScope): EnablePlan =>
-  failure({
-    overridden: [override],
-    message: `Plugin "${root}" depends on "${override.id}", which is disabled at ${override.scope} scope, which takes precedence over ${target}. Enable it at ${override.scope} scope, or pass --scope ${override.scope} to write there.`,
-  });
+/** What stops one dependency from being enabled at `target`, or `undefined`. */
+function blockOf(
+  dependency: string,
+  target: InstallScope,
+  facts: GraphFacts,
+): EnableIssue | undefined {
+  if (facts.blocked?.has(dependency) === true) {
+    return issueAt(
+      dependency,
+      'policy-blocked',
+      `Dependency "${dependency}" is blocked by your organization's plugin policy`,
+    );
+  }
+  if (recordsOf(dependency, facts).length === 0) {
+    const command = `claude plugin install ${dependency}`;
+    return issueAt(
+      dependency,
+      'not-installed',
+      `Dependency "${dependency}" is not installed; install it first: ${command}`,
+      { command },
+    );
+  }
+  const scope = overriddenAbove(dependency, target, facts);
+  return scope === undefined
+    ? undefined
+    : issueAt(
+        dependency,
+        'disabled-at-higher-scope',
+        `Dependency "${dependency}" is set to false at ${scope} scope, which takes precedence over ${target}; enable it at ${scope} scope or pass --scope ${scope}`,
+        { scope },
+      );
+}
+
+interface Walk {
+  readonly target: InstallScope;
+  readonly facts: GraphFacts;
+  readonly seen: Set<string>;
+  readonly enable: string[];
+  readonly issues: EnableIssue[];
+}
+
+function visit(id: string, walk: Walk): void {
+  for (const dep of dependenciesOf(id, walk.facts)) {
+    const dependency = dependencyId(dep);
+    if (walk.seen.has(dependency)) continue;
+    walk.seen.add(dependency);
+    const block = blockOf(dependency, walk.target, walk.facts);
+    if (block !== undefined) {
+      walk.issues.push(block);
+      continue;
+    }
+    visit(dependency, walk);
+    if (effectiveEnabled(dependency, walk.facts) !== true) walk.enable.push(dependency);
+  }
+}
 
 /**
- * Enabling `id` at `scope`: the plugin and the dependencies of it that are installed but off, the
- * dependencies first, or the first failure the docs list.
+ * What enabling `id` at `target` does to its dependencies, transitively: the ones installed but
+ * disabled are enabled, dependencies first; a dependency that is not installed, is blocked by the
+ * plugin policy or is `false` at a scope that wins over `target` fails the enable (and so enables
+ * nothing). Judgment: the cascade follows dependencies of dependencies, which the docs imply by
+ * "the plugin's dependencies" being enabled so that the plugin loads; a dependency already enabled
+ * by a winning scope is left alone, and one installed at any scope counts as installed.
  */
-export function planEnable(id: string, scope: ChosenScope, graph: Graph): EnablePlan {
-  const root = find(graph, id);
-  if (root === undefined || !isInstalled(root)) {
-    return failure({
-      missing: [id],
-      message: `Plugin "${id}" is not installed. Install it first.`,
-      commands: [installCommand(id)],
-    });
-  }
-  const { order, absent } = closure(graph, id);
-  const needed = order.flatMap((one) => (one === id ? [] : (find(graph, one) ?? [])));
-  const notInstalled = needed.filter((one) => !isInstalled(one)).map((one) => one.id);
-  const missing = [...new Set([...absent, ...notInstalled])];
-  if (missing.length > 0) return missingFailure(dependencyOrder(root, missing));
-  const blocked = needed.find((one) => one.blockedByPolicy === true);
-  if (blocked !== undefined) {
-    return failure({
-      blocked: [blocked.id],
-      message: `Plugin "${id}" depends on "${blocked.id}", which is blocked by your organization's policy`,
-    });
-  }
-  const override = needed.map((one) => overrideOf(one, scope)).find((one) => one !== undefined);
-  if (override !== undefined) return overrideFailure(id, override, scope);
-  return { enable: order.filter((one) => !isEnabled(find(graph, one) ?? root)) };
+export function enablePlan(id: string, target: InstallScope, facts: GraphFacts): EnablePlan {
+  const walk: Walk = { target, facts, seen: new Set([id]), enable: [], issues: [] };
+  visit(id, walk);
+  const ok = walk.issues.length === 0;
+  return { ok, enable: ok ? walk.enable : [], issues: walk.issues };
 }

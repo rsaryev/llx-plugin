@@ -1,9 +1,9 @@
-/** Inputs for `computePluginVersion` tests (tests/marketplace/plugin-version*.test.ts). */
+/** Inputs for `resolvePluginVersion` tests (tests/marketplace/plugin-version*.test.ts). */
 import {
-  computePluginVersion,
+  resolvePluginVersion,
   type VersionInput,
   type VersionSource,
-} from '../../src/marketplace/plugin-version.ts';
+} from '../../src/marketplace/version-resolution.ts';
 import { realSha256 } from './marketplace-ports.ts';
 
 /** A real-looking 40-digit commit, so a test can tell a 12-character cut from the whole. */
@@ -17,4 +17,4 @@ const input = (changes: Changes): VersionInput => ({
   enclosingRepoIgnored: false,
   ...changes,
 });
-export const versionOf = (changes: Changes) => computePluginVersion(input(changes), realSha256);
+export const versionOf = (changes: Changes) => resolvePluginVersion(input(changes), realSha256);

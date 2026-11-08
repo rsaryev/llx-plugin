@@ -10,7 +10,7 @@ import type { PluginSource } from '../../src/format/marketplace/types.ts';
 import { decideInstallMode } from '../../src/marketplace/install-mode.ts';
 import { planInstallFinish, planInstallStart } from '../../src/marketplace/install-plan.ts';
 import type { InstalledRecords } from '../../src/marketplace/installed-plugins.ts';
-import { computePluginVersion } from '../../src/marketplace/plugin-version.ts';
+import { resolvePluginVersion } from '../../src/marketplace/version-resolution.ts';
 import { copyModeHash } from '../../src/marketplace/version-hash.ts';
 import { AT, copy, LATER, record } from '../support/install-finish.ts';
 import { realSha256 } from '../support/marketplace-ports.ts';
@@ -100,7 +100,7 @@ spec(`${COPY_LINK}.copy`, () => {
   test('the version of a copied command source is a hash of the copied files, and names the cache folder', async () => {
     const files = memoryFiles({ '.claude-plugin/plugin.json': '{}', 'skills/a/SKILL.md': 'x' });
     const commandHash = await copyModeHash(files, realSha256);
-    const version = await computePluginVersion(
+    const version = await resolvePluginVersion(
       { sourceKind: 'command', commandHash, inGitRepository: false, enclosingRepoIgnored: false },
       realSha256,
     );

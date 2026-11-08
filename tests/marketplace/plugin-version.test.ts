@@ -1,247 +1,299 @@
 /**
- * plugins/loading.md § How Claude Code computes the version (the order, the table, the `command`
- * source, the enclosing repository) and the paragraph before it (a claude.ai-hosted marketplace);
- * plugins/troubleshooting.md § A plugin installed from a git repository shows version `unknown`.
- * The version is a pure decision over what the source reports; only the hashes go through the
- * `Sha256` port. The commit SHAs below are real-looking 40-digit values, so a test can tell a
- * 12-character cut from the whole.
+ * plugins/loading.md § Versions and updates → How Claude Code computes the version: the rule is
+ * picked by the `source` type of the marketplace entry; for every type but `command` the manifest's
+ * `version` comes first, then the entry's, then the source type's default (the table: a commit SHA
+ * shortened to 12 characters, a `git-subdir` version also carrying a hash of the path, an archive's
+ * SHA-256 shortened to 12 from the pin or the downloaded file, `unknown` for `npm` and for a local
+ * directory outside any git repository), a repository enclosing the install path is never used, and
+ * a `command` source always derives it from the command's output. What the docs leave open (blank
+ * versions, a missing digest, the case of a hash, what the command hash covers) is tested outside
+ * `spec(...)` and is in spec/judgments.md.
  */
 import { describe, expect, test } from 'bun:test';
-import type { VersionSource } from '../../src/marketplace/plugin-version.ts';
-import { shortHash12, subdirectoryPathHash } from '../../src/marketplace/version-hash.ts';
-import { realSha256 } from '../support/marketplace-ports.ts';
-import { SHA, versionOf } from '../support/plugin-version.ts';
+import type { PluginSource } from '../../src/format/marketplace/types.ts';
+import {
+  archiveFacts,
+  computePluginVersion,
+  sourceFactsOf,
+  UNKNOWN_VERSION,
+  versionCacheSegment,
+} from '../../src/marketplace/plugin-version.ts';
+import type { Sha256 } from '../../src/ports/marketplace.ts';
 import { spec } from '../support/spec.ts';
 
-const DIGEST = 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
-
-/** Every source type but `command`, a `git-subdir` with its path. */
-const NOT_COMMAND: readonly VersionSource[] = [
-  { sourceKind: 'relative' },
-  { sourceKind: 'github' },
-  { sourceKind: 'url' },
-  { sourceKind: 'git-subdir', subdir: 'plugins/x' },
-  { sourceKind: 'npm' },
-  { sourceKind: 'archive' },
-];
-
-/** The version of a `git-subdir` plugin at `SHA`, whose path is `subdir`. */
-const subdirVersion = (subdir: string) =>
-  versionOf({ sourceKind: 'git-subdir', commitSha: SHA, subdir });
-
-/** A pinned `github` plugin at a given commit. */
-const at = (commitSha: string) =>
-  versionOf({ sourceKind: 'github', manifestVersion: '1.0.0', commitSha });
+const SHA = 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678';
+const DIGEST = 'ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100';
 
 spec('updates.loading.How Claude Code computes the version', () => {
-  test('the manifest version comes first, then the entry version, for every source type but command', async () => {
-    for (const source of NOT_COMMAND) {
-      const both = { ...source, manifestVersion: '2.0.0', entryVersion: '1.0.0', commitSha: SHA };
-      expect(await versionOf(both)).toEqual({ version: '2.0.0', origin: 'manifest' });
-      const entryOnly = { ...source, entryVersion: '1.0.0', commitSha: SHA };
-      expect(await versionOf(entryOnly)).toEqual({ version: '1.0.0', origin: 'entry' });
-    }
-  });
-
-  test('a manifest that pins a version keeps it however many commits land', async () => {
-    expect(await at(SHA)).toEqual(await at('f'.repeat(40)));
-  });
-
-  test('a command source ignores the entry version and hashes what the command produced', async () => {
-    const result = await versionOf({
-      sourceKind: 'command',
-      entryVersion: '9.9.9',
-      commandHash: 'abcdef012345',
+  describe('the order: manifest, then entry, then the source type', () => {
+    test('the manifest version wins over the entry version and the source default', () => {
+      expect(
+        computePluginVersion({
+          manifestVersion: '1.0.0',
+          entryVersion: '2.0.0',
+          source: { kind: 'github', commit: SHA },
+        }),
+      ).toBe('1.0.0');
     });
-    expect(result).toEqual({ version: 'abcdef012345', origin: 'command-hash' });
-  });
 
-  test('a command source with a manifest version is "<manifest version>-<hash>"', async () => {
-    const result = await versionOf({
-      sourceKind: 'command',
-      manifestVersion: '2.1.0',
-      entryVersion: '9.9.9',
-      commandHash: 'abcdef012345',
+    test('the entry version is used when the manifest sets none', () => {
+      expect(
+        computePluginVersion({
+          entryVersion: '2.0.0',
+          source: { kind: 'github', commit: SHA },
+        }),
+      ).toBe('2.0.0');
     });
-    expect(result).toEqual({ version: '2.1.0-abcdef012345', origin: 'command-hash' });
-  });
 
-  test('a command hash is cut to 12 characters', async () => {
-    const result = await versionOf({ sourceKind: 'command', commandHash: DIGEST });
-    expect(result.version).toBe('fedcba987654');
-  });
+    test('with neither, the version comes from the source type', () => {
+      expect(computePluginVersion({ source: { kind: 'github', commit: SHA } })).toBe(
+        'a1b2c3d4e5f6',
+      );
+    });
 
-  test('judgment: a command source with no hash at all is unknown, never the entry version', async () => {
-    expect(await versionOf({ sourceKind: 'command', entryVersion: '1.0.0' })).toEqual({
-      version: 'unknown',
-      origin: 'unknown',
+    test('a pinned manifest version stays the same across commits', () => {
+      const at = (commit: string) =>
+        computePluginVersion({ manifestVersion: '1.0.0', source: { kind: 'url', commit } });
+      expect(at(SHA)).toBe(at('0123456789abcdef0123456789abcdef01234567'));
+    });
+
+    test('an omitted version follows the commit', () => {
+      const at = (commit: string) => computePluginVersion({ source: { kind: 'url', commit } });
+      expect(at(SHA)).not.toBe(at('0123456789abcdef0123456789abcdef01234567'));
+    });
+
+    test('the order holds for every source type but command', () => {
+      const sources = [
+        { kind: 'relative' },
+        { kind: 'github', commit: SHA },
+        { kind: 'url', commit: SHA },
+        { kind: 'git-subdir', commit: SHA, pathHash: '1f2e3d4c' },
+        { kind: 'npm' },
+        { kind: 'archive', downloadedDigest: DIGEST },
+      ] as const;
+      for (const source of sources) {
+        expect(computePluginVersion({ manifestVersion: 'm', entryVersion: 'e', source })).toBe('m');
+        expect(computePluginVersion({ entryVersion: 'e', source })).toBe('e');
+      }
     });
   });
 
-  test('a local directory neither of whose repositories is git is unknown', async () => {
-    expect(await versionOf({ sourceKind: 'relative' })).toEqual({
-      version: 'unknown',
-      origin: 'unknown',
+  describe('a relative path', () => {
+    test('inside a Git-hosted marketplace it is the commit SHA of the installed directory, shortened', () => {
+      expect(
+        computePluginVersion({
+          source: { kind: 'relative', repository: { root: 'marketplace', commit: SHA } },
+        }),
+      ).toBe('a1b2c3d4e5f6');
+    });
+
+    test('in a local directory that is a git repository it is that repository commit', () => {
+      expect(
+        computePluginVersion({
+          source: { kind: 'relative', repository: { root: 'plugin-directory', commit: SHA } },
+        }),
+      ).toBe('a1b2c3d4e5f6');
+    });
+
+    test('in a local directory outside any git repository it is unknown', () => {
+      expect(computePluginVersion({ source: { kind: 'relative' } })).toBe('unknown');
+    });
+
+    test('a repository that only encloses the install path, such as a git-managed ~/.claude, is not used', () => {
+      expect(
+        computePluginVersion({
+          source: { kind: 'relative', repository: { root: 'enclosing', commit: SHA } },
+        }),
+      ).toBe('unknown');
     });
   });
 
-  test('a relative path whose directory or marketplace is a Git repository is the commit of the installed directory', async () => {
-    // The table row is "neither the plugin directory nor its marketplace is a git repository":
-    // either one being a repository gives a commit, so the host's one flag stands for both, and a
-    // plugin directory that is a repository inside a marketplace that is not takes this path.
-    const result = await versionOf({
-      sourceKind: 'relative',
-      inGitRepository: true,
-      commitSha: SHA,
+  describe('a command source', () => {
+    test('is the 12-character hash alone when the manifest sets no version', () => {
+      expect(computePluginVersion({ source: { kind: 'command', hash: DIGEST } })).toBe(
+        'ffeeddccbbaa',
+      );
     });
-    expect(result).toEqual({ version: SHA.slice(0, 12), origin: 'sha' });
-  });
 
-  test('a commit read from a repository that encloses the install path is not a version', async () => {
-    // "such as a git-managed ~/.claude": the host found a repository above the install path.
-    for (const inGitRepository of [true, false]) {
-      const result = await versionOf({
-        sourceKind: 'relative',
-        inGitRepository,
-        commitSha: SHA,
-        enclosingRepoIgnored: true,
-      });
-      expect(result).toEqual({ version: 'unknown', origin: 'unknown' });
-    }
-  });
-
-  test('a git-managed enclosing repository does not blank a declared version', async () => {
-    const result = await versionOf({
-      sourceKind: 'relative',
-      manifestVersion: '1.2.3',
-      commitSha: SHA,
-      enclosingRepoIgnored: true,
+    test('is <manifest version>-<hash> when the manifest sets one', () => {
+      expect(
+        computePluginVersion({
+          manifestVersion: '3.1.0',
+          source: { kind: 'command', hash: DIGEST },
+        }),
+      ).toBe('3.1.0-ffeeddccbbaa');
     });
-    expect(result.version).toBe('1.2.3');
+
+    test('ignores the version of the marketplace entry', () => {
+      const source = { kind: 'command', hash: DIGEST } as const;
+      expect(computePluginVersion({ entryVersion: '9.9.9', source })).toBe('ffeeddccbbaa');
+      expect(
+        computePluginVersion({ manifestVersion: '3.1.0', entryVersion: '9.9.9', source }),
+      ).toBe('3.1.0-ffeeddccbbaa');
+    });
+
+    test('changes when the hashed output changes', () => {
+      const at = (hash: string) => computePluginVersion({ source: { kind: 'command', hash } });
+      expect(at(DIGEST)).not.toBe(at('00112233445566778899aabbccddeeff'));
+    });
   });
 });
 
+/**
+ * The `git-subdir` row proves only the shape `<commit, 12 characters>-<hash>`: the docs say "a hash
+ * of the subdirectory path" and give no algorithm or length, so the hash is the host's (`pathHash`)
+ * and the algorithm is not proven (spec/judgments.md); distinct paths are the host's hash's job.
+ */
 spec('updates.loading.How Claude Code computes the version.github', () => {
-  test('a github or url source with no version field is the commit SHA shortened to 12', async () => {
-    for (const sourceKind of ['github', 'url'] as const) {
-      expect(await versionOf({ sourceKind, commitSha: SHA })).toEqual({
-        version: '0123456789ab',
-        origin: 'sha',
-      });
-    }
+  test('a github source without a version field is the commit SHA of the source, 12 characters', () => {
+    const version = computePluginVersion({ source: { kind: 'github', commit: SHA } });
+    expect(version).toBe(SHA.slice(0, 12));
+    expect(version).toHaveLength(12);
   });
 
-  test('the shortened SHA is lower case', async () => {
-    expect(
-      (
-        await versionOf({
-          sourceKind: 'github',
-          commitSha: 'ABCDEF0123456789'.repeat(2) + 'ABCDEF01',
-        })
-      ).version,
-    ).toBe('abcdef012345');
+  test('a url source is the commit SHA too', () => {
+    expect(computePluginVersion({ source: { kind: 'url', commit: SHA } })).toBe(SHA.slice(0, 12));
   });
 
-  test('a git-subdir version is the commit shortened to 12, a dash and the path hash', async () => {
-    const frontend = await subdirVersion('packages/frontend');
-    const backend = await subdirVersion('packages/backend');
-    const pathHash = await subdirectoryPathHash('packages/frontend', realSha256);
-    expect(frontend).toEqual({ version: `0123456789ab-${pathHash}`, origin: 'sha' });
-    expect(frontend.version).not.toBe(backend.version);
-    expect(backend.version).toBe(
-      `0123456789ab-${await subdirectoryPathHash('packages/backend', realSha256)}`,
-    );
-  });
-
-  test('two plugins in one commit and one subdirectory spelled two ways share a version', async () => {
-    const a = await subdirVersion('plugins/x');
-    const b = await subdirVersion('./plugins/x/');
-    expect(a).toEqual(b);
+  test('a git-subdir version carries a hash of the subdirectory path after the commit', () => {
+    const version = computePluginVersion({
+      source: { kind: 'git-subdir', commit: SHA, pathHash: '1f2e3d4c' },
+    });
+    expect(version).toBe('a1b2c3d4e5f6-1f2e3d4c');
   });
 });
 
 spec('updates.loading.How Claude Code computes the version.archive', () => {
-  test('the sha256 pin of the entry, shortened to 12 characters', async () => {
-    const result = await versionOf({ sourceKind: 'archive', archiveSha256: DIGEST });
-    expect(result).toEqual({ version: 'fedcba987654', origin: 'sha256' });
+  test('the sha256 pin of the entry, shortened to 12 characters', () => {
+    expect(computePluginVersion({ source: { kind: 'archive', pin: DIGEST } })).toBe('ffeeddccbbaa');
   });
 
-  test('with no pin, the digest of the downloaded file', async () => {
-    const result = await versionOf({ sourceKind: 'archive', archiveDigest: DIGEST });
-    expect(result).toEqual({ version: 'fedcba987654', origin: 'sha256' });
+  test('the digest of the downloaded file when there is no pin', () => {
+    expect(computePluginVersion({ source: { kind: 'archive', downloadedDigest: DIGEST } })).toBe(
+      'ffeeddccbbaa',
+    );
   });
 
-  test('a pin wins over the digest of a file that does not match it', async () => {
-    const result = await versionOf({
-      sourceKind: 'archive',
-      archiveSha256: '1'.repeat(64),
-      archiveDigest: DIGEST,
-    });
-    expect(result.version).toBe('111111111111');
+  test('the pin is used even when a digest of the download is known', () => {
+    expect(
+      computePluginVersion({
+        source: { kind: 'archive', pin: DIGEST, downloadedDigest: '0123456789abcdef' },
+      }),
+    ).toBe('ffeeddccbbaa');
+  });
+});
+
+describe('the digest of a downloaded archive goes through the Sha256 port', () => {
+  const archive: PluginSource & { kind: 'archive' } = {
+    kind: 'archive',
+    url: 'https://e.test/p.zip',
+  };
+  const bytes = new Uint8Array([1, 2, 3]);
+  const sha256: Sha256 = {
+    hex: (given) => Promise.resolve(given.length === 3 ? DIGEST : '00'),
+  };
+
+  test('with no pin, the version is the digest of the downloaded bytes, 12 characters', async () => {
+    const facts = await archiveFacts(archive, bytes, sha256);
+    expect(computePluginVersion({ source: facts })).toBe('ffeeddccbbaa');
   });
 
-  test('an archive that reports neither is unknown', async () => {
-    expect(await versionOf({ sourceKind: 'archive' })).toEqual({
-      version: 'unknown',
-      origin: 'unknown',
-    });
+  test('with a pin, the pin is the version and the digest is still reported', async () => {
+    const pin = '0123456789abcdef0123456789abcdef';
+    const facts = await archiveFacts({ ...archive, sha256: pin }, bytes, sha256);
+    expect(facts).toEqual({ kind: 'archive', pin, downloadedDigest: DIGEST });
+    expect(computePluginVersion({ source: facts })).toBe('0123456789ab');
   });
 });
 
 spec('updates.loading.How Claude Code computes the version.npm', () => {
-  test('an npm source with no version field is unknown, whatever else is known about it', async () => {
-    const result = await versionOf({
-      sourceKind: 'npm',
-      commitSha: SHA,
-      archiveDigest: DIGEST,
-      inGitRepository: true,
-    });
-    expect(result).toEqual({ version: 'unknown', origin: 'unknown' });
+  test('an npm source without a version field is unknown', () => {
+    expect(computePluginVersion({ source: { kind: 'npm' } })).toBe('unknown');
+    expect(UNKNOWN_VERSION).toBe('unknown');
   });
 });
 
-spec(
-  'install.troubleshooting.A plugin installed from a git repository shows version unknown',
-  () => {
-    test('a git-sourced plugin whose commit could not be read shows unknown', async () => {
-      const unknown = { version: 'unknown', origin: 'unknown' } as const;
-      expect(await versionOf({ sourceKind: 'github' })).toEqual(unknown);
-      expect(await versionOf({ sourceKind: 'url' })).toEqual(unknown);
-      expect(await versionOf({ sourceKind: 'git-subdir', subdir: 'p' })).toEqual(unknown);
-      expect(await versionOf({ sourceKind: 'relative', inGitRepository: true })).toEqual(unknown);
+describe('judgments (spec/judgments.md)', () => {
+  test('a pinned sha is the commit of a git source; an archive pin is its pin; nothing else is known without a fetch', () => {
+    expect(sourceFactsOf({ kind: 'github', repo: 'o/r', sha: SHA })).toEqual({
+      kind: 'github',
+      commit: SHA,
     });
-
-    test('once the commit can be read the version is a 12-character commit ID', async () => {
-      const result = await versionOf({ sourceKind: 'github', commitSha: SHA });
-      expect(result.version).toMatch(/^[0-9a-f]{12}$/u);
+    expect(sourceFactsOf({ kind: 'url', url: 'https://e.test/r.git', ref: 'v1' })).toEqual({
+      kind: 'url',
     });
-  },
-);
-
-describe('judgments (spec/judgments.md, src/marketplace/plugin-version.ts)', () => {
-  test('an empty or blank version field is no version', async () => {
-    const result = await versionOf({
-      sourceKind: 'github',
-      manifestVersion: '',
-      entryVersion: '  ',
-      commitSha: SHA,
+    expect(
+      sourceFactsOf({ kind: 'git-subdir', url: 'https://e.test/r.git', path: 'p', sha: SHA }),
+    ).toEqual({ kind: 'git-subdir', commit: SHA });
+    expect(sourceFactsOf({ kind: 'archive', url: 'https://e.test/p.zip', sha256: DIGEST })).toEqual(
+      { kind: 'archive', pin: DIGEST },
+    );
+    expect(sourceFactsOf({ kind: 'npm', package: 'pkg' })).toEqual({ kind: 'npm' });
+    expect(sourceFactsOf({ kind: 'relative', path: 'p', bare: false })).toEqual({
+      kind: 'relative',
     });
-    expect(result).toEqual({ version: '0123456789ab', origin: 'sha' });
   });
 
-  test('a marketplace hosted on claude.ai: the version claude.ai records, never the manifest', async () => {
-    const result = await versionOf({
-      sourceKind: 'github',
-      recordedByClaudeAi: '7',
-      manifestVersion: '2.0.0',
-      entryVersion: '1.0.0',
-      commitSha: SHA,
-    });
-    expect(result).toEqual({ version: '7', origin: 'claude-ai' });
+  test('the facts of a pinned github entry give its version with no fetch, and the host adds what it learns', () => {
+    const pinned = sourceFactsOf({ kind: 'github', repo: 'o/r', sha: SHA });
+    expect(computePluginVersion({ source: pinned })).toBe('a1b2c3d4e5f6');
+    const learned = sourceFactsOf({ kind: 'url', url: 'https://e.test/r.git' });
+    expect(computePluginVersion({ source: { ...learned, commit: SHA } })).toBe('a1b2c3d4e5f6');
   });
 
-  test('shortHash12 cuts to 12 and lower-cases', () => {
-    expect(shortHash12('ABCDEF0123456789')).toBe('abcdef012345');
-    expect(shortHash12('abc')).toBe('abc');
+  test('a version is a safe directory name: unsafe characters are encoded, the path of ../x included', () => {
+    expect(versionCacheSegment('1.2.3-beta+build_5')).toBe('1.2.3-beta+build_5');
+    expect(versionCacheSegment('../x')).toBe('..%2Fx');
+    expect(versionCacheSegment('a\\b c')).toBe('a%5Cb%20c');
+    expect(versionCacheSegment('..')).toBe('%2E%2E');
+    expect(versionCacheSegment('.')).toBe('%2E');
+    expect(versionCacheSegment('')).toBe('unknown');
+  });
+
+  test('two versions never share a directory, and a lone surrogate does not throw', () => {
+    expect(versionCacheSegment('1/0')).not.toBe(versionCacheSegment('1%2F0'));
+    expect(versionCacheSegment('1/0')).not.toBe(versionCacheSegment('1_0'));
+    expect(versionCacheSegment('v\ud800')).toBe('v%EF%BF%BD');
+  });
+
+  test('a blank version counts as not set', () => {
+    expect(
+      computePluginVersion({
+        manifestVersion: '',
+        entryVersion: '  ',
+        source: { kind: 'github', commit: SHA },
+      }),
+    ).toBe('a1b2c3d4e5f6');
+    expect(
+      computePluginVersion({
+        manifestVersion: ' ',
+        entryVersion: '2.0.0',
+        source: { kind: 'npm' },
+      }),
+    ).toBe('2.0.0');
+  });
+
+  test('a git source whose commit is not known, and an archive with neither pin nor digest, are unknown', () => {
+    expect(computePluginVersion({ source: { kind: 'github' } })).toBe('unknown');
+    expect(computePluginVersion({ source: { kind: 'git-subdir', pathHash: '1f2e3d4c' } })).toBe(
+      'unknown',
+    );
+    expect(computePluginVersion({ source: { kind: 'archive' } })).toBe('unknown');
+  });
+
+  test('hashes and SHAs are lower case; a short hash is kept whole', () => {
+    expect(
+      computePluginVersion({ source: { kind: 'github', commit: 'ABCDEF0123456789ABCDEF' } }),
+    ).toBe('abcdef012345');
+    expect(computePluginVersion({ source: { kind: 'command', hash: 'ABC' } })).toBe('abc');
+  });
+
+  test('a manifest version of a command source is joined as given, with no trimming', () => {
+    expect(
+      computePluginVersion({
+        manifestVersion: '1.0.0-beta',
+        source: { kind: 'command', hash: 'abc' },
+      }),
+    ).toBe('1.0.0-beta-abc');
   });
 });

@@ -8,7 +8,7 @@ import {
   isInstalledAt,
   quotedList,
   type Graph,
-} from './dependency-graph.ts';
+} from './install-dependency-graph.ts';
 import { alreadyInstalledAtScope } from './install-errors.ts';
 import type { ChosenScope } from './install-scopes.ts';
 
