@@ -663,26 +663,75 @@ cost fields of `SessionStart` outside resume and fork, `globs` of `InstructionsL
 warning. The free text of `Stop` and `SubagentStop` tasks and crons is capped at 1000 characters with
 the `… [+N chars]` marker.
 
-## Host and sessions (planned)
+## Host and sessions (done: `host`)
+
+`createPluginHost` composes what the modules below already do; it adds no behaviour of its own. The
+host takes plugins loaded once with `loadPlugin`, the ports, the settings and the saved options, and
+reads the Markdown components of the enabled plugins once. A session reads nothing again.
 
 ```ts
-const host = createPluginHost({ plugins, ports, userConfig });
+import { createPluginHost, loadPlugin } from '@rsaryev/claude-plugin-kit';
+
+const { plugin } = await loadPlugin({ files });
+const host = createPluginHost({
+  plugins: [{ id: 'formatter@acme-tools', plugin }], // `enabled?` and `source?` per plugin
+  ports, // HookPorts: commands, locations, environment, http?, mcp?, models?, scratch?, clock?, observer?
+  settings, // optional: the PolicyView of createPolicyView(layers)
+  userConfig: { 'formatter@acme-tools': { endpoint: 'https://svc.example' } },
+});
 const session = host.openSession({ sessionId, cwd, permissionMode, transcriptPath });
 
-session.skills(); // what to list to the model and in `/` menus
+session.skills(); // { model, menu }: what to list to the model and in `/` menus
 await session.expandSkill('formatter:review', { arguments: 'src/', signal }); // prompt text
-const outcome = await session.dispatch('PreToolUse', input, { signal }); // typed per event
-session.mcpServers(); // resolved official McpServerConfig per server
+const outcome = await session.dispatch('PreToolUse', facts, { signal }); // typed per event
+(await session.mcpServers()).resolved; // ResolvedMcpServer per server
 ```
 
-`dispatch<E extends HookEvent>(event, input: HookInputOf<E>)` runs every matching handler of
-every enabled plugin as hooks.md describes (matchers, `if`, parallel runs, timeouts, `once`,
-`async`, exit codes, JSON output) and returns one merged, typed outcome: the decision, the reason,
-an updated input, added context and the system messages, with each handler's error kept beside.
+Signatures:
+
+```ts
+createPluginHost(options: PluginHostOptions): PluginHost;
+// PluginHostOptions: { plugins: HostPlugin[]; ports: HostPorts; settings?: PolicyView;
+//   parentSettings?: ParentSettingsContext; userConfig?: Record<pluginId, OptionValues>;
+//   windows?: boolean; shells?: { bash; powershell } }
+// HostPlugin: { id: 'name@marketplace'; plugin: Plugin; enabled?: boolean; source?: SkillPluginSource }
+host.plugins: readonly { id; name; enabled }[]   // every plugin given, with whether it runs
+host.issues: readonly PluginIssue[]              // what the format readers found in enabled plugins
+host.openSession(options: SessionOptions): PluginSession;
+// SessionOptions: { sessionId; cwd; permissionMode; transcriptPath; effort?: { level };
+//   interactive? (true); trusted? (true); additionalDirectories?; permissions?: ShellPermission }
+```
+
+A plugin runs when `HostPlugin.enabled` says so, else when `enabledPlugins` of the settings says so,
+else it does; managed settings that turn it off win over both. A disabled plugin contributes
+nothing: no skill, hook, agent, server, monitor or style.
+
+The session:
+
+| Method | Returns |
+| --- | --- |
+| `skills(options?)` | `{ model, menu }`: `modelListing` and `menuEntries` over the skills and commands of every enabled plugin, named `<plugin>:<name>`. The two invocation flags and the budget apply; `skillOverrides` leaves a plugin skill alone, as skills.md says. |
+| `expandSkill(name, { arguments?, signal, invoker? })` | The `Expansion` of `expandSkill`: text with `$ARGUMENTS`, `${CLAUDE_PLUGIN_ROOT}` and the plugin's options substituted, shell placeholders run through the runner. `invoker` is `user` (default) or `model`. An unknown name, a skill of a disabled plugin or a refused invoker is `{ ok: false, issues }`. `disableSkillShellExecution` of the settings replaces the placeholders. Without `SessionOptions.permissions` a shell placeholder asks, which aborts the expansion. |
+| `dispatch(event, facts, { signal })` | The `HookOutcome<E>` of the engine. `facts` is the event's own fields (`EventFactsOf<E>`); the common fields come from the session. Handlers of every enabled plugin, then of the settings files, run with `if` read by the rules module and the policy of the settings: `disableAllHooks`, `allowManagedHooksOnly` (plugins force-enabled in managed `enabledPlugins` exempt), the `hooks` lock of `strictPluginOnlyCustomization`, `allowedHttpHookUrls`, `httpHookAllowedEnvVars`. A skill's `once` hook that ran is dropped after the dispatch. |
+| `agents(options?)` | `Resolved<SessionAgent>`: the official `AgentDefinition` of each plugin agent under `<plugin>:<name>`, its prompt with the plugin variables substituted, and `extras` (`color`, `isolation`, `cacheTtl`). |
+| `mcpServers(options?)`, `lspServers(options?)`, `monitors(options?)` | `Resolved<ResolvedMcpServer>`, `Resolved<ResolvedLspServer>`, `Resolved<ResolvedMonitor>`: the substituted configs, with `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}` and `${user_config.*}` resolved. A server that cannot start is left out and its issue is in `issues`. |
+| `outputStyles()` | The `OutputStyle` of each enabled plugin, `id` `<plugin>:<name>`. |
+
+`Resolved<T>` is `{ resolved: readonly T[]; issues: readonly PluginIssue[] }`. The saved options
+of a plugin are the `pluginConfigs` of the settings with the host's `userConfig` over them.
+
+`dispatch<E extends HookEvent>(event, facts: EventFactsOf<E>)` runs every matching handler as
+hooks.md describes (matchers, `if`, parallel runs, timeouts, `once`, `async`, exit codes, JSON
+output) and returns one merged, typed outcome: the decision, the reason, an updated input, added
+context and the system messages, with each handler's error kept beside.
 
 The host maps its own tools to Claude Code's names and inputs before dispatching (`Bash`,
 `Write`, `Edit`…, typed by the official `ToolInputSchemas`), so a plugin's `"matcher": "Write|Edit"`
 and `"if": "Bash(git *)"` mean what they mean in Claude Code.
+
+Not in the host: starting servers and monitors, registering the frontmatter hooks of a skill (the
+`Expansion` carries them), the permission decision of a tool call (`decide` in the rules module),
+and mods, which stay their own entry (`MODS_API`, `modsTesting`).
 
 ## Permission rules (done: syntax, bare, parameter and glob rules, precedence, Bash and PowerShell commands, hook `if`, path rules, domain, MCP, Agent and Skill rules, the six permission modes)
 

@@ -39,6 +39,18 @@
 
 ### Added
 
+- Host: `createPluginHost({ plugins, ports, settings?, userConfig? })` and `host.openSession(...)`,
+  the public entry that composes the loaded plugins, the skills, hooks, agents, settings and ports. A
+  session lists skills and commands as `<plugin>:<name>` (invocation flags, budget), expands them
+  (`$ARGUMENTS`, `${CLAUDE_PLUGIN_ROOT}`, shell placeholders through the runner, the shell policy of
+  the settings), dispatches any hook event typed per event over every enabled plugin and the
+  settings files (matchers, `if` through the rules module, `disableAllHooks`, `allowManagedHooksOnly`,
+  the `hooks` lock, the HTTP allowlists), and resolves agents, MCP and LSP servers, monitors and
+  output styles with the plugin variables and saved options. Enablement follows the host, then
+  `enabledPlugins`, with managed settings that turn a plugin off winning.
+- Hooks: `registerHooks` turns a hooks file into registry entries; Settings: `hookSessionGates` reads
+  `disableAllHooks`, `allowManagedHooksOnly`, the `hooks` lock, the HTTP allowlists and the settings
+  files' hooks off the policy view as the plain data a hook session takes.
 - Testing: `@rsaryev/claude-plugin-kit/testing` publishes the fakes of the ports (`memoryFiles`,
   `scriptedRunner`, `recordingHttp`, `fakeModel`, `fakeMcp`, `fixedClock`, `locations`,
   `fakeEnvironment`, `memoryScratch`); `tests/support/ports.ts` re-exports them, one copy.

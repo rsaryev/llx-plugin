@@ -22,4 +22,5 @@ export {
 } from './origins.ts';
 export { type ParentSettingsContext } from './parent-settings.ts';
 export { createHookPolicy, type HookPolicy, type HookPolicyContext } from './policy.ts';
+export { hookSessionGates, type HookSessionGates } from './session-gates.ts';
 export { matchUrlPattern } from './url-pattern.ts';

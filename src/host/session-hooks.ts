@@ -1,0 +1,111 @@
+import {
+  createHookEngine,
+  createHookRegistry,
+  ifEvaluatorFor,
+  registerHooks,
+  type EventFactsOf,
+  type HookOutcome,
+  type HookSession,
+  type HookSource,
+  type RegisteredHandler,
+} from '../hooks/index.ts';
+import type { HookEvent } from '../protocol/official.ts';
+import { hookSessionGates, type HookSessionGates } from '../settings/hooks/index.ts';
+import type { PolicyScope } from '../settings/index.ts';
+import type { ActivePlugin, HostState } from './state.ts';
+import type { SessionOptions } from './types.ts';
+
+/** Where the hooks of a settings file of each scope are declared (hooks.md, "Hook locations"). */
+const SETTINGS_SOURCE: { readonly [S in PolicyScope]: HookSource } = {
+  managed: { kind: 'settings', label: '[settings]', managed: true },
+  parent: { kind: 'settings', label: '[settings]' },
+  flag: { kind: 'settings', label: '[settings]' },
+  local: { kind: 'settings', label: '[settings]', scope: 'local' },
+  project: { kind: 'settings', label: '[settings]', scope: 'project' },
+  user: { kind: 'settings', label: '[settings]', scope: 'user' },
+  addDir: { kind: 'settings', label: '[settings]' },
+};
+
+const pluginEntries = (plugin: ActivePlugin): readonly RegisteredHandler[] =>
+  registerHooks(plugin.plugin.hooks, {
+    idPrefix: plugin.id,
+    source: {
+      kind: 'plugin',
+      label: `[plugin:${plugin.plugin.name}]`,
+      pluginName: plugin.plugin.name,
+    },
+    pluginId: plugin.id,
+  });
+
+const settingsEntries = (gates: HookSessionGates): readonly RegisteredHandler[] =>
+  gates.settingsHooks.flatMap(({ scope, hooks }) =>
+    registerHooks(hooks, { idPrefix: `settings:${scope}`, source: SETTINGS_SOURCE[scope] }),
+  );
+
+function sessionOf(
+  state: HostState,
+  gates: HookSessionGates,
+  options: SessionOptions,
+): HookSession {
+  return {
+    sessionId: options.sessionId,
+    transcriptPath: options.transcriptPath,
+    cwd: options.cwd,
+    permissionMode: options.permissionMode,
+    ...(options.effort === undefined ? {} : { effort: options.effort }),
+    interactive: options.interactive ?? true,
+    trusted: options.trusted ?? true,
+    disableAllHooks: gates.disableAllHooks,
+    allowManagedHooksOnly: gates.allowManagedHooksOnly,
+    pluginOnlyHooks: gates.pluginOnlyHooks,
+    forceEnabledPlugins: new Set(
+      state.active.filter((plugin) => gates.forceEnabled(plugin.id)).map((plugin) => plugin.id),
+    ),
+    mcpAvailable: state.options.ports.mcp !== undefined,
+  };
+}
+
+export interface HookPart {
+  dispatch<E extends HookEvent>(
+    event: E,
+    facts: EventFactsOf<E>,
+    options: { readonly signal: AbortSignal },
+  ): Promise<HookOutcome<E>>;
+}
+
+/**
+ * The hooks of a session: every enabled plugin's, then the settings files', through the engine
+ * with the policy of the settings. A skill's `once` hook that ran is dropped after the dispatch.
+ */
+export function createHookPart(state: HostState, options: SessionOptions): HookPart {
+  const { ports } = state.options;
+  const gates = hookSessionGates(state.view, state.parent);
+  const session = sessionOf(state, gates, options);
+  const windows = state.options.windows ?? false;
+  const engine = createHookEngine(ports, {
+    windows,
+    ifEvaluator: ifEvaluatorFor({
+      paths: {
+        cwd: options.cwd,
+        home: ports.locations.homeDir(),
+        primaryWorkingDirectory: options.cwd,
+        additionalDirectories: options.additionalDirectories ?? [],
+        platform: windows ? 'windows' : 'posix',
+      },
+    }),
+    userConfigOf: (id) =>
+      state.active.find((plugin) => plugin.id === id)?.userConfig ?? { declared: {}, values: {} },
+    httpPolicy: gates.httpPolicy,
+  });
+  let registry = createHookRegistry([
+    ...state.active.flatMap(pluginEntries),
+    ...settingsEntries(gates),
+  ]);
+  return {
+    async dispatch(event, facts, { signal }) {
+      const outcome = await engine.dispatch(registry, { event, facts, session, signal });
+      registry = registry.without(outcome.consumedOnce);
+      return outcome;
+    },
+  };
+}

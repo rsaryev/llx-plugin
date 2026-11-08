@@ -26,7 +26,29 @@ an optional dependency are never loaded, so install it without optional dependen
 
 ## Use
 
-See [`docs/API.md`](docs/API.md).
+```ts
+import { createPluginHost, loadPlugin } from '@rsaryev/claude-plugin-kit';
+
+// Load a plugin once; `files` is your `PluginFiles` port (a folder, an archive, a sandbox).
+const { plugin } = await loadPlugin({ files });
+if (!plugin) throw new Error('the plugin does not load');
+
+// `ports` are yours: how a command runs, where plugins live, what the environment holds.
+const host = createPluginHost({
+  plugins: [{ id: 'formatter@acme-tools', plugin }],
+  ports: { commands, locations, environment, http },
+});
+
+const session = host.openSession({ sessionId, cwd, permissionMode: 'default', transcriptPath });
+
+const { model, menu } = session.skills(); // list to the model and in `/` menus
+const skill = await session.expandSkill('formatter:review', { arguments: 'src/', signal });
+const outcome = await session.dispatch('PreToolUse', facts, { signal }); // hooks, typed per event
+if (!outcome.proceed) console.log(outcome.block?.reason);
+```
+
+Test your integration without a disk, a shell or a network with the fakes of
+`@rsaryev/claude-plugin-kit/testing`. The full API is in [`docs/API.md`](docs/API.md).
 
 ## Develop
 

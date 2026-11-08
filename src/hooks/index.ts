@@ -11,6 +11,7 @@ export type {
   ToolCallView,
 } from './contracts.ts';
 export { createHookRegistry } from './registry.ts';
+export { registerHooks, type HookDeclaration } from './register.ts';
 export * from './select/index.ts';
 export * from './input/index.ts';
 export * from './handlers/index.ts';
