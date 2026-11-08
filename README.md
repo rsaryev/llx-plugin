@@ -13,6 +13,11 @@ tests prove them, and [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) reports t
 overall and per category. Claude Code's shapes are the official types of
 `@anthropic-ai/claude-agent-sdk`, so a new release that changes one fails the build.
 
+The docs are one check; real plugins are the other. `bun run corpus:fetch` fetches every plugin of
+the official and community marketplaces, and `bun run corpus` compares the kit's `validatePlugin`
+with `claude plugin validate` of the same Claude Code release on each of them: the verdict, and
+every finding's severity, message, file and path (docs/TESTING.md, "Corpus").
+
 ## Install
 
 ```sh
@@ -46,6 +51,12 @@ const skill = await session.expandSkill('formatter:review', { arguments: 'src/',
 const outcome = await session.dispatch('PreToolUse', facts, { signal }); // hooks, typed per event
 if (!outcome.proceed) console.log(outcome.block?.reason);
 ```
+
+`validatePlugin({ files })` reports what `claude plugin validate` reports for a folder, in its words.
+
+[`examples/ai-sdk-agent`](examples/ai-sdk-agent/README.md) is a small agent on the AI SDK that runs
+real plugins through the kit (hooks of every handler type, skills, commands, subagents, MCP servers)
+and checks them in scenarios on Claude Haiku 5.5.
 
 Test your integration without a disk, a shell or a network with the fakes of
 `@rsaryev/claude-plugin-kit/testing`. The full API is in [`docs/API.md`](docs/API.md).

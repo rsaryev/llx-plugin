@@ -55,7 +55,10 @@ const SCENARIOS: Scenario[] = [
   {
     name: 'explanatory-output-style: SessionStart command hook shapes the answer',
     plugins: [join(OFFICIAL, 'explanatory-output-style')],
-    prompts: ['In two sentences: why does `git rebase` rewrite commit hashes?'],
+    // The style asks for insights "before and after writing code", so the task writes code.
+    prompts: [
+      'Write fib.py with an iterative fibonacci(n) function and run it for n=10 with python3.',
+    ],
     checks: async (run) => [
       [
         'SessionStart hook added context',
