@@ -38,8 +38,10 @@ function failedVerdict(
   const message = hookError(hookName(event, subject.toolName), handlerLabel(entry.handler), reason);
   const rule = EXIT2_RULES[event];
   // A teammate that stops is not an action held back: on `TeammateIdle` ending the turn is the
-  // reverse of a block ("by default the teammate stops"; `continueOnBlock` "keeps it working").
-  const stopsTeammate = effect.endsTurn && rule.effect === 'prevents-teammate-idle';
+  // reverse of a block ("by default the teammate stops"; `continueOnBlock` "keeps it working"), and
+  // `TaskCompleted` fired by a teammate stopping "behaves like `TeammateIdle`".
+  const stopsTeammate =
+    effect.endsTurn && (rule.effect === 'prevents-teammate-idle' || event === 'TaskCompleted');
   const holds = rule.canBlock && !stopsTeammate;
   const toClaude = !effect.endsTurn && !rule.canBlock;
   const block = holds ? routedBlock(event, 'decision', { reason, message }) : undefined;
@@ -64,8 +66,8 @@ export function interpretModel(subject: Subject, run: ModelRun): HandlerVerdict 
   const effect = okFalseEffect(event, run, {
     agent: IS_AGENT[entry.handler.type],
     ...(onBlock === undefined ? {} : { continueOnBlock: onBlock }),
-    // Judgment (spec/judgments.md): the input does not say a teammate stopping fired `TaskCompleted`.
-    teammateStopped: false,
+    // The input does not say what fired `TaskCompleted`: the host does (`DispatchRequest.taskCompletedBy`).
+    teammateStopped: subject.teammateStopped === true,
   });
   return 'reason' in effect
     ? failedVerdict(subject, effect)

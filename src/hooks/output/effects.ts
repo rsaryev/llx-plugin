@@ -62,6 +62,12 @@ interface MiscEffects {
   /** `PreCompact`: the hooks' stdout, instructions for the compaction summary. */
   readonly compactionInstructions?: readonly string[];
   /**
+   * `TaskCompleted` with `continue: false`: it "stops the teammate entirely" only "when a teammate
+   * finishing its turn triggered the event"; "when the `TaskUpdate` tool triggered the event, Claude
+   * Code ignores `continue: false`". The input does not say which fired it, so the host applies this.
+   */
+  readonly stopCondition?: 'teammate-finished-its-turn';
+  /**
    * `Stop` and `SubagentStop`: a hook's `additionalContext` keeps the conversation going without a
    * block ("non-error feedback"), through the same loop protections.
    */

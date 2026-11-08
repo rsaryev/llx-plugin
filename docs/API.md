@@ -736,6 +736,30 @@ Outcomes that need the host's facts:
   gets `checkPluginDirectories: false`) and reports `Failed to run: Plugin directory does not exist: <path> (<plugin> — run /plugin
   to reinstall)`.
 
+- **A worktree path.** A `WorktreeCreate` command hook cannot return JSON: its stdout is the path, and
+  `HookOutcome.stdout` holds it raw. `resolveWorktreePath(outcome, { ranIn, repositoryRoot?, isSymlink? })`
+  reads it as the docs do (the last non-empty line, ANSI escapes stripped by `stripAnsi`; an HTTP hook's
+  `effects.worktreePath` wins when both answer) and returns `{ path }` or `{ failure }`: a hook that
+  failed or printed no path, an absolute path with a `.` or `..` segment and a path through a symlink
+  below `repositoryRoot` (the host's `isSymlink` probe; the kit reads no file system) fail, naming the
+  component; a relative path is resolved against `ranIn` with its `.` and `..` collapsed. That the
+  result is a directory the session can enter is the host's to check.
+- **A deferred tool call.** `resolveDefer(effects, { interactive, toolCalls })` says whether a
+  `PreToolUse` `defer` pauses the turn (`deferred`: `-p` and a single tool call), is `ignored` with a
+  warning issue (interactive session, or several tool calls: the normal permission flow runs) or is not
+  a defer (`none`).
+- **The permission check.** `preToolUseHookOutcome(outcome)` turns a `PreToolUse` outcome into the
+  `DecideContext.hook` the rules read (`decision`, `blocked` for an exit 2, `hasUpdatedInput`), which is
+  how `AskUserQuestion` and `ExitPlanMode` stay unapproved by an `allow` without `updatedInput`.
+- **A task completed.** `DispatchRequest.taskCompletedBy` (`task-update` or `teammate-turn`) says what
+  fired `TaskCompleted`: a `TaskUpdate` call ignores `continue: false`, a teammate's finished turn is
+  stopped by it and an `ok: false` prompt hook then behaves as on `TeammateIdle`. Without it
+  `effects.stopCondition` (`teammate-finished-its-turn`) tells the host where `continue: false` holds.
+- **Terminal sequences.** A `terminalSequence` is handed on only when `HookSession.interactive` is true
+  ("in non-interactive mode with the `-p` flag and in the Agent SDK, it ignores the field"); whether the
+  interface is on screen is the host's. A `PermissionDenied` `retry: true` is dropped, with a warning,
+  when the denial `reason` starts with `Auto mode could not evaluate this action` (no verdict).
+
 `buildHookInput` puts `session_id`, `prompt_id` (absent until the first prompt), `transcript_path`,
 `cwd`, `scratchpad_dir` (absent without a scratchpad), `permission_mode` and `effort` (on the events
 that have them), `hook_event_name`, and `agent_id` and `agent_type` (inside an agent, or `agent_type`

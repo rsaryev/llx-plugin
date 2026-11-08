@@ -122,12 +122,43 @@ const cancelledRuns = (selected: readonly RegisteredHandler[]) =>
     result: { run: { kind: 'cancelled' }, issues: [] } satisfies HandlerResult,
   }));
 
+/**
+ * "Claude Code writes the sequence only in an interactive session ... In non-interactive mode with
+ * the `-p` flag and in the Agent SDK, it ignores the field" (hooks.md, "Emit terminal
+ * notifications"). Whether the interface is on screen at that moment is the host's.
+ */
+const withTerminal = <E extends HookEvent>(
+  outcome: HookOutcome<E>,
+  session: DispatchRequest<E>['session'],
+): HookOutcome<E> =>
+  session.interactive || outcome.terminalSequences.length === 0
+    ? outcome
+    : { ...outcome, terminalSequences: [] };
+
+/**
+ * "When the `TaskUpdate` tool triggered the event, Claude Code ignores `continue: false`" (hooks.md,
+ * "TaskCompleted decision control"); when a teammate's finished turn did, it stops the teammate. With
+ * the trigger known the outcome says which; without it `effects.stopCondition` is left to the host.
+ */
+function withTaskTrigger<E extends HookEvent>(
+  outcome: HookOutcome<E>,
+  request: DispatchRequest<E>,
+): HookOutcome<E> {
+  const { taskCompletedBy } = request;
+  if (taskCompletedBy === undefined || outcome.effects.stopCondition === undefined) return outcome;
+  const { stopCondition: _decided, ...effects } = outcome.effects;
+  if (taskCompletedBy === 'teammate-turn') return { ...outcome, effects };
+  const { stopReason: _ignored, ...rest } = outcome;
+  return { ...rest, continue: true, effects };
+}
+
 /** What the interrupt, the prompt and the Stop cap leave of an outcome (hooks.md, "Hook lifecycle"). */
 function finished<E extends HookEvent>(
-  outcome: HookOutcome<E>,
+  outcomeOfRun: HookOutcome<E>,
   request: DispatchRequest<E>,
   config: DispatchConfig,
 ): HookOutcome<E> {
+  const outcome = withTaskTrigger(withTerminal(outcomeOfRun, request.session), request);
   const quoted = withOriginalPrompt(outcome, request.facts);
   const interrupted = withInterrupt(quoted, request.signal.aborted);
   const where = { sessionId: request.session.sessionId, facts: request.facts };
@@ -175,6 +206,7 @@ async function runAll<E extends HookEvent>(
       timeoutMs: handlerTimeoutMs(entry, timeouts),
       effectsIgnored: selection.monitor.get(entry)?.effectsApply === false,
       gitBashMissing: config.windows && config.defaultShell === 'powershell',
+      teammateStopped: request.taskCompletedBy === 'teammate-turn',
     }),
     issues: result.issues,
   }));

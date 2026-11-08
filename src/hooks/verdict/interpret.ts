@@ -107,6 +107,8 @@ export interface InterpretContext {
   readonly timeoutMs?: number | undefined;
   /** The host runs Windows without Git Bash (its default shell is PowerShell). */
   readonly gitBashMissing?: boolean;
+  /** `TaskCompleted` fired because a teammate finished its turn. */
+  readonly teammateStopped?: boolean;
 }
 
 const toolNameOf = (facts: object): string | undefined =>
@@ -126,6 +128,7 @@ export function interpretRun(
     timeoutMs: context.timeoutMs,
     effectsIgnored: context.effectsIgnored === true,
     gitBashMissing: context.gitBashMissing === true,
+    teammateStopped: context.teammateStopped === true,
   };
   const verdict = READERS[run.kind](subject, run);
   return isRunOf('exited', run) ? { ...verdict, exitCode: run.exitCode } : verdict;

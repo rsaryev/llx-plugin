@@ -18,4 +18,6 @@ export interface Subject {
   readonly timeoutMs: number | undefined;
   /** Windows without Git Bash: a shell-form `PreToolUse` or `PermissionRequest` hook is a gate (hooks.md, "Failed hooks on Windows without Git Bash"). */
   readonly gitBashMissing: boolean;
+  /** `TaskCompleted` fired because a teammate finished its turn, not because the `TaskUpdate` tool completed a task. */
+  readonly teammateStopped?: boolean;
 }

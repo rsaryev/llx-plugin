@@ -4,6 +4,13 @@
 
 ### Added
 
+- Hooks: the per-event contracts. Every `<Event> input` section, the decision-control table, the
+  response schema of prompt hooks and the context, interaction, elicitation, defer and terminal sections
+  of hooks.md are proven by tests against the docs' own examples and scripts. New: `resolveWorktreePath`
+  (the path of a `WorktreeCreate` hook: last non-empty line, ANSI stripped, relative resolution, `.`/`..`
+  and symlink refusals), `resolveDefer`, `preToolUseHookOutcome`, `DispatchRequest.taskCompletedBy` and
+  `effects.stopCondition` for `TaskCompleted`; a `terminalSequence` is dropped outside an interactive
+  session and a `PermissionDenied` `retry` when the classifier produced no verdict.
 - Hooks: `CLAUDE_ENV_FILE`. The `EnvFileStore` port and `createEnvFiles` give `SessionStart` and `Setup`
   hooks the file that lasts the session and `CwdChanged` and `FileChanged` hooks the file a `CwdChanged`
   event clears, never a hook that runs PowerShell nor another event; `readPowershellVariables` reads the

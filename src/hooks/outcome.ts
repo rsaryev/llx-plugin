@@ -26,6 +26,13 @@ export interface DispatchRequest<E extends HookEvent> {
   readonly signal: AbortSignal;
   /** The key the user pressed while a tool ran (`PostToolUse` only: docs/API.md, "How a run is read"). */
   readonly interrupt?: UserInterrupt;
+  /**
+   * `TaskCompleted` only: what fired it (hooks.md, "TaskCompleted"): `task-update`, an agent marking
+   * a task completed through the `TaskUpdate` tool, or `teammate-turn`, a teammate finishing its turn
+   * with in-progress tasks. The input does not say; without it `effects.stopCondition` tells the host
+   * where `continue: false` holds.
+   */
+  readonly taskCompletedBy?: 'task-update' | 'teammate-turn';
 }
 
 /** What an event came to, merged over every handler that ran. */

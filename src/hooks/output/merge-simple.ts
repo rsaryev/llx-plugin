@@ -66,9 +66,30 @@ export const mergeDisplay: Merger = (reads) => {
   return displayContent === undefined ? NOTHING : { effects: { displayContent }, issues: [] };
 };
 
-export const mergeRetry: Merger = (reads) => {
+/**
+ * "Claude Code ignores `retry: true` when the classifier produced no verdict on the action": the
+ * denial `reason` then "starts with `Auto mode could not evaluate this action and is blocking it
+ * for safety`", and "Claude Code already tells the model in the rejection message whether to retry
+ * later or move on".
+ */
+const NO_VERDICT_REASON = 'Auto mode could not evaluate this action and is blocking it for safety';
+
+export const mergeRetry: Merger = (reads, facts) => {
   const retry = anyTrue(reads, 'retry');
-  return retry === undefined ? NOTHING : { effects: { retry }, issues: [] };
+  if (retry === undefined) return NOTHING;
+  const reason = factOf(facts, 'reason');
+  if (typeof reason === 'string' && reason.startsWith(NO_VERDICT_REASON)) {
+    return {
+      effects: {},
+      issues: [
+        warning(
+          'hooks.PermissionDenied.retry',
+          'is ignored: the classifier produced no verdict on the action',
+        ),
+      ],
+    };
+  }
+  return { effects: { retry }, issues: [] };
 };
 
 export const mergeWorktreeCreate: Merger = (reads) => {
