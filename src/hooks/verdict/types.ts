@@ -96,6 +96,8 @@ export type BackgroundOutcome = 'completed' | 'cancelled' | 'timed-out' | 'faile
 export interface BackgroundDelivery {
   readonly handlerId: string;
   readonly outcome: BackgroundOutcome;
+  /** A completed command's exit code: a host consumes a `once` hook only after success. */
+  readonly exitCode?: number;
   /** `additionalContext` of the JSON response, for the next turn. */
   readonly additionalContext?: string;
   /** `systemMessage` of the JSON response, for Claude on the next turn. */

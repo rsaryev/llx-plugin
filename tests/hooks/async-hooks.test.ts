@@ -226,6 +226,7 @@ spec(['hooks.behavior.How async hooks execute', 'hooks.behavior.Limitations'], (
     expect(await outcome.background[0]).toEqual({
       handlerId: expect.any(String),
       outcome: 'completed',
+      exitCode: 0,
     });
   });
 
@@ -237,6 +238,7 @@ spec(['hooks.behavior.How async hooks execute', 'hooks.behavior.Limitations'], (
     expect(await outcome.background[0]).toEqual({
       handlerId: expect.any(String),
       outcome: 'completed',
+      exitCode: 0,
     });
     expect(outcome.proceed).toBe(true);
     expect(outcome.continue).toBe(true);
@@ -271,4 +273,17 @@ spec(['hooks.behavior.How async hooks execute', 'hooks.behavior.Limitations'], (
     runner.finish(0, { exitCode: 1, stderr: 'warning' });
     expect(await outcome.background[0]).not.toHaveProperty('wake');
   });
+});
+
+// hooks.md, Common fields: `once` is consumed by the first successful run, not a failed background
+// command. The exit code lets a host distinguish these deliveries, all of which are `completed`.
+spec('hooks.handler.common.once', () => {
+  test.each([0, 1, 2])(
+    'the completed background delivery carries exit code %s',
+    async (exitCode) => {
+      const { runner, outcome } = await dispatch();
+      runner.finish(0, { exitCode });
+      expect(await outcome.background[0]).toMatchObject({ outcome: 'completed', exitCode });
+    },
+  );
 });

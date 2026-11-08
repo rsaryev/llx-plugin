@@ -22,6 +22,12 @@ const OUTCOMES: { readonly [K in ForegroundRun['kind']]: BackgroundOutcome } = {
   cancelled: 'cancelled',
 };
 
+/** Process metadata stays apart from the response fields a hook printed. */
+const completionOf = (run: ForegroundRun) => ({
+  outcome: OUTCOMES[run.kind],
+  ...('exitCode' in run ? { exitCode: run.exitCode } : {}),
+});
+
 export function deliveryOf(handlerId: string, result: BackgroundResult): BackgroundDelivery {
   const response = 'stdout' in result.run ? readAsyncResponse(result.run.stdout) : undefined;
   const specific =
@@ -35,7 +41,7 @@ export function deliveryOf(handlerId: string, result: BackgroundResult): Backgro
       : undefined;
   return {
     handlerId,
-    outcome: OUTCOMES[result.run.kind],
+    ...completionOf(result.run),
     ...(additionalContext === undefined ? {} : { additionalContext }),
     ...(systemMessage === undefined ? {} : { systemMessage }),
     ...(result.wake === undefined ? {} : { wake: result.wake }),

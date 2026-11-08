@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Background hook deliveries carry their command's exit code, so hosts can keep a failed `once`
+  hook registered instead of consuming it as a success.
 - Command hooks and `subprocessEnvironment` for Bash set `CLAUDE_EFFORT` to the session's effort level.
 - A `PermissionRequest` deny keeps its `interrupt` through the dispatch.
 

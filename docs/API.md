@@ -1424,6 +1424,9 @@ const late = await settleDeliveries(outcome.background); // { additionalContext,
 const { additionalContext, systemMessages, wake } = session.takeBackground();
 ```
 
+A background delivery includes the command's `exitCode` when it exited. A host uses
+`consumedByRun(entry, delivery.exitCode === 0)` to consume a skill's `once` hook only after success.
+
 `additionalContext` and `systemMessages` are for Claude on the next turn (hooks.md, "How async hooks
 execute"). `wake` is the stderr (stdout when empty) of an `asyncRewake` hook that exited 2: the host
 opens a turn with it, which is why it is apart from the context; several wakes join with a newline.

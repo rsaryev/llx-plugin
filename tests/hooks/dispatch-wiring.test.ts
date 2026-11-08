@@ -118,6 +118,7 @@ describe('the dispatch', () => {
     expect(await outcome.background[0]).toEqual({
       handlerId: hook.id,
       outcome: 'completed',
+      exitCode: 0,
       additionalContext: 'Tests passed',
     });
   });
@@ -139,6 +140,7 @@ describe('the dispatch', () => {
     expect(await outcome.background[0]).toEqual({
       handlerId: hook.id,
       outcome: 'completed',
+      exitCode: 2,
       wake: 'deploy failed',
     });
   });
