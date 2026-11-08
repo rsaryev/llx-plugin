@@ -4,6 +4,13 @@
 
 ### Added
 
+- Skills: `readSkill` reads a `SKILL.md` into a `Skill` (the shared `InvocableFrontmatter` of
+  skills and commands): `description` (else the first non-empty body line), `when_to_use`,
+  `argument-hint`, `arguments`, `disable-model-invocation`, `user-invocable`, `allowed-tools`,
+  `disallowed-tools`, `model`, `effort`, `context`, `agent`, `background`, `hooks` (through the
+  hooks reader), `paths`, `shell`, `metadata`, `license` and `compatibility`, with the documented
+  defaults; a YAML error loads the skill with its body and no fields, an unknown key is ignored.
+  `SKILL_FIELDS` and the `FIELD_READERS` registry, `ORIGIN_TRAITS`, `escapeAngleBrackets`.
 - Output styles: `readOutputStyle` (`name`, `description`, `keep-coding-instructions`,
   `force-for-plugin`, `<plugin>:<name>` ids, a YAML error loads the style under its file name),
   `resolveOutputStyle` (case-sensitive setting, case-insensitive `/output-style`, a forced plugin

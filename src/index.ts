@@ -56,3 +56,27 @@ export {
   type PromptKind,
   type StyleSelection,
 } from './skills/output-style-select.ts';
+export { readSkill, type SkillRead } from './format/skill.ts';
+export {
+  FIELD_READERS,
+  SKILL_FIELDS,
+  escapeAngleBrackets,
+  firstContentLine,
+  readInvocable,
+  readSkillFields,
+  type InvocableRead,
+  type SkillField,
+} from './format/skill-fields.ts';
+export type { FieldOutcome, FieldReader, SkillFieldValues } from './format/skill-field-readers.ts';
+export {
+  ORIGIN_TRAITS,
+  SKILL_SHELLS,
+  type Command,
+  type InvocableFrontmatter,
+  type OriginTraits,
+  type Skill,
+  type SkillLayout,
+  type SkillOrigin,
+  type SkillOriginKind,
+  type SkillShell,
+} from './format/skill-types.ts';

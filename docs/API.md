@@ -37,7 +37,7 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `readManifest(raw)`                 | done    | `plugin.json` as loaded: unknown keys stripped, any error blocks load |
 | `validateManifest(raw)`             | done    | plus the validator: reserved names, kebab-case, missing metadata      |
 | `readMarketplace(raw)`              | planned | `marketplace.json`: entries, sources, strict mode                     |
-| `readSkill(path, text)`             | planned | `SKILL.md` frontmatter and body                                       |
+| `readSkill(path, text, layout)`     | done    | `SKILL.md` into a `Skill`: the 19 documented fields (defaults applied, a bad value dropped with a warning), the body, the folder; a YAML error loads the skill with no fields; the command name is minimal until `resolveSkillName` lands |
 | `readCommand(path, text)`           | planned | a command file (the older skill format)                               |
 | `readAgent(path, text)`             | planned | an agent file → official `AgentDefinition`                            |
 | `readHooksFile(raw)`                | done    | `hooks/hooks.json` → official `HooksSettings`: events, matcher groups, every handler field; an error leaves no hooks, as Claude Code does |
@@ -46,6 +46,28 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `readMcpConfig(raw)`                | planned | `.mcp.json` → official `McpServerConfig` map                          |
 | `readOutputStyle(path, text, { plugin? })` | done | an output style file: `name` (default the file name; `<plugin>:<name>` for a plugin), `description`, `keep-coding-instructions`, `force-for-plugin` (plugin styles only); a YAML error loads the style with no fields and a warning |
 | `readLspConfig(raw)`, `readMonitors(raw)` | planned | the remaining component files |
+
+### Skills (done: `format/skill*`, the field readers; planned: command name, commands, expansion)
+
+```ts
+import { readSkill } from '@rsaryev/claude-plugin-kit';
+
+const { skill, issues } = readSkill('skills/review/SKILL.md', text, {
+  origin: { kind: 'plugin', plugin: 'my-plugin' },
+  dirName: 'review',
+});
+skill.allowedTools; // ['Bash(git add *)', ...] as written: `${CLAUDE_*}` is substituted at expansion
+skill.userInvocable; // true unless `user-invocable: false`
+```
+
+`Skill` and `Command` share `InvocableFrontmatter`. Defaults are the documented ones
+(`disable-model-invocation` false, `user-invocable` true, `background` true, `shell` bash). The
+`description` falls back to the first non-empty body line. The model keeps `<` and `>` as written;
+`escapeAngleBrackets` is what a listing or menu shows. `allowedTools` rules are raw strings:
+parsing them is `rules`' (layer 3), and substitution is the expansion's. `SKILL_FIELDS` is the
+closed list of documented keys, `FIELD_READERS` the reader of each; any other key is ignored
+without an issue. Whatever a host does with a field (forking, the model override, matching
+`paths`) is decided by the runtime functions that read the same `Skill`.
 
 ### Output styles (done: `format/output-style`, `skills/output-style-select`)
 
