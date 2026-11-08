@@ -30,6 +30,7 @@ export {
   type ParsedPluginId,
   type PluginId,
 } from './plugin-id.ts';
+export { suggestionMarketplaces, type RegisteredMarketplaces } from './suggestions.ts';
 export { syncDecision, type SyncDecision } from './sync-plugins.ts';
 export { TRUST_MESSAGE_JOINER, trustWarning } from './trust-warning.ts';
 export { createPluginSettingsPolicy, type PluginSettingsPolicy } from './policy.ts';

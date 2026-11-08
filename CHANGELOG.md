@@ -124,6 +124,16 @@
   object; an entry carries the flag it came from, and the development flag skips the list for its own
   entries only, a bare `server:<name>` included, never for a closed gate, and only in an interactive
   session).
+- Customization lock and the composed policy (`settings/customization`, `settings/resolve`):
+  `createCustomizationPolicy(view, context)` reads `strictPluginOnlyCustomization` (`true` locks all
+  four kinds, an array the kinds it names, an unreadable value `true`, an unknown name locks nothing
+  and is counted) and answers `loads(surface, origin)` for skills, agents, hooks and MCP servers from
+  the origins each sub-key entry lists, `skillsDirPlugins()` (stopped by a lock on any kind or the
+  marketplace lists), `skillAllowedToolsPreapproved(skill)` and the documented `claude mcp add`
+  refusal. `suggestionMarketplaces(view, registered)` answers `pluginSuggestionMarketplaces` (managed
+  only, registered, source declared in the same managed settings, the official name alone).
+  `resolvePolicy({ layers, context })` and `PolicyContext` compose every area over one view and feed
+  the customization lock into the hook policy.
 
 ### Fixed
 

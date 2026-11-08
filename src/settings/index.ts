@@ -1,4 +1,5 @@
 /** Settings layers and the policy keys, pure over data (docs/API.md, "Settings"). */
+export type { PolicyContext } from './context.ts';
 export { mergeHooks } from './hooks-policy.ts';
 export { KEY_SPECS, SCOPE_RULES, admits, type KeySpec, type ScopeRule } from './key-spec.ts';
 export {
@@ -14,3 +15,9 @@ export { readSettingsLayer } from './read-layer.ts';
 export { REPAIR_KINDS, type RepairKind } from './repair.ts';
 export { loadSettingsLayers, type SettingsSources } from './sources.ts';
 export { createPolicyView, type PolicyView } from './view.ts';
+export {
+  resolvePolicy,
+  type MarketplaceSettingsPolicy,
+  type ResolveInput,
+  type ResolvedPolicy,
+} from './resolve.ts';

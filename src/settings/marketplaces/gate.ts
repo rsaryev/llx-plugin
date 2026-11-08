@@ -5,7 +5,7 @@
  * refreshed, auto-updated or loaded, and why.
  */
 import type { MarketplaceSource } from '../../protocol/official.ts';
-import { PLUGIN_ONLY_SURFACES } from '../../protocol/settings-keys.ts';
+import { readSurfaceLocks } from '../customization/surfaces.ts';
 import type { PolicyView } from '../view.ts';
 import { matchMarketplaceSource, type ListKind } from './match-source.ts';
 import { byKind, type ByKind, type SourceKind } from './source-kinds.ts';
@@ -129,12 +129,6 @@ const needsGithubTip = (
 ): boolean =>
   IS_SHORTHAND[source.source] && entries.some((entry) => ADMITS_BY_HOSTNAME[entry.source]);
 
-/** `strictPluginOnlyCustomization` is `true` or names at least one kind of customization. */
-const locksCustomization = (value: unknown): boolean =>
-  value === true ||
-  (Array.isArray(value) &&
-    value.some((surface) => PLUGIN_ONLY_SURFACES.some((known) => known === surface)));
-
 const blockedMessage = (source: MarketplaceSource): string =>
   `Marketplace source '${label(source)}' ${BLOCKED_BY_POLICY}`;
 
@@ -195,7 +189,7 @@ export function createMarketplaceGate(view: PolicyView): MarketplaceGate {
     skillsDirectoryPlugins() {
       if (namesSkillsDir(blocked())) return { admitted: false, by: 'blockedMarketplaces' };
       // Applies "whether or not the entry is present" (plugins/org.md, "Keep skills-directory plugins loading").
-      if (locksCustomization(view.get('strictPluginOnlyCustomization')))
+      if (readSurfaceLocks(view.get('strictPluginOnlyCustomization')).locked.size > 0)
         return { admitted: false, by: 'strictPluginOnlyCustomization' };
       const allowlist = strict();
       return allowlist === undefined || namesSkillsDir(allowlist)
