@@ -96,16 +96,37 @@ async function walkOne(
 }
 
 /**
- * A file reached by two locations loads once, under the name its first location gave it (oracle
- * 2.1.319): a folder listed in the manifest that is also inside the default `skills/` folder. Inline
+ * Where a found file really lives: a link inside the plugin counts as its target (`realPath`, relative
+ * to the folder), so `agents/a.agent.md -> a.md` or `skills/alias -> real` is the same file as its
+ * target; a skill is its folder. Inline commands have no path.
+ */
+async function realKey(
+  file: DiscoveredFile,
+  context: DiscoverContext,
+): Promise<string | undefined> {
+  const path = file.directory ?? file.path;
+  if (path === undefined) return undefined;
+  const stat = await context.files.stat(path, context.signal);
+  return stat?.isSymlink === true && stat.realPath !== undefined ? stat.realPath : path;
+}
+
+/**
+ * A file reached twice loads once, under the name its first location gave it (oracle 2.1.319): a
+ * folder listed in the manifest that is also inside the default `skills/` folder, or a link inside the
+ * plugin to another file of the same component (tests/fixtures/runtime/symlinked-duplicates). Inline
  * commands have no path and all stay.
  */
-function firstOfEach(found: readonly DiscoveredFile[]): DiscoveredFile[] {
+async function firstOfEach(
+  found: readonly DiscoveredFile[],
+  context: DiscoverContext,
+): Promise<DiscoveredFile[]> {
+  const keys = await Promise.all(found.map((file) => realKey(file, context)));
   const seen = new Set<string>();
-  return found.filter((file) => {
-    if (file.path === undefined) return true;
-    const first = !seen.has(file.path);
-    seen.add(file.path);
+  return found.filter((_, index) => {
+    const key = keys[index];
+    if (key === undefined) return true;
+    const first = !seen.has(key);
+    seen.add(key);
     return first;
   });
 }
@@ -139,7 +160,10 @@ export async function discoverListed(
     order.map((path) => walkOne(kind, path, written.get(path), context)),
   );
   return {
-    found: firstOfEach(walked.flatMap((one) => one.found)),
+    found: await firstOfEach(
+      walked.flatMap((one) => one.found),
+      context,
+    ),
     issues: [...defaults.issues, ...warnings, ...walked.flatMap((one) => one.issues)],
   };
 }

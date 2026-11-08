@@ -16,5 +16,11 @@
       "kit": "default",
       "row": "init.output_style is the outputStyle setting, not the style in force"
     }
+  },
+  "symlinked-duplicates": {
+    "skills": {
+      "kit": ["symlinked-duplicates:alias"],
+      "row": "a linked skill folder registers once; the menu names it by the link, init.skills by the target folder"
+    }
   }
 }

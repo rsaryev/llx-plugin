@@ -226,3 +226,35 @@ describe('a skill folder named by a manifest path', () => {
     expect(namesOf(plugin?.skills ?? [])).toEqual(['child']);
   });
 });
+
+describe('a file reached twice through a link inside the plugin loads once (oracle 2.1.319)', () => {
+  // tests/fixtures/runtime/symlinked-duplicates: `agents/judge.agent.md -> judge.md` registers one
+  // agent, `commands/y.md -> x.md` one command, `skills/alias -> real` one skill.
+  const linked = {
+    '.claude-plugin/plugin.json': '{ "name": "plug" }',
+    'agents/judge.md': '---\nname: judge\ndescription: a\n---\nJudge.\n',
+    'agents/judge.agent.md': { symlink: 'judge.md' },
+    'commands/x.md': '---\ndescription: c\n---\nRun x.\n',
+    'commands/y.md': { symlink: 'x.md' },
+  } as const;
+
+  // A linked skill folder is covered by the runtime fixture only: memoryFiles does not follow paths
+  // below a linked directory.
+  test('agents and commands keep the first name in folder order', async () => {
+    const { plugin } = await loadPlugin({ files: memoryFiles(linked), fallbackName: 'plug' });
+    expect(plugin?.agents.map((file) => file.name)).toEqual(['judge']);
+    expect(plugin?.commands.map((file) => file.name)).toEqual(['x']);
+  });
+
+  test('two real files with the same content both load', async () => {
+    const { plugin } = await loadPlugin({
+      files: memoryFiles({
+        '.claude-plugin/plugin.json': '{ "name": "plug" }',
+        'commands/x.md': 'Same.\n',
+        'commands/y.md': 'Same.\n',
+      }),
+      fallbackName: 'plug',
+    });
+    expect(plugin?.commands.map((file) => file.name)).toEqual(['x', 'y']);
+  });
+});

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- A link inside a plugin to another agent, command or skill folder of the same plugin registers it once, as Claude Code does (runtime fixture `symlinked-duplicates`).
+
 ### Added
 
 - `bun run oracle:runtime`: what a Claude Code session registers from a plugin (`init` event of
