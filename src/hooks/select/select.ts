@@ -14,6 +14,7 @@ import { firesForTool, supportsHandlerType } from './event-catalog.ts';
 import { dedupeSettingsHandlers } from './dedupe.ts';
 import { passesGates } from './gates.ts';
 import { guardWithIf, type IfEvaluator } from './if-guard.ts';
+import { lacksMcpClient, noMcpClientMessage } from './mcp-client.ts';
 import { matcherSelects } from './matcher.ts';
 import { targetOf } from './matcher-targets.ts';
 
@@ -40,7 +41,8 @@ const pathOf = (event: HookEvent, index: number): string => `hooks.${event}[${in
 
 /**
  * One handler against the event: its type is supported (an unsupported one "is skipped", reported
- * as a warning: spec/judgments.md), its matcher selects the occurrence, and its `if` lets it run.
+ * as a warning: spec/judgments.md), its matcher selects the occurrence, an `mcp_tool` one has an MCP
+ * client to call, and its `if` lets it run.
  */
 function judge<E extends HookEvent>(
   entry: RegisteredHandler,
@@ -56,6 +58,9 @@ function judge<E extends HookEvent>(
   }
   const matched = matcherSelects(event, facts, entry, modelCatalog);
   if (!matched.selects) return SKIPPED;
+  if (lacksMcpClient(event, facts, entry.handler.type)) {
+    return { selected: false, issues: [warning(path, noMcpClientMessage(event))] };
+  }
   const guard = guardWithIf(entry, { call, monitor: matched.monitor, evaluate: ifEvaluator }, path);
   return {
     selected: guard.runs,

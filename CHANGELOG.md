@@ -114,3 +114,12 @@
   evaluated on tool events only, Monitor commands matched by a `Bash` matcher, settings-handler
   dedupe, `disableAllHooks` with managed precedence, workspace and folder trust, plugin enablement,
   `once` for skill frontmatter, and the `FileChanged` watch list.
+- Hook selection (`hooks/select`): an `mcp_tool` hook on `Setup`, and on `SessionStart` at launch
+  (startup, resume, fork), is skipped and reported as a warning, because the MCP servers are not
+  available yet, and it runs after `/clear` or a compaction; an `if` of `Edit(src/**)` matches only
+  the `src` directory in the working directory (`Edit(**/src/**)` for any depth) instead of any
+  depth, and two rules joined with `&&` or `||` are reported as one rule that cannot match;
+  `allowManagedHooksOnly` and the `strictPluginOnlyCustomization` hooks lock gate handlers by
+  source (`allowManagedHooksOnly`, `forceEnabledPlugins` and `pluginOnlyHooks` on the session); the
+  `FileChanged` watch list (`fileChangedWatchList(entries, session)`) skips handlers that cannot
+  run; the session's `effort` takes the SDK type.

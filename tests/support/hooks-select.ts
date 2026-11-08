@@ -55,6 +55,7 @@ export function entry(
     readonly matcher?: string;
     readonly handler?: HookHandler;
     readonly source?: HookSource;
+    readonly pluginId?: string;
   } = {},
 ): RegisteredHandler {
   counter += 1;
@@ -64,6 +65,7 @@ export function entry(
     ...(options.matcher === undefined ? {} : { matcher: options.matcher }),
     handler: options.handler ?? command(),
     source: options.source ?? settingsSource,
+    ...(options.pluginId === undefined ? {} : { pluginId: options.pluginId }),
   };
 }
 

@@ -189,12 +189,12 @@ const { selected, issues, monitor } = selectHandlers(registry, {
 | Function                                   | Status  | Does                                                                         |
 | ------------------------------------------ | ------- | ---------------------------------------------------------------------------- |
 | `createHookRegistry(entries)`              | done    | an immutable registry: `entries`, `with`, `without`                          |
-| `selectHandlers(registry, request)`        | done    | the handlers an event runs, in registry order: event, gates, settings dedupe, handler type, matcher, `if`; `{ selected, issues, monitor }` |
+| `selectHandlers(registry, request)`        | done    | the handlers an event runs, in registry order: event, gates (`disableAllHooks`, trust, plugin enablement, `allowManagedHooksOnly`, the plugin-only lock), settings dedupe, handler type, matcher, MCP client for `mcp_tool` (none on `Setup` or `SessionStart` at launch), `if`; `{ selected, issues, monitor }` |
 | `EVENT_CATALOG`, `supportsHandlerType`, `eventsSupporting`, `firesForTool` | done | per event: cadence, the handler types it supports, the tools whose calls never fire it (`EndConversation` on `PreToolUse` and `PostToolUse`) |
 | `MATCHER_TARGETS`, `MATCHER_VALUES`        | done    | per event, the input field its matcher filters on (or none: the matcher is ignored, `FileChanged` and `StopFailure` read in the narrow grammar), and the documented values, tied to the SDK unions |
 | `canonicalMatcherModel(toModel, catalog)`  | done    | the canonical name a model-switch matcher is tested against, `[1m]` stripped; none means every hook runs |
 | `ifEvaluatorFor(context)`                  | done    | an `if` reader over `evaluateIf`; a handler with `if` never runs on a non-tool event |
-| `fileChangedWatchList(entries)`            | done    | the literal file names a `FileChanged` matcher registers to watch            |
+| `fileChangedWatchList(entries, session)`   | done    | the literal file names the `FileChanged` matchers of handlers that can run register to watch |
 | `consumedByRun(entry, succeeded)`          | done    | whether `once: true` removes the handler: skill frontmatter and a successful run only |
 | `buildHookInput`, `runHandler`, `interpretRun`, `parseHookOutput`, `mergeOutputs`, `createHookEngine` | planned | the input of each event, the five handler types, exit codes and `onFailure`, the JSON output, the merged outcome |
 

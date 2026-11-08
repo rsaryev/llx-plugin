@@ -5,7 +5,7 @@
  * ignored in settings files and agent frontmatter"; § Hooks in skills and agents ("To have Claude
  * Code remove a hook after its first successful run instead, set `once: true`").
  */
-import { expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { consumedByRun } from '../../../src/hooks/select/once.ts';
 import { spec } from '../../support/spec.ts';
 import {
@@ -41,8 +41,11 @@ spec('hooks.handler.common.once', () => {
     expect(consumedByRun(declared(settingsSource), true)).toBe(false);
     expect(consumedByRun(declared(agentSource), true)).toBe(false);
   });
+});
 
-  test('a plugin hooks file is neither a skill nor honors it', () => {
+describe('judgment: no other source honors once', () => {
+  test('a plugin hooks file and a session registration keep the hook after a successful run', () => {
     expect(consumedByRun(declared(pluginSource()), true)).toBe(false);
+    expect(consumedByRun(declared({ kind: 'session', label: '[session]' }), true)).toBe(false);
   });
 });

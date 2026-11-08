@@ -74,7 +74,8 @@ const ifIssue = (issue: PluginIssue): PluginIssue => ({
 /**
  * Whether a hook handler with this `if` runs for this tool call (hooks.md, "Common fields"): the
  * rule is read as permission rule syntax and matches the way a deny or ask rule does, any
- * subcommand being enough. A rule the kit cannot read runs the handler and reports why: the `if`
+ * subcommand being enough, except that a single-directory path pattern keeps the depth of an allow
+ * rule (`depthOf`). A rule the kit cannot read runs the handler and reports why: the `if`
  * filter is best effort (spec/judgments.md). Which events evaluate `if` is the hooks engine's.
  */
 export function evaluateIf(
@@ -91,6 +92,8 @@ export function evaluateIf(
     toolName: name,
     input: toolInput,
   }));
-  const runs = calls.some((call) => matchRule(rule, call, ctx) || cannotTell(rule, call));
+  // hooks.md, "Common fields": a single-directory path pattern is not widened to every depth.
+  const reading: MatchContext = { ...ctx, depthOf: 'allow' };
+  const runs = calls.some((call) => matchRule(rule, call, reading) || cannotTell(rule, call));
   return { runs, issues };
 }

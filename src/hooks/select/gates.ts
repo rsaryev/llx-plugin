@@ -1,8 +1,10 @@
 import type { HookSession, HookSource, HookSourceKind, RegisteredHandler } from '../contracts.ts';
+import { passesLocks } from './lock-gates.ts';
 
 /**
  * What keeps a registered handler from running whatever the event says: `disableAllHooks`, workspace
- * trust and a plugin that is not enabled. Each is the docs' rule, applied to the handler's source.
+ * trust, a plugin that is not enabled and the two managed locks (`lock-gates.ts`). Each is the docs'
+ * rule, applied to the handler's source.
  */
 
 /**
@@ -46,4 +48,6 @@ const SOURCE_GATES: {
 
 /** Whether the handler may run in this session at all. */
 export const passesGates = (entry: RegisteredHandler, session: HookSession): boolean =>
-  hooksEnabled(entry.source, session) && SOURCE_GATES[entry.source.kind](entry.source, session);
+  hooksEnabled(entry.source, session) &&
+  SOURCE_GATES[entry.source.kind](entry.source, session) &&
+  passesLocks(entry, session);

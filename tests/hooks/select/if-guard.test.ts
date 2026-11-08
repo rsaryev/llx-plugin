@@ -34,6 +34,15 @@ const runsFor = (
     tool_input: input,
   }).selected.length === 1;
 
+const editRuns = (rule: string, path: string): boolean =>
+  runsFor('PostToolUse', rule, 'Edit', { file_path: path });
+
+const joinedRules = (rule: string, input: unknown) =>
+  select([entry('PreToolUse', { handler: withIf(rule) })], 'PreToolUse', {
+    ...FACTS.PreToolUse,
+    tool_input: input,
+  });
+
 spec('hooks.handler.common.if', () => {
   test('`Bash(rm *)` runs for `rm -rf /tmp/build` and not for `npm test`', () => {
     for (const event of TOOL_EVENTS) {
@@ -55,6 +64,18 @@ spec('hooks.handler.common.if', () => {
     expect(runsFor('PostToolUse', 'Edit(*.ts)', 'Edit', { file_path: '/work/app/a.md' })).toBe(
       false,
     );
+  });
+
+  test('`Edit(src/**)` matches only the `src` directory in the working directory, not a nested one', () => {
+    expect(editRuns('Edit(src/**)', '/work/app/src/a.ts')).toBe(true);
+    expect(editRuns('Edit(src/**)', '/work/app/src/deep/a.ts')).toBe(true);
+    expect(editRuns('Edit(src/**)', '/work/app/lib/src/a.ts')).toBe(false);
+  });
+
+  test('`Edit(**/src/**)` matches a directory named `src` at any depth', () => {
+    expect(editRuns('Edit(**/src/**)', '/work/app/src/a.ts')).toBe(true);
+    expect(editRuns('Edit(**/src/**)', '/work/app/lib/src/a.ts')).toBe(true);
+    expect(editRuns('Edit(**/src/**)', '/work/app/lib/other/a.ts')).toBe(false);
   });
 
   test('a rule for another tool does not run for this call', () => {
@@ -88,6 +109,25 @@ spec('hooks.handler.common.if', () => {
       true,
     );
     expect(runsFor('PreToolUse', 'Bash(rm *)', 'Bash', { command: 'echo $(date)' })).toBe(false);
+  });
+});
+
+describe('judgment: `if` holds exactly one rule', () => {
+  test('`&&` and `||` do not combine rules: the text is one rule that matches nothing, and a warning says so', () => {
+    for (const rule of ['Bash(rm *) && Bash(git *)', 'Bash(rm *) || Bash(git *)']) {
+      for (const cmd of ['npm test', 'rm -rf /tmp/build', 'git push']) {
+        const result = joinedRules(rule, { command: cmd });
+        expect(result.selected).toEqual([]);
+        expect(result.issues).toEqual([
+          expect.objectContaining({ severity: 'warning', path: 'hooks.PreToolUse[0].if' }),
+        ]);
+      }
+    }
+  });
+
+  test('a single rule, even one with parentheses in its pattern, reports nothing', () => {
+    expect(joinedRules('Bash(rm *)', { command: 'rm x' }).issues).toEqual([]);
+    expect(joinedRules('Bash(echo (a))', { command: 'echo (a)' }).issues).toEqual([]);
   });
 });
 

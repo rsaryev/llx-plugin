@@ -3,7 +3,8 @@
  * (settings-file hooks wait for the trust dialog; `-p` and SDK sessions count as trusted), § Hooks in
  * skills and agents (a project skill follows the settings rule; a project subagent needs the dialog
  * for the folder itself, which `-p` never satisfies; user-level agents are exempt) and § Hook
- * locations (a plugin's hooks "when plugin is enabled"). No requirement id covers these rules, so
+ * locations (a plugin's hooks "when plugin is enabled", `allowManagedHooksOnly`) and § Limits on skill
+ * hooks (the `strictPluginOnlyCustomization` hooks lock). No requirement id covers these rules, so
  * the tests sit outside `spec(...)`; how the host names the states is a row in spec/judgments.md.
  */
 import { describe, expect, test } from 'bun:test';
@@ -85,6 +86,76 @@ describe('plugin enablement', () => {
 
   test('without a list the registry is taken to hold enabled plugins only', () => {
     expect(ran(pluginSource('other'))).toBe(true);
+  });
+});
+
+const withId = (source: HookSource, pluginId?: string) =>
+  entry('PreToolUse', { source, ...(pluginId === undefined ? {} : { pluginId }) });
+
+describe('allowManagedHooksOnly', () => {
+  const locked = session({
+    allowManagedHooksOnly: true,
+    forceEnabledPlugins: new Set(['formatter@acme-tools']),
+  });
+  const selects = (registered: ReturnType<typeof entry>) =>
+    select([registered], 'PreToolUse', FACTS.PreToolUse, { session: locked }).selected.length === 1;
+
+  test('user, project and local settings hooks, other plugins and agent frontmatter are blocked', () => {
+    expect(selects(withId(settingsSource))).toBe(false);
+    expect(selects(withId(projectSettings))).toBe(false);
+    expect(selects(withId(pluginSource('other'), 'other@acme-tools'))).toBe(false);
+    expect(selects(withId(agentSource))).toBe(false);
+    expect(selects(withId({ ...agentSource, managed: true }))).toBe(false);
+  });
+
+  test('managed hooks, the SDK hooks and force-enabled plugin hooks run', () => {
+    expect(selects(withId(managedSettings))).toBe(true);
+    expect(selects(withId({ kind: 'session', label: '[session]' }))).toBe(true);
+    expect(selects(withId(pluginSource('formatter'), 'formatter@acme-tools'))).toBe(true);
+  });
+
+  test('a plugin of the same name from another marketplace stays blocked', () => {
+    expect(selects(withId(pluginSource('formatter'), 'formatter@other-market'))).toBe(false);
+  });
+
+  test('without the setting, nothing of this applies', () => {
+    expect(ran(settingsSource)).toBe(true);
+    expect(ran(pluginSource('other'))).toBe(true);
+  });
+});
+
+describe('strictPluginOnlyCustomization locks hooks', () => {
+  const locked = session({ pluginOnlyHooks: true });
+
+  test('hooks from user, project and local settings stop; managed settings keep running', () => {
+    for (const scope of ['user', 'project', 'local'] as const) {
+      expect(ran({ ...settingsSource, scope }, locked)).toBe(false);
+    }
+    expect(ran(managedSettings, locked)).toBe(true);
+  });
+
+  test('plugin hooks and the SDK hooks keep running', () => {
+    expect(ran(pluginSource(), locked)).toBe(true);
+    expect(ran({ kind: 'session', label: '[session]' }, locked)).toBe(true);
+  });
+
+  test('user and project skill and agent frontmatter hooks stop', () => {
+    expect(ran(skillSource, locked)).toBe(false);
+    expect(ran({ ...skillSource, scope: 'user' }, locked)).toBe(false);
+    expect(ran({ ...agentSource, scope: 'user' }, locked)).toBe(false);
+  });
+
+  test('a plugin skill, a managed skill and a bundled skill keep their frontmatter hooks', () => {
+    expect(
+      ran({ kind: 'skill', label: '[skill]', scope: 'project', pluginName: 'p' }, locked),
+    ).toBe(true);
+    expect(ran({ ...skillSource, managed: true }, locked)).toBe(true);
+    expect(ran({ kind: 'skill', label: '[skill]' }, locked)).toBe(true);
+  });
+
+  test('without the lock, the same hooks run', () => {
+    expect(ran(settingsSource)).toBe(true);
+    expect(ran(skillSource)).toBe(true);
   });
 });
 

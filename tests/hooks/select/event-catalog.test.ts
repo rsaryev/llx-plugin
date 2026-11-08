@@ -58,6 +58,16 @@ function documentedTypes(event: HookEvent): readonly HookHandlerType[] {
   return ['command', 'mcp_tool']; // SessionStart and Setup
 }
 
+/** The events whose `mcp_tool` hooks are skipped at launch (sample facts: `SessionStart` is a startup). */
+const NO_MCP_AT_LAUNCH: readonly HookEvent[] = ['SessionStart', 'Setup'];
+const MCP_TOOL: readonly HookHandlerType[] = ['mcp_tool'];
+
+/** What an event runs when it fires with the sample facts, which are at launch. */
+const typesRunAtLaunch = (event: HookEvent): readonly HookHandlerType[] =>
+  NO_MCP_AT_LAUNCH.includes(event)
+    ? documentedTypes(event).filter((type) => !MCP_TOOL.includes(type))
+    : documentedTypes(event);
+
 /** One handler of every type under `event`, each with its own id. */
 const onePerType = (event: HookEvent) =>
   HOOK_HANDLER_TYPES.map((type) => ({
@@ -85,7 +95,7 @@ for (const event of HOOK_EVENTS) {
         FACTS[event],
       );
       const ran = all.filter((each) => result.selected.includes(each.registered));
-      expect(ran.map((each) => each.type)).toEqual([...documentedTypes(event)]);
+      expect(ran.map((each) => each.type)).toEqual([...typesRunAtLaunch(event)]);
       expect(result.issues).toHaveLength(HOOK_HANDLER_TYPES.length - ran.length);
     });
   });
@@ -115,6 +125,56 @@ spec(['hooks.event.PreToolUse', 'hooks.event.PostToolUse'], () => {
     const registered = entry('PreToolUse');
     const facts = { ...FACTS.PreToolUse, tool_name: 'Bash' };
     expect(select([registered], 'PreToolUse', facts).selected).toEqual([registered]);
+  });
+});
+
+const mcpHandler = (event: HookEvent) => entry(event, { handler: HANDLERS.mcp_tool });
+
+spec(['hooks.event.SessionStart', 'hooks.event.Setup'], () => {
+  test('an mcp_tool hook on Setup is always skipped, for either trigger, and the skip is reported', () => {
+    for (const trigger of ['init', 'maintenance'] as const) {
+      const registered = mcpHandler('Setup');
+      const result = select([registered], 'Setup', { trigger });
+      expect(result.selected).toEqual([]);
+      expect(result.issues).toEqual([
+        {
+          severity: 'warning',
+          path: 'hooks.Setup[0]',
+          message:
+            "mcp_tool hooks are not available for the 'Setup' hook event (no MCP client context) and are skipped",
+        },
+      ]);
+    }
+  });
+
+  test('an mcp_tool hook on SessionStart is skipped at launch, with --continue, --resume or a fork', () => {
+    for (const source of ['startup', 'resume', 'fork'] as const) {
+      const registered = mcpHandler('SessionStart');
+      const result = select([registered], 'SessionStart', { source });
+      expect(result.selected).toEqual([]);
+      expect(result.issues).toHaveLength(1);
+    }
+  });
+
+  test('an mcp_tool hook on SessionStart runs after /clear or a compaction', () => {
+    for (const source of ['clear', 'compact'] as const) {
+      const registered = mcpHandler('SessionStart');
+      const result = select([registered], 'SessionStart', { source });
+      expect(result.selected).toEqual([registered]);
+      expect(result.issues).toEqual([]);
+    }
+  });
+
+  test('a command hook beside the skipped mcp_tool hook still runs at launch', () => {
+    const skipped = mcpHandler('SessionStart');
+    const kept = entry('SessionStart');
+    const result = select([skipped, kept], 'SessionStart', FACTS.SessionStart);
+    expect(result.selected).toEqual([kept]);
+  });
+
+  test('an mcp_tool hook on another event is not affected', () => {
+    const registered = mcpHandler('SessionEnd');
+    expect(select([registered], 'SessionEnd', FACTS.SessionEnd).selected).toEqual([registered]);
   });
 });
 

@@ -139,7 +139,8 @@ describe('FileChanged filters on the changed file basename, and builds the watch
   test('a hyphen, space or comma keeps the matcher on the regular-expression path: only `|` separates', () => {
     expect(changed('data.csv, notes.txt', '/work/app/notes.txt')).toBe(false);
     expect(changed('data.csv|notes.txt', '/work/app/notes.txt')).toBe(true);
-    expect(changed('my-file', '/work/app/my-file')).toBe(true);
+    // `my-fil` is no exact name of `my-file`: it matches only as an unanchored regular expression.
+    expect(changed('my-fil', '/work/app/my-file')).toBe(true);
   });
 });
 
@@ -168,6 +169,8 @@ describe('SubagentStart and SubagentStop match the agent type', () => {
     const runs = (matcher: string) =>
       select([entry('SubagentStart', { matcher })], 'SubagentStart', facts).selected.length === 1;
     expect(runs('^my-plugin:reviewer$')).toBe(true);
+    // The colon is outside the exact set, so `my-plugin:review` is a regular expression, tested unanchored.
+    expect(runs('my-plugin:review')).toBe(true);
     expect(runs('^reviewer$')).toBe(false);
     expect(runs('reviewer')).toBe(false);
   });

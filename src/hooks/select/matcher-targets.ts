@@ -24,6 +24,11 @@ interface Target<Facts> {
   readonly valueOf: (facts: Facts, context: TargetContext) => MatcherValue;
   /** The tool call a tool event carries, which a handler's `if` is evaluated against. */
   readonly call?: (facts: Facts) => ToolCallView;
+  /**
+   * Whether the session's MCP servers are available to the event's hooks; absent means they are
+   * (hooks.md, "Events that fire before MCP servers are available").
+   */
+  readonly mcpAvailable?: (facts: Facts) => boolean;
 }
 
 export type MatcherTarget<E extends HookEvent> = Target<EventFactsOf<E>>;
@@ -63,14 +68,37 @@ const MODEL: Target<{ readonly to_model: string }> = {
   },
 };
 
+/**
+ * `SessionStart` "at launch, including with `--continue` or `--resume`" fires before the MCP servers
+ * are available; "after `/clear` or a compaction" they are. A fork (`--fork-session`) is a launch.
+ */
+const MCP_AT_SOURCE: { readonly [S in EventFactsOf<'SessionStart'>['source']]: boolean } = {
+  startup: false,
+  resume: false,
+  fork: false,
+  clear: true,
+  compact: true,
+};
+
+const SESSION_START: Target<{ readonly source: EventFactsOf<'SessionStart'>['source'] }> = {
+  ...byField((facts: { readonly source: string }) => facts.source),
+  mcpAvailable: (facts) => MCP_AT_SOURCE[facts.source],
+};
+
+/** "every `Setup` event" fires before the MCP servers are available. */
+const SETUP: Target<{ readonly trigger: string }> = {
+  ...byField((facts: { readonly trigger: string }) => facts.trigger),
+  mcpAvailable: () => false,
+};
+
 export const MATCHER_TARGETS: { readonly [E in HookEvent]: MatcherTarget<E> } = {
   PreToolUse: TOOL,
   PostToolUse: TOOL,
   PostToolUseFailure: TOOL,
   PermissionRequest: TOOL,
   PermissionDenied: TOOL,
-  SessionStart: byField((facts: { readonly source: string }) => facts.source),
-  Setup: byField((facts: { readonly trigger: string }) => facts.trigger),
+  SessionStart: SESSION_START,
+  Setup: SETUP,
   SessionEnd: byField((facts: { readonly reason: string }) => facts.reason),
   Notification: byField((facts: { readonly notification_type: string }) => facts.notification_type),
   SubagentStart: byField((facts: { readonly agent_type: string }) => facts.agent_type),

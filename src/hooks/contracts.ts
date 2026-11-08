@@ -75,7 +75,7 @@ export interface HookSession {
   readonly transcriptPath: string;
   readonly cwd: string;
   readonly permissionMode?: PermissionMode;
-  readonly effort?: { readonly level: string };
+  readonly effort?: BaseHookInput['effort'];
   readonly promptId?: string;
   readonly scratchpadDir?: string;
   readonly agent?: { readonly id?: string; readonly type?: string };
@@ -98,6 +98,23 @@ export interface HookSession {
   readonly disableAllHooks: { readonly effective: boolean; readonly managedLocked: boolean };
   /** The plugins that are enabled; absent means the registry holds only enabled plugins' hooks. */
   readonly enabledPlugins?: ReadonlySet<string>;
+  /**
+   * `allowManagedHooksOnly` is set in managed settings: only managed hooks, the SDK's own and
+   * those of plugins force-enabled in managed `enabledPlugins` run (hooks.md, "Hook locations").
+   */
+  readonly allowManagedHooksOnly?: boolean;
+  /**
+   * The full `plugin@marketplace` ids force-enabled in managed `enabledPlugins`, which stay exempt
+   * under `allowManagedHooksOnly`; a plugin of the same name from another marketplace does not.
+   */
+  readonly forceEnabledPlugins?: ReadonlySet<string>;
+  /**
+   * `strictPluginOnlyCustomization` locks the `hooks` surface (`true`, or an array naming
+   * `"hooks"`): user, project and local settings hooks and the frontmatter hooks of user and
+   * project skills and agents stop (hooks.md, "Hook locations" and "Limits on skill hooks").
+   */
+  readonly pluginOnlyHooks?: boolean;
+  /** The host's MCP clients are connected: what the run stage needs to call an `mcp_tool` hook. */
   readonly mcpAvailable: boolean;
   readonly userConfig?: Readonly<Record<string, string>>;
 }

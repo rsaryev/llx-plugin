@@ -2,21 +2,17 @@
  * hooks.md § Common fields (`type`: "command", "http", "mcp_tool", "prompt", or "agent") and
  * § Prompt-based hooks ("Not all events support every hook type"; `PermissionRequest`: "If you
  * configure an agent hook on this event, Claude Code skips it and the permission flow proceeds
- * unchanged"). The per-event table is proven under each `hooks.event.<Event>`; here the five types
- * are shown to be the ones a registry can hold and to be told apart when an event skips one.
+ * unchanged"). The per-event table is proven under each `hooks.event.<Event>`; here each of the five
+ * types is shown to run where it is supported and to be told apart when an event skips one.
  */
 import { describe, expect, test } from 'bun:test';
-import { eventsSupporting, supportsHandlerType } from '../../../src/hooks/select/event-catalog.ts';
+import { eventsSupporting } from '../../../src/hooks/select/event-catalog.ts';
 import { HOOK_EVENTS } from '../../../src/protocol/hook-events.ts';
 import { HOOK_HANDLER_TYPES } from '../../../src/protocol/hook-config.ts';
 import { spec } from '../../support/spec.ts';
 import { entry, FACTS, HANDLERS, select } from '../../support/hooks-select.ts';
 
 spec('hooks.handler.common.type', () => {
-  test('the five types are command, http, mcp_tool, prompt and agent', () => {
-    expect([...HOOK_HANDLER_TYPES]).toEqual(['command', 'http', 'mcp_tool', 'prompt', 'agent']);
-  });
-
   test('each type runs on PreToolUse, where all five are supported', () => {
     for (const type of HOOK_HANDLER_TYPES) {
       const registered = entry('PreToolUse', { handler: HANDLERS[type] });
@@ -38,10 +34,11 @@ spec('hooks.handler.common.type', () => {
     }
   });
 
-  test('SessionStart and Setup run only command and mcp_tool hooks', () => {
+  test('SessionStart and Setup run only a command hook at launch: the other four types are skipped', () => {
     for (const event of ['SessionStart', 'Setup'] as const) {
-      const ran = HOOK_HANDLER_TYPES.filter((type) => supportsHandlerType(event, type));
-      expect(ran).toEqual(['command', 'mcp_tool']);
+      const all = HOOK_HANDLER_TYPES.map((type) => entry(event, { handler: HANDLERS[type] }));
+      const ran = select(all, event, FACTS[event]).selected.map((each) => each.handler.type);
+      expect(ran).toEqual(['command']);
     }
   });
 });

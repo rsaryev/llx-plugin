@@ -26,6 +26,25 @@ export interface GuardSubject {
 
 const RUNS: GuardResult = { runs: true, issues: [] };
 
+/** A `)` followed by `&&` or `||` and another rule: the shape of two rules joined by an operator. */
+const JOINED_RULES = /\)\s*(?:&&|\|\|)\s*[A-Za-z_*]/;
+
+/**
+ * hooks.md, "Common fields": "The `if` field holds exactly one permission rule. There is no `&&`,
+ * `||`, or list syntax for combining rules". Parentheses inside a rule's content are literal, so
+ * `Bash(rm *) && Bash(git *)` reads as one `Bash` rule that matches almost nothing. Judgment
+ * (spec/judgments.md): the rule is still read as one, and a warning says why it never fires.
+ */
+const joinedRulesIssues = (rule: string, path: string): readonly PluginIssue[] =>
+  JOINED_RULES.test(rule)
+    ? [
+        warning(
+          `${path}.if`,
+          'The `if` field holds exactly one permission rule; `&&` and `||` do not combine rules, so this text is read as a single rule. Use a separate hook handler for each rule',
+        ),
+      ]
+    : [];
+
 /**
  * hooks.md, "Common fields": `if` is "only evaluated on tool events ... On other events, a hook with
  * `if` set never runs". On a tool event the rule is read as permission rule syntax; a call the rule
@@ -57,6 +76,9 @@ export function guardWithIf(
   const result = evaluate(rule, toolName, call.toolInput);
   return {
     runs: result.runs,
-    issues: result.issues.map((issue) => ({ ...issue, path: `${path}.if` })),
+    issues: [
+      ...joinedRulesIssues(rule, path),
+      ...result.issues.map((issue) => ({ ...issue, path: `${path}.if` })),
+    ],
   };
 }

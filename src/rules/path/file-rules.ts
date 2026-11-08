@@ -76,6 +76,8 @@ interface Scope {
   /** `!` rules from the same source listed after the rule (`negation.ts`). */
   readonly carveOuts: readonly PathSpecifier[];
   readonly directory: boolean;
+  /** Whose depth rule widens a single-directory pattern: the context's, else the rule's own. */
+  readonly depthOf: PermissionBehavior;
 }
 
 function matchesPath(scope: Scope, path: string): boolean {
@@ -90,7 +92,7 @@ function matchesPath(scope: Scope, path: string): boolean {
   const relative = relativeWithin(root, path);
   if (relative === undefined) return false;
   // A `../` pattern names two directories, so the one-directory depth rule does not apply to it.
-  const deep = underCwd ? DEPTH[rule.behavior](pattern) : pattern;
+  const deep = underCwd ? DEPTH[scope.depthOf](pattern) : pattern;
   const entries: GlobEntry[] = [{ pattern: deep, negated: false }];
   if (underCwd) {
     for (const carve of scope.carveOuts) {
@@ -120,6 +122,7 @@ export function matchPathRule(
     paths: ctx.paths,
     carveOuts,
     directory: searchesDirectory(call.toolName),
+    depthOf: ctx.depthOf ?? rule.behavior,
   };
   return COMBINE[rule.behavior](forms, (form) => matchesPath(scope, form));
 }
