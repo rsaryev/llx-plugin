@@ -111,7 +111,13 @@ export const admits = (key: SettingsKey, scope: PolicyScope, value: unknown): bo
   scopeCarries(scope, key) && ADMITS[SPECS[key].scopes](scope, value);
 
 export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
+  allowAllClaudeAiMcps: { scopes: 'managed', merge: MERGES.highestWins, repair: 'boolean' },
   allowManagedHooksOnly: { scopes: 'managed', merge: MERGES.highestWins, repair: 'lockBoolean' },
+  allowManagedMcpServersOnly: {
+    scopes: 'managed',
+    merge: MERGES.highestWins,
+    repair: 'lockBoolean',
+  },
   allowedChannelPlugins: {
     scopes: 'managed',
     merge: MERGES.highestWins,
@@ -122,13 +128,22 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     merge: MERGES.unionArrays,
     repair: 'closedStringList',
   },
+  allowedMcpServers: { scopes: 'anyAndParent', merge: MERGES.unionArrays, repair: 'mcpAllowlist' },
+  allowedProviders: {
+    scopes: 'managedAndParent',
+    merge: MERGES.highestWins,
+    repair: 'providerAllowlist',
+  },
   appendPlugins: { scopes: 'userOrManaged', merge: MERGES.highestWins, repair: 'stringList' },
+  availableModelsMatch: { scopes: 'managed', merge: MERGES.highestWins, repair: 'matchMode' },
   blockedMarketplaces: {
     scopes: 'managedAndParent',
     merge: MERGES.unionArrays,
     repair: 'blockedSources',
   },
   channelsEnabled: { scopes: 'managed', merge: MERGES.highestWins, repair: 'boolean' },
+  deniedMcpServers: { scopes: 'anyAndParent', merge: MERGES.unionArrays, repair: 'mcpDenylist' },
+  deniedModels: { scopes: 'managed', merge: MERGES.highestWins, repair: 'modelDenylist' },
   disableAllHooks: { scopes: 'anyAndParent', merge: MERGES.highestWins, repair: 'hooksSwitch' },
   disableBundledSkills: { scopes: 'any', merge: MERGES.highestWins, repair: 'lockBoolean' },
   disableCommandPluginSources: {
@@ -136,6 +151,7 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     merge: MERGES.highestWins,
     repair: 'lockBoolean',
   },
+  disableSideloadFlags: { scopes: 'managed', merge: MERGES.highestWins, repair: 'lockBoolean' },
   disableSkillShellExecution: {
     scopes: 'anyAndParent',
     merge: MERGES.highestWins,
@@ -149,12 +165,22 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     merge: MERGES.perKeyHighestWins,
     repair: 'marketplaceMap',
   },
+  forceLoginOrgUUID: { scopes: 'anyAndParent', merge: MERGES.highestWins, repair: 'orgUuid' },
+  forceRemoteSettingsRefresh: { scopes: 'managed', merge: MERGES.highestWins, repair: 'boolean' },
+  gatewayInternalNetworks: {
+    scopes: 'managed',
+    merge: MERGES.highestWins,
+    repair: 'gatewayNetworks',
+  },
   hooks: { scopes: 'any', merge: MERGES.hookGroups, repair: 'hooks' },
   httpHookAllowedEnvVars: {
     scopes: 'anyAndEmptyListFromParent',
     merge: MERGES.unionArrays,
     repair: 'closedStringList',
   },
+  managedMcpServers: { scopes: 'managed', merge: MERGES.perKeyHighestWins, repair: 'record' },
+  managedSourcesBehavior: { scopes: 'managed', merge: MERGES.highestWins, repair: 'asWritten' },
+  parentSettingsBehavior: { scopes: 'managed', merge: MERGES.highestWins, repair: 'asWritten' },
   pluginConfigs: { scopes: 'userOrManaged', merge: MERGES.perKeyHighestWins, repair: 'record' },
   pluginSuggestionMarketplaces: {
     scopes: 'managed',
@@ -162,6 +188,7 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     repair: 'stringList',
   },
   pluginTrustMessage: { scopes: 'managed', merge: MERGES.highestWins, repair: 'string' },
+  policyHelper: { scopes: 'managed', merge: MERGES.highestWins, repair: 'asWritten' },
   prependPlugins: { scopes: 'userOrManaged', merge: MERGES.highestWins, repair: 'stringList' },
   skillOverrides: { scopes: 'any', merge: MERGES.perKeyHighestWins, repair: 'skillOverrides' },
   strictKnownMarketplaces: {
@@ -188,6 +215,7 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
   },
   workflowKeywordTriggerEnabled: { scopes: 'any', merge: MERGES.highestWins, repair: 'boolean' },
   workflowSizeGuideline: { scopes: 'any', merge: MERGES.highestWins, repair: 'workflowSize' },
+  wslInheritsWindowsSettings: { scopes: 'managed', merge: MERGES.highestWins, repair: 'asWritten' },
 };
 
 /** Every key the layers combine by name, with the row that says how. */

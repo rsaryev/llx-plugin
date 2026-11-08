@@ -1,4 +1,5 @@
 import type { Settings } from '../../protocol/official.ts';
+import type { PolicyLayer } from '../layers.ts';
 
 /**
  * Which managed source supplies the login keys (managed-settings.md, "Which managed source supplies
@@ -46,3 +47,25 @@ export const withoutLoginKeys = (settings: Settings): Settings =>
   Object.fromEntries(
     Object.entries(settings).filter(([name]) => !LOGIN_KEYS.some((key) => key === name)),
   );
+
+/**
+ * `/login` refuses every new cloud gateway sign-in on the machine while the highest managed source on
+ * it carries `gatewayInternalNetworks` with a value that cannot be read (managed-settings.md, "Keys
+ * that fail closed"): no value says that, so the managed layer records the key as invalid.
+ */
+export const gatewaySignInRefused = (layer: PolicyLayer): boolean =>
+  layer.invalid?.includes('gatewayInternalNetworks') === true;
+
+/**
+ * The managed tier as a layer: the login keys the highest machine source carried unreadable are
+ * recorded as invalid (`PolicyLayer.invalid`), since only that source supplies them.
+ */
+export function managedLayer(
+  settings: Settings,
+  machine: { readonly invalid: readonly string[] } | undefined,
+): PolicyLayer {
+  const invalid = (machine?.invalid ?? []).filter((name) => LOGIN_KEYS.some((key) => key === name));
+  return invalid.length === 0
+    ? { scope: 'managed', settings }
+    : { scope: 'managed', settings, invalid };
+}

@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Added
+
+- Managed-only and fail-closed key classes (managed-settings.md, "Keys only a managed source can
+  set", "Keys that fail closed", "Invalid values inside `sandbox`"). Sixteen more keys have rows
+  (`allowedMcpServers`, `allowedProviders`, `availableModelsMatch`, `deniedModels`,
+  `forceLoginOrgUUID`, `gatewayInternalNetworks`, `disableSideloadFlags` and the control keys among
+  them); a managed-only key in a user, project, local or `--settings` file is dropped with a warning.
+  In the policy tier an unreadable value reads as the table's fallback: an empty allowlist for the
+  MCP, provider, model, channel, marketplace and hook lists, `exact` for `availableModelsMatch`,
+  `refuse` for `crossSessionInbound`, no organization for `forceLoginOrgUUID`, `true` for a lock; a
+  `sandbox` block is repaired field by field and `sandbox.credentials` entry by entry; `permissions`
+  and `autoMode` withhold their grants while a deny list cannot be read (`gatewaySignInRefused`,
+  `PolicyLayer.invalid`). An unrecognized `crossSessionInbound` in a user, project, local or
+  `--settings` file holds inbound messages even under a source that says `accept`, with the warning
+  of errors.md. New `sideloadVerdict` and `addPluginsRefusal` for `disableSideloadFlags`. A `null`
+  removes a general key as it removes a policy key.
+
 ### Fixed
 
 - Managed sources, review of the composition findings. An unreadable source now carries the

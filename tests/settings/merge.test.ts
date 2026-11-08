@@ -37,7 +37,9 @@ describe('the table of keys', () => {
     const merging = POLICY_KEYS.filter((key) => KEY_SPECS[key].merge.kind === 'unionArrays');
     expect(merging.toSorted()).toEqual([
       'allowedHttpHookUrls',
+      'allowedMcpServers',
       'blockedMarketplaces',
+      'deniedMcpServers',
       'httpHookAllowedEnvVars',
     ]);
   });

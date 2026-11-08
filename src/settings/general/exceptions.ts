@@ -17,6 +17,13 @@ export interface ManagedException<V> {
    * value "that isn't stricter is ignored").
    */
   readonly onlyWhenStricter: readonly PolicyScope[];
+  /**
+   * What a value of this key that no rung can stand for does when a source of `from` carries it: it
+   * counts as `floor` whatever precedence says, so a higher source cannot undo it
+   * (settings-reference.md, `crossSessionInbound`: an unrecognized value holds messages "even when a
+   * source that takes precedence sets `accept`").
+   */
+  readonly unreadable?: { readonly floor: V; readonly from: readonly PolicyScope[] };
 }
 
 /** The scopes a key set in "Any file" may come from. */

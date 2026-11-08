@@ -36,9 +36,18 @@ export {
   type FileShape,
   type ManagedFileRead,
 } from './drop-in.ts';
-export { LOGIN_KEYS, type LoginKey } from './login-keys.ts';
+export { LOGIN_KEYS, gatewaySignInRefused, type LoginKey } from './login-keys.ts';
 export { composeManagedReads, readManagedDocuments, type ManagedReads } from './load.ts';
 export { parentSettingsOf, type ParentOutcome } from './parent.ts';
+export {
+  SIDELOAD_FLAGS,
+  addPluginsRefusal,
+  sideloadVerdict,
+  type ConfiguredServer,
+  type SideloadFacts,
+  type SideloadFlag,
+  type SideloadVerdict,
+} from './sideload.ts';
 export { wslChain, type WslChain, type WslDocuments } from './wsl-chain.ts';
 export {
   HELPER_DEFAULT_TIMEOUT_MS,

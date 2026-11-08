@@ -12,30 +12,46 @@ type DeclaredSettingsKey = keyof {
 /**
  * The top-level settings keys the kit resolves as policy: every key of the settings index
  * (settings-reference.md, "Settings index") that plugins, hooks, skills, workflows and channels
- * depend on, in alphabetical order. The four `strictPluginOnlyCustomization.*` ids are surfaces
+ * depend on, and the managed-only and fail-closed keys of managed-settings.md ("Keys only a
+ * managed source can set", "Keys that fail closed"), in alphabetical order. The four `strictPluginOnlyCustomization.*` ids are surfaces
  * of the one key, not keys. Each name must be a key the official `Settings` declares, which the
  * `satisfies` checks at compile time.
  */
 export const POLICY_KEYS = [
+  'allowAllClaudeAiMcps',
   'allowManagedHooksOnly',
+  'allowManagedMcpServersOnly',
   'allowedChannelPlugins',
   'allowedHttpHookUrls',
+  'allowedMcpServers',
+  'allowedProviders',
   'appendPlugins',
+  'availableModelsMatch',
   'blockedMarketplaces',
   'channelsEnabled',
+  'deniedMcpServers',
+  'deniedModels',
   'disableAllHooks',
   'disableBundledSkills',
   'disableCommandPluginSources',
+  'disableSideloadFlags',
   'disableSkillShellExecution',
   'disableWorkflows',
   'enableWorkflows',
   'enabledPlugins',
   'extraKnownMarketplaces',
+  'forceLoginOrgUUID',
+  'forceRemoteSettingsRefresh',
+  'gatewayInternalNetworks',
   'hooks',
   'httpHookAllowedEnvVars',
+  'managedMcpServers',
+  'managedSourcesBehavior',
+  'parentSettingsBehavior',
   'pluginConfigs',
   'pluginSuggestionMarketplaces',
   'pluginTrustMessage',
+  'policyHelper',
   'prependPlugins',
   'skillOverrides',
   'strictKnownMarketplaces',
@@ -44,6 +60,7 @@ export const POLICY_KEYS = [
   'syncClaudeAiSkills',
   'workflowKeywordTriggerEnabled',
   'workflowSizeGuideline',
+  'wslInheritsWindowsSettings',
 ] as const satisfies readonly DeclaredSettingsKey[];
 
 export type PolicyKey = (typeof POLICY_KEYS)[number];
@@ -125,4 +142,41 @@ export type WorkflowSizesMatchSdk = Assert<
 /** @public Drift guard: the source kinds are exactly the SDK's. */
 export type MarketplaceSourceKindsMatchSdk = Assert<
   Equal<(typeof MARKETPLACE_SOURCE_KINDS)[number], SdkMarketplaceSource['source']>
+>;
+
+/** The services `allowedProviders` names (settings-reference.md, `allowedProviders`). */
+export const API_PROVIDERS = [
+  'anthropic',
+  'customEndpoint',
+  'bedrock',
+  'vertex',
+  'foundry',
+  'anthropicAws',
+  'mantle',
+  'gateway',
+] as const satisfies readonly ApiProvider[];
+
+type ApiProvider = NonNullable<Settings['allowedProviders']>[number];
+
+/** The values of `availableModelsMatch` (settings-reference.md, `availableModelsMatch`). */
+export const MODEL_MATCH_MODES = ['prefix', 'exact'] as const satisfies readonly NonNullable<
+  Settings['availableModelsMatch']
+>[];
+
+/** The values of `crossSessionInbound` from the least to the most strict (settings-reference.md, `crossSessionInbound`). */
+export const CROSS_SESSION_MODES = [
+  'accept',
+  'hold',
+  'refuse',
+] as const satisfies readonly NonNullable<Settings['crossSessionInbound']>[];
+
+/** @public Drift guard: the providers are exactly the SDK's. */
+export type ApiProvidersMatchSdk = Assert<Equal<(typeof API_PROVIDERS)[number], ApiProvider>>;
+/** @public Drift guard: the match modes are exactly the SDK's. */
+export type ModelMatchModesMatchSdk = Assert<
+  Equal<(typeof MODEL_MATCH_MODES)[number], NonNullable<Settings['availableModelsMatch']>>
+>;
+/** @public Drift guard: the cross-session modes are exactly the SDK's. */
+export type CrossSessionModesMatchSdk = Assert<
+  Equal<(typeof CROSS_SESSION_MODES)[number], NonNullable<Settings['crossSessionInbound']>>
 >;

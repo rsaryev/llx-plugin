@@ -11,7 +11,7 @@ import {
 } from './admin-source.ts';
 import { combineSources } from './combine.ts';
 import { notInForce, withCrossSourceKeys, type InForceNote } from './cross-source.ts';
-import { loginKeysOf, withoutLoginKeys } from './login-keys.ts';
+import { loginKeysOf, managedLayer, withoutLoginKeys } from './login-keys.ts';
 import { readPolicyHelper, type PolicyHelper } from './policy-helper.ts';
 
 /**
@@ -237,7 +237,10 @@ export function composeManaged(
   const skipped = [...delivering, ...selection.hkcu].filter((document) => !used.includes(document));
   const adminSettings = delivering.map((document) => document.settings);
   return {
-    layer: { scope: 'managed', settings },
+    layer: managedLayer(
+      settings,
+      delivering.find((document) => !isRemote(document)),
+    ),
     behavior,
     used: used.map((document) => document.source),
     skipped: skipped.map((document) => document.source),

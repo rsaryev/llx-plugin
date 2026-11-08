@@ -105,6 +105,8 @@ export interface AdminDocument {
   readonly settings: Settings;
   /** The parsed object before repair, for the control keys and the presence rule. */
   readonly raw: Readonly<Record<string, unknown>>;
+  /** The keys the document carries with a value no repair could keep (`PolicyLayer.invalid`). */
+  readonly invalid: readonly string[];
   /** "A document is present when it sets any policy key to a value other than null", or exists and cannot be read. */
   readonly present: boolean;
   /** It carries at least one policy key, so it can be the policy. */
@@ -132,6 +134,7 @@ const absent = (source: ManagedSource, extra: Partial<AdminDocument> = {}): Admi
   source,
   settings: {},
   raw: {},
+  invalid: [],
   present: false,
   delivers: false,
   broken: false,
@@ -194,6 +197,7 @@ export function readAdminDocument(
     ...absent(source),
     settings: layer.layer.settings,
     raw: parsed.object,
+    invalid: layer.layer.invalid ?? [],
     present: delivers,
     delivers,
     issues: layer.issues,

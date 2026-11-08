@@ -35,6 +35,13 @@ export const SCOPE_RANK: { readonly [S in PolicyScope]: number } = {
 export interface PolicyLayer {
   readonly scope: PolicyScope;
   readonly settings: Settings;
+  /**
+   * The keys this source carried with a value Claude Code could not read and no value can stand for:
+   * a repair removed them from `settings`, and the restrictive effect the docs give them is read
+   * from here (managed-settings.md, "Keys that fail closed"; settings-reference.md,
+   * `crossSessionInbound`). Absent when every key was readable.
+   */
+  readonly invalid?: readonly string[];
 }
 
 /** The layers, highest precedence first; two layers of one scope keep the order they were given. */

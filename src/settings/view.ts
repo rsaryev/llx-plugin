@@ -31,6 +31,7 @@ const MANAGED_TIER: readonly string[] = ['managed', 'parent'];
 function combine<K extends SettingsKey>(
   key: K,
   holders: readonly KeyHolder<K>[],
+  floors: readonly ValueOf<K>[],
 ): ValueOf<K> | undefined {
   const spec = SPECS[key];
   const managed = holders.filter((holder) => MANAGED_TIER.includes(holder.scope));
@@ -43,7 +44,16 @@ function combine<K extends SettingsKey>(
     byPrecedence.length === 0 ? undefined : spec.merge.combine(valuesOf(byPrecedence));
   if (!exception) return winning;
   const honored = counted.filter((holder) => exception.honoredFrom.includes(holder.scope));
-  return honorException(exception, winning, valuesOf(honored));
+  return honorException(exception, winning, [...valuesOf(honored), ...floors]);
+}
+
+/** The floors the layers' unreadable values of `key` set (`ManagedException.unreadable`). */
+function floorsOf<K extends SettingsKey>(layers: readonly PolicyLayer[], key: K): ValueOf<K>[] {
+  const rule = SPECS[key].exception?.unreadable;
+  if (rule === undefined) return [];
+  return layers.flatMap((layer) =>
+    layer.invalid?.includes(key) === true && rule.from.includes(layer.scope) ? [rule.floor] : [],
+  );
 }
 
 const valuesOf = <K extends SettingsKey>(holders: readonly KeyHolder<K>[]) =>
@@ -54,7 +64,10 @@ export function createPolicyView(layers: readonly PolicyLayer[]): PolicyView {
     layers: orderedLayers(layers),
     get: (key) => {
       const holders = holdersOf(layers, key);
-      return holders.length === 0 ? undefined : combine(key, holders);
+      const floors = floorsOf(layers, key);
+      return holders.length === 0 && floors.length === 0
+        ? undefined
+        : combine(key, holders, floors);
     },
     winner: (key) => holdersOf(layers, key)[0],
     eachFromHighest: (key) => holdersOf(layers, key),

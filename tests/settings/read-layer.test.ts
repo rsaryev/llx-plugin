@@ -17,6 +17,22 @@ import { issuesOf, layerOf, plain } from '../support/settings-layers.ts';
 
 /** A valid value for each key: one the key's repair keeps as it is. */
 const VALID: Readonly<Record<PolicyKey, unknown>> = {
+  allowAllClaudeAiMcps: true,
+  allowManagedMcpServersOnly: true,
+  allowedMcpServers: [{ serverName: 'search' }],
+  allowedProviders: ['bedrock'],
+  availableModelsMatch: 'exact',
+  deniedMcpServers: [{ serverUrl: 'https://evil.example/*' }],
+  deniedModels: ['opus'],
+  disableSideloadFlags: true,
+  forceLoginOrgUUID: '11111111-1111-4111-8111-111111111111',
+  forceRemoteSettingsRefresh: true,
+  gatewayInternalNetworks: ['203.0.113.0/24'],
+  managedMcpServers: { search: { type: 'http', url: 'https://mcp.example.com' } },
+  managedSourcesBehavior: 'merge',
+  parentSettingsBehavior: 'merge',
+  policyHelper: { path: '/opt/policy-helper' },
+  wslInheritsWindowsSettings: true,
   allowManagedHooksOnly: true,
   allowedChannelPlugins: [{ marketplace: 'claude-plugins-official', plugin: 'telegram' }],
   allowedHttpHookUrls: ['https://hooks.example.com/*'],
@@ -51,6 +67,9 @@ const FILES: readonly PolicyScope[] = ['managed', 'flag', 'local', 'project', 'u
 /** The files each key's **Scope** line allows, copied by hand from settings-reference.md. */
 const ANY: readonly PolicyKey[] = [
   'allowedHttpHookUrls',
+  'allowedMcpServers',
+  'deniedMcpServers',
+  'forceLoginOrgUUID',
   'disableAllHooks',
   'disableBundledSkills',
   'disableSkillShellExecution',
@@ -65,6 +84,19 @@ const ANY: readonly PolicyKey[] = [
   'workflowSizeGuideline',
 ];
 const MANAGED: readonly PolicyKey[] = [
+  'allowAllClaudeAiMcps',
+  'allowManagedMcpServersOnly',
+  'allowedProviders',
+  'availableModelsMatch',
+  'deniedModels',
+  'disableSideloadFlags',
+  'forceRemoteSettingsRefresh',
+  'gatewayInternalNetworks',
+  'managedMcpServers',
+  'managedSourcesBehavior',
+  'parentSettingsBehavior',
+  'policyHelper',
+  'wslInheritsWindowsSettings',
   'allowedChannelPlugins',
   'allowManagedHooksOnly',
   'blockedMarketplaces',
@@ -78,8 +110,15 @@ const MANAGED: readonly PolicyKey[] = [
 const USER_OR_MANAGED: readonly PolicyKey[] = ['appendPlugins', 'pluginConfigs', 'prependPlugins'];
 const USER_LOCAL_MANAGED_FLAG: readonly PolicyKey[] = ['syncClaudeAiPlugins', 'syncClaudeAiSkills'];
 
-/** Where a parent (the SDK `managedSettings`) is documented to pass a key. */
+/**
+ * Where a parent (the SDK `managedSettings`) is documented to pass a key: the gateway page's
+ * restrictive keys and the four managed-settings.md, "Let an embedding host add policy", checks.
+ */
 const PARENT_KEYS: readonly PolicyKey[] = [
+  'allowedMcpServers',
+  'allowedProviders',
+  'deniedMcpServers',
+  'forceLoginOrgUUID',
   'disableAllHooks',
   'disableSkillShellExecution',
   'strictKnownMarketplaces',

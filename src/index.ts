@@ -147,8 +147,11 @@ export {
 export * from './format/marketplace/index.ts';
 export * from './marketplace/index.ts';
 export {
+  API_PROVIDERS,
+  CROSS_SESSION_MODES,
   MARKETPLACE_KEY_ALIASES,
   MARKETPLACE_SOURCE_KINDS,
+  MODEL_MATCH_MODES,
   PLUGIN_ONLY_SURFACES,
   POLICY_KEYS,
   SKILL_OVERRIDE_STATES,

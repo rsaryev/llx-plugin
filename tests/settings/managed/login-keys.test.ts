@@ -41,7 +41,7 @@ spec('settingsMerge.managed.Which managed source supplies login keys', () => {
       remote: {
         model: 'a',
         forceLoginGatewayUrl: 'https://gateway.example',
-        gatewayInternalNetworks: ['10.0.0.0/8'],
+        gatewayInternalNetworks: ['203.0.113.0/24'],
         forceLoginMethod: 'gateway',
       },
       file: { forceLoginOrgUUID: ORG },
@@ -82,9 +82,9 @@ spec('settingsMerge.managed.Which managed source supplies login keys', () => {
   test('gatewayInternalNetworks from the machine applies while remote settings are present', () => {
     const settings = policyOf({
       remote: { model: 'a', gatewayInternalNetworks: ['192.168.0.0/16'] },
-      file: { gatewayInternalNetworks: ['10.0.0.0/8'] },
+      file: { gatewayInternalNetworks: ['203.0.113.0/24'] },
     });
-    expect(settings.gatewayInternalNetworks).toEqual(['10.0.0.0/8']);
+    expect(settings.gatewayInternalNetworks).toEqual(['203.0.113.0/24']);
   });
 
   describe('the highest-ranked machine source carrying a policy key supplies the gateway keys, whether or not remote settings are present', () => {
@@ -92,7 +92,7 @@ spec('settingsMerge.managed.Which managed source supplies login keys', () => {
       plist: { model: 'a', forceLoginGatewayUrl: 'https://mdm.example' },
       file: {
         forceLoginGatewayUrl: 'https://file.example',
-        gatewayInternalNetworks: ['10.0.0.0/8'],
+        gatewayInternalNetworks: ['203.0.113.0/24'],
         forceLoginMethod: 'gateway',
       },
     };
@@ -111,7 +111,7 @@ spec('settingsMerge.managed.Which managed source supplies login keys', () => {
       for (const held of [machine, { remote, ...machine }]) {
         const settings = policyOf({ ...held, plist: { ...MERGE } });
         expect(settings.forceLoginGatewayUrl).toBe('https://file.example');
-        expect(settings.gatewayInternalNetworks).toEqual(['10.0.0.0/8']);
+        expect(settings.gatewayInternalNetworks).toEqual(['203.0.113.0/24']);
         expect(settings.forceLoginMethod).toBe('gateway');
       }
     });

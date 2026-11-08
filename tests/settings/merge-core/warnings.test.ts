@@ -3,7 +3,7 @@
  * a malformed permission rule or an unknown hook event name. Claude Code skips those values and
  * keeps the rest of the file in effect"); errors.md § Malformed Tool(content) rule (`Invalid
  * permission rule "Bash(ls) x" was skipped: Malformed Tool(content) rule ...`),
- * § `"crossSessionInbound" must be one of "accept", "hold", "refuse"`.
+ * (the `crossSessionInbound` warning has its own text and tests: tests/settings/key-classes).
  */
 import { describe, expect, test } from 'bun:test';
 import { problemKind, type PolicyScope } from '../../../src/settings/index.ts';
@@ -75,18 +75,18 @@ spec('settingsMerge.settings.Fix a broken settings file.Settings Warning', () =>
 
     test('a value off its list is dropped with a message that lists the values, and a list that is no list is dropped', () => {
       const issues = issuesOf('project', {
-        crossSessionInbound: 'maybe',
+        maxEffortLevel: 'maybe',
         availableModels: 'opus',
         permissions: { allow: 'Bash(ls)', additionalDirectories: ['../a', 3] },
       });
       expect(issues.map((issue) => issue.path)).toEqual([
-        'project:crossSessionInbound',
+        'project:maxEffortLevel',
         'project:availableModels',
         'project:permissions.allow',
         'project:permissions.additionalDirectories[1]',
       ]);
       expect(issues[0]?.message).toBe(
-        '"crossSessionInbound" must be one of "accept", "hold", "refuse"; the key is ignored',
+        '"maxEffortLevel" must be one of "low", "medium", "high", "xhigh", "max"; the key is ignored',
       );
     });
 

@@ -10,6 +10,7 @@ import type { PolicyKey } from '../../protocol/settings-keys.ts';
  */
 export const GENERAL_KEYS = [
   'allowManagedPermissionRulesOnly',
+  'autoMode',
   'autoMode.classifyAllShell',
   'availableModels',
   'crossSessionInbound',
@@ -27,6 +28,8 @@ export const GENERAL_KEYS = [
   'permissions.defaultMode',
   'remoteControlAtStartup',
   'sandbox',
+  'sandbox.filesystem.allowManagedReadPathsOnly',
+  'sandbox.network.allowManagedDomainsOnly',
   'spinnerTipsEnabled',
   'useAutoModeDuringPlan',
 ] as const;
@@ -38,6 +41,7 @@ export type SettingsKey = PolicyKey | GeneralKey;
 /** The value type of each general key, from the official `Settings`, never declared again (`undefined` as `Settings` has it: the key is optional). */
 export interface GeneralValues {
   readonly allowManagedPermissionRulesOnly: Settings['allowManagedPermissionRulesOnly'];
+  readonly autoMode: Settings['autoMode'];
   readonly 'autoMode.classifyAllShell': NonNullable<Settings['autoMode']>['classifyAllShell'];
   readonly availableModels: Settings['availableModels'];
   readonly crossSessionInbound: Settings['crossSessionInbound'];
@@ -59,6 +63,12 @@ export interface GeneralValues {
   readonly 'permissions.defaultMode': NonNullable<Settings['permissions']>['defaultMode'];
   readonly remoteControlAtStartup: Settings['remoteControlAtStartup'];
   readonly sandbox: Settings['sandbox'];
+  readonly 'sandbox.filesystem.allowManagedReadPathsOnly': NonNullable<
+    NonNullable<Settings['sandbox']>['filesystem']
+  >['allowManagedReadPathsOnly'];
+  readonly 'sandbox.network.allowManagedDomainsOnly': NonNullable<
+    NonNullable<Settings['sandbox']>['network']
+  >['allowManagedDomainsOnly'];
   readonly spinnerTipsEnabled: Settings['spinnerTipsEnabled'];
   readonly useAutoModeDuringPlan: Settings['useAutoModeDuringPlan'];
 }

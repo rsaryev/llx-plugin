@@ -50,6 +50,8 @@ function canonicalEntries(raw: Readonly<Record<string, unknown>>): [string, unkn
 interface Read {
   readonly entry?: readonly [string, unknown] | undefined;
   readonly issues: readonly PluginIssue[];
+  /** The key was present and unreadable and no value stands for it (`PolicyLayer.invalid`). */
+  readonly invalid?: string | undefined;
 }
 
 function readPolicyKey(scope: PolicyScope, key: PolicyKey, value: unknown): Read {
@@ -65,6 +67,7 @@ function readPolicyKey(scope: PolicyScope, key: PolicyKey, value: unknown): Read
   return {
     entry: repaired.value === undefined ? undefined : [key, repaired.value],
     issues: repaired.issues,
+    invalid: repaired.invalid === true ? key : undefined,
   };
 }
 
@@ -88,12 +91,14 @@ function readGeneralKey(scope: PolicyScope, name: GeneralKey, value: unknown): R
   return {
     entry: checked.value === undefined ? undefined : [name, checked.value],
     issues: checked.found.map((found) => warning(`${scope}:${name}${found.at}`, found.message)),
+    invalid: checked.invalid === true ? name : undefined,
   };
 }
 
 function readEntry(scope: PolicyScope, name: string, value: unknown): Read {
   // A `null` removes the key (managed-settings.md, "Keys that fail closed").
-  if (isPolicyKey(name)) return value === null ? { issues: [] } : readPolicyKey(scope, name, value);
+  if ((isPolicyKey(name) || isGeneralKey(name)) && value === null) return { issues: [] };
+  if (isPolicyKey(name)) return readPolicyKey(scope, name, value);
   // settings.md, "Change a setting for one session": a global config key is not set from a file.
   if (GLOBAL_CONFIG_KEYS.includes(name)) {
     return dropNote(scope, name, 'is a global config key and applies only from ~/.claude.json');
@@ -117,5 +122,9 @@ export function readSettingsLayer(
   const entries = reads.flatMap((read) => (read.entry === undefined ? [] : [read.entry]));
   // `Object.fromEntries` defines own properties, so a JSON-parsed `__proto__` key stays a key.
   const settings: Settings = Object.fromEntries(entries);
-  return { layer: { scope, settings }, issues: reads.flatMap((read) => read.issues) };
+  const invalid = reads.flatMap((read) => (read.invalid === undefined ? [] : [read.invalid]));
+  return {
+    layer: invalid.length === 0 ? { scope, settings } : { scope, settings, invalid },
+    issues: reads.flatMap((read) => read.issues),
+  };
 }

@@ -60,6 +60,8 @@ const CROSS_SESSION: ManagedException<GeneralValues['crossSessionInbound']> = {
   ladder: ['accept', 'hold', 'refuse'],
   honoredFrom: ['project', 'local'],
   onlyWhenStricter: ['project', 'local'],
+  // An unrecognized value in a user, project, local or `--settings` file holds inbound messages.
+  unreadable: { floor: 'hold', from: ['flag', 'local', 'project', 'user'] },
 };
 
 /** `maxEffortLevel`: "When several scopes set a cap, the lowest applies"; `"max"` sets no cap. */
@@ -77,6 +79,8 @@ const LOWEST_CAP: ManagedException<GeneralValues['maxEffortLevel']> = {
  */
 export const GENERAL_SPECS: { readonly [K in GeneralKey]: ValueSpec<GeneralValues[K]> } = {
   allowManagedPermissionRulesOnly: { scopes: 'managed', merge: MERGES.highestWins },
+  // "User or managed" (settings-reference.md, `autoMode`); `classifyAllShell` is "read wherever `autoMode` is read".
+  autoMode: { scopes: 'userManagedFlag', merge: MERGES.deepMerge },
   'autoMode.classifyAllShell': nested<'autoMode.classifyAllShell'>(
     ['autoMode', 'classifyAllShell'],
     { scopes: 'userManagedFlag', merge: MERGES.highestWins, exception: CLASSIFY_ALL_SHELL },
@@ -139,6 +143,18 @@ export const GENERAL_SPECS: { readonly [K in GeneralKey]: ValueSpec<GeneralValue
     exception: REMOTE_CONTROL,
   },
   sandbox: { scopes: 'anyAndParent', merge: MERGES.deepMerge },
+  // "Only managed" locks (managed-settings.md, "Keys only a managed source can set").
+  'sandbox.filesystem.allowManagedReadPathsOnly':
+    nested<'sandbox.filesystem.allowManagedReadPathsOnly'>(
+      ['sandbox', 'filesystem', 'allowManagedReadPathsOnly'],
+      { scopes: 'managed', merge: MERGES.highestWins },
+      isBoolean,
+    ),
+  'sandbox.network.allowManagedDomainsOnly': nested<'sandbox.network.allowManagedDomainsOnly'>(
+    ['sandbox', 'network', 'allowManagedDomainsOnly'],
+    { scopes: 'managed', merge: MERGES.highestWins },
+    isBoolean,
+  ),
   spinnerTipsEnabled: { scopes: 'anyAndParent', merge: MERGES.highestWins },
   useAutoModeDuringPlan: {
     scopes: 'userLocalManagedFlag',

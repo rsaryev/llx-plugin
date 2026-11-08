@@ -1,12 +1,23 @@
 import { EFFORT_LEVELS } from '../../protocol/effort.ts';
+import { CROSS_SESSION_MODES } from '../../protocol/settings-keys.ts';
 import {
   splitRule,
   invalidRuleMessage,
   MALFORMED_RULE,
 } from '../../format/permission-rule-shape.ts';
 import { SCOPE_LABEL } from '../broken-file.ts';
-import type { PolicyScope } from '../layers.ts';
 import { isRecord } from '../record.ts';
+import {
+  closedFound,
+  drop,
+  entriesOf,
+  keep,
+  notText,
+  type Check,
+  type Checked,
+} from './check-support.ts';
+import { autoMode, failClosedPermissions } from './closed-blocks.ts';
+import { sandbox } from './sandbox-check.ts';
 import { envIgnored } from './env-ignored.ts';
 import type { GeneralKey } from './keys.ts';
 
@@ -15,37 +26,10 @@ import type { GeneralKey } from './keys.ts';
  * Warning: only individual entries fail, such as a malformed permission rule or an unknown hook
  * event name. Claude Code skips those values and keeps the rest of the file in effect", settings.md,
  * "Fix a broken settings file"). A value of the wrong type is dropped with a warning that names
- * the key; a malformed entry of a list is skipped on its own. The types are the SDK's `Settings`
- * (docs/ARCHITECTURE.md, E2): these guards only read them at run time.
+ * the key; a malformed entry of a list is skipped on its own. In the policy tier a key that fails
+ * closed reads as its restrictive value instead (managed-settings.md, "Keys that fail closed"). The
+ * types are the SDK's `Settings` (docs/ARCHITECTURE.md, E2): these guards only read them at run time.
  */
-export interface Found {
-  /** Where inside the key (`.allow[1]`); empty for the key itself. */
-  readonly at: string;
-  readonly message: string;
-}
-
-export interface Checked {
-  /** What stays of the value; `undefined` when the key is dropped. */
-  readonly value: unknown;
-  readonly found: readonly Found[];
-}
-
-interface Context {
-  readonly name: string;
-  readonly scope: PolicyScope;
-  /** The policy tier: an unreadable lock reads as its restrictive value. */
-  readonly closed: boolean;
-}
-
-type Check = (value: unknown, context: Context) => Checked;
-
-const keep = (value: unknown, found: readonly Found[] = []): Checked => ({ value, found });
-
-const drop = (name: string, expected: string): Checked => ({
-  value: undefined,
-  found: [{ at: '', message: `"${name}" must be ${expected}; the key is ignored` }],
-});
-
 const boolean: Check = (value, { name }) =>
   typeof value === 'boolean' ? keep(value) : drop(name, 'true or false');
 
@@ -55,12 +39,13 @@ const boolean: Check = (value, { name }) =>
  */
 const lock: Check = (value, context) => {
   if (typeof value === 'boolean' || !context.closed) return boolean(value, context);
-  return keep(true, [
-    {
-      at: '',
-      message: `"${context.name}" was present but invalid; Claude Code treats it as true`,
-    },
-  ]);
+  // "The string "true" or "false" reads as that Boolean, with a notice asking you to drop the quotes."
+  if (value === 'true' || value === 'false') {
+    return keep(value === 'true', [
+      { at: '', message: `"${context.name}" is the text "${value}": drop the quotes` },
+    ]);
+  }
+  return keep(true, [closedFound(context.name, 'it is treated as true')]);
 };
 
 const text: Check = (value, { name }) =>
@@ -76,28 +61,58 @@ const oneOf =
 const object: Check = (value, { name }) =>
   isRecord(value) ? keep(value) : drop(name, 'an object');
 
-/** The entries of a list that pass `valid`, and a note for each that does not. */
-function entriesOf(
-  list: readonly unknown[],
-  at: string,
-  valid: (entry: unknown) => string | undefined,
-): { readonly kept: readonly unknown[]; readonly found: readonly Found[] } {
-  const results = list.map((entry, index) => ({ entry, problem: valid(entry), index }));
-  return {
-    kept: results.flatMap((one) => (one.problem === undefined ? [one.entry] : [])),
-    found: results.flatMap((one) =>
-      one.problem === undefined ? [] : [{ at: `${at}[${one.index}]`, message: one.problem }],
-    ),
-  };
-}
-
-const notText = (name: string) => (entry: unknown) =>
-  typeof entry === 'string' ? undefined : `"${name}" entries must be strings; the entry is skipped`;
-
 const textList: Check = (value, { name }) => {
   if (!Array.isArray(value)) return drop(name, 'a list of strings');
   const read = entriesOf(value, '', notText(name));
   return keep(read.kept, read.found);
+};
+
+/**
+ * `availableModels`: unreadable in managed settings it is "an empty allowlist until fixed, so only
+ * the Default model is available"; a non-string entry is stripped and the rest enforced
+ * (managed-settings.md, "Keys that fail closed").
+ */
+const modelAllowlist: Check = (value, context) => {
+  if (Array.isArray(value) || !context.closed) return textList(value, context);
+  return keep(
+    [],
+    [closedFound(context.name, 'it is an empty allowlist: only the Default model is available')],
+  );
+};
+
+const isCrossSessionMode = (value: unknown): boolean =>
+  CROSS_SESSION_MODES.some((mode) => mode === value);
+
+/**
+ * `crossSessionInbound`: an unrecognized value is reported with the text of errors.md. In managed
+ * settings it reads as `refuse`; in a user, project, local or `--settings` file it holds inbound
+ * messages "even when a source that takes precedence sets `accept`", which the layer records
+ * (`PolicyLayer.invalid`, the `unreadable` floor of the key's exception).
+ */
+const crossSessionInbound: Check = (value, context) => {
+  if (isCrossSessionMode(value)) return keep(value);
+  const prefix = `"${context.name}" must be one of ${CROSS_SESSION_MODES.map((mode) => `"${mode}"`).join(', ')}; received ${JSON.stringify(value)}. This value was ignored; while it is present, `;
+  if (context.closed) {
+    return {
+      value: 'refuse',
+      found: [
+        {
+          at: '',
+          message: `${prefix}cross-session messages are turned away until an administrator fixes it.`,
+        },
+      ],
+    };
+  }
+  return {
+    value: undefined,
+    invalid: true,
+    found: [
+      {
+        at: '',
+        message: `${prefix}cross-session messages are held for your approval instead of being delivered. Set it to one of the values above.`,
+      },
+    ],
+  };
 };
 
 /** A rule of `permissions.allow`, `deny` or `ask`: a string of the shape `Tool` or `Tool(content)`. */
@@ -127,6 +142,11 @@ function checkedList(block: Readonly<Record<string, unknown>>, name: string) {
 /** `permissions`: the rule lists and `additionalDirectories` are read entry by entry, every other field stays as written. */
 const permissions: Check = (value, context) => {
   if (!isRecord(value)) return drop(context.name, 'an object');
+  const read = readPermissions(value);
+  return context.closed ? failClosedPermissions(value, read) : read;
+};
+
+function readPermissions(value: Readonly<Record<string, unknown>>): Checked {
   const lists = [...RULE_LISTS, 'additionalDirectories'].map((name) => ({
     name,
     ...checkedList(value, name),
@@ -137,7 +157,7 @@ const permissions: Check = (value, context) => {
     Object.fromEntries([...fields, ...kept]),
     lists.flatMap((one) => one.found),
   );
-};
+}
 
 /** `env`: a repository file loses the variables Claude Code ignores there, named, never their values. */
 const env: Check = (value, context) => {
@@ -162,8 +182,9 @@ const anyValue: Check = (value) => keep(value);
 export const GENERAL_CHECKS: { readonly [K in GeneralKey]: Check } = {
   allowManagedPermissionRulesOnly: lock,
   'autoMode.classifyAllShell': anyValue,
-  availableModels: textList,
-  crossSessionInbound: oneOf('accept', 'hold', 'refuse'),
+  autoMode,
+  availableModels: modelAllowlist,
+  crossSessionInbound,
   disableClaudeAiConnectors: boolean,
   enableArtifact: boolean,
   env,
@@ -177,7 +198,9 @@ export const GENERAL_CHECKS: { readonly [K in GeneralKey]: Check } = {
   'permissions.blockWritesOutsideWorkingDirectories': anyValue,
   'permissions.defaultMode': anyValue,
   remoteControlAtStartup: boolean,
-  sandbox: object,
+  sandbox,
+  'sandbox.filesystem.allowManagedReadPathsOnly': anyValue,
+  'sandbox.network.allowManagedDomainsOnly': anyValue,
   spinnerTipsEnabled: boolean,
   useAutoModeDuringPlan: boolean,
 };

@@ -5,6 +5,16 @@ import {
   stringList,
   strictSources,
 } from './repair-lists.ts';
+import {
+  asWritten,
+  gatewayNetworks,
+  matchMode,
+  mcpAllowlist,
+  mcpDenylist,
+  modelDenylist,
+  orgUuid,
+  providerAllowlist,
+} from './repair-closed.ts';
 import { hooks } from './repair-hooks.ts';
 import type { Repair } from './repair-support.ts';
 import {
@@ -43,6 +53,14 @@ export const REPAIR_KINDS = [
   'workflowSize',
   'pluginOnly',
   'hooks',
+  'asWritten',
+  'mcpAllowlist',
+  'mcpDenylist',
+  'providerAllowlist',
+  'matchMode',
+  'modelDenylist',
+  'orgUuid',
+  'gatewayNetworks',
 ] as const;
 export type RepairKind = (typeof REPAIR_KINDS)[number];
 
@@ -63,4 +81,12 @@ export const REPAIRS: { readonly [R in RepairKind]: Repair } = {
   workflowSize,
   pluginOnly,
   hooks,
+  asWritten,
+  mcpAllowlist,
+  mcpDenylist,
+  providerAllowlist,
+  matchMode,
+  modelDenylist,
+  orgUuid,
+  gatewayNetworks,
 };
