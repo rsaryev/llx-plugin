@@ -43,7 +43,7 @@ export function readSkill(path: string, text: string, layout: SkillLayout): Skil
     ...resolved.issues.map((found) => ({
       severity: found.severity,
       path,
-      message: `${found.path} ${found.message}`,
+      message: found.message,
     })),
   );
   const { name, command } = resolved;

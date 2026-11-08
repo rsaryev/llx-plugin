@@ -12,8 +12,9 @@ export interface SkillName {
   /** What the user types after `/`. */
   readonly command: string;
   /**
-   * `path` is the field the issue is about: `name` (the frontmatter) or `folder`. An error means
-   * the skill is refused and does not load; a warning means it loads.
+   * `path` is the field the issue is about: `name` (the frontmatter) or `folder`. A message is a
+   * whole sentence that already starts with the field (`folder name has ...`), so a host shows it
+   * as it is. An error means the skill is refused and does not load; a warning means it loads.
    */
   readonly issues: readonly PluginIssue[];
 }
@@ -61,21 +62,74 @@ interface Chosen {
   readonly issues: readonly PluginIssue[];
 }
 
-/** Outside a plugin the skill is refused when its folder name or its frontmatter `name` is. */
-function strict(dirName: string, declared: string | undefined): Chosen {
-  const issues: PluginIssue[] = [];
-  const checks = [
-    ['folder', 'folder name', dirName, 'rename the folder'],
-    ['name', 'name', declared, 'edit the name: line'],
-  ] as const;
-  for (const [path, label, text, fix] of checks) {
-    const found = text === undefined ? [] : refusedCharacters(text);
-    if (found.length > 0) {
-      issues.push(error(path, `${cannotHold(label, found)}; the skill is refused, ${fix}`));
-    }
-  }
-  return { name: declared ?? dirName, issues };
+const NAMESPACE = 'anthropic-skills';
+
+/** skills.md, "Names reserved for synced skills": `anthropic-skills` and `anthropic-skills:<name>`. */
+const reservedNamespace = (text: string): string | undefined =>
+  text === NAMESPACE || text.startsWith(`${NAMESPACE}:`) ? NAMESPACE : undefined;
+
+/** skills.md, "Choose where skills load": a folder named `synced`, "in any capitalization". */
+const reservedFolder = (text: string): string | undefined =>
+  text.toLowerCase() === 'synced' ? 'synced' : undefined;
+
+interface Field {
+  /** The issue's `path`, and the first word of its message. */
+  readonly path: 'folder' | 'name';
+  readonly label: string;
+  readonly text: string | undefined;
+  readonly fix: string;
+  /** The reserved word of `text`, when it holds one. */
+  readonly reserved: (text: string) => string | undefined;
 }
+
+/** The errors of one field: refused characters, and a reserved name (each refuses the skill). */
+function fieldErrors(field: Field): PluginIssue[] {
+  const { path, label, text, fix } = field;
+  if (text === undefined) return [];
+  const issues: PluginIssue[] = [];
+  const found = refusedCharacters(text);
+  if (found.length > 0) {
+    issues.push(error(path, `${cannotHold(label, found)}; the skill is refused, ${fix}`));
+  }
+  const word = field.reserved(text);
+  if (word !== undefined) {
+    issues.push(
+      error(
+        path,
+        `${label} uses "${word}", a name reserved for skills synced from claude.ai; the skill does not load, ${fix}`,
+      ),
+    );
+  }
+  return issues;
+}
+
+/**
+ * Outside a plugin the skill is refused when its folder name or its frontmatter `name` holds a
+ * refused character or is reserved. The folder `synced` is reserved only where Claude Code
+ * authors no `synced` folder of its own: the user and project locations, not a synced skill.
+ */
+const strict =
+  (reservesSyncedFolder: boolean) =>
+  (dirName: string, declared: string | undefined): Chosen => {
+    const issues = [
+      ...fieldErrors({
+        path: 'folder',
+        label: 'folder name',
+        text: dirName,
+        fix: 'rename the folder',
+        reserved: (text) =>
+          reservedNamespace(text) ?? (reservesSyncedFolder ? reservedFolder(text) : undefined),
+      }),
+      ...fieldErrors({
+        path: 'name',
+        label: 'name',
+        text: declared,
+        fix: 'edit the name: line',
+        reserved: reservedNamespace,
+      }),
+    ];
+    return { name: declared ?? dirName, issues };
+  };
 
 /**
  * In a plugin the skill always loads. A folder's refused characters become hyphens in the command
@@ -113,9 +167,9 @@ const pluginPrefix = (origin: SkillOrigin): string =>
 
 const RULES: { readonly [K in SkillOriginKind]: NameRule } = {
   plugin: { prefix: pluginPrefix, choose: lenient },
-  user: { prefix: () => '', choose: strict },
-  project: { prefix: () => '', choose: strict },
-  synced: { prefix: () => 'anthropic-skills:', choose: strict },
+  user: { prefix: () => '', choose: strict(true) },
+  project: { prefix: () => '', choose: strict(true) },
+  synced: { prefix: () => `${NAMESPACE}:`, choose: strict(false) },
 };
 
 /**

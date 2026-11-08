@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Skills: a refused name or folder is reported once by field (`folder name has ...`, not `folder
+  folder name has ...`); outside a plugin a name or folder `anthropic-skills` or
+  `anthropic-skills:<name>`, and a user or project folder `synced` (any case), refuse the skill.
+
 ### Added
 
 - Skills: `readSkill` reads a `SKILL.md` into a `Skill` (the shared `InvocableFrontmatter` of

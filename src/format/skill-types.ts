@@ -19,7 +19,8 @@ export type SkillShellsMatchShellKind = Assert<Equal<SkillShell, ShellKind>>;
 
 /**
  * Where a skill came from, which decides what the runtime may do with its text. A plugin skill is
- * namespaced by its plugin (`rootSkill`: the plugin's own `SKILL.md`, which has no skill folder).
+ * namespaced by its plugin (`rootSkill`: the plugin's own `SKILL.md`, which has no skill folder;
+ * the name rules do not read it, the caller gives the plugin directory as `dirName`).
  */
 export type SkillOrigin =
   | { readonly kind: 'plugin'; readonly plugin: string; readonly rootSkill?: boolean }
