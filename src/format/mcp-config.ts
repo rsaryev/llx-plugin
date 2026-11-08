@@ -80,6 +80,20 @@ const REMOTE: { readonly [T in McpTransport]: boolean } = {
   ws: true,
 };
 
+/** The transport of a server; one without a `type` is stdio. */
+export const mcpTransportOf = (server: PluginMcpServer): McpTransport => server.type ?? 'stdio';
+
+/** "OAuth authentication works with HTTP servers", and the flags apply "to HTTP and SSE transports"; WebSocket "supports neither". */
+const SIGNS_IN_WITH_OAUTH: { readonly [T in McpTransport]: boolean } = {
+  stdio: false,
+  sse: true,
+  http: true,
+  ws: false,
+};
+
+export const signsInWithOAuth = (server: PluginMcpServer): boolean =>
+  SIGNS_IN_WITH_OAUTH[mcpTransportOf(server)];
+
 /**
  * True for a server whose transport is `sse`, `http` or `ws`. The transport decides, not the
  * presence of a `url`: a stdio entry may carry a `url` key (its `type` is then `stdio`) and stays stdio.
@@ -112,6 +126,15 @@ const reason = (failure: z.ZodError): string =>
 
 const dropped = (name: string, origin: string, why: string): PluginIssue =>
   error(origin, `Invalid MCP server config for "${name}": ${why}`);
+
+/**
+ * "Claude Code drops that server and records `Invalid MCP server config for <server> in <path>` only in
+ * that debug log" (plugins/troubleshooting.md, "Server is configured but never connects"). The kit
+ * reports the same entry as an error issue, which `claude plugin validate` reports too and a host
+ * may show or log; this is the line Claude Code writes to its debug log (no quotes around the name).
+ */
+export const droppedServerLogLine = (server: string, path: string): string =>
+  `Invalid MCP server config for ${server} in ${path}`;
 
 export interface McpServerRead {
   /** Undefined when Claude Code would drop the entry. */

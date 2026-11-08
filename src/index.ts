@@ -244,3 +244,4 @@ export {
   type PluginSettings,
   type PluginSettingsRead,
 } from './format/plugin-settings.ts';
+export * from './format/mcp-contract.ts';

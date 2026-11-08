@@ -4,6 +4,13 @@
 
 ### Added
 
+- MCP contracts, pure over data: the `oauth` block, redirect, discovery and scopes; `claude mcp add`
+  and `add-json`; tool names, hints, root-combinator rewriting and invalid-schema exclusion; result
+  limits, persistence and images; MCP prompts; elicitation (modes, forms, URL cap, hooks); the
+  `MCP_TIMEOUT`, `MCP_TOOL_TIMEOUT`, `MCP_CONNECT_TIMEOUT_MS` and description-length knobs; reload
+  planning; redaction of a plugin server. An unset `${VAR}` in a plugin server is now the error
+  `Invalid MCP server config for "<name>": Missing environment variables: ...` instead of a warning.
+
 - MCP `headersHelper` and the subprocess environment, pure over data. `planHeadersHelper` answers
   where a server's helper runs (plugin root, project directory, primary working directory or the
   configuration directory, by where the server was configured), with which environment (credential

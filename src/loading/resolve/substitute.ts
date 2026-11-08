@@ -44,12 +44,25 @@ export interface Substituted {
   /** Warnings only: an unresolved reference stays as written and is reported. */
   readonly issues: readonly PluginIssue[];
   readonly referenced: readonly TokenReference[];
+  /**
+   * What stayed as written because nothing answered it: the names of `${VAR}` references with no
+   * value and no default, and the keys of `${user_config.KEY}` references with no value or no
+   * declaration. A caller that treats them as an error (an MCP server that cannot start) reads them here
+   * instead of from the warning text.
+   */
+  readonly unresolved: Unresolved;
+}
+
+export interface Unresolved {
+  readonly variables: readonly string[];
+  readonly options: readonly string[];
 }
 
 /** The text a reference becomes, or why it stayed as written (`problem`). */
 interface Resolution {
   readonly text: string;
   readonly problem?: string;
+  readonly unresolved?: Partial<{ variable: string; option: string }>;
 }
 
 interface Token {
@@ -103,7 +116,11 @@ const userConfigToken: TokenParser = (inner, { scope, policy }) => {
       const value = userConfigValue(scope.userConfig, key);
       if (value === undefined && disposition !== 'keep') {
         const why = declared === undefined ? 'is not declared in userConfig' : 'has no value';
-        return Promise.resolve({ text: raw, problem: `\${user_config.${key}} ${why}` });
+        return Promise.resolve({
+          text: raw,
+          problem: `\${user_config.${key}} ${why}`,
+          unresolved: { option: key },
+        });
       }
       const text = value === undefined ? raw : RENDERINGS[disposition](raw, key, value);
       return Promise.resolve({ text });
@@ -157,7 +174,11 @@ const environmentToken: TokenParser = (inner, { scope, policy }) => {
       );
       return Promise.resolve(
         done.missing
-          ? { text: done.text, problem: missingVariableMessage(reference.name) }
+          ? {
+              text: done.text,
+              problem: missingVariableMessage(reference.name),
+              unresolved: { variable: reference.name },
+            }
           : { text: done.text },
       );
     },
@@ -219,6 +240,14 @@ export function substituter(scope: SubstitutionScope): Substituter {
           problem === undefined ? [] : [warning(path, problem)],
         ),
         referenced: [...references.values()],
+        unresolved: {
+          variables: [
+            ...new Set([...resolved.values()].flatMap((one) => one.unresolved?.variable ?? [])),
+          ],
+          options: [
+            ...new Set([...resolved.values()].flatMap((one) => one.unresolved?.option ?? [])),
+          ],
+        },
       };
     },
   };

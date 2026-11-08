@@ -1,4 +1,4 @@
-import { readHelperHeaders } from '../../format/helper-headers.ts';
+import { hasAuthorizationHeader, readHelperHeaders } from '../../format/helper-headers.ts';
 import { error, type PluginIssue } from '../../format/issues.ts';
 import type { CommandResult, CommandRunner } from '../../ports/command-runner.ts';
 import { HEADERS_HELPER_TIMEOUT_MS, type HelperRun } from './headers-helper.ts';
@@ -63,9 +63,6 @@ export interface ConnectionHeaders {
   readonly oauthFallback: boolean;
 }
 
-const hasAuthorization = (headers: Readonly<Record<string, string>>): boolean =>
-  Object.keys(headers).some((name) => name.toLowerCase() === 'authorization');
-
 /**
  * "Dynamic headers override any static `headers` with the same name": names compare without regard
  * to case (judgment, spec/judgments.md).
@@ -81,7 +78,7 @@ export function connectionHeaders(
     ),
     ...dynamicHeaders,
   };
-  return { headers, oauthFallback: !hasAuthorization(headers) };
+  return { headers, oauthFallback: !hasAuthorizationHeader(headers) };
 }
 
 /** "A `401 Unauthorized` or `403 Forbidden`". */
@@ -121,7 +118,7 @@ function rejectedWhileConnecting<T extends { readonly status: number }>(
   response: T,
   server: string,
 ): HelperAttempt<T> {
-  return hasAuthorization(helperHeaders)
+  return hasAuthorizationHeader(helperHeaders)
     ? {
         outcome: 'failed',
         response,

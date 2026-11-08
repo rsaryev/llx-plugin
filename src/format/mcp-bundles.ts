@@ -81,3 +81,43 @@ export async function loadBundle(
   const opened = await context.bundles.open(source, MCPB_CACHE_DIR, context.signal);
   return bundledServer(value, opened, context);
 }
+
+/** One `--config` flag of `claude plugin install`: a plugin option, or a setting of a bundled server. */
+export interface ConfigFlag {
+  /** The bundled server, for a key written `<server>.<key>`; absent for a plugin `userConfig` option. */
+  readonly server?: string;
+  readonly key: string;
+  readonly value: string;
+}
+
+/**
+ * `--config <key=value>` (plugins/cli-reference.md, "plugin install"): "A key written `<server>.<key>`
+ * sets a setting that a bundled MCP server declares in its own `user_config` instead". Judgment
+ * (spec/judgments.md): the first `=` ends the key and the first `.` of the key ends the server name,
+ * so a value keeps its own `=` and a setting key may hold dots; a flag with no `=` or an empty part is
+ * an error.
+ */
+export function readConfigFlag(text: string): ConfigFlag | PluginIssue {
+  const at = text.indexOf('=');
+  const written = at < 0 ? '' : text.slice(0, at);
+  const value = at < 0 ? '' : text.slice(at + 1);
+  const dot = written.indexOf('.');
+  const server = dot < 0 ? undefined : written.slice(0, dot);
+  const key = dot < 0 ? written : written.slice(dot + 1);
+  if (key === '' || server === '') {
+    return error('--config', `--config takes key=value or <server>.<key>=value, not "${text}"`);
+  }
+  return { ...(server === undefined ? {} : { server }), key, value };
+}
+
+/**
+ * "For a bundle file shipped inside the plugin": a `<server>.<key>` flag works only when the bundle is
+ * a path in the plugin, never for one downloaded from a URL.
+ */
+const CONFIG_FLAG_APPLIES: { readonly [K in McpBundleSource['kind']]: boolean } = {
+  path: true,
+  url: false,
+};
+
+export const configFlagApplies = (source: McpBundleSource): boolean =>
+  CONFIG_FLAG_APPLIES[source.kind];

@@ -27,3 +27,7 @@ export function readHelperHeaders(stdout: string): HelperHeadersRead {
     ? { headers: Object.fromEntries(strings) }
     : { problem: 'non-string-value' };
 }
+
+/** Whether a header set holds `Authorization`, in any letter case. */
+export const hasAuthorizationHeader = (headers: Readonly<Record<string, string>>): boolean =>
+  Object.keys(headers).some((name) => name.toLowerCase() === 'authorization');

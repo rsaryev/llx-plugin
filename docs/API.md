@@ -480,6 +480,43 @@ plugin loads. Without a `McpBundleReader` a bundle is a warning. Paths given to 
 relative to the plugin root, like every `PluginFiles` path. The server's tool prefix is `rules`'
 `pluginMcpServerName`; `mcpServerKey` is the `plugin:<plugin>:<server>` name `/mcp` shows.
 
+### MCP contracts (done: `format/mcp-contract`)
+
+Everything is pure data over an `EnvLookup` function `(name) => string | undefined`; connecting, the
+OAuth browser flow, the keychain, the prompt, the dialog and the stored configuration are the host's.
+The knob readers (`mcpTimeouts`, `mcpConnectTimeoutMs`, `mcpDescriptionLimits`) are the one place the
+`MCP_*` variables are read.
+
+```ts
+import { readMcpAdd, readMcpAddJson, prepareMcpTool, limitMcpResult, mcpOutputLimits, answerElicitation } from '@rsaryev/claude-plugin-kit';
+
+const added = readMcpAdd(['--transport', 'http', 'api', 'https://x.example/mcp', '--client-id', 'abc'], lookup);
+// added.server, added.oauth (callbackPort filled from MCP_OAUTH_CALLBACK_PORT), added.secret, added.issues
+const prepared = prepareMcpTool(tool, { rewriteRootCombinators: true, excludeInvalid: true });
+const verdict = limitMcpResult(result, mcpOutputLimits(lookup, hints, countTokens)); // inline | persist | error
+```
+
+| API | What it does |
+| --- | --- |
+| `readMcpOAuth(name, raw, origin)`, `mcpOAuthRedirectUri(port)`, `mcpOAuthDiscovery(...)`, `requestedOAuthScopes(...)`, `planMcpOAuth(...)`, `mcpAuthRejection(...)`, `storedTokenRecovery(...)` | the `oauth` block (`clientId`, `callbackPort`, `authServerMetadataUrl`, `scopes`), the `http://localhost:<port>/callback` redirect, the two discovery paths or the configured metadata URL, the scope the request asks for (a configured `scopes` restricts, `offline_access` handling), the plan for a server (none for stdio and ws), the state after a 401, and what to do with a stored token |
+| `readMcpAdd(argv, lookup)`, `readMcpAddJson(name, json, options, lookup)` | `claude mcp add` and `add-json` as data: `{ name, scope, server, oauth, secret, issues }`; `MCP_ADD_SCOPES`, `mcpServerExistsMessage`; `--client-secret` asks for a secret (prompt, or `MCP_CLIENT_SECRET`), the flags and the variable never reach `server` |
+| `mcpToolName`, `pluginMcpServerName`, `normalizeMcpServerName` | the `mcp__<server>__<tool>` name (moved from `rules`, which re-exports them) |
+| `mcpToolSendCheck(fullName)`, `MCP_TOOL_NAME_LIMIT` | a full name over 128 characters is left out, with the debug line |
+| `readMcpToolHints(entry)`, `requiringInteraction(server, tools)`, `MCP_RESULT_SIZE_CEILING` | `anthropic/maxResultSizeChars` and `requiresUserInteraction` (only the JSON `true` counts); the second feeds `DecideContext.requiresUserInteraction` so approval holds in every mode |
+| `prepareMcpTool(tool, policy)`, `excludedToolsNotice`, `refusedSchemaFallback` | a root-level combinator rewritten to an object schema, an invalid input schema excluded with a notice, a schema the API refused sent without parameters |
+| `mcpOutputLimits`, `limitMcpResult`, `persistedResultMessage`, `imageResultNote`, `mcpImageFiles`, `oversizedMcpMessage` | `MAX_MCP_OUTPUT_TOKENS` (default 25,000, warning at 10,000), the 50,000-character persistence, error results cut in the middle, images saved, the 16 MiB WebSocket message and HTTP/SSE response size |
+| `listablePrompts`, `mcpPromptListing`, `mcpPromptCommand`, `readMcpPromptInvocation` | MCP prompts as `/server:prompt (MCP)` commands and the arguments they take |
+| `declaredElicitation`, `elicitationModes`, `elicitationUrlChoices`, `urlArgumentLength`, `answerElicitation`, `elicitationFormFields`, `elicitationHookFacts`, `autoRespondElicitation`, `overrideElicitationResult` | the modes a client declares, the form fields a schema defines and the answer to a form or link, the 8,000-character URL argument cap, the `Elicitation` and `ElicitationResult` hook input and output |
+| `mcpTimeouts`, `mcpConnectTimeoutMs`, `mcpDescriptionLimits`, `cutMcpDescription`, `MCP_ENV_BASELINE`, `mcpStdioEnvironment`, `claudeAiConnectorsFetched` | `MCP_TIMEOUT`, `MCP_TOOL_TIMEOUT`, `MCP_CONNECT_TIMEOUT_MS`, `CLAUDE_CODE_MAX_MCP_DESCRIPTION_LENGTH`, `CLAUDE_CODE_MCP_ALLOWLIST_ENV`, `ENABLE_CLAUDEAI_MCP_SERVERS` |
+| `planMcpReload`, `skipsStdioConnection`, `MCP_FAILURE_SKIP_MS`, `SKIPPING_CONNECTION` | which servers a `/reload-plugins` stops, starts and keeps; the 15-minute skip of a stdio server that failed |
+| `redactPluginServer(server)` | what `claude mcp get` and `list` show for a plugin's stdio or ws server |
+
+A plugin server that uses an unset `${VAR}` is now the error `Invalid MCP server config for
+"<name>": Missing environment variables: ...` and is not started (it was a warning that kept the
+text); a `url` that uses an unset option reports `URL is unset or invalid`, any other bad one
+`has an invalid MCP url`. `readConfigFlag` reads `plugin install --config <server>.<key>=<value>`;
+the CLI itself is the host's.
+
 ### LSP servers (done: `format/lsp-config`, `loading/resolve/lsp*`)
 
 ```ts
