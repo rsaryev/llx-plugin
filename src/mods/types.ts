@@ -128,6 +128,24 @@ export interface ReentryInfo {
   readonly lent?: boolean;
 }
 
+/**
+ * What the events part of mods tells the chain about the events it knows (reference.md, "Events").
+ * Every member is optional: an event with no rule passes its results and changed events through.
+ */
+export interface EventRules {
+  /**
+   * Why a hook's result is the wrong shape for `event`, or `undefined` when it fits. `answered` is
+   * true when the hook had already called `next`.
+   */
+  shapeProblem(event: string, result: unknown, answered: boolean): string | undefined;
+  /** Why the event a hook passes to `next` is refused, comparing it with the one the hook received. */
+  changeProblem(event: string, original: unknown, changed: unknown): string | undefined;
+  /** What Claude Code's own behaviour receives, from the event as fired and the one the hooks passed on. */
+  coreInput(event: string, original: unknown, passed: unknown): unknown;
+  /** A hook's result as it counts, for example with an over-long reason cut. */
+  settle(event: string, result: unknown): unknown;
+}
+
 export interface DispatchOptions {
   /** Whoever fires the event: Claude Code is `ENGINE_ORIGIN`. */
   readonly origin: HookOrigin;

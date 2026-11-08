@@ -70,6 +70,15 @@
   `MOD_LIMITS`, `MOD_EVENT_NAMES` (48 events), `MODS_API`, `MOD_TIERS`, `foundation`
   (`createBudget`, `deepFreeze`, `plainDataProblem`, `jsonChars`), and the mods ports (`ModRuntime`,
   `ModCompiler`, `ModStore`, `TelemetrySink`, `ModWatcher`, `DenyRuleChecker`).
+- Mods events (`mods/events`): `EVENT_SPECS` for the tool, prompt, command, `/config`, turn, session
+  and subagent events (the documented input fields and the shapes a hook can answer with),
+  `createEventRules` for the chain (`createModChain({ clock, rules })`: a result of the wrong shape
+  fails the hook, a `drop` after `next` was answered fails it, `skill.prompt` refuses a change
+  other than `text` and `frontmatter`, a resumed `agent.spawn` ignores a change, `session.append`
+  takes only a changed `message.content`, a `drop` or `config.set` `deny` reason is cut at 4,096
+  characters), `eventResultProblem`, `eventInputProblem`, `clampReason`, `mergeToolCheck` (plan mode
+  lets a mod tighten a call that is not read-only, not approve it), `skillPromptEvent` (source,
+  plugin name, path, frontmatter and its problem) and `autocompleteRows`.
 
 ### Fixed
 

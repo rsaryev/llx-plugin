@@ -23,6 +23,8 @@ export interface NextParts {
   readonly after: number;
   /** Where a tier starts in the chain. */
   readonly tierStart: (tier: SkipTier) => number;
+  /** Why the event this hook passes to `next` is refused, besides nesting. */
+  readonly changeProblem: (e: unknown) => string | undefined;
   readonly downstream: Downstream;
 }
 
@@ -69,10 +71,14 @@ function refuse(parts: NextParts, message: string): Output {
 const nestingOf = (parts: NextParts, e: unknown): string | undefined =>
   (parts.isGenerator ? null : nestingProblem(e)) ?? undefined;
 
+/** Why `next` refuses the event: nested too deep, or a change the event does not allow. */
+const refusalOf = (parts: NextParts, e: unknown): string | undefined =>
+  nestingOf(parts, e) ?? parts.changeProblem(e);
+
 function nextCall(parts: NextParts, replay: Tracked | undefined): (e: unknown) => Output {
   return (e) => {
     if (replay) return outputOf(parts, replay, true);
-    const problem = nestingOf(parts, e);
+    const problem = refusalOf(parts, e);
     if (problem !== undefined) return refuse(parts, `next argument: ${problem}`);
     return outputOf(parts, parts.downstream.start(parts.runAt(parts.after, deepFreeze(e))), false);
   };
@@ -80,7 +86,7 @@ function nextCall(parts: NextParts, replay: Tracked | undefined): (e: unknown) =
 
 function skipCall(parts: NextParts): (e: unknown, tier: SkipTier) => Output {
   return (e, tier) => {
-    const problem = skipProblem(parts.tier, tier) ?? nestingOf(parts, e);
+    const problem = skipProblem(parts.tier, tier) ?? refusalOf(parts, e);
     if (problem !== undefined) return refuse(parts, problem);
     const run = parts.runAt(parts.tierStart(tier), deepFreeze(e));
     return outputOf(parts, parts.downstream.start(run), false);

@@ -1,17 +1,25 @@
 import type { Clock } from '../../ports/index.ts';
 import { createBudget } from '../../foundation/index.ts';
 import type { AnyModEventName, StreamEventName } from '../../protocol/mods-events.ts';
-import type { ChunkOf, DispatchOptions, EventOf, ModChain, ResultOf } from '../types.ts';
+import type {
+  ChunkOf,
+  DispatchOptions,
+  EventOf,
+  EventRules,
+  ModChain,
+  ResultOf,
+} from '../types.ts';
 import { GROUP_MS, type Context } from './context.ts';
 import type { Stream } from './downstream.ts';
 import { runFrom } from './invoke.ts';
 import { createRegistry } from './registry.ts';
+import { NO_RULES } from './rules.ts';
 import { deepFreeze } from '../../foundation/index.ts';
 
 export interface ModChainOptions {
   readonly clock: Clock;
-  /** The wrong shape a hook's result has for an event, from the events part of mods; none until it lands. */
-  readonly shapeProblem?: (event: string, result: unknown) => string | undefined;
+  /** What the events part of mods says about the events it knows (`createEventRules`); a member left out passes values through. */
+  readonly rules?: Partial<EventRules>;
 }
 
 /* oxlint-disable typescript/no-unsafe-type-assertion -- the chain carries `unknown`; the events part of mods fixes what each event answers */
@@ -30,16 +38,18 @@ async function collect(stream: Stream): Promise<unknown> {
 /** The chains of hooks, one per event, and what runs them (events.md, "How a hook handles an event"). */
 export function createModChain(options: ModChainOptions): ModChain {
   const registry = createRegistry();
-  const shapeProblem = options.shapeProblem ?? (() => undefined);
+  const rules: EventRules = { ...NO_RULES, ...options.rules };
 
   async function* stream(name: string, input: unknown, opts: DispatchOptions): Stream {
     const groupMs = opts.groupMs ?? GROUP_MS[name];
+    const frozen = deepFreeze(input);
     const ctx: Context = {
       name,
       options: opts,
       clock: options.clock,
       chain: registry.chainFor(name),
-      shapeProblem,
+      input: frozen,
+      rules,
       ...(groupMs === undefined
         ? {}
         : {
@@ -47,7 +57,7 @@ export function createModChain(options: ModChainOptions): ModChain {
           }),
     };
     try {
-      return yield* runFrom(ctx, 0, deepFreeze(input));
+      return yield* runFrom(ctx, 0, frozen);
     } finally {
       ctx.group?.budget.dispose();
     }

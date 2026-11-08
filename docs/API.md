@@ -252,7 +252,7 @@ out of the rules before it in the same source and list; `evaluateRules` applies 
 `Glob(...)`, `Grep(...)` and `NotebookEdit(...)` rules with a path never match; write `Edit(...)` or
 `Read(...)`. A host asks `readsNetworkPath` before it trusts any allow rule, hook or classifier.
 
-## Mods (in progress: the hook chain)
+## Mods (in progress: the hook chain and the events)
 
 A mod is a plugin whose hooks module registers event handlers (plugins/mods/overview.md). The kit
 never runs a module's source: the host evaluates it in an isolate it chooses through the
@@ -277,7 +277,10 @@ const result = await chain.dispatch('tool.call', event, {
 | `MOD_LIMITS`, `MOD_NAME_PATTERN`      | done    | every number of the reference's Limits table                                          |
 | `MOD_EVENT_NAMES`, `MODS_API`, `MOD_TIERS`, `CLASSIC_EVENT_NAMES`, `API_EVENT_NAMES` | done | the 48 events, the 21 namespaces, the tiers, and the names derived from them (`plugin.name` and `plugin.root` are values, so not events) |
 | `createBudget`, `deepFreeze`, `plainDataProblem`, `jsonChars`, `jsonBytes` | done | `foundation`: a time budget on the `Clock` port that stops while code waits, in-place deep freeze, a stack-safe walk with depth, node and character limits, JSON sizes |
-| Events, API, UI, loading, test kit    | planned | the other parts of mods                                                               |
+| `createEventRules()`, `EVENT_SPECS`   | done    | what the chain knows of the tool, prompt, command, `/config`, turn, session and subagent events: documented input fields, the shapes a hook can answer with, refused changes, what Claude Code receives, the cut reason (`createModChain({ clock, rules })`) |
+| `eventResultProblem`, `eventInputProblem` | done | why a result or an input does not fit an event, or `undefined`; unknown events are not checked |
+| `clampReason`, `mergeToolCheck`, `skillPromptEvent`, `autocompleteRows` | done | the 4,096-character reason cut; the `tool.check` decision with plan mode (a mod can tighten a call that is not read-only, not approve it); the `skill.prompt` event from a skill and its parsed frontmatter; Claude Code's autocomplete rows then the mods' |
+| API, UI, loading, test kit            | planned | the other parts of mods                                                               |
 
 `register` takes the tier `prepend`, `user`, `append` or `builtin` (never `core`, which is Claude Code's own
 behaviour); the built-in guard `sec-default@builtin` registers first in `prepend`. It refuses a whole module (and adds none of its hooks) when `on("x")` is registered twice
@@ -290,6 +293,15 @@ hooks share (default 1.5 s, counted from the first hook that has the floor; pass
 time excludes `next` and mods API calls except `$.clock.sleep`; the chain wraps the mod's `$` to
 meter that and to reject an argument nested past 28000 levels. The ports for mods that name
 `PluginIssue` live in `src/mods/ports.ts`, not `src/ports`.
+
+The events part gives the chain what is specific to an event: `createModChain({ clock, rules:
+createEventRules() })`. A hook's result must fit the "A hook can return" column of the reference
+(`{ deny }`, `{ decision }`, `{ drop }`, `{ text }`, `{ suggestions }`, `{ skip }`, `{ consumed }`,
+`{ isDelivered: false, reason }`, `{ isOffered: false }`...); one that does not fails the hook like a
+throw, and Claude Code's own answer (`core`) is an object of the same shape. An event whose only
+answer is `next(e)` takes any result. The fields the docs name are typed on an event's input, any
+other field is carried. The firing is the host's: the kit proves what it does with each answer, not
+when Claude Code raises the event.
 
 ## Testing kit (planned)
 

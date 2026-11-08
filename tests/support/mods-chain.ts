@@ -4,6 +4,7 @@ import { createModChain } from '../../src/mods/chain/index.ts';
 import type { PluginIssue } from '../../src/format/index.ts';
 import type {
   DispatchOptions,
+  EventRules,
   HookReport,
   ModCatchNext,
   ModChain,
@@ -143,9 +144,15 @@ type Raw = {
 };
 
 /** A chain on a clock that stands still, with the reports it was given and the events Claude Code's own behaviour saw. */
-export function harness(shapeProblem?: (event: string, result: unknown) => string | undefined) {
+export function harness(
+  shapeProblem?: (event: string, result: unknown) => string | undefined,
+  rules: Partial<EventRules> = {},
+) {
   const clock = fixedClock();
-  const chain: ModChain = createModChain({ clock, ...(shapeProblem ? { shapeProblem } : {}) });
+  const chain: ModChain = createModChain({
+    clock,
+    rules: { ...(shapeProblem ? { shapeProblem: (e, r) => shapeProblem(e, r) } : {}), ...rules },
+  });
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a test fires events by name, without the typed event tables
   const raw = chain as unknown as Raw;
   const reports: HookReport[] = [];

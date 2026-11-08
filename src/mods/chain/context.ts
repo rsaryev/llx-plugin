@@ -1,7 +1,7 @@
 import type { Budget } from '../../foundation/index.ts';
 import { MOD_LIMITS } from '../../protocol/mods-limits.ts';
 import type { Clock } from '../../ports/index.ts';
-import type { DispatchOptions } from '../types.ts';
+import type { DispatchOptions, EventRules } from '../types.ts';
 import type { ChainEntry } from './registry.ts';
 
 /** What one dispatch of an event shares across the hooks it runs. */
@@ -13,8 +13,10 @@ export interface Context {
   readonly chain: readonly ChainEntry[];
   /** The time all the hooks of the event share, when it has one. */
   readonly group?: { readonly budget: Budget; readonly event: string };
-  /** The wrong shape a result has for this event, when the events part of mods says so. */
-  readonly shapeProblem: (event: string, result: unknown) => string | undefined;
+  /** The event as fired, frozen. */
+  readonly input: unknown;
+  /** What the events part of mods says about this event: result shapes, changes to refuse, what Claude Code receives. */
+  readonly rules: EventRules;
 }
 
 /** The events whose hooks have less than the usual 10 seconds (reference.md, "Limits"). */

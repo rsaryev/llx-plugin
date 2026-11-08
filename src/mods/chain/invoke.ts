@@ -35,7 +35,7 @@ interface Run {
 }
 
 async function* runCore(ctx: Context, e: unknown): Stream {
-  const out = ctx.options.core(e);
+  const out = ctx.options.core(ctx.rules.coreInput(ctx.name, ctx.input, e));
   if (isAsyncIterator(out)) return yield* out;
   return await out;
 }
@@ -70,6 +70,7 @@ function partsOf(
     runAt: (index, e) => runFrom(ctx, index, e),
     after: site.index + 1,
     tierStart: (tier) => tierStart(ctx, tier),
+    changeProblem: (e) => ctx.rules.changeProblem(ctx.name, site.e, e),
     downstream: site.downstream,
   };
 }
@@ -79,7 +80,16 @@ function resultProblem(site: Site, value: unknown): string | undefined {
   const { ctx, entry } = site;
   const exempt = NESTING_EXEMPT.has(ctx.name) || entry.hook.isGenerator;
   const tooDeep = exempt ? null : nestingProblem(value);
-  return tooDeep ?? ctx.shapeProblem(ctx.name, value);
+  const answered = site.downstream.latest() !== undefined;
+  return tooDeep ?? ctx.rules.shapeProblem(ctx.name, value, answered);
+}
+
+/** The outcome of a hook that returned `value`: refused when it does not fit, else the value as it counts. */
+function judged(site: Site, value: unknown): Outcome {
+  const problem = resultProblem(site, value);
+  return problem === undefined
+    ? { value: site.ctx.rules.settle(site.ctx.name, value) }
+    : { failed: refused(problem) };
 }
 
 /** One run of a hook or of its handler, under its time limit, until it returns or fails. */
@@ -107,8 +117,7 @@ async function* attempt(site: Site, run: Run): AsyncGenerator<unknown, Outcome> 
     abandon.abort(new Error(ended.failed.message)); // judgment: a hook that failed has its background work stopped
     return ended;
   }
-  const problem = resultProblem(site, ended.value);
-  return problem === undefined ? ended : { failed: refused(problem) };
+  return judged(site, ended.value);
 }
 
 const hookRun = (site: Site): Run => ({
