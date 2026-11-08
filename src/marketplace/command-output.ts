@@ -43,6 +43,10 @@ function comparable(path: string, platform: Platform): string {
   return slashed.replace(/\/+$/, '');
 }
 
+/** True when two spellings name one folder on `platform`: on Windows separators and capitals do not tell folders apart. */
+export const samePath = (a: string, b: string, platform: Platform): boolean =>
+  comparable(a, platform) === comparable(b, platform);
+
 /** True when `printed` is `sessionDirectory` or one of its parents ("the session's own directory"). */
 export function containsSession(
   printed: string,

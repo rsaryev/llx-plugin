@@ -54,6 +54,7 @@ const cloneOf = (
   ...(source.ref === undefined ? {} : { ref: source.ref }),
   path: source.path,
   ...(source.sparsePaths === undefined ? {} : { sparsePaths: source.sparsePaths }),
+  lfs: 'pointer-files',
 });
 
 /** `repo` names one repository: an owner wildcard is taken literally and the clone fails. */

@@ -6,6 +6,7 @@ import type { Locations } from '../ports/locations.ts';
 import { containsSession, readPrintedPath } from './command-output.ts';
 import { contentIssue, copyLimitIssue, linkIssue } from './command-directory.ts';
 import { LINKS_NEED_POSIX, linkOnWindowsIssue } from './command-mode.ts';
+import { sessionDirectoryIssue } from './install-mode.ts';
 import type { PluginDirectories } from './ports.ts';
 import type { CommandFetchPlan } from './types.ts';
 
@@ -105,10 +106,7 @@ export async function runCommandSource(
   const printed = readPrintedPath(result.stdout, setting.platform);
   if ('problem' in printed) return problem(printed.problem);
   if (containsSession(printed.path, setting.sessionCwd, setting.platform)) {
-    return error(
-      'source',
-      `The printed directory "${printed.path}" is the directory Claude Code was started in, or one of its parents`,
-    );
+    return sessionDirectoryIssue(printed.path);
   }
   const files = await ports.directories.open(printed.path, signal);
   if (files === undefined) {

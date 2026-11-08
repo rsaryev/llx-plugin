@@ -1,6 +1,7 @@
 import { error, type PluginIssue } from '../format/issues.ts';
 import type { GitRepository } from '../ports/marketplace.ts';
 import { isBlockedHost } from './blocked-hosts.ts';
+import { NOT_A_LINK, npmRefusalMessage } from './install-failures.ts';
 
 /**
  * The checks made before anything is fetched (plugins/marketplace-reference.md, "url plugin
@@ -121,24 +122,29 @@ const onRefusedHost = (link: string): boolean => {
 const REFUSALS: readonly Refusal[] = [
   {
     matches: (value) => /^npm:/i.test(value) || value.includes('@npm:'),
-    reason: "an npm: alias; use the package's own name",
+    reason: "it is an npm: alias; use the package's own name",
   },
   {
     matches: (value) =>
       /^file:/i.test(value) || /^(?:\.{1,2}(?:[\\/]|$)|[\\/~]|[A-Za-z]:[\\/])/.test(value),
-    reason: 'a folder or file: path; use a relative path source for a folder in the marketplace',
+    reason:
+      'it is a folder or file: path; use a relative path source for a folder in the marketplace',
+  },
+  {
+    // "github:acme/formatter" is the docs' own example of a value that "is not an http or https link".
+    matches: (value) => /^(?:git\+|git:|git@|ssh:|github:|gitlab:|bitbucket:|gist:)/i.test(value),
+    reason: NOT_A_LINK,
   },
   {
     matches: (value) =>
-      /^(?:git\+|git:|git@|ssh:|github:|gitlab:|bitbucket:|gist:)/i.test(value) ||
       (LINK.test(value) && /\.git(?:[#?].*)?$/i.test(value)) ||
       (!value.startsWith('@') && /^[^\s/:@]+\/[^\s/:]+(?:#.*)?$/.test(value)),
-    reason: 'a git address; use a github, url or git-subdir source for a git repository',
+    reason: 'it is a git address',
   },
   {
     matches: (value) => LINK.test(value) && onRefusedHost(value),
     reason:
-      'a tarball link on github.com, gist.github.com, gitlab.com, bitbucket.org or git.sr.ht (only a GitLab npm registry link under gitlab.com/api/v4/ is allowed)',
+      'it is a tarball link on github.com, gist.github.com, gitlab.com, bitbucket.org or git.sr.ht (only a GitLab npm registry link under gitlab.com/api/v4/ is allowed)',
   },
 ];
 
@@ -154,14 +160,17 @@ const isDefaultRegistryLink = (link: string, defaultRegistry: string | undefined
 export function npmPackageIssues(pkg: string, safety: NpmSafety, path: string): PluginIssue[] {
   const refusal = REFUSALS.find((candidate) => candidate.matches(pkg));
   if (refusal !== undefined) {
-    return [error(path, `The npm package "${pkg}" is refused: it is ${refusal.reason}`)];
+    return [error(path, npmRefusalMessage(pkg, refusal.reason))];
   }
   const plainHttp = /^http:\/\//i.test(pkg);
   if (plainHttp && !isDefaultRegistryLink(pkg, safety.defaultRegistry)) {
     return [
       error(
         path,
-        `The npm package "${pkg}" is refused: a tarball link over http is allowed only on your own default npm registry`,
+        npmRefusalMessage(
+          pkg,
+          'it is a tarball link over http, which is allowed only on your own default npm registry',
+        ),
       ),
     ];
   }

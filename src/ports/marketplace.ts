@@ -16,9 +16,9 @@ export interface Sha256 {
 }
 
 /**
- * What a host reports about an archive it can unzip, so the kit judges the documented extraction
- * limits (host-marketplace.md, "Stay within the download limits for hosted files") and finds the
- * plugin root without unzipping anything itself.
+ * What the kit judges about an archive: the documented extraction limits (host-marketplace.md, "Stay
+ * within the download limits for hosted files") and the plugin root. It is derived from the entries
+ * a host scans (`archiveStats`, `marketplace/archive-scan.ts`), never reported by the host.
  */
 export interface ArchiveStats {
   readonly entries: number;
@@ -29,12 +29,33 @@ export interface ArchiveStats {
   readonly topLevel: readonly string[];
 }
 
+/**
+ * One entry of a zip as its central directory lists it: the path as stored (`/`-separated; a
+ * directory ends with `/`), the uncompressed size, and for a symbolic link where it points, as
+ * stored. The kit checks the paths and the links, so no entry is written before it is judged.
+ */
+export interface ArchiveEntry {
+  readonly path: string;
+  readonly size: number;
+  readonly isSymlink: boolean;
+  readonly linkTarget?: string;
+}
+
+/** What a scan of a zip returns: every entry, in archive order. */
+export interface ArchiveScan {
+  readonly entries: readonly ArchiveEntry[];
+}
+
 /** `corrupt`: the bytes are not a readable zip, so the download is refused; `aborted`: the signal fired. */
 export type ArchiveFailure = PortFailure<'corrupt' | 'aborted'>;
 
 export interface ArchiveReader {
-  /** Unzipping is work a host may need to cancel, so the signal is required, as for any request that does I/O. */
-  stats(bytes: Uint8Array, signal: AbortSignal): Promise<ArchiveStats | ArchiveFailure>;
+  /**
+   * Lists the entries of a zip without extracting anything, so the extraction limits, the zip-slip
+   * paths and the links are judged by the kit before a host unzips. Unzipping is work a host may
+   * need to cancel, so the signal is required, as for any request that does I/O.
+   */
+  scan(bytes: Uint8Array, signal: AbortSignal): Promise<ArchiveScan | ArchiveFailure>;
 }
 
 /** The repository a tag listing is about: a GitHub `owner/repo` shorthand or a git URL. */

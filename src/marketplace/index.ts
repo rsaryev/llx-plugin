@@ -294,3 +294,4 @@ export {
   type CopySweep,
 } from './copy-sweep.ts';
 export * from './version-index.ts';
+export * from './install-index.ts';

@@ -47,3 +47,17 @@ export function pathsIn(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((entry): entry is string => typeof entry === 'string');
 }
+
+const ABSOLUTE = /^(?:[\\/]|[A-Za-z]:)/;
+
+/**
+ * Whether a component path leaves the plugin as written (plugins/loading.md, "Paths that escape the
+ * plugin directory"): it climbs with `..`, is absolute, or, "on macOS and Linux, contains a
+ * backslash anywhere in it, even when the path stays inside the plugin". On Windows a backslash is
+ * a separator, so `..\x` climbs there too. A symlink is not seen here: that takes the file system.
+ */
+export function escapesAsWritten(path: string, platform: 'posix' | 'windows'): boolean {
+  if (ABSOLUTE.test(path)) return true;
+  if (platform === 'posix' && path.includes('\\')) return true;
+  return path.split(platform === 'windows' ? /[\\/]/ : '/').includes('..');
+}

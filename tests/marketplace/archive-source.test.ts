@@ -135,6 +135,9 @@ spec('marketplace.source.archive', () => {
     const issue = await refusal(run);
     expect(issue.message).toContain('sha256');
     expect(issue.message).toContain(DIGEST);
+    expect(issue.message.startsWith(`Plugin archive integrity check failed for ${URL_0}`)).toBe(
+      true,
+    );
     expect(run.archive.calls).toBe(0);
   });
 
@@ -157,36 +160,33 @@ spec('marketplace.source.archive', () => {
   });
 
   test('the install fails past 100,000 files and directories', async () => {
-    expect(await fetchWith([ok], { stats: stats({ entries: 100_000 }) }).result).toMatchObject({
+    expect(await fetchWith([ok], { scan: stats({ entries: 100_000 }) }).result).toMatchObject({
       root: '',
     });
-    const issue = await refusal(fetchWith([ok], { stats: stats({ entries: 100_001 }) }));
+    const issue = await refusal(fetchWith([ok], { scan: stats({ entries: 100_001 }) }));
     expect(issue.message).toContain('100000');
   });
 
   test('the install fails past 512 MiB for any one file, uncompressed', async () => {
     expect(
-      await fetchWith([zipFor(oneFile(512 * MIB))], { stats: oneFile(512 * MIB) }).result,
+      await fetchWith([zipFor(oneFile(512 * MIB))], { scan: oneFile(512 * MIB) }).result,
     ).toMatchObject({ root: '' });
     expect(
-      (
-        await refusal(
-          fetchWith([zipFor(oneFile(512 * MIB + 1))], { stats: oneFile(512 * MIB + 1) }),
-        )
-      ).message,
+      (await refusal(fetchWith([zipFor(oneFile(512 * MIB + 1))], { scan: oneFile(512 * MIB + 1) })))
+        .message,
     ).toContain('512 MiB');
   });
 
   test('the install fails past 1 GiB uncompressed in total', async () => {
     expect(
-      await fetchWith([zipFor(totalOf(1024 * MIB))], { stats: totalOf(1024 * MIB) }).result,
+      await fetchWith([zipFor(totalOf(1024 * MIB))], { scan: totalOf(1024 * MIB) }).result,
     ).toMatchObject({
       root: '',
     });
     expect(
       (
         await refusal(
-          fetchWith([zipFor(totalOf(1024 * MIB + 1))], { stats: totalOf(1024 * MIB + 1) }),
+          fetchWith([zipFor(totalOf(1024 * MIB + 1))], { scan: totalOf(1024 * MIB + 1) }),
         )
       ).message,
     ).toContain('1024 MiB');
@@ -194,26 +194,20 @@ spec('marketplace.source.archive', () => {
 
   test('the install fails when the content is more than 50 times the size of the zip', async () => {
     const reply = zipOf(1000);
-    expect(await fetchWith([reply], { stats: ratioOf(50_000) }).result).toMatchObject({ root: '' });
-    expect((await refusal(fetchWith([reply], { stats: ratioOf(50_001) }))).message).toContain(
+    expect(await fetchWith([reply], { scan: ratioOf(50_000) }).result).toMatchObject({ root: '' });
+    expect((await refusal(fetchWith([reply], { scan: ratioOf(50_001) }))).message).toContain(
       '50 times',
     );
   });
 
-  test('the ratio is against the zip the kit downloaded, not the size the host reports', async () => {
-    const liar = stats({
-      uncompressedBytes: 50_001,
-      largestFileBytes: 1,
-      compressedBytes: 10 ** 9,
-    });
-    expect((await refusal(fetchWith([zipOf(1000)], { stats: liar }))).message).toContain(
-      '50 times',
-    );
+  test('the totals are the kit own count of the entries, and the ratio is against the zip it downloaded', async () => {
+    const run = fetchWith([zipOf(1000)], { scan: ratioOf(50_001) });
+    expect((await refusal(run)).message).toContain('50 times');
   });
 
   test('a zip the host cannot read is refused', async () => {
     const failure: ArchiveFailure = { failure: 'corrupt', message: 'bad central directory' };
-    const issue = await refusal(fetchWith([ok], { stats: failure }));
+    const issue = await refusal(fetchWith([ok], { scan: failure }));
     expect(issue.message).toContain('bad central directory');
   });
 
@@ -224,7 +218,7 @@ spec('marketplace.source.archive', () => {
       ['hooks', 'x'],
       ['commands'],
     ]) {
-      expect(await fetchWith([ok], { stats: stats({ topLevel }) }).result).toMatchObject({
+      expect(await fetchWith([ok], { scan: stats({ topLevel }) }).result).toMatchObject({
         root: '',
       });
     }
@@ -232,16 +226,16 @@ spec('marketplace.source.archive', () => {
 
   test('the plugin root may be one directory down: the single wrapping directory', async () => {
     for (const topLevel of [['formatter-2.0.0'], ['formatter-2.0.0/']]) {
-      expect(await fetchWith([ok], { stats: stats({ topLevel }) }).result).toMatchObject({
+      expect(await fetchWith([ok], { scan: stats({ topLevel }) }).result).toMatchObject({
         root: 'formatter-2.0.0',
       });
     }
   });
 
   test('a zip with several top-level entries and no plugin content has no plugin root', async () => {
-    const issue = await refusal(fetchWith([ok], { stats: stats({ topLevel: ['a', 'b'] }) }));
+    const issue = await refusal(fetchWith([ok], { scan: stats({ topLevel: ['a', 'b'] }) }));
     expect(issue.message).toContain('plugin root');
-    expect((await refusal(fetchWith([ok], { stats: stats({ topLevel: [] }) }))).message).toContain(
+    expect((await refusal(fetchWith([ok], { scan: stats({ topLevel: [] }) }))).message).toContain(
       'plugin root',
     );
   });

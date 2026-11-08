@@ -4,6 +4,19 @@
 
 ### Added
 
+- The install and cache lifecycle: `decideInstallMode` (in place, copied or linked, and the printed
+  directory refusals), `planTreeCopy` (the symlink rule of a cache copy), `escapedPathIssue`,
+  `planInstallStart` and `planInstallFinish` (fetch plan, cache folder, record change, orphaned
+  version folders), the troubleshooting messages of a failed install (`install-failures`),
+  `commitStagedPlugin`, `selectUninstall` (the Windows spelling rule), `readLfsPointer`, the
+  session-only plugins (`readPluginDirectory`, `fetchSessionArchives`, `folderChanges`, `@inline`,
+  `@skills-dir`) and the install commands per surface (`planInstallCommand`, `installSummary`).
+  Ports: `ArchiveReader.scan` lists a zip's entries (the kit derives the totals and checks the paths
+  and links itself, so `ArchiveReader.stats` is gone), `SourceFetcher` may return a staged directory,
+  and the new `StagedDirectory` port moves it into the cache. Git fetch plans carry
+  `lfs: 'pointer-files'`; an npm `package` refusal and an archive digest mismatch are the
+  documented messages.
+
 - Plugin versions and names: `computePluginVersion` (manifest, entry, then the source's commit,
   digest or `unknown`; command sources hashed, the entry's version ignored), `copyModeHash`,
   `linkModeHash`, `subdirectoryPathHash`, `unknownVersionSteps`, `pluginNames`, `lookupPlugin`,

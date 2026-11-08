@@ -83,9 +83,9 @@ spec('marketplace.source.npm', () => {
 
   test('a git address, a folder or file: path and an npm: alias are refused, naming the value and the reason', () => {
     const values = [
-      ['git+https://github.com/o/r.git', 'git address'],
-      ['git@github.com:o/r.git', 'git address'],
-      ['github:o/r', 'git address'],
+      ['git+https://github.com/o/r.git', 'not an http or https link'],
+      ['git@github.com:o/r.git', 'not an http or https link'],
+      ['github:o/r', 'not an http or https link'],
       ['o/r', 'git address'],
       ['https://github.com/o/r.git', 'git address'],
       ['./local-dir', 'folder or file: path'],

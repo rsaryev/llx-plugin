@@ -108,6 +108,7 @@ function planGithub(source: PluginSourceOf<'github'>): Planned {
     ...pinned(source),
     sparse: false,
     partialClone: false,
+    lfs: 'pointer-files',
   });
 }
 
@@ -120,6 +121,7 @@ function planUrl(source: PluginSourceOf<'url'>): Planned {
     ...pinned(source),
     sparse: false,
     partialClone: false,
+    lfs: 'pointer-files',
   });
 }
 
@@ -135,6 +137,7 @@ function planGitSubdir(source: PluginSourceOf<'git-subdir'>): Planned {
     subdir: source.path,
     sparse: true,
     partialClone: reading.partialClone,
+    lfs: 'pointer-files',
   });
 }
 
