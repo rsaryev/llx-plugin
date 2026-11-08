@@ -13,6 +13,9 @@ import { ctx, loaded, PLUGIN } from '../support/command-read.ts';
 
 const project = (relativePath: string) => ({ origin: { kind: 'project' } as const, relativePath });
 
+const nameOf = (relativePath: string) =>
+  loaded(readCommand(`.claude/commands/${relativePath}`, 'x', project(relativePath))).name;
+
 describe('the entry against the file it names (spec/judgments.md: the entry wins)', () => {
   const file =
     '---\ndescription: From the file\nargument-hint: "[from-file]"\nmodel: haiku\nallowed-tools: Read\neffort: low\n---\nBody.\n';
@@ -57,6 +60,50 @@ describe('the entry against the file it names (spec/judgments.md: the entry wins
     const command = loaded(readCommandEntry('c', { content }, undefined, ctx));
     expect(command.body).toBe(content);
     expect(command.model).toBeUndefined();
+  });
+});
+
+describe('blank and untrimmed entry fields (spec/judgments.md)', () => {
+  test('a blank description is no description, so the body describes the command', () => {
+    const command = loaded(
+      readCommandEntry('about', { content: 'Say hello.', description: '   ' }, undefined, ctx),
+    );
+    expect(command.description).toBe('Say hello.');
+  });
+
+  test('a blank model sets none', () => {
+    const command = loaded(
+      readCommandEntry('plan', { content: 'Plan.', model: ' ' }, undefined, ctx),
+    );
+    expect(command.model).toBeUndefined();
+  });
+
+  test('every field is trimmed, and blank allowedTools items are dropped', () => {
+    const command = loaded(
+      readCommandEntry(
+        'c',
+        {
+          content: 'Go.',
+          description: '  Does it  ',
+          argumentHint: ' [x] ',
+          model: ' opus ',
+          allowedTools: [' Read ', '  ', ''],
+        },
+        undefined,
+        ctx,
+      ),
+    );
+    expect(command).toMatchObject({
+      description: 'Does it',
+      argumentHint: '[x]',
+      model: 'opus',
+      allowedTools: ['Read'],
+    });
+  });
+
+  test('an entry without allowedTools grants nothing (the reader default)', () => {
+    const command = loaded(readCommandEntry('ship', { content: 'Ship.' }, undefined, ctx));
+    expect(command.allowedTools).toEqual([]);
   });
 });
 
@@ -130,6 +177,22 @@ describe('readCommand: a flat command file (skills.md, "How a skill gets its com
       argumentHint: '[env]',
       allowedTools: ['Bash(make *)'],
     });
+  });
+
+  test('`name` and `paths` in the frontmatter are dropped silently, with no warning', () => {
+    const read = readCommand(
+      '.claude/commands/deploy.md',
+      '---\nname: other\npaths: src/**\n---\nGo.\n',
+      project('deploy.md'),
+    );
+    expect(read.issues).toEqual([]);
+    expect(loaded(read).name).toBe('deploy');
+  });
+
+  test('only a `.md` extension is stripped from the name, in any case; another one stays', () => {
+    expect(nameOf('Deploy.MD')).toBe('Deploy');
+    expect(nameOf('notes.txt')).toBe('notes.txt');
+    expect(nameOf('db/migrate.md')).toBe('db:migrate');
   });
 
   test('a file whose name holds a refused character does not load', () => {

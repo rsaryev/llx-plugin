@@ -7,7 +7,8 @@
  * name and § Characters a skill name can't hold. The entry fields reach the command here; what the
  * command does once it runs is proven in tests/skills/command-entries.test.ts. Precedence between
  * an entry field and the same field in the source file, and a `content` that is not parsed for
- * frontmatter, are the kit's judgments (spec/judgments.md) and are tested outside spec().
+ * frontmatter, are the kit's judgments (spec/judgments.md) and are tested outside spec(), as are a
+ * blank field and the default of an entry without `allowedTools` (tests/format/command-judgments.test.ts).
  */
 import { expect, test } from 'bun:test';
 import { readCommandEntry } from '../../src/format/command.ts';
@@ -133,13 +134,6 @@ spec('commands.entry.description', () => {
     );
     expect(command.description).toBe('Explain what this plugin provides.');
   });
-
-  test('a blank description is no description', () => {
-    const command = loaded(
-      readCommandEntry('about', { content: 'Say hello.', description: '   ' }, undefined, ctx),
-    );
-    expect(command.description).toBe('Say hello.');
-  });
 });
 
 spec('commands.entry.argumentHint', () => {
@@ -169,12 +163,9 @@ spec('commands.entry.model', () => {
     }
   });
 
-  test('an entry without a model, or with a blank one, sets none', () => {
+  test('an entry without a model sets none', () => {
     expect(
       loaded(readCommandEntry('plan', { content: 'Plan.' }, undefined, ctx)).model,
-    ).toBeUndefined();
-    expect(
-      loaded(readCommandEntry('plan', { content: 'Plan.', model: ' ' }, undefined, ctx)).model,
     ).toBeUndefined();
   });
 });
@@ -190,10 +181,5 @@ spec('commands.entry.allowedTools', () => {
       ),
     );
     expect(command.allowedTools).toEqual(['Bash(git add *)', 'Bash(git commit *)', 'Read']);
-  });
-
-  test('an entry without the field grants nothing', () => {
-    const command = loaded(readCommandEntry('ship', { content: 'Ship.' }, undefined, ctx));
-    expect(command.allowedTools).toEqual([]);
   });
 });

@@ -32,6 +32,9 @@ export type UserConfigOption = z.infer<typeof userConfigOptionSchema>;
 
 const userConfig = z.record(z.string().regex(USER_CONFIG_KEY), userConfigOptionSchema);
 
+/** The manifest says an entry that sets both or neither "fails validation". */
+export const COMMAND_ENTRY_ONE_OF = 'Set exactly one of "source" or "content"';
+
 const commandEntrySchema = z
   .object({
     source: path.optional(),
@@ -42,7 +45,7 @@ const commandEntrySchema = z
     allowedTools: z.array(z.string()).optional(),
   })
   .refine((entry) => (entry.source === undefined) !== (entry.content === undefined), {
-    message: 'Set exactly one of "source" or "content"',
+    message: COMMAND_ENTRY_ONE_OF,
   });
 export type CommandEntry = z.infer<typeof commandEntrySchema>;
 

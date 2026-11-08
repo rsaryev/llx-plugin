@@ -6,9 +6,10 @@
  * entries through the `PluginFiles` port (in memory here); the loaded commands then run through the
  * same `expandSkill` and `menuEntries` a skill does, so each field is proven by what it does: a
  * body that expands, a menu row, the model of the turn, the grants a command runs under. How a
- * field reaches a `Command` is in tests/format/command.test.ts. A `source` that is not a path the
- * manifest allows, and an `allowedTools` rule that does not parse, are the kit's judgments
- * (spec/judgments.md) and are tested outside spec().
+ * field reaches a `Command` is in tests/format/command.test.ts. A `source` never read when it
+ * breaks the path rules, `${CLAUDE_PLUGIN_ROOT}` in an entry's `allowedTools` (skills.md has it for
+ * the frontmatter only), no extension rule for a `source`, and an `allowedTools` rule that does not
+ * parse are the kit's judgments (spec/judgments.md), tested outside spec().
  */
 import { describe, expect, test } from 'bun:test';
 import type { Command, SkillOrigin } from '../../src/format/skill-types.ts';
@@ -126,14 +127,13 @@ spec('commands.entry.source', () => {
     expect(issues[0]?.message).toContain('./commands/status.md');
   });
 
-  test('a source outside the plugin folder is refused and never read', async () => {
-    const { commands, issues, folder } = await load(
+  test('a source that breaks the path rules is refused with an error issue and no command', async () => {
+    const { commands, issues } = await load(
       { sneaky: { source: './../secrets.md' }, bare: { source: 'commands/a.md' } },
       { 'commands/a.md': 'File.', '../secrets.md': 'Secret.' },
     );
     expect(commands).toEqual([]);
     expect(issues.map((found) => found.severity)).toEqual(['error', 'error']);
-    expect(folder.reads).toEqual([]);
   });
 });
 
@@ -237,8 +237,10 @@ spec('commands.entry.allowedTools', () => {
     });
     expect(abortOf((await expandWith(other)).expansion)).toContain('permission check failed');
   });
+});
 
-  test('`${CLAUDE_PLUGIN_ROOT}` in a Bash rule is substituted, so it matches the command the body runs', async () => {
+describe('a manifest entry allowedTools rule with a path variable (spec/judgments.md)', () => {
+  test('`${CLAUDE_PLUGIN_ROOT}` in a Bash rule is substituted like in the allowed-tools frontmatter', async () => {
     const command = await loadOne('check', {
       content: 'Result: !`${CLAUDE_PLUGIN_ROOT}/scripts/check.sh`',
       allowedTools: ['Bash(${CLAUDE_PLUGIN_ROOT}/scripts/check.sh)'],
@@ -246,6 +248,25 @@ spec('commands.entry.allowedTools', () => {
     const run = await expandWith(command, { replies: [{ stdout: 'ok' }] });
     expect(textOf(run.expansion)).toBe('Result: ok');
     expect(grantsOf(run)).toEqual(['Bash(/plugins/my-plugin/scripts/check.sh)']);
+  });
+});
+
+describe('a source that breaks the path rules (spec/judgments.md)', () => {
+  test('the file is never read, whatever the path would have reached', async () => {
+    const { folder } = await load(
+      { sneaky: { source: './../secrets.md' }, bare: { source: 'commands/a.md' } },
+      { 'commands/a.md': 'File.', '../secrets.md': 'Secret.' },
+    );
+    expect(folder.reads).toEqual([]);
+  });
+
+  test('no extension rule applies to a source: a file that is not `.md` loads', async () => {
+    const command = await loadOne(
+      'notes',
+      { source: './commands/notes.txt' },
+      { 'commands/notes.txt': 'Notes.' },
+    );
+    expect(command.body).toBe('Notes.');
   });
 });
 

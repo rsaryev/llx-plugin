@@ -1,6 +1,6 @@
 import { parseFrontmatter, type Frontmatter } from './frontmatter.ts';
 import { error, warning, type PluginIssue } from './issues.ts';
-import type { CommandEntry } from './manifest-schema.ts';
+import { COMMAND_ENTRY_ONE_OF, type CommandEntry } from './manifest-schema.ts';
 import { readInvocable } from './skill-fields.ts';
 import { pluginPrefix, refusedCharacters, reservedNamespace } from './skill-name.ts';
 import type { Command, InvocableFrontmatter, SkillOrigin } from './skill-types.ts';
@@ -187,7 +187,7 @@ export function readCommandEntry(
 ): CommandRead {
   const at = `commands.${key}`;
   if ((entry.source === undefined) === (entry.content === undefined)) {
-    return { issues: [error(at, 'Set exactly one of "source" or "content"')] };
+    return { issues: [error(at, COMMAND_ENTRY_ONE_OF)] };
   }
   const parsed = entryParsed(entry, sourceText);
   if (parsed === undefined) {

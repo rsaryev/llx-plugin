@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- Commands: review fixes. The judgments the kit makes about commands (blank entry fields, a source
+  that is never read, `${CLAUDE_PLUGIN_ROOT}` in an entry's `allowedTools`, `name` and `paths`
+  dropped silently, trimming, only a `.md` extension stripped from a file name, no extension rule
+  for a `source`) are recorded in spec/judgments.md and tested outside `spec()`, so they no longer
+  count toward the compatibility percentage; the "exactly one of `source` or `content`" message is
+  shared between the manifest schema and `readCommandEntry`.
 - Skills: review fixes for invocation, listing and execution. A skill named after plain text now
   permits the model's run of a `disable-model-invocation` skill (`permittedByMention`);
   `readSkillMentions` stacks up to six skills at the start of a message with the shared trailing
