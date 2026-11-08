@@ -72,6 +72,8 @@ export interface RunContext {
   readonly sessionId?: string;
   /** The host process's id, exported as `CLAUDE_PID` (env-vars.md); absent, the variable is not set. */
   readonly processId?: number;
+  /** The effort level of the input's `effort` (hooks.md: "`$CLAUDE_EFFORT` holds the same level"). */
+  readonly effort?: string;
   /**
    * The variables of the settings files' `env` blocks (`resolveSettingsEnv`), which every hook process
    * inherits in place of what the shell exported (env-vars.md, "Precedence").

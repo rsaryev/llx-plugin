@@ -82,15 +82,23 @@ function contextOf(
     defaultShell: config.defaultShell,
     timeouts,
     signal: request.signal,
+    ...(request.session.effort === undefined ? {} : { effort: request.session.effort.level }),
+    ...commandOptionsOf(config),
+    ...(config.userConfigOf === undefined ? {} : { userConfigOf: config.userConfigOf }),
+    ...(config.httpPolicy === undefined ? {} : { httpPolicy: config.httpPolicy }),
+    ...(config.envFiles === undefined ? {} : { envFiles: config.envFiles }),
+    ...(config.checkPluginDirectories === true ? { checkPluginDirectory: true } : {}),
+  };
+}
+
+/** What the host set for its command hooks: their paths, folders and environment. */
+function commandOptionsOf(config: DispatchConfig): Partial<RunContext> {
+  return {
     ...(config.shellPaths === undefined ? {} : { shellPaths: config.shellPaths }),
     ...(config.startDirectory === undefined ? {} : { startDirectory: config.startDirectory }),
     ...(config.tempDirectory === undefined ? {} : { tempDirectory: config.tempDirectory }),
-    ...(config.userConfigOf === undefined ? {} : { userConfigOf: config.userConfigOf }),
-    ...(config.httpPolicy === undefined ? {} : { httpPolicy: config.httpPolicy }),
     ...(config.processId === undefined ? {} : { processId: config.processId }),
     ...(config.settingsEnv === undefined ? {} : { settingsEnv: config.settingsEnv }),
-    ...(config.envFiles === undefined ? {} : { envFiles: config.envFiles }),
-    ...(config.checkPluginDirectories === true ? { checkPluginDirectory: true } : {}),
   };
 }
 

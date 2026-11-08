@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Command hooks and `subprocessEnvironment` for Bash set `CLAUDE_EFFORT` to the session's effort level.
 - A `PermissionRequest` deny keeps its `interrupt` through the dispatch.
 
 ### Added

@@ -16,7 +16,7 @@ import { pendingRunner } from '../support/hooks-run.ts';
 import { facts as factsOf } from '../support/hooks-input.ts';
 import { entry, FACTS, session, skillSource } from '../support/hooks-select.ts';
 import { fakeOutput } from '../support/hooks-verdict.ts';
-import { fakeEnvironment, locations } from '../support/ports.ts';
+import { fakeEnvironment, locations, scriptedRunner } from '../support/ports.ts';
 
 describe('the dispatch', () => {
   test('every selected hook runs and their outputs merge', async () => {
@@ -167,5 +167,24 @@ describe('the dispatch', () => {
     const sent = runner.calls[0]?.stdin;
     expect(typeof sent === 'string' ? JSON.parse(sent).tool_name : undefined).toBe('Bash');
     expect(outcome.runs).toHaveLength(1);
+  });
+});
+
+// hooks.md, "Common input fields": "`$CLAUDE_EFFORT` holds the same level" as the input's `effort`.
+describe('the effort of the session', () => {
+  test('reaches a command hook as CLAUDE_EFFORT', async () => {
+    const runner = scriptedRunner({});
+    const engine = createHookEngine({
+      commands: runner,
+      locations: locations(),
+      environment: fakeEnvironment(),
+    });
+    await engine.dispatch(createHookRegistry([entry('PreToolUse', { handler: cmd() })]), {
+      event: 'PreToolUse',
+      facts: factsOf('PreToolUse'),
+      session: session({ effort: { level: 'xhigh' } }),
+      signal: new AbortController().signal,
+    });
+    expect(runner.calls[0]?.env['CLAUDE_EFFORT']).toBe('xhigh');
   });
 });

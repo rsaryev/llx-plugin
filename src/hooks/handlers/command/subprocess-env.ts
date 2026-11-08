@@ -18,6 +18,7 @@ import { scrubEnvironment, scrubRequested } from './scrub.ts';
  * | `CLAUDE_CODE_CHILD_SESSION` | yes  | yes  | yes        | no        | yes     |
  * | `CLAUDE_CODE_SESSION_ID`    | yes  | yes  | yes        | yes       | no      |
  * | `CLAUDE_PID`                | yes  | yes  | yes        | no        | no      |
+ * | `CLAUDE_EFFORT`             | yes  | yes  | no         | no        | no      |
  *
  * Judgments (spec/judgments.md): `CLAUDECODE` is set for a Monitor process too (the docs list the
  * tools that get it by example); a variable the table does not give a kind is neither set nor
@@ -34,14 +35,16 @@ interface KindVariables {
   readonly childSession: boolean;
   readonly sessionId: boolean;
   readonly processId: boolean;
+  /** env-vars.md, `CLAUDE_EFFORT`: "Set automatically in Bash tool subprocesses and hook commands". */
+  readonly effort: boolean;
 }
 
 const KIND_VARIABLES: { readonly [K in SubprocessKind]: KindVariables } = {
-  hook: { childSession: true, sessionId: true, processId: true },
-  bash: { childSession: true, sessionId: true, processId: true },
-  powershell: { childSession: true, sessionId: true, processId: true },
-  mcp: { childSession: false, sessionId: true, processId: false },
-  monitor: { childSession: true, sessionId: false, processId: false },
+  hook: { childSession: true, sessionId: true, processId: true, effort: true },
+  bash: { childSession: true, sessionId: true, processId: true, effort: true },
+  powershell: { childSession: true, sessionId: true, processId: true, effort: false },
+  mcp: { childSession: false, sessionId: true, processId: false, effort: false },
+  monitor: { childSession: true, sessionId: false, processId: false, effort: false },
 };
 
 export interface SubprocessEnvironmentInput {
@@ -56,6 +59,8 @@ export interface SubprocessEnvironmentInput {
   readonly sessionId?: string | undefined;
   /** The host process's id, for `CLAUDE_PID`. */
   readonly processId?: number | undefined;
+  /** The effort level when the process starts, for `CLAUDE_EFFORT` ("only set when the model supports" it). */
+  readonly effort?: string | undefined;
 }
 
 const OTEL = /^OTEL_/;
@@ -74,6 +79,7 @@ function setByClaudeCode(input: SubprocessEnvironmentInput): Record<string, stri
     ...(kind.processId && input.processId !== undefined
       ? { CLAUDE_PID: String(input.processId) }
       : {}),
+    ...(kind.effort && input.effort !== undefined ? { CLAUDE_EFFORT: input.effort } : {}),
   };
 }
 

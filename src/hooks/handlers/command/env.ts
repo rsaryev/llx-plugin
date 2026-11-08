@@ -65,6 +65,7 @@ export async function processEnvironment(
       windows: context.windows,
       sessionId: context.sessionId,
       processId: context.processId,
+      effort: context.effort,
     }),
     ...(await exported(entry, context)),
     ...(await envFileVariable(entry, context)),

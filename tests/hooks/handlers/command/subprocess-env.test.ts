@@ -3,7 +3,7 @@
  * PowerShell, stdio MCP and Monitor processes: env-vars.md `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` ("Bash
  * commands, hooks, and stdio MCP servers"), `CLAUDECODE`, `CLAUDE_CODE_CHILD_SESSION` (Bash,
  * PowerShell, Monitor, hooks, not stdio MCP), `CLAUDE_CODE_SESSION_ID` (Bash, PowerShell, hooks, stdio
- * MCP) and `CLAUDE_PID` (Bash, PowerShell, hooks). The rows have no requirement id beyond the hook's
+ * MCP), `CLAUDE_PID` (Bash, PowerShell, hooks) and `CLAUDE_EFFORT` (Bash, hooks). The rows have no requirement id beyond the hook's
  * (proven in `host-variables.test.ts`), so these tests assert outside `spec(...)`.
  */
 import { describe, expect, test } from 'bun:test';
@@ -30,6 +30,16 @@ const envOf = (
   });
 
 describe('env-vars.md: what Claude Code sets in each kind of subprocess', () => {
+  test('CLAUDE_EFFORT is the effort level in hooks and Bash, and absent when no level is given', () => {
+    for (const kind of ['hook', 'bash'] as const) {
+      expect(envOf(kind, { effort: 'high' })['CLAUDE_EFFORT']).toBe('high');
+      expect(envOf(kind)).not.toHaveProperty('CLAUDE_EFFORT');
+    }
+    for (const kind of ['powershell', 'mcp', 'monitor'] as const) {
+      expect(envOf(kind, { effort: 'high' })).not.toHaveProperty('CLAUDE_EFFORT');
+    }
+  });
+
   test('CLAUDECODE is 1 in every kind', () => {
     for (const kind of SUBPROCESS_KINDS) expect(envOf(kind)['CLAUDECODE']).toBe('1');
   });
