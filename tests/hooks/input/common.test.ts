@@ -9,26 +9,44 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { HOOK_EVENTS } from '../../../src/protocol/hook-events.ts';
-import type { PermissionMode } from '../../../src/protocol/official.ts';
+import type { HookSession } from '../../../src/hooks/contracts.ts';
 import { spec } from '../../support/spec.ts';
 import { build } from '../../support/hooks-input.ts';
 
 const TOOL_CONTEXT = ['PreToolUse', 'PostToolUse', 'Stop', 'SubagentStop'] as const;
 
+/** The keys of every event's input, in the order the JSON lists them. */
+const keysOf = (event: (typeof HOOK_EVENTS)[number], overrides: Partial<HookSession> = {}) =>
+  Object.keys(build(event, {}, overrides).wire ?? {});
+
+/** The docs' example lists these three first and `hook_event_name` last of the common fields. */
+const placedBeforeEventName = (key: string): void => {
+  for (const event of HOOK_EVENTS) {
+    const keys = keysOf(event);
+    expect(keys.indexOf(key)).toBeGreaterThanOrEqual(0);
+    expect(keys.indexOf(key)).toBeLessThan(keys.indexOf('hook_event_name'));
+  }
+};
+
 spec('hooks.input.common.session_id', () => {
-  test('every event carries the session id', () => {
+  test('every event carries the session id as a string, first among the common fields', () => {
     for (const event of HOOK_EVENTS) {
       expect(build(event, {}, { sessionId: 'abc123' }).wire?.['session_id']).toBe('abc123');
+      expect(keysOf(event)[0]).toBe('session_id');
     }
+    placedBeforeEventName('session_id');
   });
 });
 
 spec('hooks.input.common.transcript_path', () => {
-  test('every event carries the transcript path of the main session', () => {
+  test('every event carries the transcript path of the main session, after the session id', () => {
     for (const event of HOOK_EVENTS) {
       const { wire } = build(event, {}, { transcriptPath: '/home/user/.claude/t.jsonl' });
       expect(wire?.['transcript_path']).toBe('/home/user/.claude/t.jsonl');
+      const keys = keysOf(event);
+      expect(keys.indexOf('transcript_path')).toBeGreaterThan(keys.indexOf('session_id'));
     }
+    placedBeforeEventName('transcript_path');
   });
 });
 
@@ -40,6 +58,14 @@ spec('hooks.input.common.cwd', () => {
     expect(build('PreToolUse', {}, { cwd: '/home/user/other' }).wire?.['cwd']).toBe(
       '/home/user/other',
     );
+  });
+  test('every event carries it as a string, after the transcript path', () => {
+    for (const event of HOOK_EVENTS) {
+      expect(typeof build(event).wire?.['cwd']).toBe('string');
+      const keys = keysOf(event);
+      expect(keys.indexOf('cwd')).toBeGreaterThan(keys.indexOf('transcript_path'));
+    }
+    placedBeforeEventName('cwd');
   });
 });
 
@@ -71,8 +97,7 @@ spec('hooks.input.common.permission_mode', () => {
     expect(build('PreToolUse', {}, { permissionMode: mode }).wire?.['permission_mode']).toBe(mode);
   });
   test('the mode labeled Manual arrives as default, never as manual', () => {
-    const manual = 'manual' as PermissionMode;
-    const { wire, issues } = build('PreToolUse', {}, { permissionMode: manual });
+    const { wire, issues } = build('PreToolUse', {}, { permissionMode: 'manual' });
     expect(wire?.['permission_mode']).toBe('default');
     expect(issues).toEqual([]);
   });
@@ -86,15 +111,12 @@ spec('hooks.input.common.effort', () => {
     const { wire } = build(event, {}, { effort: { level: 'xhigh' } });
     expect(wire?.['effort']).toEqual({ level: 'xhigh' });
   });
-  test.each([
-    'SessionStart',
-    'SessionEnd',
-    'Notification',
-    'UserPromptSubmit',
-    'CwdChanged',
-  ] as const)('%s, a session-lifecycle event, never carries it', (event) => {
-    expect(build(event, {}, { effort: { level: 'high' } }).wire).not.toHaveProperty('effort');
-  });
+  test.each(['SessionStart', 'SessionEnd'] as const)(
+    '%s, a session-lifecycle event, never carries it',
+    (event) => {
+      expect(build(event, {}, { effort: { level: 'high' } }).wire).not.toHaveProperty('effort');
+    },
+  );
   test('is absent on a model without effort', () => {
     expect(build('PreToolUse').wire).not.toHaveProperty('effort');
   });
@@ -147,4 +169,24 @@ describe('agent fields', () => {
       expect(wire?.['agent_type']).toBe('Plan');
     });
   });
+});
+
+describe('judgment: effort on the events beside the four the docs name', () => {
+  // The docs say "other events with a tool-use context" and give no list (spec/judgments.md).
+  test.each([
+    'PostToolUseFailure',
+    'PostToolBatch',
+    'PermissionRequest',
+    'PermissionDenied',
+  ] as const)('%s, a tool-call event, carries it', (event) => {
+    expect(build(event, {}, { effort: { level: 'max' } }).wire?.['effort']).toEqual({
+      level: 'max',
+    });
+  });
+  test.each(['Notification', 'UserPromptSubmit', 'CwdChanged'] as const)(
+    '%s has no tool-use context and never carries it',
+    (event) => {
+      expect(build(event, {}, { effort: { level: 'high' } }).wire).not.toHaveProperty('effort');
+    },
+  );
 });

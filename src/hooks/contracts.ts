@@ -1,11 +1,6 @@
 import type { HookHandler } from '../protocol/hook-config.ts';
 import type { HookInputOf } from '../protocol/hook-events.ts';
-import type {
-  BaseHookInput,
-  HookEvent,
-  PermissionMode,
-  SettingSource,
-} from '../protocol/official.ts';
+import type { BaseHookInput, HookEvent, SettingSource } from '../protocol/official.ts';
 import type { PluginIssue } from '../format/issues.ts';
 
 /**
@@ -74,7 +69,11 @@ export interface HookSession {
   readonly sessionId: string;
   readonly transcriptPath: string;
   readonly cwd: string;
-  readonly permissionMode?: PermissionMode;
+  /**
+   * The mode as the host names it, including the label **Manual** (hooks.md, "Common input
+   * fields"): the input carries it as `"default"`, and a text that names no mode is not sent.
+   */
+  readonly permissionMode?: string;
   readonly effort?: BaseHookInput['effort'];
   readonly promptId?: string;
   readonly scratchpadDir?: string;

@@ -10,14 +10,16 @@
  * shape it sends, the cap and the per-type presence.
  */
 import { describe, expect, test } from 'bun:test';
+import { z } from 'zod';
 import { spec } from '../../support/spec.ts';
 import { build } from '../../support/hooks-input.ts';
 
+const EntriesSchema = z.array(z.record(z.string(), z.unknown()));
 const shell = { id: 'task-001', type: 'shell', status: 'running', description: 'tail logs' };
 const clipped = (length: number): string => 'x'.repeat(length);
 /** The first entry of an array of the input; `{}` when the input was not built (a refused one). */
 const first = (wire: Record<string, unknown> | undefined, key: string): Record<string, unknown> =>
-  (wire?.[key] as Record<string, unknown>[] | undefined)?.[0] ?? {};
+  EntriesSchema.safeParse(wire?.[key]).data?.[0] ?? {};
 
 /** A task of the given type with the field under test, as Claude Code would build it. */
 const task = (type: string, extra: Record<string, unknown>) => ({
@@ -75,7 +77,7 @@ describe('required entry fields', () => {
           const { input, issues } = taskOf(entry);
           expect(input).toBeUndefined();
           expect(issues[0]?.severity).toBe('error');
-          expect(issues[0]?.path).toBe(`hooks.Stop.input.background_tasks.0.${field}`);
+          expect(issues[0]?.path).toBe(`hooks.Stop.input.background_tasks[0].${field}`);
         }
       });
     });
@@ -215,7 +217,7 @@ describe('session_crons entries', () => {
           if (value === undefined) delete entry[field];
           const { input, issues } = cronOf(entry);
           expect(input).toBeUndefined();
-          expect(issues[0]?.path).toBe(`hooks.Stop.input.session_crons.0.${field}`);
+          expect(issues[0]?.path).toBe(`hooks.Stop.input.session_crons[0].${field}`);
         }
       });
     });

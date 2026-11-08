@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { EventFactsOf } from '../contracts.ts';
-import { count, nonNegative } from './facts-shared.ts';
+import { count } from './facts-shared.ts';
 
 /**
  * Facts of the model-switch events (hooks.md, "PreModelSwitch input"). `PostModelSwitch` has the
@@ -15,7 +15,7 @@ const cost = {
   context_tokens: count,
   prompt_cache_warm: z.boolean(),
   cache_ttl: z.enum(['5m', '1h']),
-  estimated_cache_write_usd: nonNegative,
+  estimated_cache_write_usd: z.number(),
   pricing: z.enum(['configured', 'catalog', 'default']),
 };
 

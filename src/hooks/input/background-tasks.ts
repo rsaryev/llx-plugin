@@ -41,17 +41,17 @@ const TYPED_FIELDS: readonly TaskField[] = ['command', 'agent_type', 'server', '
 
 function normalizeTask(task: BackgroundTask, path: string, issues: PluginIssue[]): BackgroundTask {
   const allowed = TASK_FIELDS.get(task.type) ?? [];
-  const kept: Record<string, unknown> = { ...task, description: capText(task.description) };
+  const kept: BackgroundTask = {
+    ...task,
+    description: capText(task.description),
+    ...(task.command === undefined ? {} : { command: capText(task.command) }),
+  };
   for (const field of TYPED_FIELDS) {
-    if (task[field] === undefined) continue;
-    if (!allowed.includes(field)) {
-      Reflect.deleteProperty(kept, field);
-      issues.push(warning(`${path}.${field}`, `"${field}" is not sent for a "${task.type}" task`));
-    } else if (field === 'command') {
-      kept['command'] = capText(task[field]);
-    }
+    if (task[field] === undefined || allowed.includes(field)) continue;
+    Reflect.deleteProperty(kept, field);
+    issues.push(warning(`${path}.${field}`, `"${field}" is not sent for a "${task.type}" task`));
   }
-  return kept as unknown as BackgroundTask;
+  return kept;
 }
 
 /** Each task capped and stripped of the fields its type does not have; unknown types keep none. */

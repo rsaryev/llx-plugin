@@ -132,3 +132,12 @@
   source (`allowManagedHooksOnly`, `forceEnabledPlugins` and `pluginOnlyHooks` on the session); the
   `FileChanged` watch list (`fileChangedWatchList(entries, session)`) skips handlers that cannot
   run; the session's `effort` takes the SDK type.
+- Hook input (`hooks/input`): `HookSession.permissionMode` takes the host's own text, so the
+  Manual label (sent as `"default"`) and a text that names no mode (warned, not sent) are reachable
+  through the typed API; `duration_ms`, `seconds_since_last_response` and
+  `estimated_cache_write_usd` accept any number, as the docs type them, while `context_tokens` and
+  `index` stay whole numbers (a judgment); issue paths write an array index as `[n]`
+  (`hooks.Stop.input.background_tasks[0].id`), as the warnings and the select stage do; the input
+  build no longer relies on casts beyond one commented join, and tests now cover `mcp_server`,
+  `permission_suggestions`, `tool_calls`, the optional titles and the Elicitation and ConfigChange
+  enums.

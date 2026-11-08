@@ -29,9 +29,8 @@ function dropFields<E extends HookEvent>(
 ): Refined<E> {
   const present = fields.filter((field) => field in facts);
   if (present.length === 0) return { facts, issues: [] };
-  const kept = Object.fromEntries(
-    Object.entries(facts).filter(([key]) => !present.includes(key)),
-  ) as EventFactsOf<E>;
+  const kept: EventFactsOf<E> = { ...facts };
+  for (const field of present) Reflect.deleteProperty(kept, field);
   const issues = present.map((field) =>
     warning(`hooks.${event}.input.${field}`, `"${field}" is only sent ${because} and is dropped`),
   );

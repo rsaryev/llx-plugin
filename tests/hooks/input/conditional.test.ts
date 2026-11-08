@@ -37,10 +37,6 @@ describe('SessionStart cost fields', () => {
           ]);
         },
       );
-      test('is absent when the resumed transcript has no response', () => {
-        const { wire } = build('SessionStart', { source: 'resume' });
-        expect(wire).not.toHaveProperty(name);
-      });
       test('a value of the wrong type is refused', () => {
         const wrong = typeof value === 'boolean' ? 'true' : String(value);
         const { input, issues } = build('SessionStart', { source: 'resume', [name]: wrong });

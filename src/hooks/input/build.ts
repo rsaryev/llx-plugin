@@ -17,12 +17,30 @@ export interface BuiltInput<E extends HookEvent> {
   readonly issues: readonly PluginIssue[];
 }
 
+/** `hooks.<Event>.input.<field>`, an array index as `[n]` as in the select stage and the warnings. */
 const pathOf = (event: HookEvent, segments: readonly PropertyKey[]): string =>
-  ['hooks', event, 'input', ...segments.map(String)].join('.');
+  segments.reduce<string>(
+    (path, segment) =>
+      typeof segment === 'number' ? `${path}[${segment}]` : `${path}.${String(segment)}`,
+    `hooks.${event}.input`,
+  );
 
 /** A field the host set to `undefined` is a field it did not set: JSON cannot carry it. */
 const withoutUndefined = (facts: object): Record<string, unknown> =>
   Object.fromEntries(Object.entries(facts).filter(([, value]) => value !== undefined));
+
+/**
+ * The common fields and the event's own facts as the input of `event`. TypeScript cannot relate
+ * the generic `E` to the one member of the `HookInputOf` union it names, so the join of the two
+ * halves, each already checked (the facts by the event's schema, the rest by `CommonInput`), is
+ * asserted to it here, the one place it is.
+ */
+const joinInput = <E extends HookEvent>(
+  common: CommonInput,
+  facts: EventFactsOf<E>,
+): BuiltHookInput<E> =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- generic `E` vs one union member, see above
+  ({ ...common, ...facts }) as BuiltHookInput<E>;
 
 /**
  * The JSON a command hook reads on stdin and an HTTP hook receives as its POST body, from the
@@ -45,7 +63,7 @@ export function buildHookInput<E extends HookEvent>(
     };
   }
   const issues: PluginIssue[] = Object.keys(given)
-    .filter((key) => !(key in (parsed.data as object)))
+    .filter((key) => !Object.keys(parsed.data).includes(key))
     .map((key) =>
       warning(pathOf(event, [key]), `"${key}" is not a field of the ${event} input and is dropped`),
     );
@@ -53,7 +71,7 @@ export function buildHookInput<E extends HookEvent>(
   const common = commonInput(event, session);
   issues.push(...refined.issues, ...common.issues);
   // Facts come last: an event's own `agent_id` and `agent_type` (SubagentStart, SubagentStop) win.
-  const input = { ...common.fields, ...refined.facts } as unknown as BuiltHookInput<E>;
+  const input = joinInput<E>(common.fields, refined.facts);
   return { input, issues };
 }
 

@@ -16,5 +16,9 @@ export const anyValue = z.custom<unknown>((value) => value !== undefined, {
 /** `mcp_server`: where an MCP tool came from (the SDK's `McpServerProvenance`). */
 export const mcpServer = z.object({ name: z.string(), source: z.string() });
 
-export const nonNegative = z.number().nonnegative();
+/**
+ * A count the docs call "Zero-based index" or tokens (`index`, `context_tokens`): a non-negative
+ * integer (spec/judgments.md for the tokens; the index is the docs' own word). Other numbers the
+ * docs type only as "number" stay plain numbers.
+ */
 export const count = z.int().nonnegative();

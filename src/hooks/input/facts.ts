@@ -62,4 +62,5 @@ export type FactSchemasCoverSdk = Assert<
 
 /** The schema of `event`'s facts, typed for them: each entry of the registry satisfies its own event. */
 export const factSchemaOf = <E extends HookEvent>(event: E): z.ZodType<EventFactsOf<E>> =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the registry is typed per event by `satisfies`; an indexed generic lookup widens it to the union of schemas
   FACT_SCHEMAS[event] as z.ZodType<EventFactsOf<E>>;

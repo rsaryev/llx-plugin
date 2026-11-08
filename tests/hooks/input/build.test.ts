@@ -7,7 +7,6 @@
 import { describe, expect, test } from 'bun:test';
 import { serializeHookInput, buildHookInput } from '../../../src/hooks/input/index.ts';
 import { HOOK_EVENTS } from '../../../src/protocol/hook-events.ts';
-import type { PermissionMode } from '../../../src/protocol/official.ts';
 import { build, facts, session } from '../../support/hooks-input.ts';
 
 describe('every event', () => {
@@ -54,7 +53,7 @@ describe("facts that are not the event's own", () => {
   test('each mistyped fact is its own error and no input is built', () => {
     const { input, issues } = build('PreModelSwitch', { cache_ttl: '10m', pricing: 'list' });
     expect(input).toBeUndefined();
-    expect(issues.map((issue) => issue.path).sort()).toEqual([
+    expect(issues.map((issue) => issue.path).toSorted()).toEqual([
       'hooks.PreModelSwitch.input.cache_ttl',
       'hooks.PreModelSwitch.input.pricing',
     ]);
@@ -82,7 +81,7 @@ describe('judgments', () => {
     ]);
   });
   test('a text that is not a permission mode is not sent and the host is told', () => {
-    const { wire, issues } = build('PreToolUse', {}, { permissionMode: 'yolo' as PermissionMode });
+    const { wire, issues } = build('PreToolUse', {}, { permissionMode: 'yolo' });
     expect(wire).not.toHaveProperty('permission_mode');
     expect(issues.map((issue) => [issue.severity, issue.path])).toEqual([
       ['warning', 'hooks.PreToolUse.input.permission_mode'],

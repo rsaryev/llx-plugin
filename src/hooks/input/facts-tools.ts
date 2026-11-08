@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { PermissionUpdate } from '../../protocol/official.ts';
 import type { EventFactsOf } from '../contracts.ts';
-import { anyValue, mcpServer, nonNegative, optional } from './facts-shared.ts';
+import { anyValue, mcpServer, optional } from './facts-shared.ts';
 
 /**
  * Facts of the tool events (hooks.md, "PreToolUse input", "PermissionRequest input", "PostToolUse
@@ -16,11 +16,7 @@ import { anyValue, mcpServer, nonNegative, optional } from './facts-shared.ts';
  * full where a hook returns them: `parsePermissionUpdates`).
  */
 const permissionUpdate = z.custom<PermissionUpdate>(
-  (value) =>
-    typeof value === 'object' &&
-    value !== null &&
-    'type' in value &&
-    typeof (value as { type: unknown }).type === 'string',
+  (value) => z.looseObject({ type: z.string() }).safeParse(value).success,
   { message: 'Expected a permission update entry' },
 );
 
@@ -43,7 +39,7 @@ export const PostToolUseFacts = z.object({
   tool_input: anyValue,
   tool_response: anyValue,
   tool_use_id: z.string(),
-  duration_ms: optional(nonNegative),
+  duration_ms: optional(z.number()),
   mcp_server: optional(mcpServer),
 }) satisfies z.ZodType<EventFactsOf<'PostToolUse'>>;
 
@@ -53,7 +49,7 @@ export const PostToolUseFailureFacts = z.object({
   tool_use_id: z.string(),
   error: z.string(),
   is_interrupt: optional(z.boolean()),
-  duration_ms: optional(nonNegative),
+  duration_ms: optional(z.number()),
   mcp_server: optional(mcpServer),
 }) satisfies z.ZodType<EventFactsOf<'PostToolUseFailure'>>;
 

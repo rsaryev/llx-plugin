@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { EventFactsOf } from '../contracts.ts';
-import { count, nonNegative, optional } from './facts-shared.ts';
+import { count, optional } from './facts-shared.ts';
 
 /**
  * Facts of the session and prompt events (hooks.md, "SessionStart input", "Setup input",
@@ -12,10 +12,10 @@ export const SessionStartFacts = z.object({
   source: z.enum(['startup', 'resume', 'clear', 'compact', 'fork']),
   model: optional(z.string()),
   session_title: optional(z.string()),
-  seconds_since_last_response: optional(nonNegative),
+  seconds_since_last_response: optional(z.number()),
   context_tokens: optional(count),
   prompt_cache_likely_expired: optional(z.boolean()),
-  estimated_cache_write_usd: optional(nonNegative),
+  estimated_cache_write_usd: optional(z.number()),
 }) satisfies z.ZodType<EventFactsOf<'SessionStart'>>;
 
 export const SetupFacts = z.object({

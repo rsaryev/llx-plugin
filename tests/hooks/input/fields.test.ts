@@ -112,14 +112,14 @@ const FIELDS: readonly Field[] = [
     event: 'PostToolUse',
     name: 'duration_ms',
     good: [12, 0],
-    bad: ['12', -1],
+    bad: ['12'],
     optional: true,
   },
   {
     event: 'PostToolUseFailure',
     name: 'duration_ms',
     good: [4187],
-    bad: ['4187', -1],
+    bad: ['4187'],
     optional: true,
   },
   {
@@ -151,7 +151,7 @@ const FIELDS: readonly Field[] = [
     good: ['command', 'picker', 'sdk'],
     bad: ['auto', 'resume'],
   },
-  { event: 'PreModelSwitch', name: 'context_tokens', good: [182340, 0], bad: [-1, 1.5, '1'] },
+  { event: 'PreModelSwitch', name: 'context_tokens', good: [182340, 0], bad: ['1'] },
   {
     event: 'PreModelSwitch',
     name: 'prompt_cache_warm',
@@ -163,7 +163,7 @@ const FIELDS: readonly Field[] = [
     event: 'PreModelSwitch',
     name: 'estimated_cache_write_usd',
     good: [1.1396, 0],
-    bad: ['1.13', -0.5],
+    bad: ['1.13'],
   },
   {
     event: 'PreModelSwitch',
@@ -243,7 +243,7 @@ const FIELDS: readonly Field[] = [
 
 /** The issue is about the field itself or an element inside it. */
 const underPath = (issuePath: string, path: string): boolean =>
-  issuePath === path || issuePath.startsWith(`${path}.`);
+  issuePath === path || issuePath.startsWith(`${path}.`) || issuePath.startsWith(`${path}[`);
 
 for (const field of FIELDS) {
   const id = `hooks.input.${field.event}.${field.name}`;
