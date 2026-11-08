@@ -8,20 +8,37 @@
  * reading what it did to the action and where its stderr went.
  */
 import { describe, expect, test } from 'bun:test';
-import { EXIT2_RULES } from '../../../src/hooks/index.ts';
+import {
+  EXIT2_RULES,
+  type BlockInfo,
+  type BlockRoute,
+  type StderrChannel,
+} from '../../../src/hooks/index.ts';
 import { HOOK_EVENTS } from '../../../src/protocol/hook-events.ts';
 import type { HookEvent } from '../../../src/protocol/official.ts';
 import { entry, pluginSource } from '../../support/hooks-select.ts';
 import { exited, verdictOf } from '../../support/hooks-verdict.ts';
 import { spec } from '../../support/spec.ts';
 
-/** Where the stderr of an exit-2 hook reaches, per the table: Claude, the user, or nowhere. */
-type Reaches = 'claude' | 'user' | 'nowhere';
+/**
+ * Where the stderr of an exit-2 hook goes, per the table and the event sections: Claude, the user,
+ * both, only the debug log, or nowhere.
+ */
+type Reaches = StderrChannel;
 
-/** One row of the table: "Can block?" and "What happens on exit 2". */
+/** What a blocked event shows, and to whom: `none` shows the stderr to no one. */
+const ROUTE: { readonly [R in Reaches]: BlockRoute } = {
+  claude: 'claude',
+  user: 'user',
+  'user-and-claude': 'user-and-claude',
+  debug: 'none',
+  discarded: 'none',
+};
+
+/** One row of the table: "Can block?" and "What happens on exit 2", with the event section's route for the stderr. */
 const TABLE: { readonly [E in HookEvent]: { blocks: boolean; stderr: Reaches } } = {
   PreToolUse: { blocks: true, stderr: 'claude' }, // Blocks the tool call; Claude sees the stderr as the denial reason
-  PermissionRequest: { blocks: false, stderr: 'nowhere' }, // "isn't honored", "its stderr is discarded"
+  PermissionRequest: { blocks: false, stderr: 'discarded' }, // "isn't honored", "its stderr is discarded"
   UserPromptSubmit: { blocks: true, stderr: 'user' }, // "the block message shows the stderr text to the user"
   UserPromptExpansion: { blocks: true, stderr: 'user' },
   Stop: { blocks: true, stderr: 'claude' }, // "Claude receives the stderr message as the explanation"
@@ -29,34 +46,48 @@ const TABLE: { readonly [E in HookEvent]: { blocks: boolean; stderr: Reaches } }
   TeammateIdle: { blocks: true, stderr: 'claude' }, // "the teammate receives the stderr message as feedback"
   TaskCreated: { blocks: true, stderr: 'claude' }, // "returns the stderr text as the message" (tool error)
   TaskCompleted: { blocks: true, stderr: 'claude' }, // "fed back to the model as feedback"
-  ConfigChange: { blocks: true, stderr: 'nowhere' }, // "surfaces no message to you or to Claude"
-  StopFailure: { blocks: false, stderr: 'nowhere' }, // "Output and exit code are ignored"
+  ConfigChange: { blocks: true, stderr: 'debug' }, // "surfaces no message to you or to Claude"; "only writes a line to the debug log"
+  StopFailure: { blocks: false, stderr: 'discarded' }, // "Output and exit code are ignored"
   PostToolUse: { blocks: false, stderr: 'claude' }, // "Shows stderr to Claude; the tool already ran"
   PostToolUseFailure: { blocks: false, stderr: 'claude' },
-  PostToolBatch: { blocks: true, stderr: 'claude' }, // "Stops the agentic loop"; "Claude sees it when the conversation continues"
-  PermissionDenied: { blocks: false, stderr: 'nowhere' }, // "Exit code and stderr are ignored"
-  Notification: { blocks: false, stderr: 'nowhere' },
+  PostToolBatch: { blocks: true, stderr: 'user-and-claude' }, // "a warning in the transcript, and it stays in the conversation"
+  PermissionDenied: { blocks: false, stderr: 'discarded' }, // "Exit code and stderr are ignored"
+  Notification: { blocks: false, stderr: 'discarded' },
   SubagentStart: { blocks: false, stderr: 'user' }, // "Shows stderr to user only"
   SessionStart: { blocks: false, stderr: 'user' },
-  Setup: { blocks: false, stderr: 'nowhere' },
+  Setup: { blocks: false, stderr: 'discarded' },
   SessionEnd: { blocks: false, stderr: 'user' },
   CwdChanged: { blocks: false, stderr: 'user' },
-  DirectoryAdded: { blocks: false, stderr: 'nowhere' }, // "Stderr goes to the debug log"
+  DirectoryAdded: { blocks: false, stderr: 'debug' }, // "Stderr goes to the debug log"
   FileChanged: { blocks: false, stderr: 'user' },
   PreCompact: { blocks: true, stderr: 'user' }, // "the stderr message is shown to the user"
   PostCompact: { blocks: false, stderr: 'user' },
   PreModelSwitch: { blocks: true, stderr: 'user' }, // "Blocks the model switch and shows stderr to the user"
   PostModelSwitch: { blocks: false, stderr: 'user' },
-  Elicitation: { blocks: true, stderr: 'nowhere' }, // "Claude Code doesn't show your stderr"
-  ElicitationResult: { blocks: true, stderr: 'nowhere' },
-  WorktreeCreate: { blocks: true, stderr: 'nowhere' },
-  WorktreeRemove: { blocks: true, stderr: 'nowhere' }, // "the hook's command and stderr go to the debug log"
-  InstructionsLoaded: { blocks: false, stderr: 'nowhere' }, // "Exit code is ignored"
-  MessageDisplay: { blocks: false, stderr: 'nowhere' }, // "The original text is displayed"
+  Elicitation: { blocks: true, stderr: 'discarded' }, // "Claude Code doesn't show your stderr"
+  ElicitationResult: { blocks: true, stderr: 'discarded' },
+  WorktreeCreate: { blocks: true, stderr: 'debug' }, // judgment: the table gives the row no route (spec/judgments.md)
+  WorktreeRemove: { blocks: true, stderr: 'debug' }, // "the hook's command and stderr go to the debug log"
+  InstructionsLoaded: { blocks: false, stderr: 'discarded' }, // "Exit code is ignored"
+  MessageDisplay: { blocks: false, stderr: 'discarded' }, // "The original text is displayed" (judgment)
 };
 
 const STDERR = 'No rm for you';
 const expectStderr = (text: string | undefined) => expect(text).toContain(STDERR);
+
+/** A block that reaches no one carries no text; the debug log gets the hook's line when the docs say so. */
+function expectHidden(block: BlockInfo | undefined, logged: boolean) {
+  expect(block).toMatchObject({ to: 'none', reason: '', message: '' });
+  if (logged) expectStderr(block?.debug);
+  else expect(block?.debug).toBeUndefined();
+}
+
+/** A block shown to Claude or the user carries the stderr as its reason and in its line. */
+function expectShown(block: BlockInfo | undefined, to: BlockRoute) {
+  expect(block).toMatchObject({ via: 'exit2', to, reason: STDERR });
+  expectStderr(block?.message);
+  expect(block?.debug).toBeUndefined();
+}
 
 for (const event of HOOK_EVENTS) {
   spec(`hooks.exit2.${event}`, () => {
@@ -66,7 +97,7 @@ for (const event of HOOK_EVENTS) {
     test(blocks ? 'exit 2 stops the action the event guards' : 'exit 2 stops nothing', () => {
       if (blocks) {
         expect(verdict.status).toBe('blocked');
-        expect(verdict.block).toMatchObject({ via: 'exit2', reason: STDERR });
+        expect(verdict.block?.via).toBe('exit2');
       } else {
         expect(verdict.block).toBeUndefined();
         expect(verdict.status).not.toBe('blocked');
@@ -74,21 +105,30 @@ for (const event of HOOK_EVENTS) {
     });
 
     test(`the stderr reaches ${stderr}`, () => {
-      if (stderr === 'claude') {
-        if (blocks) expectStderr(verdict.block?.message);
-        else expect(verdict.feedback).toMatchObject({ to: 'claude' });
-        if (!blocks) expectStderr(verdict.feedback?.text);
-      } else if (stderr === 'user') {
-        // A hook error notice in the transcript, or the block message the user is shown.
-        expectStderr(blocks ? verdict.block?.reason : verdict.notice?.message);
+      const to = ROUTE[stderr];
+      if (blocks) {
+        if (to === 'none') expectHidden(verdict.block, stderr === 'debug');
+        else expectShown(verdict.block, to);
+        expect(verdict.block?.to).toBe(to);
+      }
+      const toClaude = to === 'claude' || to === 'user-and-claude';
+      const toUser = to === 'user' || to === 'user-and-claude';
+      // A blocked event shows its text through the block, except where both are told.
+      const feedbackExpected = blocks ? to === 'user-and-claude' : toClaude;
+      const noticeExpected = blocks ? to === 'user-and-claude' : toUser;
+      if (feedbackExpected) {
+        expect(verdict.feedback).toMatchObject({ to: 'claude' });
+        expectStderr(verdict.feedback?.text);
       } else {
         expect(verdict.feedback).toBeUndefined();
-        expect(verdict.notice).toBeUndefined();
       }
+      if (noticeExpected) expectStderr(verdict.notice?.message);
+      else expect(verdict.notice).toBeUndefined();
     });
 
-    test('the rule table agrees with the behaviour above', () => {
+    test('the rule table agrees with the docs', () => {
       expect(EXIT2_RULES[event].canBlock).toBe(blocks);
+      expect(EXIT2_RULES[event].stderr).toBe(stderr);
     });
 
     if (blocks) {
@@ -144,16 +184,35 @@ describe('what the docs say of particular events', () => {
     }
   });
 
-  test('Elicitation: the output applies on exit 0 and is ignored on any other code', () => {
+  test('Elicitation: the hookSpecificOutput applies on exit 0 and is ignored on any other code', () => {
     const output = JSON.stringify({ hookSpecificOutput: { action: 'decline' } });
     expect(verdictOf('Elicitation', exited(0, '', output)).output).toBeDefined();
     expect(verdictOf('Elicitation', exited(1, '', output)).output).toBeUndefined();
   });
 
+  test('Elicitation and ElicitationResult: only hookSpecificOutput is ignored, the other fields still count', () => {
+    // "applies your `hookSpecificOutput` when your hook exits 0, and ignores it on any other exit
+    // code": exit 1 "the fields alone decide", exit 2 "Claude Code still reads the fields".
+    const both = JSON.stringify({
+      systemMessage: 'heads up',
+      continue: false,
+      hookSpecificOutput: { action: 'accept' },
+    });
+    for (const event of ['Elicitation', 'ElicitationResult'] as const) {
+      for (const code of [1, 2]) {
+        const verdict = verdictOf(event, exited(code, '', both));
+        expect(verdict.output).toEqual({ systemMessage: 'heads up', continue: false });
+      }
+      const exit0 = verdictOf(event, exited(0, '', both));
+      expect(exit0.output).toMatchObject({ systemMessage: 'heads up', hookSpecificOutput: {} });
+    }
+  });
+
   test('WorktreeCreate: any non-zero exit code makes worktree creation fail, whatever the JSON says', () => {
     const output = JSON.stringify({ continue: true });
     const verdict = verdictOf('WorktreeCreate', exited(1, 'git failed', output));
-    expect(verdict.block?.reason).toBe('git failed');
+    expect(verdict.block?.debug).toContain('git failed');
+    expect(verdict.block?.reason).toBe('');
     expect(verdictOf('WorktreeCreate', exited(0, '', '/work/wt\n')).block).toBeUndefined();
   });
 

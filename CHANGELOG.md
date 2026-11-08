@@ -98,6 +98,16 @@
 
 ### Fixed
 
+- Hook verdict and engine: a block now says who is shown its text (`BlockInfo.to`: `claude`, `user`,
+  `user-and-claude` or `none`), and on the events whose docs show it to no one (`ConfigChange`,
+  `Elicitation`, `ElicitationResult`, `WorktreeCreate`, `WorktreeRemove`) `reason` and `message` are
+  empty, the debug-log events keeping the hook's line in `debug`; a `PostToolBatch` stop leaves a
+  notice for the transcript and feedback for Claude; on `Elicitation` and `ElicitationResult` only
+  `hookSpecificOutput` is dropped from a run that did not exit 0 (`systemMessage` and `continue`
+  still count); a `UserPromptSubmit` command, HTTP or MCP tool hook that times out leaves a notice
+  with the timeout and the discarded output; a `continue: false` block no longer replaces an exit-2
+  reason; tests assert the route per event against the docs, the `<Event> hook error` notice of
+  `SessionStart`, `SubagentStart` and `PostModelSwitch`, and the judgments of assembling blocks.
 - Remote hook handlers: an `http` hook now honours the two settings allowlists through
   `RunContext.httpPolicy` (`allowedHttpHookUrls` skips a hook whose URL matches no `*` pattern, with a
   warning at `hooks.<Event>.url`; `httpHookAllowedEnvVars` narrows `allowedEnvVars` to the names on

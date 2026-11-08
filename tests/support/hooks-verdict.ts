@@ -96,6 +96,8 @@ export interface VerdictOptions {
   readonly facts?: object;
   readonly entry?: RegisteredHandler;
   readonly effectsIgnored?: boolean;
+  /** The limit the hook ran under, in milliseconds (what the dispatch computes). */
+  readonly timeoutMs?: number;
 }
 
 /** One run of a hook on `event`, read the way the engine reads it. */
@@ -112,6 +114,7 @@ export function verdictOf(
     event,
     facts,
     parse: fakeParse,
+    ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
     ...(options.effectsIgnored === true ? { effectsIgnored: true } : {}),
   });
 }

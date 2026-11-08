@@ -9,6 +9,7 @@ export type { BodyReading, StdoutReading } from './stdout-kind.ts';
 export type {
   BackgroundDelivery,
   BlockInfo,
+  BlockRoute,
   BlockVia,
   EventEffects,
   Feedback,
@@ -16,6 +17,7 @@ export type {
   HandlerVerdict,
   HookNotice,
   HookObserver,
+  MergedBlock,
   MergedOutput,
   OutputStage,
   ParseOutput,

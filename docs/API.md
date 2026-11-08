@@ -248,7 +248,9 @@ optional `http`, `mcp`, `models`, `clock`, `observer`, `modelCatalog`) and `opti
 `windows`, `defaultShell`, the two fallback directories, `userConfigOf`, `httpPolicy` and `ifEvaluator`
 are the host's facts. A `HookOutcome` says `proceed` (false: the guarded action must not happen) with
 `block` (`via`: `exit2`, `decision`, `failure`, `continue-false` or `timeout`; the hook error line the
-docs show; `condition` for a `WorktreeRemove` that fails only if the directory remains), `continue` and
+docs show; `to`, who is shown them: `claude`, `user`, `user-and-claude` or `none`, where `reason` and
+`message` are empty and `debug` holds the hook's line when the docs send it to the debug log;
+`condition` for a `WorktreeRemove` that fails only if the directory remains), `continue` and
 `stopReason`, `systemMessages`, `additionalContext`, `effects`, `terminalSequences`, the `<Event>:<tool>
 hook error` `notices`, `feedback` (stderr that goes to Claude or the user without blocking), `stdout`
 (a `WorktreeCreate` command hook's, whose last line is the path), `runs`, `consumedOnce` (the ids a
@@ -260,8 +262,12 @@ Claude on `UserPromptSubmit`, `UserPromptExpansion`, `SessionStart` and `PostMod
 compaction instructions on `PreCompact`); JSON that fails the output stage's validation is a
 non-blocking error, as is any exit code other than 0 and 2 (the notice carries the first stderr line:
 `Failed with non-blocking status code: ...`) and a hook that cannot start; exit 2 blocks on the 16
-events that can, with the stderr as the reason (a JSON decision's reason replaces it) and the JSON
-fields unable to override it; a timeout renders no decision except on `PreModelSwitch`. `onFailure:
+events that can, with the stderr as the reason, shown as the event's row routes it (a JSON decision's
+reason of the same hook replaces it) and the JSON fields unable to override it; a `PostToolBatch`
+stop also leaves a notice and feedback; `Elicitation` and `ElicitationResult` drop only
+`hookSpecificOutput` unless the hook exits 0; a timeout renders no decision except on
+`PreModelSwitch`, and on `UserPromptSubmit` leaves a notice with the timeout and the discarded
+output. `onFailure:
 "block"` on a `command` or `http` hook turns a failure (cannot start, other exit code, HTTP error,
 timeout, invalid output) into what exit 2 does on that event, a denial on `PermissionRequest`, and
 nothing on `Stop`, `SubagentStop`, `TaskCompleted`, `TeammateIdle` and background hooks. An HTTP 2xx

@@ -5,6 +5,7 @@ import {
   type HookObserver,
   type RegisteredHandler,
 } from '../../src/hooks/index.ts';
+import type { EventFactsOf } from '../../src/hooks/index.ts';
 import { ifEvaluatorFor } from '../../src/hooks/select/if-guard.ts';
 import type { HookHandler } from '../../src/protocol/hook-config.ts';
 import type { HookEvent } from '../../src/protocol/official.ts';
@@ -25,7 +26,7 @@ export async function fire<E extends HookEvent>(
   event: E,
   entries: readonly RegisteredHandler[],
   replies: readonly RunnerReply[],
-  options: { observer?: HookObserver; facts?: object; http?: HttpReply[] } = {},
+  options: { observer?: HookObserver; facts?: EventFactsOf<E>; http?: HttpReply[] } = {},
 ) {
   const runner = scriptedRunner(...replies);
   const engine = createHookEngine(
@@ -38,8 +39,7 @@ export async function fire<E extends HookEvent>(
     },
     { output: fakeOutput, ifEvaluator: ifEvaluatorFor(matchContext) },
   );
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the facts of E, as `FACTS` holds them per event
-  const facts = (options.facts ?? FACTS[event]) as (typeof FACTS)[E];
+  const facts: EventFactsOf<E> = options.facts ?? FACTS[event];
   const outcome = await engine.dispatch(createHookRegistry(entries), {
     event,
     facts,

@@ -1,3 +1,4 @@
+import { routedBlock, shownWith } from './route.ts';
 import type { HandlerVerdict, BlockInfo, BlockVia } from './types.ts';
 import { EXIT2_RULES } from './exit2.ts';
 import {
@@ -83,13 +84,8 @@ export const onFailureBlocks = (subject: Subject): boolean =>
 
 const viaOf = (failure: Failure): BlockVia => (failure.cause === 'timeout' ? 'timeout' : 'failure');
 
-interface Resolution {
-  /** The text of the hook error line. */
-  readonly message: string;
-  readonly reason: string;
-}
-
-const lineOf = (subject: Subject, reason: string): Resolution => ({
+/** The text of the hook error line. */
+const lineOf = (subject: Subject, reason: string) => ({
   reason,
   message: hookError(
     hookName(subject.event, subject.toolName),
@@ -103,11 +99,13 @@ const blockInfo = (
   failure: Failure,
   reason: string,
   conditional: boolean,
-): BlockInfo => ({
-  via: viaOf(failure),
-  ...lineOf(subject, reason),
-  ...(conditional ? { condition: 'worktree-directory-remains' as const } : {}),
-});
+): BlockInfo =>
+  routedBlock(
+    subject.event,
+    viaOf(failure),
+    lineOf(subject, reason),
+    conditional ? 'worktree-directory-remains' : undefined,
+  );
 
 /** The text a failure that blocks carries: `failed; blocking because onFailure is "block"` and the detail. */
 function blockingText(subject: Subject, failure: Failure): string {
@@ -180,7 +178,9 @@ function failureAsExit2Feedback(subject: Subject, failure: Failure): HandlerVerd
 /** What a failed run comes to. */
 export function failureVerdict(subject: Subject, failure: Failure): HandlerVerdict {
   const block = blockFor(subject, failure);
-  if (block !== undefined) return { ...base(subject), status: 'blocked', block };
+  if (block !== undefined) {
+    return { ...base(subject), status: 'blocked', block, ...shownWith(subject.entry.id, block) };
+  }
   const feedback = failureAsExit2Feedback(subject, failure);
   if (feedback !== undefined) return feedback;
   const { message } = lineOf(subject, failure.text);

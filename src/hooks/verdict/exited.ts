@@ -20,7 +20,8 @@ import { failureVerdict, onFailureBlocks, type Failure } from './on-failure.ts';
 import { PLAIN_STDOUT } from './plain-stdout.ts';
 import type { Subject } from './subject.ts';
 import { readStdout, type StdoutReading } from './stdout-kind.ts';
-import type { BlockInfo, HandlerVerdict, ParsedOutput, ParseResult } from './types.ts';
+import { routedBlock, shownWith } from './route.ts';
+import type { HandlerVerdict, ParsedOutput, ParseResult } from './types.ts';
 
 /**
  * A run that ended with an exit code (hooks.md, "Exit code output"): the table of stdout against
@@ -65,12 +66,23 @@ const otherExit = (read: Read): Failure => ({
   detail: read.run.stderr,
 });
 
+const HOOK_SPECIFIC_OUTPUT = 'hookSpecificOutput';
+
+/**
+ * "Claude Code applies your `hookSpecificOutput` when your hook exits 0, and ignores it on any
+ * other exit code": only that field is dropped, `systemMessage` and `continue` still count.
+ */
+function withoutSpecific(output: ParsedOutput): ParsedOutput | undefined {
+  const rest = Object.entries(output).filter(([key]) => key !== HOOK_SPECIFIC_OUTPUT);
+  return rest.length === 0 ? undefined : Object.fromEntries(rest);
+}
+
 /** The output counts only when the table says its fields do, and the event reads it on this code. */
 const appliedOutput = (read: Read, exitClass: ExitClass): ParsedOutput | undefined =>
   read.output === undefined || read.cell.fields === 'none'
     ? undefined
     : read.rule.outputOnlyOnExit0 === true && exitClass !== 'zero'
-      ? undefined
+      ? withoutSpecific(read.output)
       : read.output;
 
 const success = (read: Read, exitClass: ExitClass): HandlerVerdict => {
@@ -119,20 +131,19 @@ function unblockable(read: Read): HandlerVerdict {
 function blocked(read: Read): HandlerVerdict {
   const { subject, run } = read;
   const reason = run.stderr.trim();
-  const block: BlockInfo = {
-    via: 'exit2',
-    reason,
-    message: lineFor(subject, reason),
-    ...(read.rule.blocksUnlessDirectoryGone === true
-      ? { condition: 'worktree-directory-remains' as const }
-      : {}),
-  };
+  const block = routedBlock(
+    subject.event,
+    'exit2',
+    { reason, message: lineFor(subject, reason) },
+    read.rule.blocksUnlessDirectoryGone === true ? 'worktree-directory-remains' : undefined,
+  );
   const output = appliedOutput(read, 'two');
   return {
     ...base(subject),
     status: 'blocked',
     succeeded: false,
     block,
+    ...shownWith(subject.entry.id, block),
     ...(output === undefined ? {} : { output }),
   };
 }

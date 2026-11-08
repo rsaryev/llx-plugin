@@ -1,3 +1,4 @@
+import type { HookHandlerType } from '../../protocol/hook-config.ts';
 import type { HookEvent } from '../../protocol/official.ts';
 import type { RegisteredHandler } from '../contracts.ts';
 import type { RawRun } from '../handlers/context.ts';
@@ -5,7 +6,7 @@ import { deliveryOf } from './background.ts';
 import { interpretExited } from './exited.ts';
 import { interpretHttp, interpretHttpFailed } from './http-response.ts';
 import { interpretModel, interpretModelFailed } from './model-verdict.ts';
-import { TIMED_OUT } from './notices.ts';
+import { TIMED_OUT, timedOutDiscarded } from './notices.ts';
 import { failureVerdict } from './on-failure.ts';
 import type { Subject } from './subject.ts';
 import type { HandlerVerdict, ParseOutput } from './types.ts';
@@ -47,10 +48,27 @@ const inactive =
     issues: [],
   });
 
+/** The events whose docs give a timed-out hook a notice that says its output was discarded. */
+const NOTICES_DISCARD: ReadonlySet<HookEvent> = new Set<HookEvent>(['UserPromptSubmit']);
+
+/** "A `UserPromptSubmit` command, HTTP, or MCP tool hook that reaches its timeout is canceled and its output ... is discarded." */
+const DISCARDS_ON_TIMEOUT: { readonly [T in HookHandlerType]: boolean } = {
+  command: true,
+  http: true,
+  mcp_tool: true,
+  prompt: false,
+  agent: false,
+};
+
+const timeoutText = (subject: Subject): string =>
+  NOTICES_DISCARD.has(subject.event) && DISCARDS_ON_TIMEOUT[subject.entry.handler.type]
+    ? timedOutDiscarded(subject.timeoutMs)
+    : TIMED_OUT;
+
 const READERS: { readonly [K in RawRun['kind']]: Reader } = {
   exited: readerOf('exited', interpretExited),
   'timed-out': readerOf('timed-out', (subject) =>
-    failureVerdict(subject, { cause: 'timeout', text: TIMED_OUT, detail: '' }),
+    failureVerdict(subject, { cause: 'timeout', text: timeoutText(subject), detail: '' }),
   ),
   'not-started': readerOf('not-started', (subject, run) =>
     failureVerdict(subject, { cause: 'cannot-start', text: run.message, detail: run.message }),
@@ -85,6 +103,8 @@ export interface InterpretContext {
   readonly parse: ParseOutput;
   /** A Monitor call reached the hook through a `Bash` matcher. */
   readonly effectsIgnored?: boolean;
+  /** The limit the handler ran under, in milliseconds (`handlerTimeoutMs`); absent for none. */
+  readonly timeoutMs?: number | undefined;
   /** The host runs Windows without Git Bash (its default shell is PowerShell). */
   readonly gitBashMissing?: boolean;
 }
@@ -103,6 +123,7 @@ export function interpretRun(
     facts: context.facts,
     toolName: toolNameOf(context.facts),
     parse: context.parse,
+    timeoutMs: context.timeoutMs,
     effectsIgnored: context.effectsIgnored === true,
     gitBashMissing: context.gitBashMissing === true,
   };

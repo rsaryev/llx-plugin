@@ -43,13 +43,25 @@ export type HandlerStatus =
 /** Why the action is held back, and how it was decided. */
 export type BlockVia = 'exit2' | 'decision' | 'failure' | 'continue-false' | 'timeout';
 
+/**
+ * Who is shown the text of a block, as the docs route it: `claude` (the denial reason, the
+ * feedback), `user` (the block message), both (`PostToolBatch`: "a warning in the transcript, and
+ * it stays in the conversation"), or `none` (`ConfigChange`: "A blocked change surfaces no message
+ * to you or to Claude"; `Elicitation`: "Claude Code doesn't show your stderr").
+ */
+export type BlockRoute = 'claude' | 'user' | 'user-and-claude' | 'none';
+
 /** The action is held back; `reason` is the text Claude or the user is given, as the docs route it. */
 export interface BlockInfo {
   readonly via: BlockVia;
-  /** The hook's own words: its stderr, or the failure text. */
+  /** Where `reason` and `message` are shown. */
+  readonly to: BlockRoute;
+  /** The hook's own words: its stderr, or the failure text. Empty when `to` is `none`. */
   readonly reason: string;
-  /** The line the docs show, `<Event>:<tool> hook error: [<command>]: <reason>`. */
+  /** The line the docs show, `<Event>:<tool> hook error: [<command>]: <reason>`. Empty when `to` is `none`. */
   readonly message: string;
+  /** `to` is `none` and the docs send the hook's command and stderr to the debug log: that line. */
+  readonly debug?: string;
   /** `WorktreeRemove` only: it fails "if the directory still exists afterward". */
   readonly condition?: 'worktree-directory-remains';
 }
@@ -116,12 +128,14 @@ export interface TaggedOutput {
 export type EventEffects = Readonly<Record<string, unknown>>;
 
 /** The merge of every hook's output on one event (hooks hold no knowledge of its rules). */
+export interface MergedBlock {
+  readonly via: 'decision' | 'continue-false';
+  readonly by: string;
+  readonly reason?: string;
+}
+
 export interface MergedOutput {
-  readonly block?: {
-    readonly via: 'decision' | 'continue-false';
-    readonly by: string;
-    readonly reason?: string;
-  };
+  readonly block?: MergedBlock;
   readonly continue: boolean;
   readonly stopReason?: string;
   readonly systemMessages: readonly string[];

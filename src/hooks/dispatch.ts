@@ -4,7 +4,7 @@ import type { HookEvent } from '../protocol/official.ts';
 import { assemble, idleOutcome } from './assemble.ts';
 import type { HookRegistry, ModelCatalog, RegisteredHandler, Selection } from './contracts.ts';
 import type { HandlerResult, RunContext, RunPorts } from './handlers/context.ts';
-import { planTimeouts } from './handlers/timeouts.ts';
+import { handlerTimeoutMs, planTimeouts } from './handlers/timeouts.ts';
 import { runLimited } from './handlers/remote/concurrency.ts';
 import { serializeHookInput } from './input/build.ts';
 import type { buildHookInput } from './input/build.ts';
@@ -123,6 +123,7 @@ export async function dispatchEvent<E extends HookEvent>(
       event,
       facts,
       parse: stages.output.parse,
+      timeoutMs: handlerTimeoutMs(entry, timeouts),
       effectsIgnored: selection.monitor.get(entry)?.effectsApply === false,
       gitBashMissing: config.windows && config.defaultShell === 'powershell',
     }),

@@ -14,6 +14,8 @@ export interface Subject {
   readonly parse: ParseOutput;
   /** A Monitor call reached the hook through a `Bash` matcher ("allow and updatedInput have no effect"). */
   readonly effectsIgnored: boolean;
+  /** The limit the run was given in milliseconds, for the notice of a timeout; absent for none. */
+  readonly timeoutMs: number | undefined;
   /** Windows without Git Bash: a shell-form `PreToolUse` or `PermissionRequest` hook is a gate (hooks.md, "Failed hooks on Windows without Git Bash"). */
   readonly gitBashMissing: boolean;
 }

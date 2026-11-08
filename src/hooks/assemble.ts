@@ -2,32 +2,62 @@ import type { PluginIssue } from '../format/issues.ts';
 import type { HookEvent } from '../protocol/official.ts';
 import { consumedByRun } from './select/once.ts';
 import type { HookOutcome } from './outcome.ts';
-import type { BlockInfo } from './verdict/types.ts';
-import type { HandlerVerdict, MergedOutput } from './verdict/types.ts';
+import { routedBlock } from './verdict/route.ts';
+import type { HandlerVerdict, MergedBlock, MergedOutput } from './verdict/types.ts';
 
 /**
  * What an event came to once every handler's run is read and the outputs merged (docs/API.md,
- * "Hooks"). The block is the first one in handler order; a JSON decision of the same hook speaks
- * for it ("If your hook also printed JSON that makes a blocking decision, Claude Code uses that
- * decision's reason instead").
+ * "Hooks"). A block of an exit code (exit 2, a failure) wins over a block of a JSON decision, in
+ * whichever handler it sits: an exit-2 block's "fields ... can't override the block". Among exit
+ * blocks the first in handler order wins; a JSON decision of that same hook speaks for it ("If your
+ * hook also printed JSON that makes a blocking decision, Claude Code uses that decision's reason
+ * instead"). Judgment: spec/judgments.md.
  */
 
 type Blocked = HookOutcome<HookEvent>['block'];
 
+/** Only a blocking decision's reason replaces the stderr; the `reason` of `continue: false` is a stop reason. */
+const REPLACES_REASON: { readonly [V in MergedBlock['via']]: boolean } = {
+  decision: true,
+  'continue-false': false,
+};
+
+/** The reason a merged block of the same hook gives in place of the stderr, if the docs let it. */
+function replacement(merged: MergedOutput, handlerId: string): string | undefined {
+  const { block } = merged;
+  return block !== undefined && block.by === handlerId && REPLACES_REASON[block.via]
+    ? block.reason
+    : undefined;
+}
+
 /** The verdict-level block of the first hook that has one, its reason replaced by its own JSON decision's. */
-function exitBlock(verdicts: readonly HandlerVerdict[], merged: MergedOutput): Blocked {
+function exitBlock(
+  event: HookEvent,
+  verdicts: readonly HandlerVerdict[],
+  merged: MergedOutput,
+): Blocked {
   const found = verdicts.find((verdict) => verdict.block !== undefined);
   if (found?.block === undefined) return undefined;
-  const decision = merged.block?.by === found.handler.id ? merged.block.reason : undefined;
-  const block: BlockInfo =
-    decision === undefined ? found.block : { ...found.block, reason: decision, message: decision };
+  const decision = replacement(merged, found.handler.id);
+  const block =
+    decision === undefined || found.block.to === 'none'
+      ? found.block
+      : routedBlock(
+          event,
+          found.block.via,
+          { reason: decision, message: decision },
+          found.block.condition,
+        );
   return { ...block, by: found.handler.id };
 }
 
-function decisionBlock(merged: MergedOutput): Blocked {
+function decisionBlock(event: HookEvent, merged: MergedOutput): Blocked {
   if (merged.block === undefined) return undefined;
   const reason = merged.block.reason ?? '';
-  return { via: merged.block.via, reason, message: reason, by: merged.block.by };
+  return {
+    ...routedBlock(event, merged.block.via, { reason, message: reason }),
+    by: merged.block.by,
+  };
 }
 
 const present = <T>(items: readonly (T | undefined)[]): T[] =>
@@ -39,7 +69,7 @@ export function assemble<E extends HookEvent>(
   merged: MergedOutput,
   issues: readonly PluginIssue[],
 ): HookOutcome<E> {
-  const block = exitBlock(verdicts, merged) ?? decisionBlock(merged);
+  const block = exitBlock(event, verdicts, merged) ?? decisionBlock(event, merged);
   const stop = verdicts.find((verdict) => verdict.stop !== undefined)?.stop;
   const stopReason = merged.stopReason ?? stop?.reason;
   return {

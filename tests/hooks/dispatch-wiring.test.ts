@@ -13,6 +13,7 @@ import {
 } from '../../src/hooks/index.ts';
 import { cmd, fire } from '../support/hooks-fire.ts';
 import { pendingRunner } from '../support/hooks-run.ts';
+import { facts as factsOf } from '../support/hooks-input.ts';
 import { entry, FACTS, session, skillSource } from '../support/hooks-select.ts';
 import { fakeOutput } from '../support/hooks-verdict.ts';
 import { fakeEnvironment, locations } from '../support/ports.ts';
@@ -142,7 +143,9 @@ describe('the dispatch', () => {
     expect(none.outcome.proceed).toBe(true);
     expect(none.outcome.runs).toEqual([]);
     const hook = entry('PreToolUse', { handler: cmd() });
-    const bad = await fire('PreToolUse', [hook], [], { facts: { tool_name: 5 } });
+    const bad = await fire('PreToolUse', [hook], [], {
+      facts: factsOf('PreToolUse', { tool_name: 5 }),
+    });
     expect(bad.runner.calls).toHaveLength(0);
     expect(bad.outcome.issues.some((issue) => issue.severity === 'error')).toBe(true);
   });

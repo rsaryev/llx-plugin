@@ -36,6 +36,12 @@ spec('hooks.exit2.PreToolUse', () => {
     expect(outcome.block).toBeUndefined();
   });
 
+  // The output stage is a stub (`fakeOutput`, tests/support/hooks-verdict.ts), and the stub defines
+  // `by`: it reports a top-level `decision: 'block'` as the merged block of that hook. PreToolUse's
+  // real decision field is `hookSpecificOutput.permissionDecision`; when `hooks/output` lands this
+  // test must run through the real merge with `permissionDecision: "deny"` and
+  // `permissionDecisionReason`. What this proves is only the engine's side: the merged block of the
+  // same hook replaces the stderr (tests/hooks/assemble.test.ts covers a block of another hook).
   test("a hook that exits 2 with a JSON decision: the decision's reason replaces the stderr", async () => {
     const hook = entry('PreToolUse', { handler: cmd() });
     const json = JSON.stringify({ decision: 'block', reason: 'Policy says no' });
@@ -95,6 +101,23 @@ spec('hooks.handler.command.onFailure', () => {
     const guarded = entry('PreToolUse', { handler: cmd({ onFailure: 'block' }) });
     const { outcome } = await fire('PreToolUse', [guarded], [{ timedOut: true }]);
     expect(outcome.block?.via).toBe('timeout');
+  });
+});
+
+spec('hooks.handler.command.onFailure', () => {
+  test('a UserPromptSubmit hook that times out, onFailure unset: the prompt goes ahead with a notice', async () => {
+    const hook = entry('UserPromptSubmit', { handler: cmd({ timeout: 5 }) });
+    const { outcome } = await fire('UserPromptSubmit', [hook], [{ timedOut: true }]);
+    expect(outcome.proceed).toBe(true);
+    expect(outcome.notices[0]?.message).toBe(
+      "UserPromptSubmit hook error: [./guard.sh]: timed out after 5s; the hook's output was discarded",
+    );
+  });
+
+  test('with no timeout of its own the event default is the one named: 30 seconds', async () => {
+    const hook = entry('UserPromptSubmit', { handler: cmd() });
+    const { outcome } = await fire('UserPromptSubmit', [hook], [{ timedOut: true }]);
+    expect(outcome.notices[0]?.message).toContain('timed out after 30s');
   });
 });
 

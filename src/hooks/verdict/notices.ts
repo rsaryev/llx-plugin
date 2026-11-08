@@ -57,6 +57,14 @@ export const windowsBlocking = (detail: string): string =>
 export const TIMED_OUT = 'timed out';
 export const timedOutBlocksSwitch = (detail: string): string => withDetail(TIMED_OUT, detail);
 
+/**
+ * "The transcript shows a notice naming the hook, the timeout that fired, and that the output was
+ * discarded" (`UserPromptSubmit`). Judgment (spec/judgments.md): the docs give the notice no
+ * wording; the hook is named by the line around it, the timeout is written in seconds.
+ */
+export const timedOutDiscarded = (timeoutMs: number | undefined): string =>
+  `${TIMED_OUT}${timeoutMs === undefined ? '' : ` after ${timeoutMs / 1000}s`}; the hook's output was discarded`;
+
 const withDetail = (head: string, detail: string): string =>
   detail.trim() === '' ? head : `${head}\n${detail.trim()}`;
 

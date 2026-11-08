@@ -4,6 +4,7 @@ import { isPromptEvent, okFalseEffect, type OkFalseEffect } from '../handlers/re
 import { EXIT2_RULES } from './exit2.ts';
 import { handlerLabel, hookError, hookName } from './notices.ts';
 import { failureVerdict } from './on-failure.ts';
+import { routedBlock, shownWith } from './route.ts';
 import type { Subject } from './subject.ts';
 import type { HandlerVerdict } from './types.ts';
 
@@ -41,12 +42,13 @@ function failedVerdict(
   const stopsTeammate = effect.endsTurn && rule.effect === 'prevents-teammate-idle';
   const holds = rule.canBlock && !stopsTeammate;
   const toClaude = !effect.endsTurn && !rule.canBlock;
+  const block = holds ? routedBlock(event, 'decision', { reason, message }) : undefined;
   return {
     handler: entry,
     issues: [],
     status: holds ? 'blocked' : 'non-blocking-error',
     succeeded: false,
-    ...(holds ? { block: { via: 'decision' as const, reason, message } } : {}),
+    ...(block === undefined ? {} : { block, ...shownWith(entry.id, block) }),
     ...(effect.endsTurn ? { stop: { reason } } : {}),
     ...(toClaude
       ? { feedback: { handlerId: entry.id, to: 'claude' as const, text: message } }
