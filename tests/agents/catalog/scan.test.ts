@@ -87,17 +87,6 @@ spec('agents.behavior.Choose the subagent scope..claude/agents/', () => {
     // Judgment (spec/judgments.md): the project's own folders come first.
     expect(own?.order).toBeLessThan(team?.order ?? -1);
   });
-
-  test('in a linked worktree without its own .claude/skills the main checkout agents load too', async () => {
-    const outcome = await scanAgents({
-      folders: folderScan(
-        { '/main/.claude/agents/main-only.md': agent('main-only') },
-        { worktrees: { '/wt': '/main' } },
-      ),
-      request: { home: HOME, cwd: '/wt' },
-    });
-    expect(namesOf(outcome)).toEqual(['project:main-only']);
-  });
 });
 
 spec('agents.behavior.Choose the subagent scope.~/.claude/agents/', () => {
@@ -130,7 +119,32 @@ describe('subfolders of an agents directory', () => {
   });
 });
 
+const worktreeScan = (files: Record<string, string>) =>
+  scanAgents({
+    folders: folderScan(files, { worktrees: { '/wt': '/main' } }),
+    request: { home: HOME, cwd: '/wt' },
+  });
+
 describe('judgments of the agents scan (spec/judgments.md)', () => {
+  test('in a linked worktree without its own .claude/skills the main checkout agents load too, last', async () => {
+    const outcome = await worktreeScan({
+      '/wt/.claude/agents/own.md': agent('own'),
+      '/main/.claude/agents/main-only.md': agent('main-only'),
+    });
+    expect(namesOf(outcome)).toEqual(['project:main-only', 'project:own']);
+    const order = (name: string) => outcome.entries.find((e) => e.agent.name === name)?.order;
+    expect(order('own')).toBeLessThan(order('main-only') ?? -1);
+  });
+
+  test('when the worktree top has its own .claude/skills the main checkout agents do not load', async () => {
+    const outcome = await worktreeScan({
+      '/wt/.claude/agents/own.md': agent('own'),
+      '/wt/.claude/skills/lint/SKILL.md': '---\nname: lint\ndescription: lint\n---\nLint.\n',
+      '/main/.claude/agents/main-only.md': agent('main-only'),
+    });
+    expect(namesOf(outcome)).toEqual(['project:own']);
+  });
+
   test('strictPluginOnlyCustomization stops the personal, project and added folders, never the managed one', async () => {
     const outcome = await scan(
       {

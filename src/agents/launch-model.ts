@@ -1,3 +1,4 @@
+import { builtinModelAlias, type BuiltinModelInput } from './builtin-model.ts';
 import { EFFORT_LEVELS } from '../protocol/effort.ts';
 import type { AgentDefinition, EffortLevel } from '../protocol/official.ts';
 
@@ -16,7 +17,7 @@ const isAlias = (value: string | undefined): value is ModelAlias =>
   MODEL_ALIASES.some((alias) => alias === value);
 
 /** Where the chosen model came from. */
-export type ModelSource = 'invocation' | 'definition' | 'env' | 'main';
+export type ModelSource = 'invocation' | 'definition' | 'env' | 'builtin' | 'main';
 
 export interface SubagentModelInput {
   /** The `model` parameter of this Agent tool call: an alias ("Claude can't pass a full model ID or `inherit`"). */
@@ -33,6 +34,12 @@ export interface SubagentModelInput {
   readonly mainFamily?: string | undefined;
   /** `ANTHROPIC_DEFAULT_OPUS_MODEL` is set, so `opus` means the model you set. */
   readonly opusPinned?: boolean | undefined;
+  /**
+   * Set when the subagent is a built-in (not a user or project agent of the same name, which keeps its
+   * own `model`): its name and how the session connects. Explore on a Fable main conversation runs on
+   * the `opus` alias over a subscription, Console or LLM gateway ("Built-in subagents").
+   */
+  readonly builtin?: BuiltinModelInput | undefined;
 }
 
 export interface SubagentModel {
@@ -82,12 +89,13 @@ const PICKS: { readonly [S in ModelSource]: Pick } = {
     const value = written(input.envModel);
     return value === INHERIT ? undefined : value;
   },
+  builtin: (input) => builtinModelAlias(input.builtin, input.mainFamily),
   main: (input) => input.mainModel,
 };
 
-const ORDER: readonly ModelSource[] = ['invocation', 'definition', 'env', 'main'];
+const ORDER: readonly ModelSource[] = ['invocation', 'definition', 'env', 'builtin', 'main'];
 /** "While `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` is on, Claude Code ignores the `model` field ... and Claude can't pass a model." */
-const FORCED_ORDER: readonly ModelSource[] = ['env', 'main'];
+const FORCED_ORDER: readonly ModelSource[] = ['env', 'builtin', 'main'];
 
 /** The model a subagent runs on, in "the subagent model order" of sub-agents.md. */
 export function resolveSubagentModel(input: SubagentModelInput): SubagentModel {

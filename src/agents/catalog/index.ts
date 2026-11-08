@@ -50,7 +50,6 @@ export {
   type NamedSubagent,
   type NamedSubagentInput,
   type Nesting,
-  type SpawnTypes,
 } from './spawn.ts';
 export {
   catalogAgentOf,

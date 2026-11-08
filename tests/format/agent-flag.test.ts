@@ -103,6 +103,51 @@ spec('agents.behavior.Choose the subagent scope.--agents', () => {
     ]);
   });
 
+  test('schema problems of every definition are reported first, one line each; a "-" name only when none is left', () => {
+    const mixed = {
+      '-first': { description: 'ok', prompt: '' },
+      broken: { prompt: 'no description' },
+      'also-broken': { description: 'no prompt' },
+      good: { description: 'Good', prompt: '' },
+    };
+    const { agents, issues } = readFlagAgents(mixed);
+    expect(issues.map((issue) => issue.path)).toEqual(['--agents.broken', '--agents.also-broken']);
+    expect(issues.some((issue) => issue.message.includes('must not start with'))).toBe(false);
+    expect(agents.map((agent) => agent.name)).toEqual(['good']);
+    const fixed = readFlagAgents({
+      ...mixed,
+      broken: { description: 'd', prompt: '' },
+      'also-broken': { description: 'd', prompt: '' },
+    });
+    expect(fixed.issues.map((issue) => issue.message)).toEqual([
+      "-first: agent names must not start with '-'",
+    ]);
+    expect(fixed.agents.map((agent) => agent.name)).toEqual(['broken', 'also-broken', 'good']);
+  });
+
+  test('a "-" name with a schema problem of its own reports the schema problem only', () => {
+    const { issues } = readFlagAgents({ '-bad': { prompt: 'x' } });
+    expect(issues.map((issue) => issue.path)).toEqual(['--agents.-bad']);
+    expect(issues[0]?.message).toContain('description');
+  });
+
+  test('more than 20 problem lines print the first 20 and "...and N more" for the rest', () => {
+    const many = Object.fromEntries(
+      Array.from({ length: 25 }, (_, index) => [`bad${index}`, { prompt: 'x' }]),
+    );
+    const { issues } = readFlagAgents(many);
+    expect(issues).toHaveLength(21);
+    expect(issues[0]?.path).toBe('--agents.bad0');
+    expect(issues[19]?.path).toBe('--agents.bad19');
+    expect(issues[20]).toEqual({ severity: 'error', path: '--agents', message: '…and 5 more' });
+    const dashes = Object.fromEntries(
+      Array.from({ length: 21 }, (_, index) => [`-d${index}`, { description: 'd', prompt: '' }]),
+    );
+    const cut = readFlagAgents(dashes).issues;
+    expect(cut).toHaveLength(21);
+    expect(cut[20]?.message).toBe('…and 1 more');
+  });
+
   test('a value that is not an object, and a definition that is not an object, are errors', () => {
     expect(readFlagAgents('code-reviewer').issues[0]?.severity).toBe('error');
     expect(readFlagAgents([]).issues[0]?.severity).toBe('error');
@@ -116,6 +161,21 @@ spec('agents.behavior.Choose the subagent scope.--agents', () => {
 });
 
 describe('judgments of the --agents reader (spec/judgments.md)', () => {
+  test('a "-" name is never loaded, even while a schema problem keeps its error from being reported', () => {
+    const { agents } = readFlagAgents({
+      '-quiet': { description: 'd', prompt: '' },
+      broken: { prompt: 'x' },
+    });
+    expect(agents).toEqual([]);
+  });
+
+  test('a warning is no problem line: it does not hide the "-" error and is not counted', () => {
+    const { issues } = readFlagAgents({ '-a': { description: 'd', prompt: '', maxTurns: 'x' } });
+    expect(issues.filter((issue) => issue.severity === 'error').map((i) => i.message)).toEqual([
+      "-a: agent names must not start with '-'",
+    ]);
+  });
+
   test('a definition without a description is refused: the docs call it required for every subagent', () => {
     const { agents, issues } = readFlagAgents({ nameless: { prompt: 'x' } });
     expect(agents).toEqual([]);

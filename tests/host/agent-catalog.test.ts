@@ -6,6 +6,7 @@
  * End-to-end over the real loader, the scan and the fakes of the ports.
  */
 import { describe, expect, test } from 'bun:test';
+import { selectSessionAgent } from '../../src/agents/catalog/invoke.ts';
 import { createPolicyView } from '../../src/settings/index.ts';
 import { signal } from '../support/host.ts';
 import { agentFile, namesOf, PLUGIN_ID, pluginOf, reload } from '../support/agent-host.ts';
@@ -85,7 +86,9 @@ describe('a session reads the agent folders, the flag, the plugins and the built
 
   test('the issues of the flag and of a folder file come back with the reload', async () => {
     const files = { [`${PROJECT}/.claude/agents/half.md`]: '---\nname: half\n---\nBody.\n' };
-    const { session } = folderHostOf(files, { session: { agents: { '-bad': {} } } });
+    const { session } = folderHostOf(files, {
+      session: { agents: { '-bad': { description: 'd', prompt: '' } } },
+    });
     const outcome = await reload(session);
     expect(outcome.issues.map((issue) => issue.path).toSorted()).toEqual([
       '--agents',
@@ -161,7 +164,7 @@ spec('agents.behavior.Choose the subagent scope.agents/', () => {
     expect(namesOf(off.session)).not.toContain('my-plugin:helper');
   });
 
-  test('it ranks last: its agent is found by the bare name only when no other source has that name', async () => {
+  test('it ranks last: the bare name picks a user agent when both exist, and the plugin agent when it is alone', async () => {
     const plugins = await pluginOf({
       'agents/security-reviewer.md': agentFile('security-reviewer'),
     });
@@ -170,12 +173,91 @@ spec('agents.behavior.Choose the subagent scope.agents/', () => {
       .agentCatalog()
       .agents.find((agent) => agent.ownName === 'security-reviewer');
     expect(found?.name).toBe('my-plugin:security-reviewer');
+    const pickedAlone = selectSessionAgent(alone.session.agentCatalog(), {
+      flag: 'security-reviewer',
+    });
+    expect(pickedAlone.ok && pickedAlone.agent?.name).toBe('my-plugin:security-reviewer');
+    expect(pickedAlone.ok && pickedAlone.agent?.source).toBe('plugin');
     const files = {
       [`${HOME}/.claude/agents/security-reviewer.md`]: agentFile('security-reviewer'),
     };
     const both = folderHostOf(files, { plugins });
     await reload(both.session);
+    const catalog = both.session.agentCatalog();
     expect(namesOf(both.session)).toContain('security-reviewer');
     expect(namesOf(both.session)).toContain('my-plugin:security-reviewer');
+    const picked = selectSessionAgent(catalog, { flag: 'security-reviewer' });
+    expect(picked.ok && picked.agent?.source).toBe('user');
+    expect(picked.ok && picked.agent?.name).toBe('security-reviewer');
+    const scoped = selectSessionAgent(catalog, { flag: 'my-plugin:security-reviewer' });
+    expect(scoped.ok && scoped.agent?.source).toBe('plugin');
+  });
+});
+
+describe('a host that rebuilds its run state per run (spec/judgments.md)', () => {
+  const files = { [`${PROJECT}/.claude/agents/mine.md`]: agentFile('mine') };
+
+  test('agentCatalog(overrides) takes the deny rules of this run, and the session keeps its own', async () => {
+    const { session } = folderHostOf(files, {
+      session: { permissionRules: [parsed('Agent(Plan)')] },
+    });
+    await reload(session);
+    const run = session.agentCatalog({ permissionRules: [parsed('Agent(mine)'), parsed('Task')] });
+    expect(run.delegation).toBe(false);
+    expect(run.agents).toEqual([]);
+    const only = session.agentCatalog({ permissionRules: [parsed('Agent(mine)')] });
+    expect(only.agents.map((agent) => agent.name)).toContain('Plan');
+    expect(only.agents.map((agent) => agent.name)).not.toContain('mine');
+    const own = session.agentCatalog();
+    expect(own.agents.map((agent) => agent.name)).toContain('mine');
+    expect(own.agents.map((agent) => agent.name)).not.toContain('Plan');
+  });
+
+  test('the --agents flag of one run replaces the session flag for that call; { flag: undefined } is no flag', async () => {
+    const { session } = folderHostOf(files, {
+      session: { agents: { first: { description: 'd', prompt: '' } } },
+    });
+    const names = (overrides?: Parameters<typeof session.agentCatalog>[0]) =>
+      session.agentCatalog(overrides).agents.map((agent) => agent.name);
+    expect(names()).toContain('first');
+    expect(names({ flag: { second: { description: 'd', prompt: '' } } })).toContain('second');
+    expect(names({ flag: { second: { description: 'd', prompt: '' } } })).not.toContain('first');
+    expect(names({ flag: undefined })).not.toContain('first');
+    expect(names({ permissionRules: [] })).toContain('first');
+    expect(names()).toContain('first');
+  });
+
+  test('reloadAgents(overrides) reports the problems of the flag of this run', async () => {
+    const { session } = folderHostOf(files);
+    const clean = await session.reloadAgents({ signal: signal() });
+    expect(clean.issues).toEqual([]);
+    const broken = await session.reloadAgents({
+      signal: signal(),
+      overrides: { flag: { bad: { prompt: 'no description' } } },
+    });
+    expect(broken.issues.map((issue) => issue.path)).toEqual(['--agents.bad']);
+    expect(session.agentCatalog().agents.map((agent) => agent.name)).toContain('mine');
+  });
+
+  test('interactive of one run decides which built-ins that call has', async () => {
+    const env = { CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS: '1' };
+    const { session } = folderHostOf(files, { env });
+    const names = (interactive: boolean) =>
+      session.agentCatalog({ interactive }).agents.map((agent) => agent.name);
+    expect(names(true)).toContain('Explore');
+    expect(names(false)).not.toContain('Explore');
+    expect(names(true)).toContain('Explore');
+  });
+
+  test('selectAgent finds the session agent in the catalog of this run', async () => {
+    const { session } = folderHostOf(files, {
+      session: { agents: { flagged: { description: 'd', prompt: '' } } },
+    });
+    await reload(session);
+    const chosen = session.selectAgent({ flag: 'flagged' });
+    expect(chosen.ok && chosen.agent?.source).toBe('flag');
+    expect(session.selectAgent({ flag: 'flagged' }, { flag: undefined }).ok).toBe(false);
+    const setting = session.selectAgent({ setting: 'mine' });
+    expect(setting.ok && setting.from).toBe('setting');
   });
 });

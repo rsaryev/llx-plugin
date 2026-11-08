@@ -80,6 +80,39 @@ spec('agents.behavior.Disable specific subagents', () => {
     expect(outcome.ok).toBe(false);
   });
 
+  test('Task(...) still works as an alias of Agent(...) in a deny rule (renamed in 2.1.63)', () => {
+    const resolved = resolveAgents({
+      builtin: builtinAgents(INTERACTIVE),
+      scanned: [scannedAgent('project', 'worker')],
+      denied: [parsed('Task(Explore)')],
+    });
+    const names = resolved.agents.map((agent) => agent.name);
+    expect(names).not.toContain('Explore');
+    expect(names).toContain('Plan');
+    expect(names).toContain('worker');
+    expect(resolved.disabled.map((agent) => agent.name)).toEqual(['Explore']);
+    expect(resolved.delegation).toBe(true);
+  });
+
+  test('a bare Task deny rule is the Agent tool denied: no delegation to any subagent', () => {
+    const resolved = resolveAgents({
+      builtin: builtinAgents(INTERACTIVE),
+      scanned: [scannedAgent('project', 'worker')],
+      denied: [parsed('Task')],
+    });
+    expect(resolved.delegation).toBe(false);
+    expect(resolved.agents).toEqual([]);
+  });
+
+  test('a Task allow or ask rule disables nothing, like an Agent one', () => {
+    const resolved = resolveAgents({
+      builtin: builtinAgents(INTERACTIVE),
+      denied: [parsed('Task(Explore)', 'allow'), parsed('Task', 'ask')],
+    });
+    expect(resolved.delegation).toBe(true);
+    expect(resolved.agents.map((agent) => agent.name)).toContain('Explore');
+  });
+
   test('the name is compared exactly: Agent(explore) does not disable Explore', () => {
     const resolved = resolveAgents({
       builtin: builtinAgents(INTERACTIVE),

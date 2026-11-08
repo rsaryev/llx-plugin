@@ -4,10 +4,12 @@ export { BACKGROUND_BUILTIN_TOOLS, removedFromSubagent, type SubagentRun } from 
 export {
   resolveSubagentTools,
   type AgentToolFields,
+  type SpawnTypes,
   type ToolPool,
   type ToolRefusal,
   type ToolsOutcome,
 } from './tool-resolution.ts';
+export { CONNECTIONS, type BuiltinModelInput, type Connection } from './builtin-model.ts';
 export {
   PERMISSION_MODE_INPUTS,
   PERMISSION_MODE_TRAITS,

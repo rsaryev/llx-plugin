@@ -17,6 +17,9 @@ export const BUILTIN_AGENT_NAMES = [
 ] as const;
 export type BuiltinAgentName = (typeof BUILTIN_AGENT_NAMES)[number];
 
+/** The subagent a call without `subagent_type` runs: "a `general-purpose` subagent to fall back on". */
+export const FALLBACK_AGENT: BuiltinAgentName = 'general-purpose';
+
 interface BuiltinSpec {
   readonly description: string;
   /** "Tools: read-only tools; Write and Edit are denied". Absent: every tool available to subagents. */

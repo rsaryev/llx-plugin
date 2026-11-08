@@ -2,6 +2,8 @@ import { warning, type PluginIssue } from '../../format/issues.ts';
 import { evaluateRules } from '../../rules/index.ts';
 import { toolNameMatches } from '../../rules/tool-pattern.ts';
 import type { MatchContext, PermissionRule } from '../../rules/types.ts';
+import { FALLBACK_AGENT } from './builtin.ts';
+import { AGENT_TOOL, isAgentToolName } from '../tool-list.ts';
 import { AGENT_SCOPE_RULES, BUILTIN_PRIORITY } from './scopes.ts';
 import type { ScannedAgent } from './scan.ts';
 import type { CatalogAgent, CatalogSource } from './types.ts';
@@ -109,15 +111,27 @@ const NAMES_ONLY: MatchContext = {
   },
 };
 
-const AGENT_TOOL = 'Agent';
+/**
+ * "Existing `Task(...)` references in settings and agent definitions still work as aliases": a rule
+ * written for `Task` is read as the same rule for `Agent`.
+ */
+const asAgentRule = (rule: PermissionRule): PermissionRule =>
+  isAgentToolName(rule.value.toolName)
+    ? { ...rule, value: { ...rule.value, toolName: AGENT_TOOL } }
+    : rule;
 
 /** A bare `Agent` deny rule: the tool itself, which "prevents Claude from delegating to any subagent". */
 const deniesTool = (rules: readonly PermissionRule[]): boolean =>
-  rules.some((rule) => rule.specifier === undefined && toolNameMatches(rule, AGENT_TOOL));
+  rules.some(
+    (rule) => rule.specifier === undefined && toolNameMatches(asAgentRule(rule), AGENT_TOOL),
+  );
 
 const isDisabled = (rules: readonly PermissionRule[], name: string): boolean =>
-  evaluateRules(rules, { toolName: AGENT_TOOL, input: { subagent_type: name } }, NAMES_ONLY)
-    .behavior === 'deny';
+  evaluateRules(
+    rules.map(asAgentRule),
+    { toolName: AGENT_TOOL, input: { subagent_type: name } },
+    NAMES_ONLY,
+  ).behavior === 'deny';
 
 interface Grouped {
   readonly winners: CatalogAgent[];
@@ -173,8 +187,6 @@ export type SubagentTypeOutcome =
   | { readonly ok: true; readonly agent: CatalogAgent }
   | { readonly ok: false; readonly message: string };
 
-const FALLBACK = 'general-purpose';
-
 const listing = (catalog: AgentCatalog): string =>
   catalog.agents
     .map((agent) => agent.name)
@@ -196,7 +208,7 @@ export function resolveSubagentType(
   if (!catalog.delegation) {
     return { ok: false, message: 'The Agent tool is not available' };
   }
-  const wanted = subagentType ?? FALLBACK;
+  const wanted = subagentType ?? FALLBACK_AGENT;
   const agent = catalog.agents.find((each) => each.name === wanted);
   if (agent !== undefined) return { ok: true, agent };
   const available = `Available agents: ${listing(catalog)}`;

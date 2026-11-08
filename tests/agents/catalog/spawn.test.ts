@@ -19,7 +19,7 @@ import { builtinAgents } from '../../../src/agents/catalog/builtin.ts';
 import { resolveSubagentTools, type ToolPool } from '../../../src/agents/tool-resolution.ts';
 import type { SubagentRun } from '../../../src/agents/tool-filters.ts';
 import { spec } from '../../support/spec.ts';
-import { scannedAgent } from '../../support/agent-catalog.ts';
+import { flagAgent, pluginAgent, scannedAgent } from '../../support/agent-catalog.ts';
 
 const POOL: ToolPool = { builtin: ['Agent', 'Read', 'Bash', 'Grep', 'Glob', 'Write'], mcp: [] };
 
@@ -40,6 +40,9 @@ const catalog = resolveAgents({
     scannedAgent('project', 'reviewer'),
   ],
 });
+
+const winners = (resolved: ReturnType<typeof resolveAgents>) =>
+  resolved.agents.map((agent) => `${agent.name}:${agent.source}`).toSorted();
 
 const spawnTypes = (fields: { tools?: string[]; disallowedTools?: string[] }, over = {}) => {
   const outcome = resolveSubagentTools({ name: 'coordinator', ...fields }, POOL, run(over));
@@ -178,12 +181,38 @@ describe('nested subagents', () => {
     });
 
     test('a nested subagent resolves from the same scopes as a top-level one', () => {
-      const top = spawnableAgents(catalog, 'any');
-      const nested = spawnableAgents(
-        catalog,
-        spawnTypes({ tools: ['Agent'] }, { asMainThread: false }),
-      );
-      expect(nested.agents).toEqual(top.agents);
+      const sources = {
+        builtin: builtinAgents({ interactive: true, disableExplorePlan: false, disableAll: false }),
+        flag: [flagAgent('shared'), flagAgent('flagged')],
+        scanned: [
+          scannedAgent('managed', 'shared'),
+          scannedAgent('project', 'flagged'),
+          scannedAgent('project', 'projected'),
+          scannedAgent('user', 'projected'),
+          scannedAgent('user', 'personal'),
+          scannedAgent('user', 'Explore'),
+        ],
+        plugin: [pluginAgent('team', 'shared'), pluginAgent('team', 'personal')],
+      };
+      const seenBy = (asMainThread: boolean) =>
+        spawnableAgents(resolveAgents(sources), spawnTypes({ tools: ['Agent'] }, { asMainThread }));
+      const mainThread = seenBy(true);
+      const nested = seenBy(false);
+      expect(winners(nested)).toEqual(winners(mainThread));
+      expect(winners(nested)).toEqual([
+        'Explore:user',
+        'Plan:builtin',
+        'claude-code-guide:builtin',
+        'claude:builtin',
+        'flagged:flag',
+        'general-purpose:builtin',
+        'personal:user',
+        'projected:project',
+        'shared:managed',
+        'statusline-setup:builtin',
+        'team:personal:plugin',
+        'team:shared:plugin',
+      ]);
     });
 
     test('to keep one subagent from spawning while nesting is on, omit Agent from tools or add it to disallowedTools', () => {

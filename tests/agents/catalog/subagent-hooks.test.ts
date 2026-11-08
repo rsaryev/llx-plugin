@@ -8,7 +8,11 @@
 import { expect, test } from 'bun:test';
 import { builtinAgents } from '../../../src/agents/catalog/builtin.ts';
 import { resolveAgents } from '../../../src/agents/catalog/resolve.ts';
+import { readAgent } from '../../../src/format/agent.ts';
+import { readFlagAgents } from '../../../src/format/agent-flag.ts';
 import { hookAgentType } from '../../../src/format/agent-name.ts';
+import { catalogAgentOf } from '../../../src/agents/catalog/types.ts';
+import { loaded } from '../../support/agent-files.ts';
 import { command, entry, FACTS, select } from '../../support/hooks-select.ts';
 import { spec } from '../../support/spec.ts';
 import { pluginAgent, scannedAgent } from '../../support/agent-catalog.ts';
@@ -22,6 +26,11 @@ const catalog = resolveAgents({
   ],
   plugin: [pluginAgent('my-plugin', 'db-agent'), pluginAgent('my-plugin', 'db-agent-2')],
 });
+
+const text = (name: string) => `---\nname: ${name}\ndescription: d\n---\nPrompt.\n`;
+
+const read = (name: string, origin: Parameters<typeof readAgent>[1]) =>
+  loaded(readAgent(text(name), origin));
 
 const types = catalog.agents.map((agent) => agent.name).toSorted();
 
@@ -72,15 +81,26 @@ spec('agents.behavior.Project-level hooks for subagent events', () => {
     expect(startsFor('^my-plugin:db-agent$')).toEqual(['my-plugin:db-agent']);
   });
 
-  test('the type a hook receives for each source is the catalog name', () => {
-    for (const agent of catalog.agents) {
-      expect(agent.name).toBe(
-        hookAgentType({
-          name: agent.ownName,
-          scopedName: agent.name,
-          source: agent.source === 'builtin' ? 'user' : agent.source,
+  test('the type a hook receives is the plain name for a managed, flag, project, user agent and the scoped name for a plugin agent', () => {
+    const [flagged] = readFlagAgents({ flagged: { description: 'd', prompt: '' } }).agents;
+    if (flagged === undefined) throw new Error('the flag agent did not load');
+    const cases = [
+      [read('policy', { source: 'managed', path: '/m/policy.md' }), 'policy'],
+      [flagged, 'flagged'],
+      [read('ship', { source: 'project', path: '/p/ship.md' }), 'ship'],
+      [read('mine', { source: 'user', path: '/u/mine.md' }), 'mine'],
+      [
+        read('helper', {
+          source: 'plugin',
+          path: '/x/agents/review/helper.md',
+          plugin: { name: 'my-plugin', relativePath: 'review/helper.md' },
         }),
-      );
+        'my-plugin:review:helper',
+      ],
+    ] as const;
+    for (const [record, type] of cases) {
+      expect(hookAgentType(record)).toBe(type);
+      expect(catalogAgentOf(record).name).toBe(type);
     }
   });
 

@@ -81,9 +81,9 @@ async function sessionAgent(
   signal?: AbortSignal,
 ): Promise<Piece<SessionAgent>> {
   const owner = agents.pluginOf(agent);
-  const prompt =
+  const prompt: { readonly text: string; readonly issues: readonly PluginIssue[] } =
     owner === undefined
-      ? { text: agent.definition.prompt, issues: [] as readonly PluginIssue[] }
+      ? { text: agent.definition.prompt, issues: [] }
       : await substituteContent(
           agent.definition.prompt,
           scopeOf(state, owner, signal),

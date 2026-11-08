@@ -1,3 +1,4 @@
+import type { SpawnTypes } from '../tool-resolution.ts';
 import type { AgentCatalog } from './resolve.ts';
 
 /**
@@ -6,9 +7,6 @@ import type { AgentCatalog } from './resolve.ts';
  * tool and which types it may name (`resolveSubagentTools`); this applies that answer to the catalog,
  * counts the layers and decides what a `name` on the call does.
  */
-
-/** What `resolveSubagentTools` says an agent may spawn: a list of types, any type, or none. */
-export type SpawnTypes = readonly string[] | 'any' | 'none';
 
 /**
  * The catalog an agent sees through its Agent tool: "This is an allowlist: only the `worker` and

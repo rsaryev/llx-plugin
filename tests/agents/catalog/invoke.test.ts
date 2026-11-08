@@ -103,15 +103,6 @@ spec('agents.behavior.Invoke subagents explicitly.@-mention', () => {
     expect(picked?.insert).toBe('@"test-runner (agent)"');
     expect(agentMentions(picked?.insert ?? '', catalog).mentions).toHaveLength(1);
   });
-
-  test('a subagent a deny rule switched off is not offered and cannot be mentioned', () => {
-    const denied = resolveAgents({
-      scanned: [scannedAgent('user', 'test-runner')],
-      denied: [parsed('Agent(test-runner)')],
-    });
-    expect(agentTypeahead(denied)).toEqual([]);
-    expect(mentioned('@agent-test-runner go', denied)).toEqual([]);
-  });
 });
 
 describe('the whole session as a subagent', () => {
@@ -202,5 +193,16 @@ describe('the whole session as a subagent', () => {
       const empty = resolveAgents({});
       expect(resumeSessionAgent(empty, 'claude', ['/work/a']).warning).toBeUndefined();
     });
+  });
+});
+
+describe('judgments of the @-mention (spec/judgments.md)', () => {
+  test('a subagent a deny rule switched off is not offered in the typeahead and cannot be mentioned', () => {
+    const denied = resolveAgents({
+      scanned: [scannedAgent('user', 'test-runner')],
+      denied: [parsed('Agent(test-runner)')],
+    });
+    expect(agentTypeahead(denied)).toEqual([]);
+    expect(mentioned('@agent-test-runner go', denied)).toEqual([]);
   });
 });

@@ -24,6 +24,7 @@ export function openSession(state: HostState, options: SessionOptions): PluginSe
     ...hookPart,
     ...createComponentPart(state, agents),
     reloadAgents: (reload) => agents.reloadAgents(reload),
-    agentCatalog: () => agents.agentCatalog(),
+    agentCatalog: (overrides) => agents.agentCatalog(overrides),
+    selectAgent: (choice, overrides) => agents.selectAgent(choice, overrides),
   };
 }

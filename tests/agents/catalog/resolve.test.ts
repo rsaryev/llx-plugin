@@ -108,12 +108,15 @@ describe('closest definition wins among the nested project directories', () => {
 });
 
 spec('agents.behavior.Choose the subagent scope.--agents', () => {
-  test('a flag agent beats the project, user and plugin ones and loses to the managed one', () => {
+  test('a flag agent beats the project and user ones (a plugin agent has its scoped name, so it never competes for the bare one) and loses to the managed one', () => {
     const resolved = resolveAgents({
       flag: [flagAgent('reviewer')],
       scanned: [scannedAgent('project', 'reviewer'), scannedAgent('user', 'reviewer')],
+      plugin: [pluginAgent('my-plugin', 'reviewer')],
     });
     expect(resolved.agents.find((agent) => agent.name === 'reviewer')?.source).toBe('flag');
+    // The plugin agent has its scoped name: it never competed for the bare one.
+    expect(resolved.agents.map((agent) => agent.name)).toContain('my-plugin:reviewer');
     const managed = resolveAgents({
       flag: [flagAgent('reviewer')],
       scanned: [scannedAgent('managed', 'reviewer')],
@@ -136,16 +139,29 @@ spec('agents.behavior.Choose the subagent scope.Managed settings', () => {
 });
 
 spec('agents.behavior.Built-in subagents', () => {
-  test('a user or project subagent named Explore overrides the built-in and keeps its own model', () => {
+  test.each(['managed', 'project', 'user'] as const)(
+    'a %s subagent named Explore overrides the built-in and keeps its own model',
+    (source) => {
+      const resolved = resolveAgents({
+        builtin: builtinAgents(INTERACTIVE),
+        scanned: [scannedAgent(source, 'Explore', { extra: 'model: haiku\n' })],
+      });
+      const explore = resolved.agents.filter((agent) => agent.name === 'Explore');
+      expect(explore).toHaveLength(1);
+      expect(explore[0]?.source).toBe(source);
+      expect(explore[0]?.definition.model).toBe('haiku');
+      expect(resolved.shadowed.map((each) => each.agent.source)).toEqual(['builtin']);
+    },
+  );
+
+  test('a flag subagent named Explore overrides the built-in too', () => {
     const resolved = resolveAgents({
       builtin: builtinAgents(INTERACTIVE),
-      scanned: [scannedAgent('user', 'Explore', { extra: 'model: haiku\n' })],
+      flag: [flagAgent('Explore', { model: 'haiku' })],
     });
     const explore = resolved.agents.filter((agent) => agent.name === 'Explore');
-    expect(explore).toHaveLength(1);
-    expect(explore[0]?.source).toBe('user');
+    expect(explore.map((agent) => agent.source)).toEqual(['flag']);
     expect(explore[0]?.definition.model).toBe('haiku');
-    expect(resolved.shadowed.map((each) => each.agent.source)).toEqual(['builtin']);
   });
 
   test('every built-in is listed beside the custom subagents', () => {

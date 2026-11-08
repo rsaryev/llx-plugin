@@ -19,7 +19,10 @@ export interface TypeaheadEntry {
   readonly agent: CatalogAgent;
 }
 
-/** The subagents to offer after `@`. A subagent a deny rule switched off is not offered. */
+/**
+ * The subagents to offer after `@`. Judgment (spec/judgments.md): a subagent a deny rule switched off is
+ * not offered (nor mentioned); the docs say only that the rule stops Claude using it.
+ */
 export function agentTypeahead(catalog: AgentCatalog): readonly TypeaheadEntry[] {
   return catalog.agents.map((agent) => ({
     label: labelOf(agent),

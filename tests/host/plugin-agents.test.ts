@@ -37,6 +37,16 @@ spec('agents.components.Organize agents in subfolders', () => {
     expect(namesOf(session)).not.toContain('my-plugin:review:listed');
   });
 
+  test('the agents manifest key replaces the agents/ scan: the folder is not read when it is set', async () => {
+    const plugins = await pluginOf(files, { agents: './custom/review/listed.md' });
+    const { session } = folderHostOf({}, { plugins });
+    for (const name of ['my-plugin:review:security', 'my-plugin:review:audit', 'my-plugin:top']) {
+      expect(namesOf(session)).not.toContain(name);
+    }
+    const unset = folderHostOf({}, { plugins: await pluginOf(files) });
+    expect(namesOf(unset.session)).toContain('my-plugin:top');
+  });
+
   test('the same folders in the personal and project scopes do not become part of the name', async () => {
     const own = {
       [`${HOME}/.claude/agents/review/security.md`]: agentFile('sec'),

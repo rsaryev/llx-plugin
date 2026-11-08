@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Sub-agent catalog review: a `Task(...)` deny rule works as an alias of `Agent(...)`; `readFlagAgents`
+  reports the schema problems of every definition before the `-` names and cuts more than 20 lines to
+  `…and N more`; `resolveSubagentModel` takes `builtin: { name, connection }` and runs Explore on the `opus`
+  alias for a Fable main model over a subscription, Console or LLM gateway; `AgentOverrides` let a host pass
+  its deny rules, `--agents` value and `interactive` per call to `agentCatalog` and `reloadAgents`, and
+  `session.selectAgent` picks the session agent; the judgments file keeps all its earlier rows again.
+
 ### Added
 
 - Sub-agents: the catalog. `scanAgents` reads the `.claude/agents/` folders of the managed directory, the
