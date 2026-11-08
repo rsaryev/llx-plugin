@@ -44,9 +44,7 @@ describe('the event table', () => {
     const h = eventHarness();
     h.mod('my-mod', 'user', [fn('tool.check', () => Promise.resolve({ decision: 'maybe' }))]);
     await h.fire('tool.check', { tool: 'Bash', input: {} });
-    expect(reasonsOf(h)[0]).toMatch(
-      /^returned a result that is refused: tool\.check result: decision: /,
-    );
+    expect(reasonsOf(h)[0]).toMatch(/^returned the wrong shape \(tool\.check result: decision: /);
     expect(
       createEventRules().changeProblem(
         'skill.prompt',

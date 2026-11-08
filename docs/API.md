@@ -252,7 +252,7 @@ out of the rules before it in the same source and list; `evaluateRules` applies 
 `Glob(...)`, `Grep(...)` and `NotebookEdit(...)` rules with a path never match; write `Edit(...)` or
 `Read(...)`. A host asks `readsNetworkPath` before it trusts any allow rule, hook or classifier.
 
-## Mods (in progress: the hook chain and the events)
+## Mods (in progress: the hook chain, the events, the API and the interface)
 
 A mod is a plugin whose hooks module registers event handlers (plugins/mods/overview.md). The kit
 never runs a module's source: the host evaluates it in an isolate it chooses through the
@@ -282,7 +282,11 @@ const result = await chain.dispatch('tool.call', event, {
 | `clampReason`, `mergeToolCheck`, `skillPromptEvent`, `autocompleteRows` | done | the 4,096-character reason cut; the `tool.check` decision with plan mode (a mod can tighten a call that is not read-only, not approve it) and the organization's `ceiling: 'ask'` (an `allow` still asks); the `skill.prompt` event from a skill and its parsed frontmatter; Claude Code's autocomplete rows then the mods' |
 | `createModsApi(options, plugin)`      | done    | the `$` of one mod: every namespace of the reference, each call an event through the chain and then a port; `engine.create` fires once and may add or withhold a namespace; `dispose()` stops its timers and forgets its registrations |
 | `createRegistries()`, `createStateStore()`, `readEngineSettings(options)`, `withApiRules(rules)`, `isValidModName`, `atom`, `read`, `update` | done | what mods registered (commands, tools as `mcp__<plugin>__<name>`, subagent types), `$.state`, Claude Code's own `settings.read`, the shape rule for API calls, the 64-character name rule, the state helpers |
-| UI, loading, test kit                 | planned | the other parts of mods                                                               |
+| `createModsUi(options)`, `withUiRules(rules)`, `uiApi(deps, parts)` | done | the interface part: the `$.ui` of a mod (`ModsApiOptions.ui = ui.api`), `draw` a render site (fires `ui.render`, folds the answer), `loadMod` (fires `ui.resolve`), `fault`, `message`, `change` (focus and scroll), the panes, the toast board and the redraw throttle; the chain takes `withUiRules(withApiRules(createEventRules()))` |
+| `defaultElementTable(surface)`, `treeProblem`, `sizeProblem`, `foldRender`, `renderEvent`, `decideSite` | done | the 12 elements an app draws, why a tree is not valid for a site and app, which size limit refuses it, what a site shows once the chain settled (tree, Claude Code's own drawing, refused), and the `ui.render` event for a site |
+| `routeControl`, `hotkeyTable`, `digitButton`, `actionButtons`, `collectControls` | done | a press, typing or a pick routed to a control by its key through `ui.press`, `ui.input`, `ui.select` before its callback; hotkeys (later duplicate wins, none in VS Code or a collapsed band), the band's digit hotkey, `action` bindings |
+| `placePane`, `createPaneRegistry`, `parseOpen`, `createRedrawGate`, `createToastBoard` | done | where a pane appears (any width for the user, 144 or 110 columns for a mod), `ui.close` origins, the `ui.open` fields, redraws throttled and coalesced, toasts by renderer |
+| Loading, test kit                     | planned | the other parts of mods                                                               |
 
 `register` takes the tier `prepend`, `user`, `append` or `builtin` (never `core`, which is Claude Code's own
 behaviour); the built-in guard `sec-default@builtin` registers first in `prepend`. It refuses a whole module (and adds none of its hooks) when `on("x")` is registered twice
@@ -327,8 +331,33 @@ port does the effect. A call fires the event named for it (`fs.read`, `store.get
 caller can rewrite it, answer `{ value }` or refuse with `{ deny }`, which rejects the call. A
 call whose result is its event's own (`tool.call`, `command.run`, `prompt.submit`, `session.send`...)
 resolves to that result. A hook on a call runs only for the mods after it (the chain's `caller`
-option). `$.clock.after` and `$.clock.every` return their timer at once, not a promise. `$.ui` is built by the interface part of mods and passed as `options.ui`.
+option). `$.clock.after` and `$.clock.every` return their timer at once, not a promise. `$.ui` is built by `createModsUi(...).api` and passed as `options.ui`.
 Judgments are in `spec/judgments.md`.
+
+### The interface
+
+```ts
+const ui = createModsUi({ chain, clock, iface, signal, report, debug }); // iface: a ModInterface
+const chain = createModChain({ clock, rules: withUiRules(withApiRules(createEventRules())) });
+await createModsApi({ chain, ports, registries, state, scopes, report, debug, ui: ui.api }, ref);
+await ui.loadMod('my-mod'); // ui.resolve, once for each app and render site
+const drawn = await ui.draw({ site: 'Pane', surface: 'terminal', requestId: 'hello-tabs' });
+// { tree } | { engine } | { refused, line }
+await routeControl({ chain, tree, surface, signal, report }, 'press', 'more'); // { issues, ran }
+```
+
+`ModInterface` is the one port: what only the host knows (the app, the measured window, the
+renderer, whether the user caused the call) and what it draws (status and log lines, notify, ask,
+copy, selection, blit, focus, scroll). The kit owns what the docs say about each call and the
+tree. A hook's tree is judged when it returns: an element or prop the element does not take, a
+child where none goes, a missing or doubled key, a field over its limit, an element the app does
+not draw, or (in the band) a forbidden prop on a `Box` around another mod's tree fails the hook as
+`returned the wrong shape (a tree Pane refuses: ...)`. The size limits (32 levels, 20,000 nodes,
+262,144 `Raster` cells, 2 MiB of `Image` bytes) refuse the settled tree at its site, and the first
+100,000 characters of text are drawn. Firing is the host's: it passes the site, the viewport and
+the gesture, and the kit proves what the hooks receive and what is drawn from what they answer. It
+draws nothing, so no claim here is about pixels or terminal cells. Judgments are in
+`spec/judgments.md`.
 
 ## Testing kit (planned)
 

@@ -9,6 +9,7 @@ import type {
   StreamEventName,
 } from '../protocol/mods-events.ts';
 import type { ModsMethod, ModsNamespace } from '../protocol/mods-api-names.ts';
+import type { ElementTable } from './ui/elements/table.ts';
 
 /**
  * The contracts every part of mods compiles against: the mods API a hook receives as `$`, the
@@ -59,6 +60,13 @@ export type ModsTimerMember = (...args: readonly unknown[]) => ModTimer;
 /** The calls that return a timer and not a promise. */
 type TimerEventName = 'clock.after' | 'clock.every';
 
+/**
+ * `$.ui.resolve(e)` answers at once: the docs destructure its result without `await` (interface.md,
+ * "Build a tree from elements"), because the element table was resolved when mods loaded.
+ */
+export type ModsSyncMember = (...args: readonly unknown[]) => ElementTable;
+type SyncEventName = 'ui.resolve';
+
 /** `$.process.spawn` streams the command's output, so it returns the stream and not a promise (api.md, "Reach files, processes, and the network"). */
 export type ModsStreamMember = (...args: readonly unknown[]) => AsyncGenerator<unknown, unknown>;
 
@@ -68,7 +76,9 @@ export type ModsNamespaceApi<N extends ModsNamespace> = {
     ? ModsStreamMember
     : `${N}.${M}` extends TimerEventName
       ? ModsTimerMember
-      : ModsMember;
+      : `${N}.${M}` extends SyncEventName
+        ? ModsSyncMember
+        : ModsMember;
 };
 
 /** `$.plugin`: this plugin's name and directory, which are values, not calls (reference.md, "Mods API methods"). */
@@ -162,9 +172,15 @@ export interface ReentryInfo {
 export interface EventRules {
   /**
    * Why a hook's result is the wrong shape for `event`, or `undefined` when it fits. `answered` is
-   * true when the hook had already called `next`.
+   * true when the hook had already called `next`; `input` is the event as fired, for a rule that
+   * depends on it (a tree is judged by the site and the app it is drawn for).
    */
-  shapeProblem(event: string, result: unknown, answered: boolean): string | undefined;
+  shapeProblem(
+    event: string,
+    result: unknown,
+    answered: boolean,
+    input?: unknown,
+  ): string | undefined;
   /** Why the event a hook passes to `next` is refused, comparing it with the one the hook received. */
   changeProblem(event: string, original: unknown, changed: unknown): string | undefined;
   /** What Claude Code's own behaviour receives, from the event as fired and the one the hooks passed on. */

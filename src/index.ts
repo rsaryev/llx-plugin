@@ -77,3 +77,19 @@ export {
   type Wildcard,
 } from './protocol/mods-events.ts';
 export { MOD_LIMITS, MOD_NAME_PATTERN } from './protocol/mods-limits.ts';
+export {
+  BORDER_STYLES,
+  ELEMENT_NAMES,
+  ELEMENT_SURFACES,
+  RENDER_SITES,
+  RENDER_SITE_NAMES,
+  SPACING_STEPS,
+  SURFACES,
+  VSCODE_IGNORED,
+  type BorderStyle,
+  type ElementName,
+  type RenderSite,
+  type RenderSiteDef,
+  type SpacingStep,
+  type Surface,
+} from './protocol/mods-ui-names.ts';

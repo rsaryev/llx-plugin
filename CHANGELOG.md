@@ -93,6 +93,14 @@
   and subagent types; `$.state` with `atom`, `read` and `update`; `withApiRules` composes the shape
   of API calls with `createEventRules()`; `AGENT_STATUSES`; and the ports behind it (`ModFs`,
   `ModFetcher`, `ModSpawner`, `ModModels`, `ModSession`...).
+- The interface part of mods (`createModsUi`, `withUiRules`, `uiApi`): the 12 elements with their
+  props, the apps that draw them and the props the VS Code extension ignores, the 15 render sites,
+  tree validation (`treeProblem`, the documented `a tree Pane refuses:` lines) and the size limits
+  (nesting 32, 20,000 nodes, `Raster` cells, `Image` bytes, 100,000 characters of text),
+  `foldRender` (a tree, `next(e)`'s reference, the band and `AskUserQuestion` rules), panes
+  (`$.ui.open` placement at 144 and 110 columns, `ui.close` origins), controls routed by key
+  (`routeControl`, hotkeys, `action`, the collapsed band), the redraw throttle (10 and 30 a
+  second, coalesced), `$.ui.toast` (4 seconds, `timeoutMs`, classic and fullscreen) and `$.ui`.
 
 ### Fixed
 

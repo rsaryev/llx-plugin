@@ -63,7 +63,9 @@ const rejecting = (method: string) => () =>
 
 /** Without the interface part of mods every `$.ui` call rejects, saying so. */
 const missingUi = (): ModsNamespaceApi<'ui'> => ({
-  resolve: rejecting('resolve'),
+  resolve: () => {
+    throw new Error('$.ui.resolve: the interface is not available');
+  },
   invalidate: rejecting('invalidate'),
   open: rejecting('open'),
   close: rejecting('close'),

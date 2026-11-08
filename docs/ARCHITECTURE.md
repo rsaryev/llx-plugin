@@ -24,7 +24,7 @@ agent, not a model client and not a sandbox. It runs anywhere JavaScript runs.
 | 4     | `agents`      | Sub-agent definitions and their scoping (planned)                             |
 | 4     | `hooks`       | The hook engine: select, run through ports, merge outputs (planned)           |
 | 4     | `skills`      | Skill and command expansion (planned)                                         |
-| 4     | `mods`        | The mods runtime: `mods/chain` (the middleware engine, done), `mods/events` (the event catalog and result semantics, done), `mods/api` (the `$` of a mod as ports, effects and their limits, done), then UI and loading (planned); its ports live in `mods/ports.ts` and `mods/api/ports.ts` |
+| 4     | `mods`        | The mods runtime: `mods/chain` (the middleware engine, done), `mods/events` (the event catalog and result semantics, done), `mods/api` (the `$` of a mod as ports, effects and their limits, done), `mods/ui` (elements, render sites, panes, controls and redraws; its port is `mods/ui/ports.ts`, done), then loading (planned); its ports live in `mods/ports.ts`, `mods/api/ports.ts` and `mods/ui/ports.ts` |
 | 5     | `host`        | `createPluginHost`, sessions: composition of the modules above (planned)      |
 | 6     | `testing`     | Fakes of every port for hosts' tests (planned)                                |
 

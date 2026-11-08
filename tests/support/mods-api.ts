@@ -13,8 +13,16 @@ import {
   type ModsApiHandle,
   type ModsApiOptions,
   type ScopeBook,
+  type StateStore,
 } from '../../src/mods/api/index.ts';
-import type { HookReport, RegisterTier, RegisteredHook } from '../../src/mods/types.ts';
+import type {
+  EventRules,
+  HookReport,
+  ModChain,
+  RegisterTier,
+  RegisteredHook,
+} from '../../src/mods/types.ts';
+import type { ModsUi } from '../../src/mods/ui/index.ts';
 import { fixedClock } from './clock.ts';
 
 /** A port call nobody scripted: the test fails at once instead of passing by accident. */
@@ -98,6 +106,18 @@ export interface ApiOptions {
   readonly plugin?: string;
   readonly tier?: RegisterTier;
   readonly options?: Partial<ModsApiOptions>;
+  /** Wraps the chain's rules (the interface rules, for a test that draws). */
+  readonly rules?: (base: EventRules) => EventRules;
+  /** Builds the interface part on the chain the harness made; its `api` becomes `$.ui`. */
+  readonly ui?: (env: UiEnv) => ModsUi;
+}
+
+export interface UiEnv {
+  readonly chain: ModChain;
+  readonly clock: ReturnType<typeof fixedClock>;
+  readonly report: (report: HookReport) => void;
+  readonly debug: (line: string) => void;
+  readonly state: StateStore;
 }
 
 /**
@@ -106,15 +126,21 @@ export interface ApiOptions {
  */
 export async function apiHarness(given: ApiOptions = {}) {
   const clock = fixedClock();
-  const chain = createModChain({ clock, rules: withApiRules(createEventRules()) });
+  const base = withApiRules(createEventRules());
+  const chain = createModChain({ clock, rules: given.rules ? given.rules(base) : base });
   const reports: HookReport[] = [];
   const debug: string[] = [];
   const scopes: ScopeBook = new Map();
+  const report = (line: HookReport) => reports.push(line);
+  const debugLine = (line: string) => debug.push(line);
+  const state = createStateStore();
+  const ui = given.ui?.({ chain, clock, report, debug: debugLine, state });
   const shared = {
+    ...(ui ? { ui: ui.api } : {}),
     chain,
     ports: ports(clock, given.ports ?? {}),
     registries: createRegistries(),
-    state: createStateStore(),
+    state,
     scopes,
     report: (report: HookReport) => reports.push(report),
     debug: (line: string) => debug.push(line),
@@ -133,7 +159,7 @@ export async function apiHarness(given: ApiOptions = {}) {
     if (issues.length > 0) throw new Error(issues.map((issue) => issue.message).join('; '));
     return built;
   };
-  return { clock, chain, api: mine.api, handle: mine, reports, debug, shared, mod };
+  return { clock, chain, api: mine.api, handle: mine, reports, debug, shared, mod, ui };
 }
 
 export const exited = (stdout = '', stderr = '', exitCode: number | null = 0): CommandResult => ({

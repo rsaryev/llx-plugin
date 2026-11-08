@@ -98,9 +98,7 @@ describe('tool.call', () => {
       const h = eventHarness();
       h.mod('my-mod', 'user', [fn('tool.call', () => Promise.resolve({ deny: 42 }))]);
       expect(await h.fire('tool.call', bash)).toEqual({ core: bash });
-      expect(reasonsOf(h)[0]).toContain(
-        'returned a result that is refused: tool.call result: deny',
-      );
+      expect(reasonsOf(h)[0]).toContain('returned the wrong shape (tool.call result: deny');
     });
   });
 });

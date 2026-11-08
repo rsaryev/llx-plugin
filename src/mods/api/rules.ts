@@ -35,7 +35,7 @@ export const apiEventRules: Pick<EventRules, 'shapeProblem'> = {
  */
 export const withApiRules = (rules: EventRules): EventRules => ({
   ...rules,
-  shapeProblem: (event, result, answered) =>
-    apiEventRules.shapeProblem(event, result, answered) ??
-    rules.shapeProblem(event, result, answered),
+  shapeProblem: (event, result, answered, input) =>
+    apiEventRules.shapeProblem(event, result, answered, input) ??
+    rules.shapeProblem(event, result, answered, input),
 });

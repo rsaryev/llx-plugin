@@ -9,6 +9,7 @@ import {
   groupTimedOut,
   refused,
   thrown,
+  wrongShape,
   toHookFailure,
   type Failure,
 } from './failure.ts';
@@ -76,20 +77,20 @@ function partsOf(
 }
 
 /** Why a hook's result is refused: nested too deep, or the wrong shape for the event. */
-function resultProblem(site: Site, value: unknown): string | undefined {
+function resultFailure(site: Site, value: unknown): Failure | undefined {
   const { ctx, entry } = site;
   const exempt = NESTING_EXEMPT.has(ctx.name) || entry.hook.isGenerator;
   const tooDeep = exempt ? null : nestingProblem(value);
+  if (tooDeep !== null) return refused(tooDeep);
   const answered = site.downstream.latest() !== undefined;
-  return tooDeep ?? ctx.rules.shapeProblem(ctx.name, value, answered);
+  const shape = ctx.rules.shapeProblem(ctx.name, value, answered, ctx.input);
+  return shape === undefined ? undefined : wrongShape(shape);
 }
 
 /** The outcome of a hook that returned `value`: refused when it does not fit, else the value as it counts. */
 function judged(site: Site, value: unknown): Outcome {
-  const problem = resultProblem(site, value);
-  return problem === undefined
-    ? { value: site.ctx.rules.settle(site.ctx.name, value) }
-    : { failed: refused(problem) };
+  const failed = resultFailure(site, value);
+  return failed === undefined ? { value: site.ctx.rules.settle(site.ctx.name, value) } : { failed };
 }
 
 /** One run of a hook or of its handler, under its time limit, until it returns or fails. */

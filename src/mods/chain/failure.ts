@@ -43,7 +43,15 @@ export function groupTimedOut(event: string, ms: number): Failure {
   return { kind: 'timeout', message, reason: `timed out: ${message}` };
 }
 
-/** A hook that returned a result of the wrong shape, or one that is refused (too deeply nested). */
+/**
+ * A hook that returned a result of the wrong shape: the line reads `returned the wrong shape (the
+ * rule it broke)` (troubleshoot.md, "A pane or band is empty").
+ */
+export function wrongShape(problem: string): Failure {
+  return { kind: 'throw', message: problem, reason: `returned the wrong shape (${problem})` };
+}
+
+/** A hook that returned a result that is refused: nested too deep. */
 export function refused(problem: string): Failure {
   return {
     kind: 'throw',
