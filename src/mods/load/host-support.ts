@@ -19,6 +19,8 @@ export interface FireSettings {
   readonly signal?: AbortSignal;
   /** Claude Code's own behaviour, at the end of the chain; without it the chain ends in `undefined`. */
   readonly core?: (e: unknown) => Promise<unknown> | AsyncGenerator<unknown, unknown>;
+  /** Where managed `PreToolUse` hooks run: before the first mod; an answer here stops the chain. */
+  readonly before?: DispatchOptions['before'];
   /** Only this mod's hooks handle the event. */
   readonly only?: string;
   readonly reentry?: ReentryInfo;
@@ -38,6 +40,7 @@ export const dispatchOptionsFor =
     core: opts.core ?? (() => Promise.resolve(undefined)),
     report: host.env.report,
     debug: host.debug,
+    ...(opts.before === undefined ? {} : { before: opts.before }),
     ...(opts.only === undefined ? {} : { only: opts.only }),
     ...(opts.reentry === undefined ? {} : { reentry: opts.reentry }),
     ...(opts.groupMs === undefined ? {} : { groupMs: opts.groupMs }),

@@ -4,7 +4,7 @@
  * reason `the module failed without a message`, where releases before v2.1.289 showed `Error`.
  */
 import { expect, test } from 'bun:test';
-import { clientFailureLine } from '../../../src/mods/ui/index.ts';
+import { clientFailure, clientFailureLine } from '../../../src/mods/ui/index.ts';
 import { inline, modPlugin, registerOf, session } from '../../support/mods-load.ts';
 import { spec } from '../../support/spec.ts';
 
@@ -16,6 +16,19 @@ spec('mods.troubleshoot.the module failed without a message', () => {
     expect(clientFailureLine('my-mod', 'client/spinner.js', undefined)).toBe(
       'my-mod: Client client/spinner.js: the module failed without a message',
     );
+  });
+
+  test('the drawn node that takes the failed Client place carries the same reason, for an empty and a blank message too (blank: judgment)', () => {
+    for (const message of [new Error().message, '  ', undefined]) {
+      expect(clientFailure('my-mod', 'client/spinner.js', message)).toEqual({
+        type: 'Text',
+        props: { dimColor: true },
+        children: ['my-mod: Client client/spinner.js: the module failed without a message'],
+      });
+    }
+    expect(clientFailure('my-mod', 'client/spinner.js', 'boom').children).toEqual([
+      'my-mod: Client client/spinner.js: boom',
+    ]);
   });
 
   test('an error with a message shows that message, as `boom` does in interface.md', () => {

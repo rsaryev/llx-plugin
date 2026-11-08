@@ -74,16 +74,61 @@ spec('mods.events.The order mods run in', () => {
     ]);
   });
 
-  test('the built-in guard sec-default@builtin is first of all, ahead of the organization mods', async () => {
+  test('the organization mods in prependPlugins run first, then any other organization mod that is not in appendPlugins', async () => {
+    trace.length = 0;
     const { host } = session(
-      { 'acme-guard': tracing('acme-guard') },
-      { policy: managed(), firesSessionStart: false },
+      { 'other-org': tracing('other-org'), x: tracing('x'), 'user-a': tracing('user-a') },
+      { policy: managed({ prependPlugins: ['x@acme-tools'] }), firesSessionStart: false },
     );
-    await host.load([modPlugin(organizations('acme-guard'), tracing('acme-guard'))]);
-    expect(host.active().map((mod) => mod.id)).toEqual([
+    await host.load([
+      modPlugin(organizations('other-org'), tracing('other-org')),
+      modPlugin(installed('user-a'), tracing('user-a')),
+      modPlugin(organizations('x'), tracing('x')),
+    ]);
+    await host.fire('tool.call', { tool: 'Bash', input: {} });
+    // `other-org` was given first, and `x` is listed in prependPlugins: `x` runs ahead of it
+    expect(trace.filter((line) => line.endsWith(' in'))).toEqual([
+      'x in',
+      'other-org in',
+      'user-a in',
+    ]);
+  });
+
+  test('the built-in guard sec-default@builtin is first of all, ahead of the organization mods: it answers before an organization mod sees the registration', async () => {
+    const seen: string[] = [];
+    const watcher = registerOf((on) => {
+      on('plugin.register', async (_$: unknown, e: { plugin: string }, next: Next) => {
+        seen.push(e.plugin);
+        return next(e);
+      });
+    });
+    const load = async (policy: ReturnType<typeof managed>) => {
+      seen.length = 0;
+      const { host } = session(
+        { 'acme-guard': watcher, 'user-a': tracing('user-a') },
+        { policy, firesSessionStart: false },
+      );
+      await host.load([
+        modPlugin(organizations('acme-guard'), watcher),
+        modPlugin(installed('user-a'), tracing('user-a')),
+      ]);
+      return host.active().map((mod) => mod.id);
+    };
+    const limited = managed({
+      pluginConfigs: {
+        'cc-plugin-sec-default@builtin': { options: { allowManagedModsOnly: true } },
+      },
+    });
+    // the guard refuses the user's mod itself, so the organization's mod never sees it
+    expect(await load(limited)).toEqual(['sec-default@builtin', 'acme-guard@acme-tools']);
+    expect(seen).toEqual([]);
+    // without that option the guard passes it on, and the organization's mod sees it second
+    expect(await load(managed())).toEqual([
       'sec-default@builtin',
       'acme-guard@acme-tools',
+      'user-a@market',
     ]);
+    expect(seen).toEqual(['user-a']);
   });
 
   test('among the mods you install, a mod runs before the mods it lists under dependencies', async () => {
@@ -148,74 +193,5 @@ spec('mods.events.The order mods run in', () => {
     h.mod('inner', 'user', [fn('tool.call', (_$, e, next) => (ran.push('inner'), next(e)))]);
     await h.fire('tool.call', { tool: 'Bash' });
     expect(ran).toEqual([]);
-  });
-});
-
-spec('mods.events.Where settings hooks run in the order', () => {
-  /** What the host composes: managed `PreToolUse` hooks before the chain, the other settings hooks as Claude Code's own behaviour. */
-  const settingsHooks = (events: string[], decision: unknown) => ({
-    before: () => (events.push('managed PreToolUse'), undefined),
-    core: () => (events.push('other PreToolUse'), Promise.resolve(decision)),
-    e: { tool: 'Bash', input: {} },
-  });
-
-  test('managed hooks run before the first mod, the others after the last mod calls next, and a mod that calls next sees their decision', async () => {
-    const h = harness();
-    const events: string[] = [];
-    h.mod('first', 'user', [
-      fn('tool.call', async (_$, e, next) => {
-        events.push('first mod');
-        const result = await next(e);
-        events.push(`first mod sees ${JSON.stringify(result)}`);
-        return result;
-      }),
-    ]);
-    h.mod('last', 'user', [fn('tool.call', (_$, e, next) => (events.push('last mod'), next(e)))]);
-    const { before, core, e } = settingsHooks(events, { deny: 'a PreToolUse hook said no' });
-    const result = await h.fire('tool.call', e, { before, core });
-    expect(events).toEqual([
-      'managed PreToolUse',
-      'first mod',
-      'last mod',
-      'other PreToolUse',
-      'first mod sees {"deny":"a PreToolUse hook said no"}',
-    ]);
-    expect(result).toEqual({ deny: 'a PreToolUse hook said no' });
-  });
-
-  test('when a managed hook blocks the call, no mod hook runs for it, and neither do the other settings hooks', async () => {
-    const h = harness();
-    const events: string[] = [];
-    h.mod('first', 'user', [fn('tool.call', (_$, e, next) => (events.push('first mod'), next(e)))]);
-    const { core, e } = settingsHooks(events, { deny: 'unused' });
-    const result = await h.fire('tool.call', e, {
-      before: () => (events.push('managed PreToolUse'), { deny: 'blocked by managed settings' }),
-      core,
-    });
-    expect(result).toEqual({ deny: 'blocked by managed settings' });
-    expect(events).toEqual(['managed PreToolUse']);
-  });
-
-  test('a mod that answers tool.call without calling next keeps the other settings hooks from running', async () => {
-    const h = harness();
-    const events: string[] = [];
-    h.mod('answering', 'user', [fn('tool.call', () => ({ deny: 'mine' }))]);
-    const { before, core, e } = settingsHooks(events, { deny: 'unused' });
-    const result = await h.fire('tool.call', e, { before, core });
-    expect(result).toEqual({ deny: 'mine' });
-    // the managed hooks already ran before the chain; the others never did
-    expect(events).toEqual(['managed PreToolUse']);
-  });
-
-  test('a managed hook that does not answer leaves the event as it is for the first mod', async () => {
-    const h = harness();
-    const seen: unknown[] = [];
-    h.mod('first', 'user', [fn('tool.call', (_$, e, next) => (seen.push(e), next(e)))]);
-    await h.fire(
-      'tool.call',
-      { tool: 'Bash', input: { command: 'ls' } },
-      { before: () => undefined },
-    );
-    expect(seen).toEqual([{ tool: 'Bash', input: { command: 'ls' } }]);
   });
 });

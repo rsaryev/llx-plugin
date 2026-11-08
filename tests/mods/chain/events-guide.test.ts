@@ -7,30 +7,33 @@
 import { describe, expect, test } from 'bun:test';
 import { createEventRules } from '../../../src/mods/events/index.ts';
 import { withUiRules } from '../../../src/mods/ui/index.ts';
-import { fn, harness, type Ev } from '../../support/mods-chain.ts';
+import { fakeModInterface } from '../../../src/testing/mods/index.ts';
+import type { ModsApi } from '../../../src/mods/types.ts';
+import { fn, harness, record, type Ev } from '../../support/mods-chain.ts';
+import { installed, modPlugin, registerOf, session } from '../../support/mods-load.ts';
 import { spec } from '../../support/spec.ts';
 
 const typed = () => harness(undefined, createEventRules());
 
 spec('mods.events.Observe an event', () => {
   test('doing work and returning next(e): the work runs before the tool does, and the tool runs as it would without the mod', async () => {
-    const h = typed();
     const trace: string[] = [];
-    h.mod(
-      'my-mod',
-      'user',
-      [
-        fn('tool.call', async ($, e, next) => {
-          // Runs before the tool does; the line the docs show is `my-mod: Claude is about to use Bash`
-          await Reflect.apply(Reflect.get($.ui, 'log'), undefined, [
-            `Claude is about to use ${String(e.tool)}`,
-          ]);
-          return next(e);
-        }),
-      ],
-      { 'ui.log': (line) => void trace.push(`log: ${String(line)}`) },
+    const register = registerOf((on) => {
+      on('tool.call', async ($: ModsApi, e: Ev, next: (e: Ev) => Promise<unknown>) => {
+        // Runs before the tool does, through the real `$.ui.log`
+        await $.ui.log(`Claude is about to use ${String(e.tool)}`);
+        return next(e);
+      });
+    });
+    const { host } = session(
+      { 'my-mod': register },
+      {
+        firesSessionStart: false,
+        iface: fakeModInterface({ log: (line) => void trace.push(`log: ${line}`) }),
+      },
     );
-    const result = await h.fire(
+    await host.load([modPlugin(installed('my-mod'), register)]);
+    const result = await host.fire(
       'tool.call',
       { tool: 'Bash', input: { command: 'ls' } },
       {
@@ -40,7 +43,8 @@ spec('mods.events.Observe an event', () => {
         },
       },
     );
-    expect(trace).toEqual(['log: Claude is about to use Bash', 'tool runs']);
+    // the line the docs show: `● my-mod: Claude is about to use Bash`
+    expect(trace).toEqual(['log: ● my-mod: Claude is about to use Bash', 'tool runs']);
     expect(result).toEqual({ result: { tool: 'Bash', input: { command: 'ls' } } });
   });
 
@@ -79,22 +83,28 @@ spec('mods.events.Rewrite an event', () => {
     expect(h.coreSeen).toEqual([{ text: 'hello' }]);
   });
 
-  test('the event is immutable: deeply frozen, and assigning to a field throws', async () => {
+  test('the event is immutable: deeply frozen, and assigning to a field throws, at the top and in a nested object', async () => {
     const h = typed();
-    const thrown: unknown[] = [];
+    const thrown: boolean[] = [];
+    const tryAssign = (target: object) => {
+      try {
+        Object.assign(target, { text: 'changed' });
+        thrown.push(false);
+      } catch (error) {
+        thrown.push(error instanceof TypeError);
+      }
+    };
     h.mod('my-mod', 'user', [
       fn('prompt.submit', (_$, e, next) => {
-        try {
-          Object.assign(e, { text: 'changed' });
-        } catch (error) {
-          thrown.push(error instanceof TypeError);
-        }
+        tryAssign(e);
+        tryAssign(record(e.meta));
+        tryAssign(record(record(e.meta).inner));
         return next(e);
       }),
     ]);
-    await h.fire('prompt.submit', { text: 'hi' });
-    expect(thrown).toEqual([true]);
-    expect(h.coreSeen).toEqual([{ text: 'hi' }]);
+    await h.fire('prompt.submit', { text: 'hi', meta: { inner: { text: 'deep' } } });
+    expect(thrown).toEqual([true, true, true]);
+    expect(h.coreSeen).toEqual([{ text: 'hi', meta: { inner: { text: 'deep' } } }]);
   });
 
   test('the result can be changed too: await next(e), then return a copy of the result with a field replaced', async () => {
@@ -102,7 +112,7 @@ spec('mods.events.Rewrite an event', () => {
     h.mod('my-mod', 'user', [
       fn('tool.call', async (_$, e, next) => {
         const result = await next(e);
-        return { ...(result as Ev), result: 'replaced' };
+        return { ...record(result), result: 'replaced' };
       }),
     ]);
     const result = await h.fire(
@@ -185,7 +195,7 @@ describe('what a hook can do with an event (overview.md)', () => {
         fn(
           'ui.render',
           (_$, e, next) =>
-            next({ ...e, props: { ...(e.props as Ev), suffix: ` · tool calls: ${calls}…` } }),
+            next({ ...e, props: { ...record(e.props), suffix: ` · tool calls: ${calls}…` } }),
           { matcher: { component: 'Spinner' } },
         ),
       ]);

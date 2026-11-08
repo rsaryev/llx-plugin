@@ -2,13 +2,13 @@
  * plugins/mods/troubleshoot.md, the entries a hooks module meets when it loads: `validate` passes
  * and lists no `hooks` line, `hooks module did not load`, `options do not fit plugin.json
  * userConfig`, `code nested too deep to scan`, `the engine ran out of stack linking the file and its
- * imports`, `the parser stopped` or `the engine ran out of stack loading the file`, `the module
- * failed without a message` and `hook skipped` have their own files. Each line starts with the mod's name; the kit
- * writes it as a value, and a host's runtime reports what only an engine can see.
+ * imports` (its words are a judgment: troubleshoot-judgments.test.ts), `the parser stopped` or `the
+ * engine ran out of stack loading the file`, `the module failed without a message` and `hook
+ * skipped` have their own files. Each line starts with the mod's name; the kit writes it as a
+ * value, and a host's runtime reports what only an engine can see.
  */
 import { expect, test } from 'bun:test';
 import { validateMod } from '../../../src/mods/load/commands/validate.ts';
-import { engineStackIssue } from '../../../src/mods/load/engine-faults.ts';
 import type { ModPlugin } from '../../../src/mods/load/index.ts';
 import type { ModRuntime } from '../../../src/mods/ports.ts';
 import {
@@ -48,10 +48,6 @@ const loadText = async (source: string, options: Parameters<typeof session>[1] =
   return host.load([written(inline('first-mod'), source)]);
 };
 
-const runtimeReporting = (...issues: ReturnType<typeof engineStackIssue>[]): ModRuntime => ({
-  load: () => Promise.resolve({ issues }),
-});
-
 spec('mods.troubleshoot.code nested too deep to scan: more than 2000 scopes', () => {
   test('a file with 2,001 scopes nested does not load: the line is the mod, the load failure, the file and the reason', async () => {
     const report = await loadText(nestedScopes(2001));
@@ -73,27 +69,6 @@ spec('mods.troubleshoot.code nested too deep to scan: more than 2000 scopes', ()
     expect(report.exitCode).toBe(1);
     expect(report.lines.join('\n')).toContain(
       'register.js: code nested too deep to scan: more than 2000 scopes',
-    );
-  });
-});
-
-spec('mods.troubleshoot.the engine ran out of stack linking the file and its imports', () => {
-  test('the line names the mod and the file the engine could not link, then the reason, and the mod does not load', async () => {
-    const { host } = session(
-      { 'first-mod': noop },
-      { runtime: runtimeReporting(engineStackIssue('link', 'hooks/deep.js', '')) },
-    );
-    const report = await host.load([modPlugin(inline('first-mod'), noop)]);
-    expect(report.loaded).toEqual([]);
-    expect(report.lines).toEqual([
-      'first-mod: hooks module did not load: hooks/deep.js: the engine ran out of stack linking the file and its imports',
-    ]);
-    expect(host.active()).toEqual([]);
-  });
-
-  test('the reason is the same whatever the engine says: it names no message and no line', () => {
-    expect(engineStackIssue('link', 'a.js', 'Maximum call stack size exceeded.').message).toBe(
-      engineStackIssue('link', 'a.js', 'RangeError at 1:2').message,
     );
   });
 });
@@ -159,14 +134,6 @@ spec('mods.troubleshoot.validate passes and lists no hooks line', () => {
       target: '.',
     });
     expect(report.lines).toContain('  ❯ ./register.js hooks: session.start');
-  });
-
-  test('a session loads nothing from it: no module, and no line saying why', async () => {
-    const { host } = session({ 'first-mod': noop });
-    const plugin: ModPlugin = { candidate: inline('first-mod'), files: folder({ module: [] }) };
-    const report = await host.load([plugin]);
-    expect(report.loaded).toEqual([]);
-    expect(report.lines).toEqual([]);
   });
 });
 

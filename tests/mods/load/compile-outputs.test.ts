@@ -157,6 +157,46 @@ describe('validate reads the scan output', () => {
     expect(report.lines).toContain('  ❯ ./register.ts hooks: tool.call');
   });
 
+  test('validate reads the compiler scan output and the engine runs another output of the same mod', async () => {
+    const report = await validateMod({
+      files,
+      target: '.',
+      compiler: answering({ scan: { code: ESM }, run: { code: CJS, format: 'cjs' }, issues: [] }),
+    });
+    expect(report.exitCode).toBe(0);
+    expect(report.lines).toContain('  ❯ ./register.ts hooks: tool.call');
+  });
+
+  test('a CommonJS scan output with a warning among the issues still fails with the scan message, not the warning', async () => {
+    const report = await validateMod({
+      files,
+      target: '.',
+      compiler: answering({
+        scan: { code: CJS },
+        run: { code: CJS, format: 'cjs' },
+        issues: [
+          { severity: 'warning', path: 'register.ts', message: 'register.ts: unused import' },
+        ],
+      }),
+    });
+    expect(report.exitCode).toBe(1);
+    const text = report.lines.join('\n');
+    expect(text).toContain('the scan output is CommonJS, not an ES module');
+    expect(text).not.toContain('unused import');
+  });
+
+  test('a compiler with no output at all gives its own first issue', async () => {
+    const report = await validateMod({
+      files,
+      target: '.',
+      compiler: answering({
+        issues: [{ severity: 'error', path: 'register.ts', message: 'register.ts: no such file' }],
+      }),
+    });
+    expect(report.exitCode).toBe(1);
+    expect(report.lines.join('\n')).toContain('register.ts: no such file');
+  });
+
   test('a CommonJS scan output fails validation with the same message as a load', async () => {
     const report = await validateMod({
       files,

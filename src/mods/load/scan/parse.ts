@@ -22,9 +22,16 @@ const messageOf = (thrown: unknown): string =>
 export const stackMessage = (thrown: unknown): string =>
   messageOf(thrown).replace(/\s*\(\d+:\d+\)$/, '');
 
-/** Whether `thrown` is a JavaScript engine running out of stack: a `RangeError`, or a message that says so. */
+/**
+ * Whether `thrown` is a JavaScript engine running out of stack: a `RangeError`, or a message in the
+ * words the engines use (V8, JavaScriptCore, SpiderMonkey). An ordinary error that only
+ * mentions a stack, `stack is empty`, is not one (judgment: the docs name no test for it).
+ */
 export const isStackOverflow = (thrown: unknown): boolean =>
-  thrown instanceof RangeError || /stack/i.test(messageOf(thrown));
+  thrown instanceof RangeError ||
+  /maximum call stack size exceeded|too much recursion|stack overflow|not enough stack space/i.test(
+    messageOf(thrown),
+  );
 
 export function parseModule(source: string, file: string): Parsed {
   try {

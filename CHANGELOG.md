@@ -4,6 +4,18 @@
 
 ### Fixed
 
+- Mods, review fixes of the load seams. `createModsHost(...).fire` and `fireStream` take `before` (where
+  managed `PreToolUse` hooks run, ahead of the first mod), which only the raw chain could set. A
+  stack overflow is a `RangeError` or a message in an engine's words (`maximum call stack size
+  exceeded`, `too much recursion`, `stack overflow`, `not enough stack space`), no longer any error
+  that mentions a stack. `claude plugin validate` reports the scan problem of a compiler output, not an
+  unrelated compiler issue. Tests: the order of managed, other settings and plugin `PreToolUse` hooks
+  is driven through the host with the hook engine; `prependPlugins`, the built-in guard's run order,
+  the filter with every field matching, deep freezing of events, the `my-mod:` log line through the
+  real `$.ui.log`, the six `$` and import rules (each with its own reason, in
+  `check-reads-wording.test.ts` where the page gives no wording), a blank `Client` error and the drawn
+  failure node are now asserted; the linking reason, a session with no `modules` key and the compiler
+  outputs of `validate` moved out of `spec(...)` as judgments, with new rows in `spec/judgments.md`.
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
   short label and the amounts of each row of the Limits table, not the page's sentences, so the
   repository holds facts and identifiers only.
@@ -350,7 +362,8 @@
   `...loading the file (code nested too deep): <message>`), the parser's reason has no line number, and
   a `Client` error with no message is `the module failed without a message`. `DispatchOptions.before` is
   where the managed `PreToolUse` hooks run, ahead of the first mod. 19 requirements of the mods events,
-  overview, create and troubleshoot pages are now proven.
+  overview, create and troubleshoot pages are now proven (18: the linking reason is a judgment, see the
+  review fixes).
 
 ### Fixed
 

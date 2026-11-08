@@ -4,7 +4,7 @@
  */
 import { expect, test } from 'bun:test';
 import { createEventRules } from '../../../src/mods/events/index.ts';
-import { fn, harness, type Ev } from '../../support/mods-chain.ts';
+import { fn, harness, record, type Ev } from '../../support/mods-chain.ts';
 import { spec } from '../../support/spec.ts';
 
 const typed = () => harness(undefined, createEventRules());
@@ -39,17 +39,25 @@ spec('mods.events.Filter which events a hook handles', () => {
     expect(seen).toEqual(['Bash', 'Edit', 'Write', 'mcp__github__issues']);
   });
 
-  test('the hook runs only when every field matches', async () => {
+  test('the hook runs only when every field matches: both fields match runs it, one field alone does not', async () => {
     const h = typed();
-    const seen: unknown[] = [];
+    const seen: string[] = [];
     h.mod('my-mod', 'user', [
-      fn('tool.call', (_$, e, next) => (seen.push(e.tool), next(e)), {
-        matcher: { tool: 'Bash', isReadOnly: true },
-      }),
+      fn(
+        'tool.check',
+        (_$, e, next) => (seen.push(`${String(e.tool)} ${String(e.isReadOnly)}`), next(e)),
+        {
+          matcher: { tool: 'Bash', isReadOnly: true },
+        },
+      ),
     ]);
-    await h.fire('tool.call', { tool: 'Bash', input: {} });
-    await h.fire('tool.call', { tool: 'Edit', input: {} });
+    // tool matches and isReadOnly does not (absent), then isReadOnly matches and tool does not, then both match
+    await h.fire('tool.check', { tool: 'Bash', input: {} });
     expect(seen).toEqual([]);
+    await h.fire('tool.check', { tool: 'Edit', input: {}, isReadOnly: true });
+    expect(seen).toEqual([]);
+    await h.fire('tool.check', { tool: 'Bash', input: {}, isReadOnly: true });
+    expect(seen).toEqual(['Bash true']);
   });
 
   test("'classic.*' matches every settings hook event and '*' every event except the telemetry events", async () => {
@@ -61,6 +69,7 @@ spec('mods.events.Filter which events a hook handles', () => {
     ]);
     for (const name of [
       'classic.PreToolUse',
+      'classic.PostToolUse',
       'tool.call',
       'session.start',
       'telemetry.log',
@@ -70,6 +79,8 @@ spec('mods.events.Filter which events a hook handles', () => {
     expect(seen).toEqual([
       'classic.* classic.PreToolUse',
       '* classic.PreToolUse',
+      'classic.* classic.PostToolUse',
+      '* classic.PostToolUse',
       '* tool.call',
       '* session.start',
     ]);
@@ -135,7 +146,7 @@ spec('mods.events.Filter a tool.check hook by whether the call is read-only', ()
       fn(
         'tool.check',
         async (_$, e, next) => {
-          const decided = (await next(e)) as { decision?: string };
+          const decided = record(await next(e));
           if (e.isReadOnly || decided.decision === 'deny') return decided;
           return { decision: 'ask', reason: 'This tool can change the GitHub repository' };
         },

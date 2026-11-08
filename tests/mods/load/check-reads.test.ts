@@ -7,7 +7,6 @@
  */
 import { expect, test } from 'bun:test';
 import { validateMod } from '../../../src/mods/load/commands/validate.ts';
-import type { ModCompiler } from '../../../src/mods/ports.ts';
 import { memoryFiles } from '../../support/ports.ts';
 import { spec } from '../../support/spec.ts';
 
@@ -56,6 +55,10 @@ async function check(module: string, extra: Record<string, string> = {}) {
   return { lines: report.lines, ok: report.exitCode === 0 };
 }
 
+/** The error lines `validate` printed. */
+const errorsOf = (lines: readonly string[]): string[] =>
+  lines.filter((line) => line.startsWith('  ✘'));
+
 spec('mods.create.Check what Claude Code reads from your mod', () => {
   test('first-mod prints the hooks line with each filter in braces, the calls line, and passes: exactly the lines the docs show', async () => {
     const { lines, ok } = await check(FIRST_MOD);
@@ -67,25 +70,6 @@ spec('mods.create.Check what Claude Code reads from your mod', () => {
     ]);
     expect(lines.at(-1)).toBe('✔ Validation passed');
     expect(ok).toBe(true);
-  });
-
-  test('it reads the module from the compiler scan output, and the engine runs another output of the same mod', async () => {
-    const files = memoryFiles({
-      '.claude-plugin/plugin.json': MANIFEST,
-      'hooks/hooks.json': JSON.stringify({ modules: ['./register.ts'] }),
-      'hooks/register.ts': 'export function register(on: unknown): void {}',
-    });
-    const compiler: ModCompiler = {
-      compile: () =>
-        Promise.resolve({
-          scan: { code: FIRST_MOD },
-          run: { code: 'exports.register = () => {}', format: 'cjs' },
-          issues: [],
-        }),
-    };
-    const report = await validateMod({ files, target: '.', compiler });
-    expect(report.lines).toContain('  ❯ ./register.ts calls: $.command.register, $.ui.invalidate');
-    expect(report.exitCode).toBe(0);
   });
 
   test('a module that reads or sets environment variables or uses $.state gets env and state lines too', async () => {
@@ -138,20 +122,31 @@ export function register(on) { on('session.start', async ($, e, next) => { await
     expect(passed.ok).toBe(true);
   });
 
-  test('rule: `$` passed to a method, a function defined inside the hook, or an imported function fails; so does `const ui = $.ui`', async () => {
+  test('rule: `$` passed to a method, a function defined inside the hook, or an imported function fails validation, with that one error and no other', async () => {
     const failing = [
       wrap('({ f($) {} }).f($)'),
       wrap('const f = ($) => $.fs.read("x"); f($)'),
       `import { helper } from './helper.js'\n${wrap('helper($)')}`,
-      wrap('const ui = $.ui'),
     ];
-    for (const module of failing) expect((await check(module)).ok).toBe(false);
-    expect((await check(wrap('const ui = $.ui'))).lines.join('\n')).toContain(
-      '$.ui is used as a value',
-    );
-    // destructuring and a computed name fail as well
-    expect((await check(wrap('const { ui } = $'))).ok).toBe(false);
-    expect((await check(wrap("const n = 'ui'; $[n].log('x')"))).ok).toBe(false);
+    for (const module of failing) {
+      const { lines, ok } = await check(module);
+      expect(ok).toBe(false);
+      expect(errorsOf(lines)).toHaveLength(1);
+    }
+  });
+
+  test('rule: `const ui = $.ui` fails with the documented `$.ui is used as a value`', async () => {
+    const { lines, ok } = await check(wrap('const ui = $.ui'));
+    expect(ok).toBe(false);
+    expect(errorsOf(lines)).toEqual(['  ✘ ./register.js: ./register.js: $.ui is used as a value']);
+  });
+
+  test('rule: destructuring `$` and indexing it with a computed name fail validation, each with that one error', async () => {
+    for (const module of [wrap('const { ui } = $'), wrap("const n = 'ui'; $[n].log('x')")]) {
+      const { lines, ok } = await check(module);
+      expect(ok).toBe(false);
+      expect(errorsOf(lines)).toHaveLength(1);
+    }
   });
 
   test('rule: the event name in each `on` call is a string literal; a variable or a loop over names fails', async () => {
@@ -181,8 +176,16 @@ export function register(on) { on('session.start', async ($, e, next) => { await
     const head = (line: string): string => `${line}\nexport function register(on) {}`;
     expect((await check(head("import { atom } from 'claude-code'"))).ok).toBe(true);
     expect((await check(head("import { f } from './f.js'"))).ok).toBe(true);
-    expect((await check(head("import x from 'left-pad'"))).ok).toBe(false);
-    expect((await check(head("import x from '../../outside.js'"))).ok).toBe(false);
+    for (const [line, specifier] of [
+      ["import x from 'left-pad'", 'left-pad'],
+      ["import x from '../../outside.js'", '../../outside.js'],
+    ] as const) {
+      const { lines, ok } = await check(head(line));
+      expect(ok).toBe(false);
+      const errors = errorsOf(lines);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain(`imports "${specifier}"`);
+    }
   });
 
   test('rule: use import declarations at the top of the file; a dynamic import() fails with the documented reason', async () => {
