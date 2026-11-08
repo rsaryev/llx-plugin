@@ -11,7 +11,7 @@
 import { expect, test } from 'bun:test';
 import { buildVariables, substituteVariables } from '../../src/skills/variables.ts';
 import { fakeEnvironment, locations } from '../support/ports.ts';
-import { expand, PLUGIN, SESSION, skillOf } from '../support/skill-variables.ts';
+import { expand, PLUGIN, runsWithoutPrompt, SESSION, skillOf } from '../support/skill-variables.ts';
 import { spec } from '../support/spec.ts';
 
 spec('skills.substitution.${CLAUDE_PLUGIN_ROOT}', () => {
@@ -29,9 +29,8 @@ spec('skills.substitution.${CLAUDE_PLUGIN_ROOT}', () => {
 
   test('is substituted in a Bash rule of allowed-tools of a plugin skill', async () => {
     const skill = skillOf(PLUGIN, 'allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/bin/fmt *)\n');
-    expect(await expand(skill, skill.allowedTools[0] ?? '')).toBe(
-      'Bash(/plugins/my-plugin/bin/fmt *)',
-    );
+    expect(await runsWithoutPrompt(skill, '${CLAUDE_PLUGIN_ROOT}/bin/fmt src')).toBe(true);
+    expect(await runsWithoutPrompt(skill, '/plugins/other/bin/fmt src')).toBe(false);
   });
 
   test('stays as written in a user, a project and a synced skill', async () => {
@@ -85,9 +84,10 @@ spec('skills.substitution.${CLAUDE_PLUGIN_DATA}', () => {
 
   test('is substituted in a Bash rule of allowed-tools of a plugin skill', async () => {
     const skill = skillOf(PLUGIN, 'allowed-tools: Bash(${CLAUDE_PLUGIN_DATA}/venv/bin/python *)\n');
-    expect(await expand(skill, skill.allowedTools[0] ?? '')).toBe(
-      'Bash(/data/my-plugin/venv/bin/python *)',
+    expect(await runsWithoutPrompt(skill, '${CLAUDE_PLUGIN_DATA}/venv/bin/python run.py')).toBe(
+      true,
     );
+    expect(await runsWithoutPrompt(skill, '/data/other/venv/bin/python run.py')).toBe(false);
   });
 
   test('stays as written, and the host is never asked for a folder, in a non-plugin skill', async () => {

@@ -118,6 +118,8 @@ function scan(content: string, typed: Typed): Scanned {
   for (const found of content.matchAll(DOLLAR)) {
     const slash = found[0].length === 2;
     const dollar = found.index + found[0].length - 1;
+    // A `$` inside a name already consumed is part of that name, not a placeholder of its own.
+    if (dollar < cursor) continue;
     const placeholder = recognize(content, dollar, typed);
     if (!placeholder) continue;
     const written = content.slice(dollar, dollar + placeholder.length);

@@ -78,7 +78,7 @@ export interface InvocableFrontmatter {
   readonly disableModelInvocation: boolean;
   /** `user-invocable`, default `true`. */
   readonly userInvocable: boolean;
-  /** `allowed-tools`: permission rules as written; `${CLAUDE_*}` is not substituted yet. */
+  /** `allowed-tools`: permission rules as written; `substituteAllowedTools` substitutes `${CLAUDE_*}` in its Bash rules. */
   readonly allowedTools: readonly string[];
   /** `disallowed-tools`, as written. */
   readonly disallowedTools: readonly string[];

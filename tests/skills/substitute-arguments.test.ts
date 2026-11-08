@@ -70,10 +70,10 @@ spec('skills.substitution.$ARGUMENTS', () => {
     expect(run('Say $ARGUMENTS and $0', '$1 $0')).toBe('Say $1 $0 and $1');
   });
 
-  test('a backslash escapes it ("\\$ARGUMENTS" is the text), which then counts as unreceived', () => {
-    const result = run('Write \\$ARGUMENTS literally', 'x');
-    expect(result.startsWith('Write $ARGUMENTS literally')).toBe(true);
-    expect(result.endsWith('ARGUMENTS: x')).toBe(true);
+  test('a backslash escapes it ("\\$ARGUMENTS" is the text)', () => {
+    expect(run('Write \\$ARGUMENTS literally, then $0', 'x')).toBe(
+      'Write $ARGUMENTS literally, then x',
+    );
   });
 
   test('is not an unrelated longer variable name', () => {
@@ -111,10 +111,6 @@ Preserve all existing behavior and tests.
     expect(run('Use $ARGUMENTS[0] and $ARGUMENTS[3]', 'one')).toBe('Use one and $ARGUMENTS[3]');
   });
 
-  test('a bracket that is not an index leaves "$ARGUMENTS" the whole string', () => {
-    expect(run('$ARGUMENTS[x] $ARGUMENTS[] $ARGUMENTS[-1]', 'a b')).toBe('a b[x] a b[] a b[-1]');
-  });
-
   test('a backslash before it escapes the whole indexed form', () => {
     expect(run('literal \\$ARGUMENTS[0] and $ARGUMENTS[0]', 'a')).toBe(
       'literal $ARGUMENTS[0] and a',
@@ -148,14 +144,12 @@ Preserve all existing behavior and tests.
     expect(run('$1|$10', 'a b c d e f g h i j k')).toBe('b|k');
   });
 
-  test('escapes with one backslash: \\$1.00 is "$1.00", unreceived', () => {
-    expectAppended(run('Costs \\$1.00', 'x'), 'Costs $1.00', 'x');
+  test('escapes with one backslash: \\$1.00 is "$1.00"', () => {
     expect(run('Costs \\$1.00 for $0', 'x')).toBe('Costs $1.00 for x');
   });
 
   test('a doubled backslash does not escape: both stay and $1 still expands', () => {
     expect(run('\\\\$1', 'a b')).toBe('\\\\b');
-    expect(run('\\\\\\$1', 'a b')).toBe('\\\\\\b');
   });
 
   test('a backslash before any other $ is left unchanged', () => {
@@ -195,9 +189,14 @@ spec('skills.substitution.$name', () => {
     expect(run('$issues $issue', '1', NAMES)).toBe('$issues 1');
   });
 
-  test('a backslash escapes a declared name, and it is then unreceived', () => {
-    expectAppended(run('keep \\$issue', '1', NAMES), 'keep $issue', '1');
-    expectAppended(run('keep \\$other', '1', NAMES), 'keep \\$other', '1');
+  test('a backslash escapes a declared name, and one before any other name is unchanged', () => {
+    expect(run('keep \\$issue $branch', '1 2', NAMES)).toBe('keep $issue 2');
+    expect(run('keep \\$other $issue', '1', NAMES)).toBe('keep \\$other 1');
+  });
+
+  test('a $ inside a declared name already consumed is not a placeholder of its own', () => {
+    expect(run('$a$b $b', 'x y', ['a$b', 'b'])).toBe('x y');
+    expect(run('$a$b$b', 'x y', ['a$b', 'b'])).toBe('xy');
   });
 
   test('named and indexed forms read the same arguments', () => {
@@ -220,6 +219,21 @@ describe('placeholders outside the documented forms (judgments)', () => {
 
   test('one pass: a value that looks like a later placeholder is not expanded', () => {
     expect(run('$0 $1', '$1 x')).toBe('$1 x');
+  });
+
+  test('$ARGUMENTS[N] followed by non-digits: a bracket that is not an index leaves "$ARGUMENTS" the whole string', () => {
+    expect(run('$ARGUMENTS[x] $ARGUMENTS[] $ARGUMENTS[-1]', 'a b')).toBe('a b[x] a b[] a b[-1]');
+  });
+
+  test('an escaped placeholder does not count as receiving, so the arguments are appended', () => {
+    expectAppended(run('Write \\$ARGUMENTS literally', 'x'), 'Write $ARGUMENTS literally', 'x');
+    expectAppended(run('Costs \\$1.00', 'x'), 'Costs $1.00', 'x');
+    expectAppended(run('keep \\$issue', '1', ['issue']), 'keep $issue', '1');
+  });
+
+  test('three or more backslashes before a token expand it and keep every backslash', () => {
+    expect(run('\\\\\\$1', 'a b')).toBe('\\\\\\b');
+    expect(run('\\\\\\\\$1', 'a b')).toBe('\\\\\\\\b');
   });
 
   test('a duplicate name keeps its first position', () => {

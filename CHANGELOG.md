@@ -7,6 +7,11 @@
 - Skills: a refused name or folder is reported once by field (`folder name has ...`, not `folder
   folder name has ...`); outside a plugin a name or folder `anthropic-skills` or
   `anthropic-skills:<name>`, and a user or project folder `synced` (any case), refuse the skill.
+- Skills: `substituteArguments` no longer expands a `$` inside a declared argument name a second
+  time (`$a$b $b` with `a$b` and `b` declared gave `xy y`, now `x y`). `substituteAllowedTools`
+  substitutes the Bash rules of `allowed-tools` (the docs' "same variable in both places"), where
+  `substituteVariables` was only documented to; the judgments record the escaped-placeholder
+  append, three backslashes, `$ARGUMENTS[x]` and `${user_config.*}` in typed arguments.
 
 ### Added
 

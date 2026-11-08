@@ -8,15 +8,27 @@
  * same two places", and "a backslash doesn't prevent substitution of a `${CLAUDE_*}` variable".
  * § How Claude Code handles the body of a synced skill: in a session on the owner's machine the
  * `${CLAUDE_PROJECT_DIR}` and `${CLAUDE_SESSION_ID}` placeholders "reach Claude as literal text".
- * The rule match of `allowed-tools` against the command is proven end to end with the expansion.
+ * The Bash rule of `allowed-tools` is expanded by `substituteAllowedTools` and then matched against
+ * the expanded command of the body with the rules matcher.
  */
 import { describe, expect, test } from 'bun:test';
 import { readSkill } from '../../src/format/skill.ts';
 import { EFFORT_LEVELS } from '../../src/protocol/effort.ts';
 import { substitute } from '../../src/skills/substitute.ts';
-import { buildVariables, substituteVariables } from '../../src/skills/variables.ts';
+import {
+  buildVariables,
+  substituteAllowedTools,
+  substituteVariables,
+} from '../../src/skills/variables.ts';
 import { fakeEnvironment, locations } from '../support/ports.ts';
-import { expand, ORIGINS, PLUGIN, SESSION, skillOf } from '../support/skill-variables.ts';
+import {
+  expand,
+  ORIGINS,
+  PLUGIN,
+  runsWithoutPrompt,
+  SESSION,
+  skillOf,
+} from '../support/skill-variables.ts';
 import { spec } from '../support/spec.ts';
 
 spec('skills.substitution.${CLAUDE_SESSION_ID}', () => {
@@ -121,11 +133,21 @@ spec('skills.substitution.${CLAUDE_SKILL_DIR}', () => {
     );
     const rule = skill.allowedTools[0] ?? '';
     expect(rule).toBe('Bash(${CLAUDE_SKILL_DIR}/scripts/render.sh *)');
-    expect(await expand(skill, rule)).toBe(
+    const vars = buildVariables(skill, SESSION, {
+      locations: locations(),
+      environment: fakeEnvironment(),
+    });
+    expect((await substituteAllowedTools(skill, vars)).rules).toEqual([
       'Bash(/plugins/my-plugin/skills/render-chart/scripts/render.sh *)',
-    );
+    ]);
     expect(await expand(skill, skill.body)).toContain(
       '`/plugins/my-plugin/skills/render-chart/scripts/render.sh <csv-file>`',
+    );
+    expect(await runsWithoutPrompt(skill, '${CLAUDE_SKILL_DIR}/scripts/render.sh data.csv')).toBe(
+      true,
+    );
+    expect(await runsWithoutPrompt(skill, '${CLAUDE_SKILL_DIR}/scripts/other.sh data.csv')).toBe(
+      false,
     );
   });
 
@@ -161,13 +183,20 @@ spec('skills.substitution.${CLAUDE_PROJECT_DIR}', () => {
     expect((await substituteVariables('${CLAUDE_PROJECT_DIR}', vars)).text).toBe('/srv/other');
   });
 
-  test('is substituted in a Bash rule of allowed-tools too', async () => {
+  test('is substituted in a Bash rule of allowed-tools too, which then matches the command', async () => {
     const skill = skillOf(
       { kind: 'project' },
       'allowed-tools: Bash(${CLAUDE_PROJECT_DIR}/scripts/check.sh *)\n',
     );
-    expect(await expand(skill, skill.allowedTools[0] ?? '')).toBe(
+    const vars = buildVariables(skill, SESSION, {
+      locations: locations(),
+      environment: fakeEnvironment(),
+    });
+    expect((await substituteAllowedTools(skill, vars)).rules).toEqual([
       'Bash(/work/app/scripts/check.sh *)',
+    ]);
+    expect(await runsWithoutPrompt(skill, '${CLAUDE_PROJECT_DIR}/scripts/check.sh --all')).toBe(
+      true,
     );
   });
 

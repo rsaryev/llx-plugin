@@ -91,7 +91,9 @@ export {
 } from './skills/substitute.ts';
 export {
   buildVariables,
+  substituteAllowedTools,
   substituteVariables,
+  type AllowedToolsSubstituted,
   type SkillSession,
   type SkillVariablePorts,
   type SkillVariables,

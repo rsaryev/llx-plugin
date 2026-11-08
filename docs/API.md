@@ -90,9 +90,10 @@ const { text, issues } = await substitute(skill.body, {
 | Name                                        | Does                                                                                   |
 | ------------------------------------------- | -------------------------------------------------------------------------------------- |
 | `parseArguments(raw)`                       | shell-style split: `"hello world" second` is two arguments                             |
-| `substituteArguments(content, input)`       | `$ARGUMENTS`, `$ARGUMENTS[N]`, `$N` (0-based), `$name`; one pass over the original text, so a value is never expanded; `\$` before a token escapes it (a doubled backslash does not); an index with no argument stays, a named one becomes empty; `ARGUMENTS: <value>` is appended when arguments were typed and no placeholder received one |
+| `substituteArguments(content, input)`       | `$ARGUMENTS`, `$ARGUMENTS[N]`, `$N` (0-based), `$name`; one pass over the original text, so a value is never expanded; `\$` before a token escapes it (a doubled backslash does not) and an escaped token receives nothing; an index with no argument stays, a named one becomes empty; `ARGUMENTS: <value>` is appended when arguments were typed and no placeholder received one |
 | `buildVariables(skill, session, ports)`     | the `SubstitutionScope` of `loading/resolve` plus the names this skill leaves as written: `CLAUDE_SESSION_ID`, `CLAUDE_EFFORT` and `CLAUDE_SKILL_DIR` travel as `scope.extra` |
-| `substituteVariables(text, vars)`           | the six `${CLAUDE_*}` variables through `loading/resolve` (the `markdown-content` surface); also for the Bash rules of `allowed-tools` |
+| `substituteVariables(text, vars)`           | the six `${CLAUDE_*}` variables through `loading/resolve` (the `markdown-content` surface) |
+| `substituteAllowedTools(skill, vars)`       | the same for the Bash rules of `allowed-tools` (other rules kept as written); the host matches the result with the rules matcher against the substituted command |
 | `substitute(content, { rawArguments, names, vars })` | both stages                                                               |
 
 `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PLUGIN_DATA}` are substituted only for a plugin skill and stay

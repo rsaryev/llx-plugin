@@ -178,7 +178,8 @@ const referenceTo = (names: readonly string[]): RegExp =>
 /**
  * `${CLAUDE_*}` in `text`, in one pass (a value is never scanned again). A reference this skill
  * leaves as written splits the text: the pieces between are substituted, the reference is kept.
- * Used for the skill's Markdown and for the Bash rules of `allowed-tools` alike.
+ * Used for the skill's Markdown; `substituteAllowedTools` runs it over the Bash rules of
+ * `allowed-tools`.
  */
 export async function substituteVariables(
   text: string,
@@ -198,5 +199,37 @@ export async function substituteVariables(
   return {
     text: done.map((piece) => piece.text).join(''),
     issues: vars.reportsIssues ? done.flatMap((piece) => piece.issues) : [],
+  };
+}
+
+/** A Bash rule: the only rules of `allowed-tools` skills.md says are substituted. */
+const BASH_RULE = /^\s*Bash\s*\(/;
+
+export interface AllowedToolsSubstituted {
+  /** The rules of `allowed-tools`, in order, the Bash ones with their `${CLAUDE_*}` replaced. */
+  readonly rules: readonly string[];
+  readonly issues: readonly PluginIssue[];
+}
+
+/**
+ * The `allowed-tools` of a skill with `${CLAUDE_*}` replaced in its Bash rules (skills.md: the rule
+ * "then matches the exact command the skill body tells Claude to run"). Any other rule is kept as
+ * written. The host passes the result on to the rule matcher.
+ */
+export async function substituteAllowedTools(
+  skill: Pick<Skill, 'allowedTools'>,
+  vars: SkillVariables,
+  path = 'allowed-tools',
+): Promise<AllowedToolsSubstituted> {
+  const done = await Promise.all(
+    skill.allowedTools.map((rule) =>
+      BASH_RULE.test(rule)
+        ? substituteVariables(rule, vars, path)
+        : Promise.resolve({ text: rule, issues: [] }),
+    ),
+  );
+  return {
+    rules: done.map((rule) => rule.text),
+    issues: done.flatMap((rule) => rule.issues),
   };
 }
