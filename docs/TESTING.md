@@ -45,10 +45,27 @@ validator. `bun run corpus:fetch` clones the official and community marketplaces
 `planPluginFetch` as a host would (a shallow git clone pinned to the entry's `sha` or `ref`, sparse
 for a subdirectory). `bun run corpus` runs the kit over every fetched plugin and compares it with
 the oracle, `claude plugin validate --json` of the same Claude Code release (SP3), run as a program
-and never read (`scripts/corpus/oracle.ts`, cached per release). It prints the verdict agreement
-(an error exactly when the oracle reports one), the share of the oracle's findings the kit reports
-with the same severity and message, and the most frequent differences; `.cache/corpus/report.json`
-holds every plugin's. Nothing of the corpus is committed, and `bun test` never reads it.
+and never read (`scripts/corpus/oracle.ts`, cached per release). The kit's side of the comparison is
+`validatePlugin` over the plugin's folder (docs/API.md, "Validating"); `loadPlugin`'s own verdict
+is printed on a separate line, because loading and validating differ on purpose (the validator
+reports advice and checks the loader never makes). The run prints:
+
+- the verdict agreement: an error exactly when the oracle reports one;
+- the share of the oracle's findings the kit reports with the same severity and message, and the
+  share also at the same file and path (findings are paired as a multiset, a finding at the right
+  place first);
+- the most frequent findings the kit misses, reports beyond the oracle, or puts elsewhere.
+
+`.cache/corpus/report.json` holds every plugin's. Nothing of the corpus is committed, and `bun test`
+never reads it. Tests of what the oracle showed are written with inputs of their own, outside
+`spec(...)` (docs/SPEC.md, "Sources of truth").
+
+Where the kit and the oracle still differ, and why: a plugin whose directory does not exist is
+reported with the oracle's absolute path; `directory`-profile findings of the validator (checks
+that need a network or the marketplace directory service) are out of scope; the oracle reads YAML
+with Bun's parser, which has quirks the kit approximates (`tests/format/frontmatter-retry.test.ts`
+lists what was observed); and a `.mcp.json` entry with a `url` and no `type` is an error to the
+loader, as mcp.md says, while the validator reports nothing for that file.
 
 ## Commands
 
