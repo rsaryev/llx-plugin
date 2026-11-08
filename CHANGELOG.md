@@ -69,6 +69,11 @@
   `hooks` of every file without letting a file remove a managed hook, and runs a handler defined in
   two files once. `POLICY_KEYS`, `PLUGIN_ONLY_SURFACES`, `SKILL_OVERRIDE_STATES`, `WORKFLOW_SIZES`,
   `MARKETPLACE_SOURCE_KINDS` and `MarketplaceSource` are asserted equal to the SDK's types.
+- The plugin keys of the settings (`settings/plugins`): `enabledPlugin` and `forceEnabledByManaged`
+  (`enabledPlugins` precedence, managed block and hide, `defaultEnabled`, `@synced`), `pluginConfig`
+  (`pluginConfigs`, user and managed only, the `@builtin` id aliases), `modOrder` (`prependPlugins`
+  and `appendPlugins`, the built-in guard), `syncDecision` (`syncClaudeAiPlugins`), `trustWarning`
+  (`pluginTrustMessage`) and `createPluginSettingsPolicy`.
 
 ### Fixed
 

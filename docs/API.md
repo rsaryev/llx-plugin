@@ -275,6 +275,12 @@ mergeHooks(view.layers); // every file's hooks, managed ones never removable
 | `createPolicyView(layers)`              | done    | `get`, `winner`, `eachFromHighest` over the layers, one merge rule per key               |
 | `KEY_SPECS`, `admits`                   | done    | per key: its scope rule, merge kind and repair kind, from the key's entry in settings-reference.md |
 | `mergeHooks(layers)`                    | done    | the `hooks` key: groups concatenated per event, the same handler under the same matcher in two files once |
+| `enabledPlugin(view, id, default?)`, `forceEnabledByManaged(view, id)` | done | `enabledPlugins`: the highest file with an entry for the id decides (managed beats local beats project beats user); a managed `false` blocks and hides, a managed `true` cannot be turned off; no entry follows `defaultEnabled` |
+| `pluginConfig(view, id)`                | done    | `pluginConfigs`: the options and per-server values of one plugin, from user or managed settings only, a built-in plugin read under either id; a value of another shape is dropped with a warning |
+| `modOrder(view, context, orgMods)`      | done    | `prependPlugins` and `appendPlugins`: the ids that take effect in the listed order, the skipped ones with the debug-log line, and where the built-in guard loads |
+| `syncDecision(view)`                    | done    | `syncClaudeAiPlugins`: only `false` counts, from user, local, managed and `--settings`, also over a managed `true`; the move to the trash for user and managed |
+| `trustWarning(view, standard)`          | done    | `pluginTrustMessage`: the managed text appended to the host's standard warning, which stays whole |
+| `createPluginSettingsPolicy(view, context)` | done | the five above as one object (`PluginSettingsPolicy`); `pluginSuggestionMarketplaces` joins it in the composed policy |
 | hooks engine: one run of the same handler across the groups that matched an event | planned | hooks.md, "Hook handler fields": a handler defined in more than one settings file runs once whatever its matcher; a plugin's or skill's copy stays separate. `mergeHooks` keeps both groups when the matchers differ |
 | `PolicyContext` (account, plan, trust, channel allowlist facts a host supplies as data) | planned | to be declared by the resolver stream with a judgment row naming each field's docs source |
 | `resolvePolicy` and the per-area resolvers (plugins, marketplaces, hooks, skills, workflows, channels, customization) | planned | read their keys through the view |

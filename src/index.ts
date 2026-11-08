@@ -50,3 +50,4 @@ export {
   type PolicyKey,
 } from './protocol/settings-keys.ts';
 export * from './settings/index.ts';
+export * from './settings/plugins/index.ts';
