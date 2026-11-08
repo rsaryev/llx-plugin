@@ -251,9 +251,124 @@
   release-channel pair (`checkReleaseChannels`). The renames migration, `forceRemoveDeletedPlugins`,
   release tags and the `ref`/`sha`/`#ref` hold on a version are now proven against the pages that
   describe them (plugins/host-marketplace.md, plugins/publish.md, plugins/org.md).
+- MCP startup and call-timing variables, pure over an environment lookup: `CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT`
+  (`McpTimeouts.idleMs`: 5 minutes for network servers, 30 for stdio, `0` off, raised to one second,
+  capped at the tool timeout, floored by the per-server `timeout`, none for IDE and SDK servers),
+  `mcpConnectionBatches` (`MCP_SERVER_CONNECTION_BATCH_SIZE`, `MCP_REMOTE_SERVER_CONNECTION_BATCH_SIZE`),
+  `mcpBackgrounding` (`CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS`, `CLAUDE_CODE_DISABLE_MCP_TASK_BACKGROUND`),
+  `mcpStartupWaitsFor` (`MCP_CONNECTION_NONBLOCKING`), `mcpFirstTurnWaitMs`
+  (`CLAUDE_CODE_MCP_STARTUP_WAIT_MS`), `mcpDiscoveryCache`, `mcpCacheEntryUse` and
+  `mcpCacheDiscardedAfterFailures` (`MCP_DISCOVERY_CACHE` and its `_TTL_S`, `_MAX_STALE_S` and
+  `_STRIKES`) and `mcpClientSettings` (`MCP_SDK_GENERATION`, `MCP_PROTOCOL_NEGOTIATION`).
+
+- MCP contracts, pure over data: the `oauth` block, redirect, discovery and scopes; `claude mcp add`
+  and `add-json`; tool names, hints, root-combinator rewriting and invalid-schema exclusion; result
+  limits, persistence and images; MCP prompts; elicitation (modes, forms, URL cap, hooks); the
+  `MCP_TIMEOUT`, `MCP_TOOL_TIMEOUT`, `MCP_CONNECT_TIMEOUT_MS` and description-length knobs; reload
+  planning; redaction of a plugin server. An unset `${VAR}` in a plugin server is now the error
+  `Invalid MCP server config for "<name>": Missing environment variables: ...` instead of a warning.
+
+- MCP `headersHelper` and the subprocess environment, pure over data. `planHeadersHelper` answers
+  where a server's helper runs (plugin root, project directory, primary working directory or the
+  configuration directory, by where the server was configured), with which environment (credential
+  variables removed for a project `.mcp.json`, a plugin and a project or `--add-dir` agent file;
+  `CLAUDE_CODE_MCP_SERVER_NAME`, `_URL` with `REDACTED` for a removed variable's live value, and
+  `CLAUDE_PLUGIN_ROOT` for a plugin), under 10 seconds, and whether it runs at all: a project or local
+  server in a folder without persisted trust (a parent's and the automatic `-p` or SDK trust do not
+  count) connects with its static headers and gets the `headersHelper not run` notice, an agent file's
+  server in an untrusted folder is not loaded; `persistedTrust` reads `hasTrustDialogAccepted`.
+  `runMcpHeadersHelper`, `connectionHeaders` and `attemptWithHeadersHelper` run it fresh each time,
+  let dynamic headers win, stop the OAuth fall back on an `Authorization` header and retry a 401 or 403
+  once. `scrubEnvironment` and `subprocessScrubEnabled` apply `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB`'s
+  table (credential names and URLs with a password removed, registry URLs lose their userinfo, GitHub
+  tokens, proxies and `GIT_CONFIG_*` kept; the pre-2.1.251 behaviour by `version`). One credential
+  classifier (`isCredentialVariable`) serves all of them and the marketplace helper. A monitor
+  `command` can opt into `monitorPaths: 'environment-reference'`: the three path variables become
+  `${NAME}` references and `ResolvedMonitor.environment` supplies the values, so a path holding shell
+  metacharacters cannot inject.
+
+- Managed MCP: `readManagedMcpFile` and `loadManagedMcpFile` read `managed-mcp.json` from the path of
+  each platform; `readManagedMcpServers` validates `managedMcpServers` entries (remote `https` only, no
+  program, no `${VAR}`, plain names and characters) with a notice for each dropped one;
+  `mcpLoadPlan` (and `resolvePolicy(...).mcp.loadPlan`) decides what loads under exclusive control: an
+  empty map blocks every other server, `claude mcp add` gets the enterprise-policy error, `--mcp-config`
+  and `--strict-mcp-config` exit on a workstation (a cloud session keeps the managed servers and warns),
+  connectors need `allowAllClaudeAiMcps`, Claude in Chrome needs `allowClaudeInChromeWithManagedMcp` from
+  device sources; `providedServersTiming` and `reconcileManagedServers` say when provided servers connect
+  and what a running session adds, reconnects or drops. The keys `managedMcpServers`,
+  `allowAllClaudeAiMcps`, `allowClaudeInChromeWithManagedMcp` and `disableClaudeAiConnectors` join the
+  policy keys, and `resolvePolicy` takes `deviceManaged` layers.
+
+- MCP settings: scope ranking, per-project toggles, project approvals and workspace trust, pure over
+  data the host read. `rankMcpServers` loads each server once from the highest of managed, local,
+  project, user, plugin and claude.ai connector (names across the three scopes, endpoints for plugins
+  and connectors, the whole winning entry, hidden duplicates reported); `claudeJsonServers` and
+  `projectFileServers` turn `~/.claude.json` and `.mcp.json` into candidates; `managedServerEntries`
+  reads `managedMcpServers` from managed layers only; `readProjectToggles`, `serverEnabled` and
+  `applyToggles` apply `disabledMcpServers` and `enabledMcpServers` (one list per kind of server);
+  `projectServerApproval` and `canPromptForProjectServers` decide `Pending approval` and `Rejected` for
+  `.mcp.json` servers with the untrusted-folder filter. The keys `enableAllProjectMcpServers`,
+  `enabledMcpjsonServers` and `disabledMcpjsonServers` join the policy keys, and `resolvePolicy`
+  returns an `mcp` area.
+
+- MCP allow and deny lists: `createMcpServerPolicy` (and `resolvePolicy(...).mcp.serverPolicy()`)
+  decides whether a server may load from `allowedMcpServers`, `deniedMcpServers` and
+  `allowManagedMcpServersOnly`: the denylist of every file first and always, the allowlist of every file
+  or only the highest managed one under the lock (a `true` in any admin source locks), `serverUrl`
+  patterns with the port rule, exact `serverCommand` arrays, `serverName` only where the list has no
+  entry of the server's kind, `${VAR}` expansion of entries (pinned environment) and servers (live
+  environment), the servers that skip the allowlist, and the verdict with the messages users see.
+  Invalid entries are stripped per the fail-closed rules; the three keys join the policy keys.
 
 ### Fixed
 
+- MCP contracts review: `claude mcp add` and `add-json` refuse a name already stored at the scope
+  (`McpAddOptions.existing`, `readMcpAdd`'s third argument, `mcpAddKey`) with `MCP server <name> already
+  exists in <scope> config`; the session-token-rejected state of a connector is for a `401` only, a
+  `403` flags it; the shapes of a tool, a prompt and the elicitation capability are the MCP SDK's
+  (`Tool`, `Prompt`, `PromptArgument`, `ClientCapabilities`, re-exported by `protocol/official.ts`) and
+  `prepareMcpTool` takes an input schema of any type (`McpListedTool`); result limits read the SDK's
+  content parts directly; `as` casts are gone from the add readers and the tests. The tests assert what
+  their titles claim: the elicitation form validation moved out of `spec(...)`, titles that claimed
+  more than they checked were trimmed, the `/cd` and `https://` echoes were removed with judgments
+  recording what is the host's, and the 11,001-character error boundary is covered.
+
+- MCP `headersHelper` review: a project or local server with no helper in an untrusted folder no
+  longer gets the `headersHelper not run` notice (an agent file's server stays unloaded);
+  `CLAUDE_CODE_MCP_SERVER_URL` redacts only the removed variables the URL expanded
+  (`HelperServer.expandedVariables`), so a short unrelated value such as `8` no longer corrupts it;
+  `attemptWithHeadersHelper` takes the server name and reports errors.md's `Server rejected the
+  Authorization header minted by the configured headersHelper (HTTP <status>)` when a connection is
+  rejected after the helper supplied `Authorization`, and `produce` now gives the helper's headers
+  alone (`send` merges the static ones); the origin rules carry `providesPluginRoot` instead of a
+  comparison with `'plugin'`; the monitor opt-in tests moved out of `spec(...)`, the PowerShell path
+  test asserts the native exported path, and the helper tests assert the per-cause messages, the
+  re-plan on a re-run and that every settings scope is an origin; the `docs/API.md` snippet narrows
+  its union.
+
+- Managed MCP review: the startup exits follow the page's order (`--mcp-config` before
+  `--strict-mcp-config`, a judgment when both apply); `/mcp` toggles no longer reach the servers of
+  `managed-mcp.json` (the page documents them for provided servers only); an entry that fails several
+  checks gets the notice of the first in the page's order; `reconcileManagedServers` and the hooks
+  merge share one `canonical` helper (plain key sort, no locale); the plan-level tests now cover the
+  allowlist split between file and provided servers, same-name precedence, `desktopManaged`, an empty
+  map with connectors or Chrome allowed, and the connectors switch together with `allowAllClaudeAiMcps`.
+- MCP allow and deny lists review: `PolicyEnv` is exported once and replaces the three hand-declared
+  environment types; `createMcpServerPolicy` documents that it reads the lists at creation and a host
+  rebuilds it when settings change before a reconnect. The tests no longer claim the reconnect line, the
+  managed-set requirement is proven by its own denylist and `managed-mcp.json` tests, and the judgments
+  on layered `env` filling, `headersHelper`, empty `serverUrl` entries, per-source `serverName` rules and
+  an empty managed allowlist under the lock now have tests.
+
+- MCP settings review: `managedServerEntries(layers, { desktopManaged })` reads no managed entry in the
+  Claude Desktop Code tab on a third-party deployment or in Cowork sessions and warns that the key is
+  not read there; the rank of a managed server is proven under "How provided servers load" with a
+  negative case; the approval and rejection of parent and `--add-dir` settings, the `listed in`
+  commands and the enterprise-blocked status are recorded as judgments; the tests of toggles, user
+  scope and plugin or connector duplicates by command now assert what they claim.
+- MCP: `displayHeaders(server, scope)` gives the header names `claude mcp get` shows for a server
+  the organization provides (managed-mcp.md, "What users can see and change"), and the tests of
+  `displayReference`, the credential debug line and the endpoint key now assert what they claim.
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
   short label and the amounts of each row of the Limits table, not the page's sentences, so the
   repository holds facts and identifiers only.
@@ -332,6 +447,16 @@
   (`planInstall`, `planEnable`, `planDisable`, `planUninstall`, `planPrune`), scopes (`scopeReach`,
   `defaultScope`), `/reload-plugins` (`reloadSummary`, `reloadGate`) and the 14-day orphan sweep
   (`orphanSweep`). Pure decisions; effects only through ports.
+- MCP: `${VAR}` for servers of the settings scopes, not only plugins' (`expandMcpServer`,
+  `expandEnvText`): `command`, `args` and `env` of a stdio server, `url` and `headers` of a remote
+  one, over a lookup function and no plugin. An empty string counts as set, an unset variable
+  without a default keeps its text with a missing-variable warning, a `url` that does not parse
+  after expansion drops the server, and the covered credential variables read as empty toward a
+  remote server with a debug line naming the ones the user set (`credential-env`, one list for
+  plugin and non-plugin servers). `displayReference` gives what `/mcp` and `claude mcp list` show
+  (the `${VAR}` by name; a managed server's host only) and `mcpEndpointKey` the endpoint two
+  servers are duplicates by (URL spellings that differ only in scheme or host case, default port or
+  a trailing slash are one; a command is its arguments too).
 - Spec: the requirement set now counts the docs' prose, not only their tables. Every heading of
   the plugin, mods, skills, subagents, hooks, MCP, managed MCP, settings, managed settings,
   permissions, environment, CLI, workflows, themes, output styles and channels pages is either

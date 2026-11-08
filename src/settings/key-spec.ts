@@ -77,7 +77,25 @@ export const admits = (key: PolicyKey, scope: PolicyScope, value: unknown): bool
   scopeCarries(scope, key) && ADMITS[KEY_SPECS[key].scopes](scope, value);
 
 export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
+  // "Scope: Managed. Users can't re-enable connectors that exclusive control suppressed"; the page
+  // lists it among the keys read from every admin source (managed-settings.md), which the MCP load
+  // settings do by walking the holders. A value that is no Boolean is dropped: false is the default.
+  allowAllClaudeAiMcps: { scopes: 'managed', merge: MERGES.highestWins, repair: 'boolean' },
+  // "Scope: Managed, from the device's own managed settings only": a layer has one `managed` scope, so
+  // the device sources are the host's separate list (`ResolveInput.deviceManaged`; spec/judgments.md).
+  allowClaudeInChromeWithManagedMcp: {
+    scopes: 'managed',
+    merge: MERGES.highestWins,
+    repair: 'boolean',
+  },
   allowManagedHooksOnly: { scopes: 'managed', merge: MERGES.highestWins, repair: 'lockBoolean' },
+  // "Scope: Managed"; the lock itself is read from every admin source (managed-settings.md, "Keys read
+  // from every admin source"), which the MCP policy does by walking the holders, not through `get`.
+  allowManagedMcpServersOnly: {
+    scopes: 'managed',
+    merge: MERGES.highestWins,
+    repair: 'lockBoolean',
+  },
   allowedChannelPlugins: {
     scopes: 'managed',
     merge: MERGES.highestWins,
@@ -88,6 +106,13 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     merge: MERGES.unionArrays,
     repair: 'closedStringList',
   },
+  // "Scope: Any file. Entries from every file merge into one allowlist"; the parent settings an embedding
+  // host passes take part too (spec/judgments.md).
+  allowedMcpServers: {
+    scopes: 'anyAndParent',
+    merge: MERGES.unionArrays,
+    repair: 'allowedMcpServers',
+  },
   appendPlugins: { scopes: 'userOrManaged', merge: MERGES.highestWins, repair: 'stringList' },
   blockedMarketplaces: {
     scopes: 'managedAndParent',
@@ -95,8 +120,17 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     repair: 'blockedSources',
   },
   channelsEnabled: { scopes: 'managed', merge: MERGES.highestWins, repair: 'boolean' },
+  // "Scope: Any file. Entries from every file merge into one denylist".
+  deniedMcpServers: {
+    scopes: 'anyAndParent',
+    merge: MERGES.unionArrays,
+    repair: 'deniedMcpServers',
+  },
   disableAllHooks: { scopes: 'anyAndParent', merge: MERGES.highestWins, repair: 'hooksSwitch' },
   disableBundledSkills: { scopes: 'any', merge: MERGES.highestWins, repair: 'lockBoolean' },
+  // "Scope: Any file ... A `true` in any settings file applies"; a boolean lock key fails closed in the
+  // policy tier (managed-settings.md), which `lockBoolean` does. The MCP load settings read every holder.
+  disableClaudeAiConnectors: { scopes: 'any', merge: MERGES.highestWins, repair: 'lockBoolean' },
   disableCommandPluginSources: {
     scopes: 'managed',
     merge: MERGES.highestWins,
@@ -108,7 +142,12 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     repair: 'lockBoolean',
   },
   disableWorkflows: { scopes: 'any', merge: MERGES.highestWins, repair: 'lockBoolean' },
+  // A rejection "in any settings file applies" (settings-reference.md); a bad entry is dropped, which
+  // fails open for that one name, as every non-restrictive list does (managed-settings.md).
+  disabledMcpjsonServers: { scopes: 'any', merge: MERGES.unionArrays, repair: 'stringList' },
+  enableAllProjectMcpServers: { scopes: 'any', merge: MERGES.highestWins, repair: 'boolean' },
   enableWorkflows: { scopes: 'any', merge: MERGES.highestWins, repair: 'boolean' },
+  enabledMcpjsonServers: { scopes: 'any', merge: MERGES.unionArrays, repair: 'stringList' },
   enabledPlugins: { scopes: 'any', merge: MERGES.perKeyHighestWins, repair: 'enabledPlugins' },
   extraKnownMarketplaces: {
     scopes: 'any',
@@ -121,6 +160,10 @@ export const KEY_SPECS: { readonly [K in PolicyKey]: KeySpec<K> } = {
     merge: MERGES.unionArrays,
     repair: 'closedStringList',
   },
+  // "Scope: Managed ... Claude Code drops the key with a warning in user, project, and local settings";
+  // "Combines the server names from every source; when two sources set the same name, applies the
+  // higher-ranked source's whole entry" (managed-settings.md). The entries are read by `settings/mcp`.
+  managedMcpServers: { scopes: 'managed', merge: MERGES.perKeyHighestWins, repair: 'record' },
   pluginConfigs: { scopes: 'userOrManaged', merge: MERGES.perKeyHighestWins, repair: 'record' },
   pluginSuggestionMarketplaces: {
     scopes: 'managed',

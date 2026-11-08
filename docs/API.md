@@ -598,11 +598,107 @@ const { resolved, issues: more } = await resolveMcpServer('db', servers.db, scop
 | `validateUserConfigValues(config)` | one error per declared option whose value (saved, else `default`) would not be accepted: `required` and empty, a value of the wrong `type`, `multiple` not an array of strings, outside `options`, below `min` or above `max`; the dialog is the host's |
 | `rejectUserConfigInShell(guard, template, context, path)`, `HEADERS_HELPER_GUARD` | the shell-field check on the template, with the message errors.md quotes; monitors and shell-form hooks pass a guard of their own |
 
+#### Servers of the settings scopes (done: `format/mcp-env`, `credential-env`, `mcp-endpoint`)
+
+Pure over a lookup function (`(name) => string | undefined`, for example `(n) => env.get(n)`), so they
+need no plugin and no `SubstitutionScope`. Plugin servers resolve through `resolveMcpServer`, which
+shares the per-reference rule (`resolveEnvReference`) with this expander, so the two cannot drift.
+
+| API | What it does |
+| --- | --- |
+| `expandMcpServer(name, server, lookup)` | `${VAR}` and `${VAR:-default}` in `command`, `args` and `env` (stdio) or `url` and `headers` (remote; `headersHelper` is left as written). Returns `{ server, issues, missing, debug }`: an empty string counts as set so its default is ignored; an unset variable with no default keeps the `${VAR}` text and is a warning (`missing` is the `claude mcp list` warning's data); a covered credential variable reads as empty in `url` and `headers` only, with no warning; `server` is `undefined` with an error `'url' is not a valid URL` when the expanded `url` does not parse; `debug` has one line per covered variable the user has set, containing `never expanded toward a remote server` and never a value |
+| `expandEnvText(text, lookup, readsAsEmpty?)` | the same rule for one string: `{ text, missing, credentials }` |
+| `displayReference(server, scope)` | the URL or command line `/mcp`, `claude mcp list` and `claude mcp get` show: the `${VAR}` reference by name for `local`, `project` and `user`; `https://host/…` for `managed` |
+| `displayHeaders(server, scope)` | the headers `claude mcp get` shows, as `{ name, value? }`: names without values for `managed`; as written for `local`, `project` and `user` (a judgment); none for a stdio server. Like `displayReference`, give it the entry as written, not the result of `expandMcpServer` |
+| `mcpEndpointKey(server)` | equal for two servers exactly when they are one endpoint: URLs that differ only in the case of scheme or host, the scheme's default port or a trailing slash; a different path, query, userinfo or non-default port is two; a stdio server is its `command` and `args`. Plugins and connectors are matched with the servers above them by this key |
+| `CREDENTIAL_ENV_NAMES`, `readsAsEmptyTowardRemote(name)`, `credentialDebugLine(name)` | the five names mcp.md writes (`ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `AWS_BEARER_TOKEN_BEDROCK`, `HTTPS_PROXY`, `NPM_TOKEN`), matched exactly; `ANTHROPIC_BASE_URL` and `API_KEY` expand |
+
+| `isCredentialVariable(name)`, `withoutCredentials(env)`, `FIXED_CREDENTIAL_NAMES` | the one credential classifier of every command the kit runs without the user's credentials: a name with `TOKEN`, `SECRET`, `PASSWORD`, `KEY` or `AUTH` in either letter case, less Git's `GIT_CONFIG_KEY_<n>`, plus a fixed list (`ANTHROPIC_CUSTOM_HEADERS`, the docs' one name; the OpenTelemetry exporter headers, a judgment); marketplace and MCP helpers both use it |
+| `scrubAction(name, value)`, `hasUrlPassword(value)`, `withoutUserinfo(value)` | the table of env-vars.md "What the subprocess environment scrub removes" as data: `remove`, `keep` or `cut-userinfo` per variable (a credential name or a URL with a password removed; the GitHub tokens, `HTTP(S)_PROXY` and `GIT_CONFIG_*` kept whatever they hold; `CLAUDE_CONFIG_DIR` removed; registry URLs lose their userinfo) |
+
+#### Subprocess environment scrub (done: `loading/resolve/subprocess-scrub`)
+
+| API | What it does |
+| --- | --- |
+| `scrubEnvironment(snapshot, { version })` | pure: the environment a subprocess gets when `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` is on in the snapshot (`1`, `true`, `yes` or `on`, any casing); the snapshot copied unchanged when it is not. `version` below `2.1.251` removes only `ANTHROPIC_API_KEY` and `AWS_SECRET_ACCESS_KEY`; an unreadable version is the current table |
+| `subprocessScrubEnabled(snapshot)` | whether the switch is on |
+
+The Linux PID namespace the scrub gives Bash subprocesses (`ps`, `pgrep` and `kill` cannot see host
+processes) is a process option, not an environment edit: it stays the host's, as does setting the
+variable for `claude-code-action`.
+
+#### MCP `headersHelper` (done: `loading/resolve/headers-helper*`)
+
+```ts
+import { persistedTrust, planHeadersHelper, runMcpHeadersHelper, connectionHeaders } from '@rsaryev/claude-plugin-kit';
+
+const trust = { source: persistedTrust(claudeJson, projectDir), key: projectDir, interactive: false };
+// `expandedVariables`: the environment variables the expansion of `url` substituted
+// (the `environment` entries of `substituteSurface(...).referenced`); only those are redacted
+const server = { name, url, expandedVariables, headersHelper };
+const plan = planHeadersHelper(server, 'project', trust, context);
+if (!plan.loaded) return skipServer(); // an agent file's server in an untrusted folder
+if (!plan.run) return connectWith(staticHeaders, plan.notice); // helper skipped: static headers alone
+const output = await runMcpHeadersHelper(plan, runner, signal); // { headers } | PluginIssue
+if ('severity' in output) return reportIssue(output); // the helper failed
+const { headers, oauthFallback } = connectionHeaders(staticHeaders, output.headers);
+```
+
+| API | What it does |
+| --- | --- |
+| `planHeadersHelper(server, origin, trust, context)` | pure, made again on every connection: where to run (`cwd`: plugin root; project directory for `project` and `local`; primary working directory for `agent-project`, `sdk`, `mcp-config`; configuration directory, `CLAUDE_CONFIG_DIR` or `~/.claude`, for `user`, `managed`, `connector`, `agent-user`, `agent-managed`, `agent-flag`, `agent-add-dir`), the environment (credentials removed for `project`, `plugin`, `agent-project`, `agent-add-dir`; `CLAUDE_CODE_MCP_SERVER_NAME`, `CLAUDE_CODE_MCP_SERVER_URL` with the live value of each removed variable the URL expanded (`server.expandedVariables`) replaced by `REDACTED`, and `CLAUDE_PLUGIN_ROOT` for a plugin only), the 10 second limit; or `{ run: false, loaded: true, headersOnly: true, notice }` for a project or local server with a helper in a folder without persisted trust (a server with no helper gets no notice), or `{ run: false, loaded: false }` for an agent file's server in an untrusted project or `--add-dir` directory |
+| `persistedTrust(claudeJson, key)`, `TrustSource` | `projects["<key>"].hasTrustDialogAccepted === true` is `persisted`; only that counts: `parent-folder` and `automatic-session` (the `-p` and SDK trust for settings hooks) never do |
+| `runMcpHeadersHelper(plan, runner, signal)` | runs the command through `CommandRunner` (shell form, `bash`; the host maps the shell on Windows), no cache; a failure, a timeout or output that is not a JSON object of strings is a `PluginIssue` |
+| `connectionHeaders(static, dynamic)` | dynamic headers override static ones of the same name (any letter case); `oauthFallback` is `false` once either holds an `Authorization` header |
+| `attemptWithHeadersHelper(phase, produce, send, server)` | `produce` runs the helper (plan and run, made again each time) and gives its headers; `send` merges the static ones. A call answering 401 or 403 re-runs the helper once and retries once (`needs-authentication` only if that fails too); a rejection while connecting is `failed`, with no re-run, and carries errors.md's `Server rejected the Authorization header minted by the configured headersHelper (HTTP <status>)` issue when the helper supplied `Authorization` |
+
+The origins are the settings scopes plus the places the three tables of mcp.md name; a ranked
+candidate's `scope` is one of them. Where the notice goes (`stderr` in `-p` and SDK sessions, the debug
+log in an interactive one) is in the plan.
+
 A bundle whose own `user_config` has a required setting with no saved value is not started and
 reports `Bundled MCP server "<name>" was not started: it needs configuration`; the rest of the
 plugin loads. Without a `McpBundleReader` a bundle is a warning. Paths given to the reader are
 relative to the plugin root, like every `PluginFiles` path. The server's tool prefix is `rules`'
 `pluginMcpServerName`; `mcpServerKey` is the `plugin:<plugin>:<server>` name `/mcp` shows.
+
+### MCP contracts (done: `format/mcp-contract`)
+
+Everything is pure data over an `EnvLookup` function `(name) => string | undefined`; connecting, the
+OAuth browser flow, the keychain, the prompt, the dialog and the stored configuration are the host's.
+The knob readers (`mcpTimeouts`, `mcpConnectTimeoutMs`, `mcpDescriptionLimits` and the startup readers
+of `mcp-startup`) are the one place the `MCP_*` variables are read.
+
+```ts
+import { readMcpAdd, readMcpAddJson, prepareMcpTool, limitMcpResult, mcpOutputLimits, answerElicitation } from '@rsaryev/claude-plugin-kit';
+
+const added = readMcpAdd(['--transport', 'http', 'api', 'https://x.example/mcp', '--client-id', 'abc'], lookup);
+// added.server, added.oauth (callbackPort filled from MCP_OAUTH_CALLBACK_PORT), added.secret, added.issues
+const prepared = prepareMcpTool(tool, { rewriteRootCombinators: true, excludeInvalid: true });
+const verdict = limitMcpResult(result, mcpOutputLimits(lookup, hints, countTokens)); // inline | persist | error
+```
+
+| API | What it does |
+| --- | --- |
+| `readMcpOAuth(name, raw, origin)`, `mcpOAuthRedirectUri(port)`, `mcpOAuthDiscovery(...)`, `requestedOAuthScopes(...)`, `planMcpOAuth(...)`, `mcpAuthRejection(...)`, `storedTokenRecovery(...)` | the `oauth` block (`clientId`, `callbackPort`, `authServerMetadataUrl`, `scopes`), the `http://localhost:<port>/callback` redirect, the two discovery paths or the configured metadata URL, the scope the request asks for (a configured `scopes` restricts, `offline_access` handling), the plan for a server (none for stdio and ws), the state after a 401, and what to do with a stored token |
+| `readMcpAdd(argv, lookup, existing?)`, `readMcpAddJson(name, json, options, lookup)` | `claude mcp add` and `add-json` as data: `{ name, scope, server, oauth, secret, issues }`; `MCP_ADD_SCOPES`, `mcpServerExistsMessage`; a name in `existing` (`mcpAddKey(scope, name)`, or `options.existing`) is refused with that message; `--client-secret` asks for a secret (prompt, or `MCP_CLIENT_SECRET`), the flags and the variable never reach `server` |
+| `mcpToolName`, `pluginMcpServerName`, `normalizeMcpServerName` | the `mcp__<server>__<tool>` name (moved from `rules`, which re-exports them) |
+| `mcpToolSendCheck(fullName)`, `MCP_TOOL_NAME_LIMIT` | a full name over 128 characters is left out, with the debug line |
+| `readMcpToolHints(entry)`, `requiringInteraction(server, tools)`, `MCP_RESULT_SIZE_CEILING` | `anthropic/maxResultSizeChars` and `requiresUserInteraction` (only the JSON `true` counts); the second feeds `DecideContext.requiresUserInteraction` so approval holds in every mode |
+| `prepareMcpTool(tool, policy)` (a `McpListedTool`: the SDK's `Tool` name and description, an input schema of any type), `excludedToolsNotice`, `refusedSchemaFallback` | a root-level combinator rewritten to an object schema, an invalid input schema excluded with a notice, a schema the API refused sent without parameters |
+| `mcpOutputLimits`, `limitMcpResult`, `persistedResultMessage`, `imageResultNote`, `mcpImageFiles`, `oversizedMcpMessage` | `MAX_MCP_OUTPUT_TOKENS` (default 25,000, warning at 10,000), the 50,000-character persistence, error results cut in the middle, images saved, the 16 MiB WebSocket message and HTTP/SSE response size |
+| `listablePrompts`, `mcpPromptListing`, `mcpPromptCommand`, `readMcpPromptInvocation` | MCP prompts as `/server:prompt (MCP)` commands and the arguments they take |
+| `declaredElicitation`, `elicitationModes`, `elicitationUrlChoices`, `urlArgumentLength`, `answerElicitation`, `elicitationFormFields`, `elicitationHookFacts`, `autoRespondElicitation`, `overrideElicitationResult` | the modes a client declares, the form fields a schema defines and the answer to a form or link, the 8,000-character URL argument cap, the `Elicitation` and `ElicitationResult` hook input and output |
+| `mcpTimeouts` (with `idleMs`), `mcpConnectTimeoutMs`, `mcpDescriptionLimits`, `cutMcpDescription`, `MCP_ENV_BASELINE`, `mcpStdioEnvironment`, `claudeAiConnectorsFetched` | `MCP_TIMEOUT`, `MCP_TOOL_TIMEOUT`, `CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT`, `MCP_CONNECT_TIMEOUT_MS`, `CLAUDE_CODE_MAX_MCP_DESCRIPTION_LENGTH`, `CLAUDE_CODE_MCP_ALLOWLIST_ENV`, `ENABLE_CLAUDEAI_MCP_SERVERS` |
+| `mcpConnectionBatches`, `mcpBackgrounding`, `mcpStartupWaitsFor`, `mcpFirstTurnWaitMs`, `mcpDiscoveryCache`, `mcpCacheEntryUse`, `mcpCacheDiscardedAfterFailures`, `mcpClientSettings` | `MCP_SERVER_CONNECTION_BATCH_SIZE`, `MCP_REMOTE_SERVER_CONNECTION_BATCH_SIZE`, `CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS`, `CLAUDE_CODE_DISABLE_MCP_TASK_BACKGROUND`, `MCP_CONNECTION_NONBLOCKING`, `CLAUDE_CODE_MCP_STARTUP_WAIT_MS`, `MCP_DISCOVERY_CACHE` with `_TTL_S`, `_MAX_STALE_S` and `_STRIKES`, `MCP_SDK_GENERATION`, `MCP_PROTOCOL_NEGOTIATION` |
+| `planMcpReload`, `skipsStdioConnection`, `MCP_FAILURE_SKIP_MS`, `SKIPPING_CONNECTION` | which servers a `/reload-plugins` stops, starts and keeps; the 15-minute skip of a stdio server that failed |
+| `redactPluginServer(server)` | what `claude mcp get` and `list` show for a plugin's stdio or ws server |
+
+A plugin server that uses an unset `${VAR}` is now the error `Invalid MCP server config for
+"<name>": Missing environment variables: ...` and is not started (it was a warning that kept the
+text); a `url` that uses an unset option reports `URL is unset or invalid`, any other bad one
+`has an invalid MCP url`. `readConfigFlag` reads `plugin install --config <server>.<key>=<value>`;
+the CLI itself is the host's.
 
 ### LSP servers (done: `format/lsp-config`, `loading/resolve/lsp*`)
 
@@ -647,7 +743,7 @@ for (const monitor of toStart) started.add(monitor.name); // the host spawns eac
 | --- | --- |
 | `Monitor`, `MonitorTrigger` | kit-owned types (the SDK has no monitor config type): `name`, `command`, `description`, and `when` as a tagged trigger |
 | `readMonitors(raw, origin)` | the array of one source; a strict entry (an unknown key is an error), `when` absent is `always`, a malformed `when` is an error naming the two forms, a repeated `name` is an error and the first keeps it; valid entries are still returned |
-| `resolveMonitor(monitor, scope)` | `command` gets the three path variables and `${ENV_VAR}`; `${user_config.*}` in it is the errors.md message and `resolved` is `undefined`, with no value needed; `environment` is always empty (nothing exported, no `CLAUDE_PLUGIN_OPTION_<KEY>`) |
+| `resolveMonitor(monitor, scope)` | `command` gets the three path variables and `${ENV_VAR}`; `${user_config.*}` in it is the errors.md message and `resolved` is `undefined`, with no value needed; `environment` is empty (nothing exported, no `CLAUDE_PLUGIN_OPTION_<KEY>`) unless the scope opts in with `monitorPaths: 'environment-reference'`: then `command` holds `${CLAUDE_PLUGIN_ROOT}` (braced, as the template wrote it) instead of the path and `environment` carries the path variables the command references, so a path with shell metacharacters is never parsed as shell and the command line is the same when run with `environment` |
 | `monitorsToStart(monitors, event, started, mode)` | pure: `always` starts on `session-start` and `plugin-reload`; `on-skill-invoke:<skill>` starts on `skill-invoked` for that skill, the first time only; nothing starts when `mode.interactive` is false (`-p`) |
 | `MONITOR_GUARD` | the monitor message for `rejectUserConfigInShell` |
 
@@ -1238,6 +1334,48 @@ mergeSettingsHooks(view.layers); // every file's hooks, managed ones never remov
 | `createCustomizationPolicy(view, context)`, `readSurfaceLocks(value)` | done | `strictPluginOnlyCustomization`: `locked` (`true` all four, an array the kinds it names, an unreadable value `true`, an unknown name locks nothing and is counted in `unknownSurfaceNames`), `loads(surface, origin)` per surface (skills: user, project, commands, added directory and claude.ai sync stop, bundled, managed directory and plugins load; agents; hooks: asked of the hook policy's origin table; mcp: `~/.claude.json` and `.mcp.json` stop, managed files and plugin servers load), `skillsDirPlugins()` (stopped by a lock on any surface or the marketplace lists), `skillAllowedToolsPreapproved(skill)` (a personal or project skill with `hooks` loses it unless `context: fork`) and `mcpAddRefusal` (the documented message while `mcp` is locked) |
 | `PolicyContext` | done | the facts a host copies in: account, plan, managed-settings presence, `parentSettingsBehavior`, folder trust, environment values, the default channel allowlist, the official marketplace names, the organization's workflow toggle, safe mode, the `/config` workflow size and the ultracode state; each field names its docs page |
 | `resolvePolicy({ layers, context, issues? })` | done | every area behind one `ResolvedPolicy`: `plugins`, `marketplaces` (`gate`, `registry`, `commandSources`), `hooks`, `skills`, `workflows`, `channels`, `customization`, the `view`, and `issues` (the reader's, then the registry's); parent settings are dropped where an administrator deploys managed settings without opting in, and the `hooks` lock comes from the customization policy |
+
+### MCP settings (done: `settings/mcp`)
+
+Pure functions over data the host already read: `~/.claude.json` and `.mcp.json` parsed, the settings
+layers, and facts about the folder. The kit runs no git, reads no file and connects to nothing.
+Expand `${VAR}` references first (`expandMcpServer`), so the endpoint identity compares the servers
+as they will run.
+
+```ts
+import { claudeJsonServers, projectFileServers, projectServerApproval, rankMcpServers,
+  readProjectToggles, applyToggles } from '@rsaryev/claude-plugin-kit';
+
+const user = claudeJsonServers(claudeJson, '/work/app');          // user + local scope
+const file = projectFileServers(mcpJson);                          // project scope
+const approval = projectServerApproval(file.candidates.map((c) => c.name), layers, { folderTrusted });
+const approved = new Set(approval.filter((a) => a.status === 'approved').map((a) => a.name));
+const toggles = readProjectToggles(claudeJson, '/work/app');
+const { loaded, hidden } = rankMcpServers(applyToggles(
+  [...user.candidates, ...file.candidates.filter((c) => approved.has(c.name))], toggles));
+```
+
+| API | What it does |
+| --- | --- |
+| `MCP_SCOPES`, `rankMcpServers(candidates, { desktopCodeTab? })` | managed, local, project, user, plugin, connector. One server per identity: local, project, user and managed match by name, plugins and connectors by endpoint (`mcpEndpointKey`) against an enabled server above; the winner's entry is used whole, never merged. Returns `{ loaded, hidden }`; `hidden` pairs each displaced candidate with the one it duplicates. A candidate with `enabled: false` stays in `loaded` (hosts skip it) and holds no endpoint |
+| `claudeJsonServers(state, projectPath)`, `claudeJsonProject`, `projectFileServers(mcpJson)` | candidates of user scope (top-level `mcpServers`), local scope (`projects[path].mcpServers`) and project scope (`.mcp.json`); an entry Claude Code drops is an issue and the rest load |
+| `managedServerEntries(layers, { desktopManaged? })` | `managedMcpServers` of the managed layers only (several sources: names union, the higher source's entry whole); the key in user, project, local, `--settings`, parent or `--add-dir` settings is dropped with a warning, and so is every managed one in a Claude Desktop session that supplies its own servers (`desktopManaged`: `'third-party'` Code tab, `'cowork'`). What an entry may contain is not read here |
+| `readProjectToggles(state, projectPath)`, `serverEnabled(toggles, subject, name)`, `applyToggles(candidates, toggles)`, `connectorDisplayName(name)` | `disabledMcpServers` (opt-out: configured, plugin, managed, connector under its `claude.ai <name>` display name, default-on built-ins) and `enabledMcpServers` (opt-in: default-off built-ins such as `computer-use`); exactly one list is consulted per kind, an entry in the other is ignored |
+| `projectServerApproval(servers, layers, trust, session?)`, `McpTrust`, `PROJECT_SERVER_STATUSES` | per `.mcp.json` server `approved`, `pending approval` or `rejected` (with `via`): approved by `enableAllProjectMcpServers` or `enabledMcpjsonServers`; in an untrusted folder the shared project file and a tracked or untrusted `settings.local.json` are ignored while user, managed and `--settings` count (an untracked local file also counts in the configuration home); a `disabledMcpjsonServers` entry in any file rejects and wins. A session that cannot prompt (`{ prompts: false }`) loads pending servers without asking, rejected ones still blocked |
+| `canPromptForProjectServers({ interactive, bypassPermissions }, layers)` | interactive sessions prompt, except `bypassPermissions` with `skipDangerousModePermissionPrompt` in user or managed settings |
+| `createMcpSettingsPolicy(view, context)` | `projectServerApproval(servers, trust?, session?)` over the view's layers, folder trust from `context.isFolderTrusted('project')`; `serverPolicy(live?)` is `createMcpServerPolicy` over the view with `context.env`; `resolvePolicy(...).mcp` |
+| `createMcpServerPolicy(view, { startup, live })`, `MCP_SERVER_ORIGINS` | `policy.check({ name, server, origin? })` for `allowedMcpServers`, `deniedMcpServers` and `allowManagedMcpServersOnly`: the denylist of every file blocks first and always; the allowlist of every file (only the highest managed one under the lock; a `true` in any managed layer locks) admits a remote server by a `serverUrl` entry, a stdio server by a `serverCommand` entry, and by `serverName` only when the list has no entry of that kind; unset allows all, `[]` allows none. `origin` says where the server comes from: `configured` (default: user, plugin, claude.ai, `--mcp-config`), `managedSettings`, `managedFile` (checked only when `${VAR}` appears in its command, arguments, URL or headers), `builtIn`, `claudeTagSlack` skip the allowlist but not the denylist; `inProcess` skips both. Entries expand `${VAR}` in a pinned environment (`startup` plus managed `env`; the denylist also fills unset variables from user and other non-repository settings), the server's own value in `live`; an allowlist URL entry with a variable in its scheme, host or path is ignored. Returns `{ allowed: true }` or `{ allowed: false, blockedBy, status, addError, reconnectError }` with the docs' messages. The lists are read once, when the policy is created: a host rebuilds the policy (`serverPolicy()` does) when settings change before a user reconnects a server |
+| `MANAGED_MCP_PLATFORMS`, `managedMcpFilePath(platform)`, `readManagedMcpFile(text)`, `loadManagedMcpFile(reader, platform, signal?)` | where `managed-mcp.json` lives (`macos`, `linux` and `wsl` `/etc/claude-code/managed-mcp.json`, `windows`), and its text read like a project `.mcp.json`: `{ file, issues }`. `file` is undefined when there is none or it "can't be read or parsed" (an error issue); only a readable file takes exclusive control. The host reads the text through a `TextFileReader`; the kit touches no disk |
+| `readManagedMcpServers(layers, { desktopManaged? })`, `describeManagedServer(server)`, `managedServerRemoval(name)`, `MANAGED_MCP_GROUP` | `managedMcpServers` as managed-scope candidates, remote only (v2.1.259): an entry is kept only when `type` is `http`/`sse`, `url` is `https://`, it has no `command`, `args`, `env` or `headersHelper`, no value holds a `${VAR}` reference, the name is letters, numbers, hyphens and underscores, and no key or value has control or invisible formatting characters; a failing entry is dropped with a notice (warning) and the others load; the array form of Claude Desktop is a notice too. `describeManagedServer` is what `claude mcp get` and `/mcp` show (URL host only, header names without values, group **Managed MCPs**); `managedServerRemoval` is what `claude mcp remove` reports |
+| `providedServersTiming({ delivery, interactive, cached, confirmationFailed })`, `reconcileManagedServers(previous, next, { interactive })` | when the provided servers connect (server-managed: wait for the server's confirmation with a cached copy, a withheld status when it fails, connect on arrival on an interactive first launch, a `-p` run may finish without; gateway and device: at start) and what a running interactive session does when the key changes: `{ add, change, remove }` by list diff, so a host needs no events; a `-p` run applies none |
+| `mcpLoadPlan(input)`, `readMcpLoadSettings(view, facts)`, `resolvePolicy(...).mcp.loadPlan(facts)`, `.loadSettings()`, `.providedServers()` | which servers load. With a readable `managed-mcp.json` only its servers and the provided ones load (an empty map blocks every other; plugin servers and `~/.claude.json`, `.mcp.json` servers stay out; connectors Claude Code fetches stay out unless `allowAllClaudeAiMcps`, never in a cloud session); `addError` is the enterprise-policy error of `claude mcp add`; `exit` is the startup exit: `--mcp-config` on a workstation, `--strict-mcp-config` anywhere, `claude --chrome` unless `allowClaudeInChromeWithManagedMcp` (device sources only, passed as `deviceManaged` layers to `resolvePolicy`); in a cloud session `skipped` and `warnings` name the delivered servers left out. Without the file the scopes rank as usual and `strictPluginOnlyCustomization` with `mcp` closes the user files but not the provided servers, `disableClaudeAiConnectors` (or `ENABLE_CLAUDEAI_MCP_SERVERS=false`) drops the fetched connectors, a `--mcp-config` server replaces a provided one of its name and meets the allowlist, `--strict-mcp-config` leaves only the flag servers. `deniedMcpServers` and `allowedMcpServers` filter the result (`blocked`); `toggles` marks a server the user turned off in `/mcp`. In-process servers of the app that started the session are the host's and never pass through the plan |
+
+A `serverUrl` pattern (`url-pattern.ts`): `*` wildcards in scheme, host, port and path; scheme and host
+case-insensitive, a trailing host dot ignored, paths case-sensitive; no port means the default port
+(443 `https`, 80 `http`) for a host written out in full and every port for a host with a `*` in it;
+`:*` is every port; no path matches any path. A bad entry is stripped with a warning and the valid
+subset enforced; an unreadable managed `allowedMcpServers` is an empty allowlist, an unreadable
+`denied` value is dropped.
 
 Scopes, highest first: `managed`, `parent` (the SDK `managedSettings`), `flag` (`--settings`),
 `local`, `project`, `addDir`, `user`. A key a scope may not carry is dropped with a warning (its

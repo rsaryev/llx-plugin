@@ -3,7 +3,7 @@
  * `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA` and `CLAUDE_PROJECT_DIR` exported to the process; http,
  * sse and ws: `url`, `headers`, `headersHelper`, the process variables not applicable);
  * mcp.md § Plugin-provided MCP servers, § Environment variable expansion (`${VAR}`,
- * `${VAR:-default}`, a missing variable is a warning and the text stays), § Credential variables that
+ * `${VAR:-default}`, a missing variable in a plugin server is the error `Invalid MCP server config for "<name>": Missing environment variables: ...`), § Credential variables that
  * read as empty; plugins/components.md § Server names, tool names, and reloads;
  * plugins/troubleshooting.md § Invalid MCP server config (`URL is unset or invalid`). The
  * `headersHelper` rules are in mcp-headers-helper.test.ts.
@@ -12,18 +12,22 @@
  * components.test.ts; here the same rows are asserted through the real MCP resolver.
  */
 import { describe, expect, test } from 'bun:test';
-import { mcpServerKey, resolveMcpServer, type ResolvedUserConfig } from '../../../src/index.ts';
+import {
+  expandMcpServer,
+  mcpServerKey,
+  resolveMcpServer,
+  type PluginMcpServer,
+  type ResolvedUserConfig,
+} from '../../../src/index.ts';
 import { fakeEnvironment, locations } from '../../support/ports.ts';
 import { PATHS, scopeOf, userConfig } from '../../support/mcp-scope.ts';
 import { spec } from '../../support/spec.ts';
-
 spec('environment.component.stdio', () => {
   const server = {
     command: '${CLAUDE_PLUGIN_ROOT}/servers/db-server',
     args: ['--config', '${CLAUDE_PLUGIN_ROOT}/config.json', '--data=${CLAUDE_PLUGIN_DATA}'],
     env: { DB_URL: '${DB_URL}', PROJECT: '${CLAUDE_PROJECT_DIR}', REGION: '${user_config.region}' },
   };
-
   test('resolves in command, args and env, and in no other field', async () => {
     // A string field outside the table (and loose keys) stays literal, even with a variable in it.
     const literal = {
@@ -49,24 +53,33 @@ spec('environment.component.stdio', () => {
       env: { DB_URL: 'postgres://db', PROJECT: '/work/app', REGION: 'eu' },
     });
   });
-
   test('the process gets the three path variables and no option variables', async () => {
     const { resolved } = await resolveMcpServer('database-tools', server, scopeOf());
     expect(resolved?.environment).toEqual(PATHS);
   });
-
-  test('an unset ${VAR} stays as written with a warning; a default fills it', async () => {
+  test('a default fills an unset ${VAR}; one with no default keeps the server from starting (plugins/troubleshooting.md)', async () => {
+    const filled = await resolveMcpServer(
+      'db',
+      { command: 'node', env: { B: '${NOPE:-fallback}' } },
+      scopeOf(),
+    );
+    expect(filled.resolved?.server).toEqual({ command: 'node', env: { B: 'fallback' } });
+    expect(filled.issues).toEqual([]);
     const { resolved, issues } = await resolveMcpServer(
       'db',
       { command: 'node', env: { A: '${NOPE}', B: '${NOPE:-fallback}' } },
       scopeOf(),
     );
-    expect(resolved?.server).toEqual({ command: 'node', env: { A: '${NOPE}', B: 'fallback' } });
-    expect(issues.map((found) => found.severity)).toEqual(['warning']);
-    expect(issues[0]?.message).toContain('NOPE');
+    expect(resolved).toBeUndefined();
+    expect(issues).toEqual([
+      {
+        severity: 'error',
+        path: 'mcpServers.db',
+        message: 'Invalid MCP server config for "db": Missing environment variables: NOPE',
+      },
+    ]);
   });
 });
-
 const remoteServer = (type: 'http' | 'sse' | 'ws') => ({
   type,
   url: 'https://${user_config.region}.example.com/mcp',
@@ -76,7 +89,6 @@ const remoteServer = (type: 'http' | 'sse' | 'ws') => ({
   },
   headersHelper: '${CLAUDE_PLUGIN_ROOT}/bin/get-headers.sh',
 });
-
 spec('environment.component.http', () => {
   test('http, sse and ws resolve url, headers and headersHelper, and no other field', async () => {
     const literal = {
@@ -100,7 +112,6 @@ spec('environment.component.http', () => {
       });
     }
   });
-
   test('the process variables are not applicable: nothing is exported, the data folder is never created', async () => {
     const host = locations();
     const { resolved } = await resolveMcpServer(
@@ -112,7 +123,6 @@ spec('environment.component.http', () => {
     expect(host.dataCreated).toEqual([]);
   });
 });
-
 spec('mcpSettings.behavior.Credential variables that read as empty', () => {
   const remote = (url: string, headers: Record<string, string>) =>
     resolveMcpServer(
@@ -127,7 +137,6 @@ spec('mcpSettings.behavior.Credential variables that read as empty', () => {
         }),
       }),
     );
-
   test('a covered name reads as empty in url and headers, set or not, its default ignored', async () => {
     const { resolved } = await remote('https://x.test/${ANTHROPIC_AUTH_TOKEN}', {
       A: 'Bearer ${ANTHROPIC_AUTH_TOKEN}',
@@ -140,7 +149,6 @@ spec('mcpSettings.behavior.Credential variables that read as empty', () => {
       headers: { A: 'Bearer ', B: '', C: '', D: '' },
     });
   });
-
   test('a provider base URL and a name of your own expand', async () => {
     const { resolved } = await remote('${ANTHROPIC_BASE_URL}/mcp', { K: '${API_KEY}' });
     expect(resolved?.server).toMatchObject({
@@ -190,7 +198,7 @@ describe('a url that does not resolve (troubleshooting.md, "URL is unset or inva
     });
   });
 
-  test('an unset ${VAR} in the url stays as text, which is no URL: the server does not start', async () => {
+  test('an unset ${VAR} in the url is a missing environment variable: the server does not start', async () => {
     const { resolved, issues } = await resolveMcpServer(
       'api',
       { type: 'http', url: '${NOPE}/mcp' },
@@ -198,8 +206,7 @@ describe('a url that does not resolve (troubleshooting.md, "URL is unset or inva
     );
     expect(resolved).toBeUndefined();
     expect(issues.map((found) => [found.severity, found.message])).toEqual([
-      ['warning', expect.stringContaining('NOPE')],
-      ['error', 'Invalid MCP server config for "api": URL is unset or invalid'],
+      ['error', 'Invalid MCP server config for "api": Missing environment variables: NOPE'],
     ]);
   });
 
@@ -210,7 +217,7 @@ describe('a url that does not resolve (troubleshooting.md, "URL is unset or inva
         const { resolved, issues } = await resolveMcpServer('api', { type: 'http', url }, scope);
         expect(resolved).toBeUndefined();
         expect(issues.map((found) => [found.severity, found.message])).toEqual([
-          ['error', 'Invalid MCP server config for "api": URL is unset or invalid'],
+          ['error', 'Invalid MCP server config for "api": has an invalid MCP url'],
         ]);
       }
     }
@@ -221,5 +228,69 @@ describe('a url that does not resolve (troubleshooting.md, "URL is unset or inva
       const { resolved } = await resolveMcpServer('api', { type: 'ws', url }, scopeOf());
       expect(resolved?.server).toMatchObject({ url });
     }
+  });
+});
+
+describe('plugin and settings-scope servers expand alike (judgment)', () => {
+  const env = {
+    EMPTY: '',
+    HOST: 'h.example',
+    NPM_TOKEN: 't',
+    ANTHROPIC_BASE_URL: 'https://proxy.example',
+  };
+  const values = new Map(Object.entries(env));
+  const servers: readonly PluginMcpServer[] = [
+    {
+      type: 'http',
+      url: '${ANTHROPIC_BASE_URL}/${EMPTY:-d}/${HOST}',
+      headers: { A: 'Bearer ${NPM_TOKEN:-x}', B: '${HOST}', C: '${MISSING:-dflt}' },
+    },
+    {
+      command: '${HOST}',
+      args: ['${EMPTY:-d}', '${NPM_TOKEN}'],
+      env: { K: '${MISSING:-z}' },
+    },
+  ];
+
+  test('one rule for both: the resolved server is the expanded one, with the same unset variables', async () => {
+    for (const server of servers) {
+      const plugin = await resolveMcpServer(
+        'srv',
+        server,
+        scopeOf({ environment: fakeEnvironment(env) }),
+      );
+      const own = expandMcpServer('srv', server, (name) => values.get(name));
+      expect(plugin.resolved?.server).toEqual(own.server);
+      expect(plugin.issues.map((found) => found.message)).toEqual(
+        own.issues.map((found) => found.message),
+      );
+    }
+  });
+
+  test('they differ in one thing: an unset ${VAR} with no default is a warning for the settings scopes and an error for a plugin', async () => {
+    const server: PluginMcpServer = { command: 'node', args: ['${MISSING}'] };
+    const own = expandMcpServer('srv', server, (name) => values.get(name));
+    expect(own.server).toEqual(server);
+    expect(own.issues.map((found) => found.severity)).toEqual(['warning']);
+    const plugin = await resolveMcpServer(
+      'srv',
+      server,
+      scopeOf({ environment: fakeEnvironment(env) }),
+    );
+    expect(plugin.resolved).toBeUndefined();
+    expect(plugin.issues.map((found) => found.severity)).toEqual(['error']);
+  });
+
+  test('one concrete result: the default fills an unset name, an empty value counts as set', async () => {
+    const plugin = await resolveMcpServer(
+      'srv',
+      servers[1] ?? { command: '' },
+      scopeOf({ environment: fakeEnvironment(env) }),
+    );
+    expect(plugin.resolved?.server).toEqual({
+      command: 'h.example',
+      args: ['', 't'],
+      env: { K: 'z' },
+    });
   });
 });

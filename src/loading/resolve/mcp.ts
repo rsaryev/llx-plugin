@@ -1,4 +1,5 @@
 import { error, type PluginIssue } from '../../format/issues.ts';
+import { missingVariableMessage } from '../../format/mcp-env.ts';
 import {
   isRemoteMcpServer,
   type PluginMcpServer,
@@ -6,7 +7,8 @@ import {
 } from '../../format/mcp-config.ts';
 import type { McpStdioServerConfig } from '../../protocol/official.ts';
 import { exportedEnvironment } from './exported-environment.ts';
-import { fieldOf, fieldRunner, when } from './field-runner.ts';
+import { fieldOf, fieldRunner, mergeUnresolved, when, type Part } from './field-runner.ts';
+import { helperVariables } from './headers-helper.ts';
 import type { SubstitutionScope } from './scope.ts';
 import { HEADERS_HELPER_GUARD, rejectUserConfigInShell } from './shell-guard.ts';
 import { substituter } from './substitute.ts';
@@ -44,8 +46,10 @@ export const mcpServerKey = (plugin: string, server: string): string =>
 const pluginName = (pluginId: string): string => pluginId.split('@')[0] ?? pluginId;
 
 /**
- * The environment of a `headersHelper` (mcp.md, "dynamic headers"; manifest-reference, "Fields that
- * run through a shell"): the plugin root, the server's name and its URL, and no option values.
+ * The environment of a plugin server's `headersHelper` (mcp.md, "dynamic headers"; manifest-reference,
+ * "Fields that run through a shell"): the plugin root, the server's name and its URL, and no option
+ * values. The three names are `helperVariables`'; `planHeadersHelper` adds the inherited environment
+ * (less credentials) and the working directory.
  * Judgment: the name is the registered `plugin:<plugin>:<server>` key, the one `/mcp` shows.
  */
 export function headersHelperEnvironment(
@@ -53,15 +57,43 @@ export function headersHelperEnvironment(
   url: string,
   scope: SubstitutionScope,
 ): Record<string, string> {
-  return {
-    CLAUDE_PLUGIN_ROOT: scope.locations.pluginRoot(scope.pluginId),
-    CLAUDE_CODE_MCP_SERVER_NAME: mcpServerKey(pluginName(scope.pluginId), name),
-    CLAUDE_CODE_MCP_SERVER_URL: url,
-  };
+  return helperVariables({
+    name: mcpServerKey(pluginName(scope.pluginId), name),
+    url,
+    pluginRoot: scope.locations.pluginRoot(scope.pluginId),
+  });
 }
 
 const invalid = (name: string, path: string, why: string): PluginIssue =>
   error(path, `Invalid MCP server config for "${name}": ${why}`);
+
+type Parts = readonly (Part<unknown> | undefined)[];
+
+/** The names of the `${VAR}` references no variable answered, once each, in the order they appear. */
+const missingVariables = (parts: Parts): readonly string[] =>
+  mergeUnresolved(parts.flatMap((part) => (part ? [part.unresolved] : []))).variables;
+
+/**
+ * An unset `${VAR}` with no default keeps a plugin's server from starting (plugins/troubleshooting.md,
+ * "`Missing environment variables: <names>`": "set those variables in the shell you start Claude Code
+ * from"). The per-variable warnings of the fields it names are dropped for the one error. A server of
+ * the settings scopes loads with a warning instead (`expandMcpServer`, mcp.md, "Unset variables
+ * without a default"). Judgment (spec/judgments.md): names are joined with a comma and a space.
+ */
+function unlessMissing(
+  name: string,
+  parts: Parts,
+  issues: readonly PluginIssue[],
+): PluginIssue[] | undefined {
+  const missing = missingVariables(parts);
+  if (missing.length === 0) return undefined;
+  const dropped = new Set(missing.map(missingVariableMessage));
+  const rest = issues.filter((found) => !dropped.has(found.message));
+  return [
+    ...rest,
+    invalid(name, `mcpServers.${name}`, `Missing environment variables: ${missing.join(', ')}`),
+  ];
+}
 
 async function resolveStdio(
   name: string,
@@ -75,6 +107,9 @@ async function resolveStdio(
     when(server.env, (each) => run.table('mcp-stdio', each, 'env')),
     exportedEnvironment('mcp-stdio', scope),
   ]);
+  const issues = [command, args, env].flatMap((part) => part?.issues ?? []);
+  const failed = unlessMissing(name, [command, args, env], issues);
+  if (failed) return { resolved: undefined, issues: failed };
   return {
     resolved: {
       name,
@@ -87,7 +122,7 @@ async function resolveStdio(
       },
       environment,
     },
-    issues: [command, args, env].flatMap((part) => part?.issues ?? []),
+    issues,
   };
 }
 
@@ -114,9 +149,16 @@ async function resolveRemote(
     when(server.headersHelper, (each) => run.one('mcp-headers-helper', each, 'headersHelper')),
   ]);
   const issues = [url, headers, helper].flatMap((part) => part?.issues ?? []);
-  if (!URL.canParse(url.value)) {
-    const unusable = invalid(name, `mcpServers.${name}.url`, 'URL is unset or invalid');
-    return { resolved: undefined, issues: [...issues, unusable] };
+  const failed = unlessMissing(name, [url, headers, helper], issues);
+  if (failed) return { resolved: undefined, issues: failed };
+  // The `url` uses a `${user_config.*}` option that has no value (or no declaration).
+  const unset = url.unresolved.options.length > 0;
+  if (unset || !URL.canParse(url.value)) {
+    const why = unset ? 'URL is unset or invalid' : 'has an invalid MCP url';
+    return {
+      resolved: undefined,
+      issues: [...issues, invalid(name, `mcpServers.${name}.url`, why)],
+    };
   }
   return {
     resolved: {
@@ -141,9 +183,11 @@ async function resolveRemote(
  * Resolves one server of a plugin. stdio: `command`, `args` and `env` are substituted and the process
  * gets the three path variables. http, sse and ws: `url`, `headers` and `headersHelper` are
  * substituted, nothing is exported, and a `headersHelper` that references `${user_config.*}` keeps the
- * server from starting. A `url` that does not parse after substitution does too (plugins/
- * troubleshooting.md, "URL is unset or invalid"; judgment: any unparseable result, not only an unset
- * option, since an unset `${VAR}` stays as text and cannot be a URL either).
+ * server from starting. So does a `url` that does not parse after substitution (plugins/
+ * troubleshooting.md): `URL is unset or invalid` when it uses a `${user_config.*}` option with no value,
+ * `has an invalid MCP url` when the plugin's own `url` is at fault (judgment: the docs name both causes,
+ * not how they are told apart). An unset `${VAR}` with no default keeps it from starting too, as
+ * `Missing environment variables: <names>`, in whichever field it is named.
  */
 export function resolveMcpServer(
   name: string,

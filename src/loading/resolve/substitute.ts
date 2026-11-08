@@ -1,4 +1,11 @@
 import { warning, type PluginIssue } from '../../format/issues.ts';
+import {
+  BRACED_REFERENCE,
+  isVariableName,
+  missingVariableMessage,
+  resolveEnvReference,
+  splitDefault,
+} from '../../format/mcp-env.ts';
 import type {
   EnvironmentExpansion,
   FieldPolicy,
@@ -37,12 +44,25 @@ export interface Substituted {
   /** Warnings only: an unresolved reference stays as written and is reported. */
   readonly issues: readonly PluginIssue[];
   readonly referenced: readonly TokenReference[];
+  /**
+   * What stayed as written because nothing answered it: the names of `${VAR}` references with no
+   * value and no default, and the keys of `${user_config.KEY}` references with no value or no
+   * declaration. A caller that treats them as an error (an MCP server that cannot start) reads them here
+   * instead of from the warning text.
+   */
+  readonly unresolved: Unresolved;
+}
+
+export interface Unresolved {
+  readonly variables: readonly string[];
+  readonly options: readonly string[];
 }
 
 /** The text a reference becomes, or why it stayed as written (`problem`). */
 interface Resolution {
   readonly text: string;
   readonly problem?: string;
+  readonly unresolved?: Partial<{ variable: string; option: string }>;
 }
 
 interface Token {
@@ -58,17 +78,6 @@ interface Context {
 }
 
 type TokenParser = (inner: string, context: Context) => Token | undefined;
-
-const BRACED = /\$\{([^{}]*)\}/g;
-const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
-
-/** `NAME` or `NAME:-default`. */
-function splitDefault(inner: string): { name: string; fallback: string | undefined } {
-  const at = inner.indexOf(':-');
-  return at < 0
-    ? { name: inner, fallback: undefined }
-    : { name: inner.slice(0, at), fallback: inner.slice(at + 2) };
-}
 
 type Disposition = 'substitute' | 'placeholder' | 'keep';
 
@@ -113,7 +122,11 @@ const userConfigToken: TokenParser = (inner, { scope, policy }) => {
       const value = userConfigValue(scope.userConfig, key);
       if (value === undefined && disposition !== 'keep') {
         const why = declared === undefined ? 'is not declared in userConfig' : 'has no value';
-        return Promise.resolve({ text: raw, problem: `\${user_config.${key}} ${why}` });
+        return Promise.resolve({
+          text: raw,
+          problem: `\${user_config.${key}} ${why}`,
+          unresolved: { option: key },
+        });
       }
       const text = value === undefined ? raw : RENDERINGS[disposition](raw, key, value);
       return Promise.resolve({ text });
@@ -153,17 +166,26 @@ const EXPANDS: { readonly [E in EnvironmentExpansion]: boolean } = {
   literal: false,
 };
 
+/** The rule is `format/mcp-env`'s, the one servers of the settings scopes use too. */
 const environmentToken: TokenParser = (inner, { scope, policy }) => {
-  const { name, fallback } = splitDefault(inner);
-  if (!EXPANDS[policy.environment] || !NAME.test(name)) return undefined;
+  const reference = splitDefault(inner);
+  if (!EXPANDS[policy.environment] || !isVariableName(reference.name)) return undefined;
   return {
-    reference: { kind: 'environment', name },
+    reference: { kind: 'environment', name: reference.name },
     resolve: () => {
-      if (policy.readsAsEmpty?.(name) === true) return Promise.resolve({ text: '' });
-      const value = scope.environment.get(name) ?? fallback;
-      const unset = `Environment variable ${name} is not set and has no default`;
+      const done = resolveEnvReference(
+        reference,
+        (name) => scope.environment.get(name),
+        policy.readsAsEmpty,
+      );
       return Promise.resolve(
-        value === undefined ? { text: `\${${inner}}`, problem: unset } : { text: value },
+        done.missing
+          ? {
+              text: done.text,
+              problem: missingVariableMessage(reference.name),
+              unresolved: { variable: reference.name },
+            }
+          : { text: done.text },
       );
     },
   };
@@ -205,7 +227,7 @@ export function substituter(scope: SubstitutionScope): Substituter {
     async run(template, policy, path = '') {
       const context: Context = { scope, policy, variable };
       const tokens = new Map<string, Token>();
-      for (const [raw, inner] of template.matchAll(BRACED)) {
+      for (const [raw, inner] of template.matchAll(BRACED_REFERENCE)) {
         const token = tokens.has(raw) ? undefined : parseToken(inner ?? '', context);
         if (token) tokens.set(raw, token);
       }
@@ -219,11 +241,19 @@ export function substituter(scope: SubstitutionScope): Substituter {
         references.set(JSON.stringify(reference), reference);
       }
       return {
-        text: template.replace(BRACED, (raw) => resolved.get(raw)?.text ?? raw),
+        text: template.replace(BRACED_REFERENCE, (raw) => resolved.get(raw)?.text ?? raw),
         issues: [...resolved.values()].flatMap(({ problem }) =>
           problem === undefined ? [] : [warning(path, problem)],
         ),
         referenced: [...references.values()],
+        unresolved: {
+          variables: [
+            ...new Set([...resolved.values()].flatMap((one) => one.unresolved?.variable ?? [])),
+          ],
+          options: [
+            ...new Set([...resolved.values()].flatMap((one) => one.unresolved?.option ?? [])),
+          ],
+        },
       };
     },
   };

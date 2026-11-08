@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { readExpected } from '../../scripts/oracle/remote-mcp-env.ts';
-import { readsAsEmptyInRemoteMcp } from '../../src/loading/resolve/remote-mcp-credentials.ts';
+import { readsAsEmptyInRemoteMcp } from '../../src/format/remote-mcp-credentials.ts';
 
 /**
  * mcp.md, "Credential variables that read as empty", names the covered variables only "such as";

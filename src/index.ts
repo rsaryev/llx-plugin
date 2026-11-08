@@ -50,6 +50,30 @@ export {
 } from './format/mcp-sources.ts';
 export type { McpLoadContext } from './format/mcp-bundles.ts';
 export {
+  CREDENTIAL_ENV_NAMES,
+  FIXED_CREDENTIAL_NAMES,
+  NOT_EXPANDED_TOWARD_REMOTE,
+  credentialDebugLine,
+  hasUrlPassword,
+  readsAsEmptyTowardRemote,
+  scrubAction,
+  withoutUserinfo,
+  type ScrubAction,
+} from './format/credential-env.ts';
+export {
+  MCP_DISPLAY_SCOPES,
+  displayHeaders,
+  displayReference,
+  expandEnvText,
+  expandMcpServer,
+  type DisplayedHeader,
+  type EnvExpansion,
+  type EnvLookup,
+  type McpDisplayScope,
+  type McpExpansion,
+} from './format/mcp-env.ts';
+export { mcpEndpointKey } from './format/mcp-endpoint.ts';
+export {
   LSP_FIELDS,
   LSP_TRANSPORTS,
   mergeLspSources,
@@ -165,6 +189,7 @@ export * from './settings/skills/index.ts';
 export * from './settings/workflows/index.ts';
 export * from './settings/channels/index.ts';
 export * from './settings/customization/index.ts';
+export * from './settings/mcp/index.ts';
 export {
   readOutputStyle,
   type OutputStyle,
@@ -222,3 +247,4 @@ export {
 } from './format/plugin-settings.ts';
 
 export * from './cli/index.ts';
+export * from './format/mcp-contract.ts';

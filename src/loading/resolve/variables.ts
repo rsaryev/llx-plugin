@@ -49,6 +49,8 @@ const RENDERINGS: {
   },
   native: (_variable, load) => load(),
   'environment-reference': (variable) => Promise.resolve(`\${env:${variable}}`),
+  // Braced, so text right after the reference (`"${CLAUDE_PLUGIN_ROOT}"_old`) is not read as part of the name.
+  'shell-reference': (variable) => Promise.resolve(`\${${variable}}`),
 };
 
 export const renderPluginVariable = (

@@ -1,4 +1,5 @@
 import type { PermissionBehavior } from '../../protocol/official.ts';
+import { mcpToolName, normalizeMcpServerName, pluginMcpServerName } from '../../format/mcp-tool.ts';
 import type { PermissionRule } from '../types.ts';
 
 /**
@@ -10,22 +11,6 @@ import type { PermissionRule } from '../types.ts';
 
 const PREFIX = 'mcp__';
 const SEPARATOR = '__';
-
-/** `my.server` is `my_server`: the characters outside `A-Za-z0-9_-` become `_`. */
-export const normalizeMcpServerName = (name: string): string =>
-  name.replace(/[^A-Za-z0-9_-]/g, '_');
-
-/**
- * The server name of a plugin's MCP server (mcp.md, "Plugin-provided MCP servers"): the plugin name
- * and the server key under one prefix, normalised as a whole, so `database-tools` of `my-plugin` is
- * `plugin_my-plugin_database-tools`.
- */
-export const pluginMcpServerName = (pluginName: string, serverKey: string): string =>
-  normalizeMcpServerName(`plugin_${pluginName}_${serverKey}`);
-
-/** The callable name of a tool of `server`. */
-export const mcpToolName = (server: string, tool: string): string =>
-  `${PREFIX}${normalizeMcpServerName(server)}${SEPARATOR}${tool}`;
 
 /**
  * An allow rule reads `mcp__<name>` as a server only when the name holds no `__` and does not end
@@ -102,3 +87,5 @@ export function denyCoversCoworkTool(rule: PermissionRule, toolName: string): bo
     COWORK_TOOL_OF.get(toolName) === rule.value.toolName
   );
 }
+
+export { mcpToolName, normalizeMcpServerName, pluginMcpServerName };

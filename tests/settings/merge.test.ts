@@ -3,7 +3,7 @@
  * more than one file combines); settings-reference.md § `allowedHttpHookUrls` and
  * `httpHookAllowedEnvVars` ("Arrays merge across settings files"), § `extraKnownMarketplaces` ("When
  * more than one settings file defines a marketplace entry under the same name, Claude Code uses the
- * entry from the highest-precedence file whole... inherits none of its fields"), `enabledPlugins`;
+ * entry from the highest-precedence file whole... inherits none of its fields"), `enabledPlugins`, § `allowedMcpServers` and `deniedMcpServers` ("Entries from every file merge");
  * claude-apps-gateway.md § "Settings the locks don't cover" (a parent-supplied blocklist "adds to
  * any blocklist that a managed source sets"; a parent allowlist counts only "when the winning
  * managed source doesn't set one"). The keys have ids of their own, proven where their behaviour is,
@@ -37,7 +37,11 @@ describe('the table of keys', () => {
     const merging = POLICY_KEYS.filter((key) => KEY_SPECS[key].merge.kind === 'unionArrays');
     expect(merging.toSorted()).toEqual([
       'allowedHttpHookUrls',
+      'allowedMcpServers',
       'blockedMarketplaces',
+      'deniedMcpServers',
+      'disabledMcpjsonServers',
+      'enabledMcpjsonServers',
       'httpHookAllowedEnvVars',
     ]);
   });

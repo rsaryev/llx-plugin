@@ -2,6 +2,9 @@ import type { ChannelPluginRef } from '../protocol/official.ts';
 import type { ChannelAccount } from './channels/channel-gate.ts';
 import type { WorkflowSize } from './workflows/size.ts';
 
+/** An environment as a host copies it in: variable names to their text, or unset. */
+export type PolicyEnv = Readonly<Record<string, string | undefined>>;
+
 /**
  * What a host tells the policy besides the layers: plain data it copies in, so the kit reads no
  * `process.env`, no file and no account. Every field is a fact the docs make a decision depend on and no
@@ -19,7 +22,7 @@ export interface PolicyContext {
   /** Whether the user accepted the workspace trust dialog for the folder of that kind of settings file. */
   readonly isFolderTrusted: (scope: 'project' | 'local' | 'addDir') => boolean;
   /** The host's environment: `CLAUDE_CODE_DISABLE_BUNDLED_SKILLS`, `CLAUDE_CODE_DISABLE_WORKFLOWS` (env-vars.md). */
-  readonly env: Readonly<Record<string, string | undefined>>;
+  readonly env: PolicyEnv;
   /** Anthropic's default channel allowlist; "the channel plugins in claude-plugins-official" (channels.md), not listed in the docs. */
   readonly defaultChannelAllowlist: readonly ChannelPluginRef[];
   /** Marketplaces Anthropic runs whose `autoUpdate` defaults on (plugins/loading.md); the docs name only one. */

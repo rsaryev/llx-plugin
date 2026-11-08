@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { readHelperExpected } from '../../scripts/oracle/headers-helper-env.ts';
-import { removedFromHeadersHelper } from '../../src/loading/resolve/helper-credentials.ts';
+import { removedFromHeadersHelper } from '../../src/format/helper-credentials.ts';
 
 /**
  * mcp.md, "Which variables a helper can read", gives the rule by example; the set is what Claude

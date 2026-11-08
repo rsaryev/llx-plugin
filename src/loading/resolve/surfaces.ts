@@ -1,7 +1,7 @@
 import type { VariableComponent } from './field-map.ts';
-import type { FieldPolicy, SubstitutionScope } from './scope.ts';
+import type { FieldPolicy, MonitorPaths, PathRendering, SubstitutionScope } from './scope.ts';
 import { substituteTemplate, type Substituted } from './substitute.ts';
-import { readsAsEmptyInRemoteMcp } from './remote-mcp-credentials.ts';
+import { readsAsEmptyInRemoteMcp } from '../../format/remote-mcp-credentials.ts';
 
 /**
  * Where a string is substituted, finer than a component where the docs split one: a hook runs in
@@ -77,3 +77,15 @@ export const substituteSurface = (
   scope: SubstitutionScope,
   path = '',
 ): Promise<Substituted> => substituteTemplate(template, scope, SURFACE_POLICY[surface], path);
+
+/** What `monitorPaths` makes of the `monitor-command` surface's path rendering. */
+const MONITOR_PATHS: { readonly [M in MonitorPaths]: PathRendering } = {
+  pasted: 'normalized',
+  'environment-reference': 'shell-reference',
+};
+
+/** The `monitor-command` policy for this scope: the one surface that reads `scope.monitorPaths`. */
+export const monitorCommandPolicy = (scope: SubstitutionScope): FieldPolicy => ({
+  ...SURFACE_POLICY['monitor-command'],
+  paths: MONITOR_PATHS[scope.monitorPaths ?? 'pasted'],
+});

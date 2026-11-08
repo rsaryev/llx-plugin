@@ -5,13 +5,18 @@
  *
  * Type-only imports: the SDK's runtime starts the Claude Code program and is never loaded.
  */
-import type { Settings } from '@anthropic-ai/claude-agent-sdk';
+import type { Settings, tool } from '@anthropic-ai/claude-agent-sdk';
 
 export type {
   AgentDefinition,
   AgentMcpServerSpec,
   AsyncHookJSONOutput,
   BaseHookInput,
+  ElicitationHookInput,
+  ElicitationHookSpecificOutput,
+  ElicitationRequest,
+  ElicitationResult,
+  ElicitationResultHookSpecificOutput,
   EffortLevel,
   ExitReason,
   HookEvent,
@@ -32,6 +37,13 @@ export type {
   SlashCommand,
   SyncHookJSONOutput,
 } from '@anthropic-ai/claude-agent-sdk';
+/** The MCP protocol's own shapes: a tool, a prompt and its arguments, the client's declared capabilities. */
+export type {
+  ClientCapabilities,
+  Prompt,
+  PromptArgument,
+  Tool,
+} from '@modelcontextprotocol/sdk/types.js';
 export type {
   BashOutput,
   GlobOutput,
@@ -68,3 +80,10 @@ export type ChannelPluginRef = NonNullable<Settings['allowedChannelPlugins']>[nu
 
 /** The provenance an Agent SDK application stamps on a user message (`{ kind: 'human' }` for keyboard input). */
 export type { SDKMessageOrigin } from '@anthropic-ai/claude-agent-sdk';
+
+/**
+ * What an MCP tool call answers, as the SDK types it (`CallToolResult` of the MCP SDK, which the Agent
+ * SDK uses for the handler of an in-process tool but does not export): `content` parts, `isError`,
+ * `structuredContent` and `_meta`.
+ */
+export type McpCallToolResult = Awaited<ReturnType<Parameters<typeof tool>[3]>>;
