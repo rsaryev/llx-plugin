@@ -44,6 +44,12 @@
 
 ### Fixed
 
+- Integrate all eight second-wave streams without discarding the oracle fixtures or their naming
+  and credential rules. Preserve scanned skills, agents and environment files across compatible
+  turn views while applying host updates immediately.
+- Mods tool orchestration now compares rewritten frames with the model's original input, skips
+  prompts after decisive permission results, and never reports a failed tool as successful.
+
 - The spec gate preserves apostrophes and quoted words inside requirement IDs, and checks static template literals too.
 
 - An expanded skill's text opens with `Base directory for this skill: <folder>`, and a sensitive option in skill or command content reads `[sensitive option '<key>' not available in skill content]` whether or not it is saved, as Claude Code sends the model (`bun run oracle:model-content`).
@@ -643,6 +649,114 @@
   `scratchpadDir` replaces the session's in the hook input, and that a turn's `interactive` decides
   whether a forked skill waits; the step on a turn's `additionalDirectories` is dropped because an
   `if` path rule never reads them.
+- Mods, the events prose, the reference fields and the settings hook. `toolReadOnlyReport` gives
+  `e.isReadOnly` of `tool.check` (`true` or absent, never `false`); `inputChangedDenial` denies a call
+  whose input a hook changed after auto mode's review (`a hook changed this call's input after the model
+  wrote it`); `withheldResultText` and `promptDroppedText` word what Claude and the user read of a
+  withheld result and a dropped prompt; `settingsLayersForMods` builds `e.layers` (`plugin`, `user`,
+  `project`, `local`, `flag`, `policy`, lowest first) and `readEngineSettings` forwards the chain's debug
+  lines (`answered settings.read without next()`); a `settings.read` hook must answer `{ value }` or
+  `{ deny }`; `ModsHost.runCommand` answers a registered command no `command.run` hook answered
+  (`<mod> registered /tally but no command.run hook answered it`); a call a stopped session refuses
+  raises the toast `Stopped: type a message to continue; a mod cannot resume work after Stop`; the
+  built-in guard names a mod that tried to lift a deny rule once, in the debug log and the transcript;
+  `turn.step` carries `turnId`; the test kit fires `settings.read` with empty `layers`. 48 requirements
+  of events.md, reference.md and troubleshoot.md are proven, each with the docs' own example.
+
+### Fixed
+
+- Mods, review of `describeApi`, state reset and the mods API guide tests. `RunGate.userInput()` and
+  `StateStore.reset()` deliver to every held notice and every write listener even when one throws,
+  then report the failure (the error as thrown, several as an `AggregateError`); `runEach` in the
+  foundation does it. `docs/API.md` says a `value` member of `describeApi` carries no value (the host
+  copies it from the live `$`) and no arity. The test kit types `$.ui.mount` (`TestDollar`) and exports
+  `MountHandle` and `MountSpec`. Tests: every one of the 79 calls of the table gets `next(e)`,
+  `{ value }` and `{ deny }` from sample arguments (a call without a sample fails), a hook of a mod
+  that runs after the caller never sees its call, `$.prompt.submit` without `asUser` reaches the port
+  without it, `$.model.complete` asks no question and uses the Claude API's usage fields, the Add one
+  button of hello-tabs runs through the pane, `types` left out or pointing at a missing file, and a
+  write inside `ui.render` and the unchecked type of a declared value are recorded as judgments.
+
+- Mods, review of crash behaviour and refused calls. `ModSession.send` receives the reason the
+  session refuses new work (`send(to, text, signal, refusal?)`) and `unsentReason.subagent` /
+  `unsentReason.teammate` word the `{ isDelivered: false, reason }` of the page's table. `ModTools.call`
+  receives `held()` and `HELD_AT_TIMEOUT` words the line of a foreground Bash or PowerShell command
+  ended at its timeout while input is held. `ModsHost.input.setLimits(limits)` changes
+  `--max-turns` and `--max-budget-usd` for the next run of a long-lived host. Changes to the mod set
+  (`load`, `reload`, a stop of the worker...) run one at a time, so a stop during `reload()` or two
+  stops in a row no longer rewrite the loaded mods together; a mod that is unloaded or unloaded for
+  a crash is forgotten by the replay ledger; a fresh copy the loader has no record of says so instead
+  of vanishing. Judgments record the latest-release-only model of the version-gated behaviour, the
+  host's part of "Work your mod started before the interruption" and the order of a replayed call
+  among the mods before it. Tests: a spawned subagent's turns reach the `--max-turns` count, a stop
+  traced to a built-in mod is untraced, and casts and a stray comment left the test support.
+
+- Mods, review of per-mod load and where mods run. A refusal by another mod reaches the transcript of
+  an interactive session that loads a plugin directory or hot-reloads (it was the debug log in every
+  session). `ModsHostOptions.hotReload` is a getter, so the answer to the hot-reloading question moves
+  later lines to the transcript at once. `modsVersionProblem` words an unreadable version as `this is
+  an unreadable version (latest)`. Tests: the page's own `register.js` runs and its redraw is seen,
+  edits take effect only in a watched directory, the whole change-notice lines, the hot-reloading
+  answers and their state, the refused mod stays off the `mods active` line, and the WSL and
+  feature-flag defaults.
+
+### Added
+
+- Mods, `describeApi` and the guide of the mods API (reference.md, overview.md, interface.md, api.md).
+  `describeApi(api)` describes a mod's `$` as plain data (namespace, member, kind, whether it answers
+  later, the event a call fires) so a host that runs mods in another realm can rebuild it.
+  `ModsHost.resetState()` resets every `$.state` value for `/clear`, `/resume` and `/branch` and redraws
+  what read them; `ModsHost.input.notice(kind, deliver)` holds a subagent's finish notice and the notice
+  that a monitor ended until the user's next input and drops a monitor's events while the session is
+  stopped. A `$.store.set` or `delete` no longer loses a write of another session that was in flight: the
+  changes of one plugin's store go one at a time. Tests prove the "Mods API calls" rule on the
+  reference's own examples, the six things a mod can reach, the `$.state` declaration, manifest `types`
+  field, atom rules, the load again after `/clear` of test.md, and the store sharing of interface.md.
+
+- Mods, crash behaviour and refused calls (troubleshoot.md, api.md). `ModRuntime.onCrash` lets a
+  runtime that shares one worker tell the host the worker stopped: the mod it traced the stop to is
+  unloaded (`<mod> was unloaded: it crashed the hooks worker`), the others get a fresh copy of their
+  module, and the third stop that cannot be traced unloads every mod that is not built in
+  (`hooks: mods that run in the hooks worker are off for this session: it crashed 3 times`;
+  `reload()` turns them back on). The `$.prompt.submit`, `$.command.run` and `$.agent.spawn` calls a
+  fresh copy's `session.start` repeats resolve with the first copy's result and are not made again,
+  with the line `its session.start ran again in a fresh copy`. A registration from a module that is
+  no longer loaded rejects (`$.agent.register refused: the hooks module that made the call is no
+  longer loaded`). `createRunGate` and `ModsHost.input` model the session's input (`interrupt`,
+  `userInput`, `endInput`, `--max-turns`, `--max-budget-usd`): refused calls return what the page's
+  table says, and a prompt or command still queued when the user stops the turn is dropped.
+  `ModsHostOptions.onNotice` receives the lines that come outside a call to the host.
+
+- Mods, per-mod load and unload, and where mods run. `createModsHost` keys a mod by its name: `load`
+  of a plugin already loaded replaces it and no longer adds a second copy. New `loadMod(plugin)` loads
+  one plugin among the loaded ones (tier from policy, last in its tier, a note when the policy would
+  have put it earlier, the built-in guard first when policy needs it) and `unloadMod(name)` turns one
+  off (idempotent, drops the mod from the approval ledger and the refusal book, and `reload` does not
+  bring it back). `ModLoadReport.notices` carries the lines a person reads with where each is read
+  (`modLineChannel`: transcript, stderr of `claude -p --plugin-dir`, debug log; a refusal by another
+  mod in the debug log of a `claude -p` run and in the transcript of an interactive session that
+  loads a plugin directory or hot-reloads; `hotReload` is a getter, read on every line). `whereModsRun` gives overview.md's table (hooks and drawing per place,
+  the VS Code versions) and `decideModLoad` refuses an installed plugin in a WSL session of the Desktop
+  app and, in the cloud, one that does not reach the session; `modsVersionProblem` names the first
+  versions that load mods. `writtenModRefusal` says why a mod Claude wrote cannot load,
+  `createHotReloadGate` is the hot-reloading question (off after three unanswered), and `changeNotice`
+  words the transcript line of a change that did not load. Tests for the 29 requirements of the
+  overview, create and troubleshoot pages on loading, enabling, refusals and where mods run.
+
+### Fixed
+
+- Mods, review fixes of the load seams. `createModsHost(...).fire` and `fireStream` take `before` (where
+  managed `PreToolUse` hooks run, ahead of the first mod), which only the raw chain could set. A
+  stack overflow is a `RangeError` or a message in an engine's words (`maximum call stack size
+  exceeded`, `too much recursion`, `stack overflow`, `not enough stack space`), no longer any error
+  that mentions a stack. `claude plugin validate` reports the scan problem of a compiler output, not an
+  unrelated compiler issue. Tests: the order of managed, other settings and plugin `PreToolUse` hooks
+  is driven through the host with the hook engine; `prependPlugins`, the built-in guard's run order,
+  the filter with every field matching, deep freezing of events, the `my-mod:` log line through the
+  real `$.ui.log`, the six `$` and import rules (each with its own reason, in
+  `check-reads-wording.test.ts` where the page gives no wording), a blank `Client` error and the drawn
+  failure node are now asserted; the linking reason, a session with no `modules` key and the compiler
+  outputs of `validate` moved out of `spec(...)` as judgments, with new rows in `spec/judgments.md`.
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
   short label and the amounts of each row of the Limits table, not the page's sentences, so the
   repository holds facts and identifiers only.
@@ -1056,6 +1170,23 @@
 - Hook output (`hooks/output`): `SubagentStart` `hookSpecificOutput.additionalContext` is proven
   as a requirement (accepted for that event only, carried from every hook, capped, and no decision
   holds subagent creation back).
+- Mods, two seams of load. `ModCompiler.compile` returns `{ scan?, run?, issues }`: `scan` is an ES
+  module the static scan reads (`claude plugin validate`, `plugin.register`'s `e.uses`), `run` is the
+  code and format (`esm`, `cjs`, `iife`...) the host chose for its engine, which `ModRuntime.load` now
+  receives with its `format`. A compiler whose run output is an ES module may return it alone; a CommonJS
+  scan output is refused with a message that names both outputs. New `MatcherEngine` port
+  (`createModChain({ matcherEngine, matcherMs })`, `createModsHost` likewise): the regular expressions of
+  hook matchers are tested there, under a limit, instead of on the host thread, and a test the engine
+  refuses or does not answer is no match plus a skipped-hook line. The lines of skipped hooks follow
+  troubleshoot.md: the transcript or stderr gets the first of each mod, event and kind (`throw`,
+  `timeout`, `wrong-shape`) until the mod reloads, the debug log gets every occurrence (`HookReport.kind`).
+  A runtime or compiler that throws is a `hooks module did not load` line, a stack overflow the
+  documented reason (`engineStackIssue`, `the engine ran out of stack linking the file and its imports`,
+  `...loading the file (code nested too deep): <message>`), the parser's reason has no line number, and
+  a `Client` error with no message is `the module failed without a message`. `DispatchOptions.before` is
+  where the managed `PreToolUse` hooks run, ahead of the first mod. 19 requirements of the mods events,
+  overview, create and troubleshoot pages are now proven (18: the linking reason is a judgment, see the
+  review fixes).
 
 ### Fixed
 
@@ -1753,3 +1884,6 @@
 ### Fixed (exec completion)
 
 - Hook output exposes classifierContext with its shared 2,000-character cap and classifierTrust; notes for unrecorded read-only lookups are discarded. reviewHookRewrite decides whether a changed call applies, is denied, or drops a further rewrite on a repeat. afterHandbackDenial counts the three retry notices; the host delivers them.
+### Fixed (mods review completion)
+
+- Preserve a refusal of the engine settings read even when an outer hook returns a value; use a typed plugin-layer merge, isolate engine toast ownership and cover a timeout after next.

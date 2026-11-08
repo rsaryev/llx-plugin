@@ -197,7 +197,9 @@ export function register(on) { on('ui.render', { component: 'Pane' }, async ($, 
     const compiler = {
       compile: () =>
         Promise.resolve({
-          code: "export function register(on) { on('session.start', async ($, e, next) => next(e)) }",
+          scan: {
+            code: "export function register(on) { on('session.start', async ($, e, next) => next(e)) }",
+          },
           issues: [],
         }),
     };

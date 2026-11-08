@@ -25,3 +25,12 @@ export const COMMAND_SPECS: { readonly [N in CommandEvent]: EventSpec } = {
     }),
   },
 };
+
+/**
+ * The reply when a command a mod registered reaches the end of the `command.run` chain with no answer
+ * (troubleshoot.md, "`no command.run hook answered it`"): "the reply names the mod and the command, as
+ * in `first-mod registered /tally but no command.run hook answered it`, then tells you to add a hook".
+ * The instruction is the kit's wording (judgment: the docs give the sentence it follows, not its words).
+ */
+export const unansweredCommandReply = (plugin: string, command: string): string =>
+  `${plugin} registered /${command} but no command.run hook answered it. Add a command.run hook for /${command} that returns { text }.`;

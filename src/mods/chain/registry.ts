@@ -1,5 +1,6 @@
 import type { PluginIssue } from '../../format/issues.ts';
 import type { HookOrigin, ModTier } from '../../protocol/mods-events.ts';
+import type { MatcherEngine } from '../ports.ts';
 import type { ModPluginInfo, RegisteredHook, RegisterTier } from '../types.ts';
 import type { CompiledMatcher } from './matcher.ts';
 import { TIER_RANK } from './tiers.ts';
@@ -29,6 +30,9 @@ export interface Registry {
   chainFor(event: string, caller?: HookOrigin): readonly ChainEntry[];
 }
 
+/** The matcher of a hook whose own failed to compile: never reached, because the module is refused first. */
+const NEVER: CompiledMatcher = { test: () => Promise.resolve({ matched: false }) };
+
 /** Where a registered mod stands in the order mods run in: its tier, then when it registered. */
 interface Place {
   readonly rank: number;
@@ -45,7 +49,7 @@ function reaches(entry: ChainEntry, caller: HookOrigin, place: Place | undefined
   return entry.rank < place.rank || (entry.rank === place.rank && entry.order <= place.order);
 }
 
-export function createRegistry(): Registry {
+export function createRegistry(engine?: MatcherEngine): Registry {
   let entries: readonly ChainEntry[] = [];
   let registrations = 0;
   // Every registered mod, also one with no hook: a call by it still has a place in the order.
@@ -56,7 +60,7 @@ export function createRegistry(): Registry {
   };
   return {
     register(plugin, tier, hooks) {
-      const { issues, matchers } = checkHooks(hooks, tier);
+      const { issues, matchers } = checkHooks(hooks, tier, engine);
       if (issues.length > 0) return issues;
       unregister(plugin.name);
       registrations += 1;
@@ -67,7 +71,7 @@ export function createRegistry(): Registry {
         rank: TIER_RANK[tier],
         order: registrations,
         hook,
-        matcher: matchers[index] ?? { test: () => false },
+        matcher: matchers[index] ?? NEVER,
       }));
       // `toSorted` is stable, so hooks of one tier keep the order they were registered in.
       entries = [...entries, ...added].toSorted((a, b) => a.rank - b.rank);

@@ -2,6 +2,7 @@ import type { Clock } from '../../ports/index.ts';
 import { ENGINE_ORIGIN } from '../../protocol/mods-events.ts';
 import type { HookReport, ModChain } from '../types.ts';
 import { ENGINE_TYPE } from './elements/node.ts';
+import { faultReason } from './elements/client.ts';
 import type { ModInterface } from './ports.ts';
 import { createPaneRegistry, type PaneRegistry } from './panes/registry.ts';
 import { createInvalidator, type Invalidator } from './redraw/invalidate.ts';
@@ -27,7 +28,7 @@ export interface ModsUiOptions {
   readonly debug: (line: string) => void;
 }
 
-/** What `ui.fault` carries: where the `Client` failed and the error message. */
+/** What `ui.fault` carries: where the `Client` failed and the error message (an error with none is `NO_MESSAGE`). */
 export interface FaultReport {
   readonly phase: 'load' | 'render' | 'run';
   readonly reason: string;
@@ -122,7 +123,7 @@ export function createModsUi(options: ModsUiOptions): ModsUi {
       return foldRender(request.site, request.surface, settled, fold);
     },
     async fault(plugin, fault) {
-      await fire('ui.fault', plugin, { ...fault });
+      await fire('ui.fault', plugin, { ...fault, reason: faultReason(fault.reason) });
       iface.redraw();
     },
     message: (plugin, data) => fire('ui.message', plugin, { data }),

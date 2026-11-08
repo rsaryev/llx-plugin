@@ -6,6 +6,7 @@ import {
   type ModSettingName,
   type SettingHome,
 } from '../../protocol/mods-settings.ts';
+import type { ModsWhere } from './where-mods-run.ts';
 
 /**
  * What the load policy reads (plugins/mods/reference.md, "Settings and environment variables";
@@ -67,6 +68,8 @@ export interface ModsPolicyInput {
    * when Anthropic turned them off remotely, `saved-off` when an earlier session saved that value.
    */
   readonly rollout?: 'served-off' | 'saved-off';
+  /** Where the session runs (overview.md, "Where mods run"); without it, a place where hooks run. */
+  readonly where?: ModsWhere;
 }
 
 /** Whether the machine has managed settings, or the session signed in with a Team or Enterprise `/login`: where the guard loads. */

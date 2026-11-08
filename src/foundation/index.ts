@@ -4,6 +4,7 @@ export { deepFreeze, type DeepReadonly } from './freeze.ts';
 export { jsonBytes, jsonChars } from './json-size.ts';
 export { prefixWithinBytes } from './utf8-prefix.ts';
 export { toJsonValue } from './json-value.ts';
+export { runEach } from './run-each.ts';
 export {
   plainDataProblem,
   walkPlainData,

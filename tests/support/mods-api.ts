@@ -242,3 +242,11 @@ export function scripted(...replies: FetchResponse[]) {
     },
   };
 }
+
+/** The `usage` of a model answer: the token counts and cache fields the Claude API reports (api.md, "Cache"; test.md, "Stub what Claude Code would answer"). */
+export const modelUsage: JsonObject = {
+  input_tokens: 1200,
+  output_tokens: 80,
+  cache_read_input_tokens: 0,
+  cache_creation_input_tokens: 0,
+};

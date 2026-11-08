@@ -4,8 +4,9 @@
  * `config.set` guard). Which row the user changes and when a command list is built is the host's.
  */
 import { describe, expect, test } from 'bun:test';
-import { fn } from '../../support/mods-chain.ts';
+import { fn, record } from '../../support/mods-chain.ts';
 import { eventHarness, reasonsOf } from '../../support/mods-events.ts';
+import { inline, modPlugin, registerOf, session } from '../../support/mods-load.ts';
 import { spec } from '../../support/spec.ts';
 
 async function answered(event: string, input: Record<string, unknown>, answer: unknown) {
@@ -116,6 +117,100 @@ describe('config.describe', () => {
     test('a label that is not a string, or isHidden that is not a flag, fails the hook', async () => {
       expect((await answered('config.describe', {}, { label: 3 })).skipped).toBe(true);
       expect((await answered('config.describe', {}, { isHidden: 0 })).skipped).toBe(true);
+    });
+  });
+});
+
+/**
+ * plugins/mods/troubleshoot.md § `no command.run hook answered it`: a command a mod added reaches the
+ * end of the `command.run` chain with no answer, and Claude Code prints a reply that names the mod and
+ * the command and tells the user to add a hook.
+ */
+describe('a registered command no hook answered', () => {
+  type Registered = { command: { register(command: unknown): Promise<unknown> } };
+  type Next = (e: unknown) => unknown;
+  const REPLY = /^first-mod registered \/tally but no command\.run hook answered it\. /;
+
+  // The scan reads each hook where it is written, so every module spells its hooks out.
+  const noHook = registerOf((on) => {
+    on('session.start', async ($: Registered, e: unknown, next: Next) => {
+      await $.command.register({ name: 'tally', description: 'Count tool calls' });
+      return next(e);
+    });
+  });
+  const otherCommand = registerOf((on) => {
+    on('session.start', async ($: Registered, e: unknown, next: Next) => {
+      await $.command.register({ name: 'tally', description: 'Count tool calls' });
+      return next(e);
+    });
+    on('command.run', { command: 'other' }, () => ({ text: 'other answered' }));
+  });
+  const passesOn = registerOf((on) => {
+    on('session.start', async ($: Registered, e: unknown, next: Next) => {
+      await $.command.register({ name: 'tally', description: 'Count tool calls' });
+      return next(e);
+    });
+    on('command.run', { command: 'tally' }, (_$: unknown, e: unknown, next: Next) => next(e));
+  });
+  const throwing = registerOf((on) => {
+    on('session.start', async ($: Registered, e: unknown, next: Next) => {
+      await $.command.register({ name: 'tally', description: 'Count tool calls' });
+      return next(e);
+    });
+    on('command.run', { command: 'tally' }, () => {
+      throw new Error('boom');
+    });
+  });
+  const answers = registerOf((on) => {
+    on('session.start', async ($: Registered, e: unknown, next: Next) => {
+      await $.command.register({ name: 'tally', description: 'Count tool calls' });
+      return next(e);
+    });
+    on('command.run', { command: 'tally' }, () => ({ text: 'Tally: 3' }));
+  });
+
+  const runTally = async (register: typeof noHook) => {
+    const s = session({ 'first-mod': register });
+    await s.host.load([modPlugin(inline('first-mod'), register)]);
+    const text = await s.host.runCommand('tally', '', {
+      core: () => Promise.resolve({ text: 'host command' }),
+    });
+    return { text: record(text).text, reports: s.reports, host: s.host };
+  };
+
+  spec('mods.troubleshoot.no command.run hook answered it', () => {
+    test('the module has no command.run hook: the reply names the mod and the command and tells the user to add a hook', async () => {
+      const { text } = await runTally(noHook);
+      expect(text).toMatch(REPLY);
+      expect(String(text)).toContain('Add a command.run hook');
+    });
+
+    test("the hook's filter names a different command: the same reply", async () => {
+      expect((await runTally(otherCommand)).text).toMatch(REPLY);
+    });
+
+    test('the hook returned next(e): the same reply', async () => {
+      expect((await runTally(passesOn)).text).toMatch(REPLY);
+    });
+
+    test('Claude Code skipped the hook, so "hook skipped" lists the reason: the reply and the line both appear', async () => {
+      const { text, reports } = await runTally(throwing);
+      expect(text).toMatch(REPLY);
+      expect(reports.map((report) => report.line)).toEqual([
+        'first-mod: command.run hook skipped: threw Error: boom',
+      ]);
+    });
+
+    test('a hook that answers has its text printed, and the command is not reported unanswered', async () => {
+      expect((await runTally(answers)).text).toBe('Tally: 3');
+    });
+
+    test('a command no mod registered ends in the behaviour of the host, not in this reply', async () => {
+      const { host } = await runTally(noHook);
+      const out = await host.runCommand('help', '', {
+        core: () => Promise.resolve({ text: 'host help' }),
+      });
+      expect(out).toEqual({ text: 'host help' });
     });
   });
 });

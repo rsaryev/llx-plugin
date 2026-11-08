@@ -1,7 +1,6 @@
-import type { PluginFiles } from '../../ports/index.ts';
 import { type AnyModEventName, type StreamEventName } from '../../protocol/mods-events.ts';
-import type { ModHostPorts } from '../api/index.ts';
-import type { DenyRuleChecker, ModCompiler, ModRuntime } from '../ports.ts';
+import type { ModHostPorts, RunGate, RunLimits } from '../api/index.ts';
+import type { DenyRuleChecker, MatcherEngine, ModCompiler, ModRuntime } from '../ports.ts';
 import type {
   ChunkOf,
   EventOf,
@@ -15,13 +14,14 @@ import type { ModInterface, ModsUi } from '../ui/index.ts';
 import type { LoadedMod, ModPlugin, ReloadOutcome } from './loader.ts';
 import {
   announceSessionStart,
-  loadOne,
   dispatchOptionsFor,
-  reloadOne,
+  runCommandThrough,
   type FireSettings,
 } from './host-support.ts';
-import { orderMods } from './order.ts';
-import { pluginDirsOf, sideloadRefusal, watchesPluginDirs } from './plugin-dirs.ts';
+import { createModSet, type ModLoadReport, type ModNotice } from './mod-set.ts';
+import { modLineChannel } from './line-channel.ts';
+import { createReplayLedger, replayedLine } from '../api/replay.ts';
+import { pluginDirsOf, watchesPluginDirs } from './plugin-dirs.ts';
 import type { ModsPolicyInput } from './policy-input.ts';
 import { wire } from './wiring.ts';
 
@@ -41,6 +41,14 @@ export interface ModsHostOptions {
   readonly deny: DenyRuleChecker;
   /** The debug log (troubleshoot.md, "Read the debug log"). */
   readonly debug?: (line: string) => void;
+  /** Where the regular expressions of mods' matchers run; without one, in this thread (`MatcherEngine`). */
+  readonly matcherEngine?: MatcherEngine;
+  /** How long the engine has for one test of one pattern, in milliseconds (default 100). */
+  readonly matcherMs?: number;
+  /**
+   * The transcript line (or stderr) for a skipped hook: the first of each mod, event and kind until
+   * the mod reloads. The debug log gets every occurrence.
+   */
   readonly report?: (report: HookReport) => void;
   readonly signal?: AbortSignal;
   /**
@@ -54,24 +62,46 @@ export interface ModsHostOptions {
    * kit turns it off, as "`session.start` doesn't run by itself" there (test.md).
    */
   readonly firesSessionStart?: boolean;
-  /** Whether the session is interactive, for the input of `session.start` (default true). */
+  /** Whether the session is interactive, for the input of `session.start` and for where a line about a mod is read (default true). */
   readonly isInteractive?: boolean;
+  /**
+   * Whether hot reloading is on for the mods Claude wrote in this session, read on every call so the
+   * answer to the question (`HotReloadGate.enabled`) reaches the lines at once: they then reach the transcript.
+   */
+  readonly hotReload?: () => boolean;
+  /** `claude -p --output-format`, for where a line about a mod is read (default text). */
+  readonly outputFormat?: 'text' | 'json' | 'stream-json';
+  /**
+   * A line for people that comes outside a call to the host: the hooks worker stopped (`ModRuntime.onCrash`),
+   * or a fresh copy's `session.start` did not make a call again. `load` and `reload` return their own lines.
+   */
+  readonly onNotice?: (notice: ModNotice) => void;
+  /** The run's limits (`--max-turns`, `--max-budget-usd`): a call that would pass one is refused (`RunGate`). */
+  readonly limits?: RunLimits;
 }
 
-export interface ModLoadReport {
-  readonly loaded: readonly LoadedMod[];
-  /** Why a hooks module is not loaded, one line each: `hooks module <id> not loaded: <reason>`, `<mod>: refused by <mod>: <reason>`. */
-  readonly lines: readonly string[];
-  /** The message startup exits with when managed settings reject `--plugin-dir` (`disableSideloadFlags`). */
-  readonly startupRefusal?: string;
-}
+export type { ModLoadReport } from './mod-set.ts';
 
 /** What a caller of `fire` may give: its own signal, the core behaviour at the end of the chain, and the narrowing options the chain has. */
 export type FireOptions = FireSettings;
 
 export interface ModsHost {
-  /** Loads hooks modules in the order policy gives; every failure is a line, never a throw. */
+  /**
+   * Loads hooks modules in the order policy gives; every failure is a line, never a throw. A mod is
+   * keyed by its name: a plugin loaded again replaces its earlier copy, it is never added twice.
+   */
   load(plugins: readonly ModPlugin[]): Promise<ModLoadReport>;
+  /**
+   * Loads one plugin among the mods already loaded ("One mod": turning a mod on again). Its tier
+   * comes from policy; it runs last in its tier, and a line says when the policy would have put it
+   * earlier. A copy of the plugin that is loaded is replaced. The built-in guard loads first when policy needs it.
+   */
+  loadMod(plugin: ModPlugin): Promise<ModLoadReport>;
+  /**
+   * Turns one mod off: its hooks stop, what it added goes, and `reload` does not bring it back.
+   * Answers whether a mod was unloaded, so asking twice is harmless. The built-in guard stays.
+   */
+  unloadMod(name: string): Promise<boolean>;
   /** `/reload-plugins`: unloads every mod and loads the same plugins again. */
   reload(): Promise<ModLoadReport>;
   /**
@@ -84,6 +114,16 @@ export interface ModsHost {
     input: EventOf<N>,
     options?: FireOptions,
   ): Promise<ResultOf<N>>;
+  /**
+   * The user runs `/<command>`: fires `command.run`. A command a mod registered that reaches the end of
+   * the chain with no answer gets `<mod> registered /<command> but no command.run hook answered it`
+   * (troubleshoot.md); any other command ends in `options.core`, the host's own behaviour.
+   */
+  runCommand(
+    command: string,
+    args: string,
+    options?: FireOptions,
+  ): Promise<ResultOf<'command.run'>>;
   fireStream<N extends StreamEventName>(
     name: N,
     input: EventOf<N>,
@@ -106,6 +146,19 @@ export interface ModsHost {
   pluginDirs(): readonly string[];
   /** Whether a save in a `--plugin-dir` directory reloads its mod (`reloadMod`): always interactively, otherwise with `CLAUDE_CODE_PLUGIN_DIR_WATCH=1`. */
   watchesPluginDirs(isInteractive: boolean): boolean;
+  /**
+   * Tells the session what happened to its input, which decides what its mods' calls return: after
+   * `interrupt` the calls that start new work are refused until `userInput`; after `endInput` they are
+   * refused for good. `setLimits` replaces `limits` for the next run of a host that outlives one.
+   */
+  readonly input: Pick<RunGate, 'interrupt' | 'userInput' | 'endInput' | 'setLimits' | 'notice'>;
+  /**
+   * `/clear`, `/resume` and `/branch` reset every `$.state` value to its default, and `session.start`
+   * does not fire again (interface.md, "Load a saved value again after `/clear`"). The host calls this
+   * for each of them; it then fires `classic.SessionStart` with `source` set to `clear`, `resume` or
+   * `fork`, which is the hook a mod loads its saved values again in.
+   */
+  resetState(): void;
   readonly ui: ModsUi;
   readonly chain: ModChain;
   active(): readonly LoadedMod[];
@@ -113,82 +166,66 @@ export interface ModsHost {
 }
 
 const noop = (): void => undefined;
-/** troubleshoot.md ties the suffix to `hooks module did not load`, not to a refusal by another mod. */
-const UNLOADED = '; the version loaded before is unloaded';
-const DID_NOT_LOAD = 'hooks module did not load';
-
-/** What ordering says before any module loads: its notes, and a line for each module policy keeps out. */
-const skippedLines = (order: ReturnType<typeof orderMods>): string[] => [
-  ...order.notes,
-  ...order.skipped.map((skip) => `hooks module ${skip.candidate.id} not loaded: ${skip.reason}`),
-];
 
 /** The mods runtime for one session. */
 export function createModsHost(options: ModsHostOptions): ModsHost {
   const debug = options.debug ?? noop;
   const background = new AbortController();
   const signal = options.signal ?? background.signal;
-  const wired = wire({ ...options, debug, report: options.report ?? noop, signal });
-  const { chain, env } = wired;
   const { policy } = options;
-  let loaded: LoadedMod[] = [];
+  const notify = options.onNotice ?? noop;
+  const sessionNow = () => ({
+    isInteractive: options.isInteractive ?? true,
+    pluginDir: pluginDirsOf(policy).length > 0,
+    ...(options.hotReload === undefined ? {} : { hotReload: options.hotReload() }),
+    ...(options.outputFormat === undefined ? {} : { outputFormat: options.outputFormat }),
+  });
+  /** The calls a fresh copy of a mod's `session.start` does not make again, with the line that says so. */
+  const replay = createReplayLedger((mod, kind) => {
+    const line = replayedLine(mod, kind);
+    debug(line);
+    notify({ line, channel: modLineChannel(sessionNow(), 'fresh-copy') });
+  });
+  const wired = wire({
+    ...options,
+    debug,
+    report: options.report ?? noop,
+    signal,
+    replay,
+    guardNotice: (line) => notify({ line, channel: modLineChannel(sessionNow(), 'guard-lift') }),
+  });
+  const { chain, env } = wired;
   /** What the host registered itself: a reload does not touch it. */
   const builtIns: LoadedMod[] = [];
-  let plugins: readonly ModPlugin[] = [];
-
-  async function loadAll(
-    given: readonly ModPlugin[],
-    before: ReadonlySet<string>,
-  ): Promise<ModLoadReport> {
-    plugins = given;
-    const refusal = sideloadRefusal(policy);
-    if (refusal !== undefined) return { loaded: [], lines: [], startupRefusal: refusal };
-    const order = orderMods(
-      policy,
-      given.map((plugin) => plugin.candidate),
-    );
-    const filesOf = new Map<string, PluginFiles>(
-      given.map((plugin) => [plugin.candidate.id, plugin.files]),
-    );
-    const lines = skippedLines(order);
-    for (const mod of order.ordered) {
-      const outcome = await loadOne(wired, mod, filesOf.get(mod.candidate.id));
-      if (outcome.mod) loaded.push(outcome.mod);
-      if (outcome.line !== undefined) {
-        const unloaded = before.has(mod.candidate.name) && outcome.line.includes(DID_NOT_LOAD);
-        lines.push(unloaded ? `${outcome.line}${UNLOADED}` : outcome.line);
-      }
-    }
-    for (const line of lines) debug(line);
-    if (options.firesSessionStart !== false) await announceStart(loaded);
-    return { loaded: [...loaded], lines };
-  }
-
-  const announceStart = (mods: readonly LoadedMod[]): Promise<void> =>
-    announceSessionStart({ options, chain, dispatchOptions }, mods);
-
-  async function unloadAll(): Promise<ReadonlySet<string>> {
-    const names = new Set(loaded.map((mod) => mod.name));
-    for (const mod of loaded.toReversed()) await mod.unload();
-    loaded = [];
-    return names;
-  }
-
   const dispatchOptions = dispatchOptionsFor({ env, debug, signal });
+  const mods = createModSet({
+    wired,
+    policy,
+    debug,
+    announce: (started, mode) =>
+      options.firesSessionStart === false
+        ? Promise.resolve()
+        : announceSessionStart({ options, chain, dispatchOptions, replay }, started, mode),
+    session: sessionNow,
+    notify,
+    forget: (name) => replay.forget(name),
+  });
+  /** The worker's replacement is handled before the runtime goes on (`ModRuntime.onCrash`). */
+  const stopListening = options.runtime.onCrash?.((crash) => mods.crashed(crash));
 
   return {
-    load: (given) => loadAll(given, new Set()),
-    reload: async () => loadAll(plugins, await unloadAll()),
-    reloadMod: async (name) => {
-      const done = await reloadOne(env, plugins, loaded, name);
-      if (!done) return undefined;
-      loaded = done.loaded;
-      debug(done.outcome.line);
-      if (done.replaced && options.firesSessionStart !== false)
-        await announceStart([done.replaced]);
-      return done.outcome;
-    },
+    load: (given) => mods.load(given),
+    loadMod: (plugin) => mods.loadMod(plugin),
+    unloadMod: (name) => mods.unloadMod(name),
+    reload: () => mods.reload(),
+    reloadMod: (name) => mods.reloadMod(name),
     fire: (name, input, opts = {}) => chain.dispatch(name, input, dispatchOptions(opts)),
+    runCommand: (command, args, opts = {}) =>
+      runCommandThrough(
+        { registries: wired.registries, chain, dispatchOptions },
+        { command, args },
+        opts,
+      ),
     fireStream: (name, input, opts = {}) =>
       chain.dispatchStream(name, input, dispatchOptions(opts)),
     registerBuiltIn: async (name, tier, hooks) => {
@@ -198,11 +235,14 @@ export function createModsHost(options: ModsHostOptions): ModsHost {
     },
     pluginDirs: () => pluginDirsOf(policy),
     watchesPluginDirs: (isInteractive) => watchesPluginDirs(policy, isInteractive),
+    input: wired.gate,
+    resetState: () => wired.state.reset(),
     ui: wired.ui,
     chain,
-    active: () => [...builtIns, ...loaded],
+    active: () => [...builtIns, ...mods.loaded()],
     async dispose() {
-      await unloadAll();
+      stopListening?.();
+      await mods.unloadAll();
       for (const mod of builtIns.toReversed()) await mod.unload();
       builtIns.length = 0;
       background.abort(new Error('the mods host was disposed'));

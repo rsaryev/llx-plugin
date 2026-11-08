@@ -12,13 +12,17 @@ import {
   type ReloadOutcome,
 } from './loader.ts';
 import type { OrderedMod } from './order.ts';
+import type { ReplayLedger, ReplayMode } from '../api/replay.ts';
 import type { Wired } from './wiring.ts';
+import { unansweredCommandReply } from '../events/index.ts';
 
 /** What the host passes the chain when it fires an event itself. */
 export interface FireSettings {
   readonly signal?: AbortSignal;
   /** Claude Code's own behaviour, at the end of the chain; without it the chain ends in `undefined`. */
   readonly core?: (e: unknown) => Promise<unknown> | AsyncGenerator<unknown, unknown>;
+  /** Where managed `PreToolUse` hooks run: before the first mod; an answer here stops the chain. */
+  readonly before?: DispatchOptions['before'];
   /** Only this mod's hooks handle the event. */
   readonly only?: string;
   readonly reentry?: ReentryInfo;
@@ -38,6 +42,7 @@ export const dispatchOptionsFor =
     core: opts.core ?? (() => Promise.resolve(undefined)),
     report: host.env.report,
     debug: host.debug,
+    ...(opts.before === undefined ? {} : { before: opts.before }),
     ...(opts.only === undefined ? {} : { only: opts.only }),
     ...(opts.reentry === undefined ? {} : { reentry: opts.reentry }),
     ...(opts.groupMs === undefined ? {} : { groupMs: opts.groupMs }),
@@ -88,8 +93,11 @@ export async function announceSessionStart(
     };
     readonly chain: ModChain;
     readonly dispatchOptions: (opts: FireSettings) => DispatchOptions;
+    /** Numbers the calls of each `session.start`, so a fresh copy's repeated calls are not made again. */
+    readonly replay: ReplayLedger;
   },
   mods: readonly LoadedMod[],
+  mode: ReplayMode,
 ): Promise<void> {
   const input = {
     surface: host.options.iface.surface(),
@@ -97,7 +105,9 @@ export async function announceSessionStart(
     cwd: await host.options.ports.session.cwd(),
   };
   for (const mod of mods) {
-    await host.chain.dispatch('session.start', input, host.dispatchOptions({ only: mod.name }));
+    await host.replay.window(mod.name, mode, () =>
+      host.chain.dispatch('session.start', input, host.dispatchOptions({ only: mod.name })),
+    );
   }
 }
 
@@ -111,4 +121,34 @@ export async function loadOne(
     return { mod: await wired.registerGuard() };
   }
   return files ? loadMod(wired.env, mod, files) : {};
+}
+
+/**
+ * `command.run` for a command the user typed: a command a mod registered that reaches the end of the
+ * chain with no answer gets the reply of troubleshoot.md ("`no command.run hook answered it`"), any
+ * other ends in the host's own behaviour.
+ */
+export function runCommandThrough(
+  host: {
+    readonly registries: Wired['registries'];
+    readonly chain: ModChain;
+    readonly dispatchOptions: (opts: FireSettings) => DispatchOptions;
+  },
+  request: { readonly command: string; readonly args: string },
+  opts: FireSettings,
+): Promise<unknown> {
+  return host.chain.dispatch(
+    'command.run',
+    request,
+    host.dispatchOptions({
+      ...opts,
+      core: (e) => {
+        const registered = host.registries.commands.get(request.command);
+        if (registered === undefined) return opts.core?.(e) ?? Promise.resolve({});
+        return Promise.resolve({
+          text: unansweredCommandReply(registered.plugin, request.command),
+        });
+      },
+    }),
+  );
 }

@@ -6,6 +6,7 @@ import {
   listSetting,
   type ModsPolicyInput,
 } from './policy-input.ts';
+import { whereModsRun } from './where-mods-run.ts';
 
 /**
  * Whether a hooks module may load, and in which tier (plugins/mods/admin.md, "Choose how much to
@@ -30,6 +31,8 @@ export interface ModCandidate {
     /** The marketplace lists the plugin by a relative path, so Claude Code loads it in place. */
     readonly isLoadedInPlace: boolean;
   };
+  /** The plugin reaches a cloud session (overview.md, "Where mods run"): only then do its hooks run there. */
+  readonly reachesCloudSession?: boolean;
   /** Names of the plugins this one lists under `dependencies`: it runs before them. */
   readonly dependencies: readonly string[];
 }
@@ -92,8 +95,24 @@ const rolloutRefusal = (rollout: NonNullable<ModsPolicyInput['rollout']>): strin
 const UNTRUSTED =
   'the directory is not trusted yet: no mod loads until the trust prompt is answered';
 
+/** Why the place the session runs in keeps the plugin's hooks from running (overview.md, "Where mods run"), if it does. */
+function placeRefusal(policy: ModsPolicyInput, candidate: ModCandidate): string | undefined {
+  if (policy.where === undefined) return undefined;
+  const place = whereModsRun({
+    ...policy.where,
+    reachesCloud: candidate.reachesCloudSession === true,
+  });
+  return place.hooksRun ? undefined : place.hooksReason;
+}
+
 /** The refusal text of an installed plugin's hooks module that policy keeps out, or `undefined`. */
-function installedRefusal(policy: ModsPolicyInput, isOrganizations: boolean): string | undefined {
+function installedRefusal(
+  policy: ModsPolicyInput,
+  candidate: ModCandidate,
+  isOrganizations: boolean,
+): string | undefined {
+  const placed = placeRefusal(policy, candidate);
+  if (placed !== undefined) return placed;
   if (policy.isTrusted === false) return UNTRUSTED;
   if (policy.flags.safeMode === true) {
     return 'installed plugins load no hooks module in this mode (--safe-mode)';
@@ -147,7 +166,11 @@ export function decideModLoad(policy: ModsPolicyInput, candidate: ModCandidate):
         : { reason: 'the built-in guard loads only where an organization manages Claude Code' }),
     };
   }
-  const reason = installedRefusal(policy, countsAsOrganizations(candidate, policy.platform));
+  const reason = installedRefusal(
+    policy,
+    candidate,
+    countsAsOrganizations(candidate, policy.platform),
+  );
   const tier = installedTier(policy, candidate);
   return reason === undefined ? { load: true, tier } : { load: false, tier, reason };
 }

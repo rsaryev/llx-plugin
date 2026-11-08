@@ -1,6 +1,8 @@
 import type { Clock } from '../../ports/index.ts';
 import { createBudget } from '../../foundation/index.ts';
 import type { AnyModEventName, StreamEventName } from '../../protocol/mods-events.ts';
+import type { MatcherEngine } from '../ports.ts';
+import { MATCHER_MS } from './matcher.ts';
 import type {
   ChunkOf,
   DispatchOptions,
@@ -20,6 +22,13 @@ export interface ModChainOptions {
   readonly clock: Clock;
   /** What the events part of mods says about the events it knows (`createEventRules`); a member left out passes values through. */
   readonly rules?: Partial<EventRules>;
+  /**
+   * Where the regular expressions of matchers run. Without one they run in this thread with the
+   * engine's own `RegExp`, which a pattern such as `/^(a+)+$/` can hold for ever.
+   */
+  readonly matcherEngine?: MatcherEngine;
+  /** How long the engine has to test one pattern against one value, in milliseconds (default `MATCHER_MS`). */
+  readonly matcherMs?: number;
 }
 
 /* oxlint-disable typescript/no-unsafe-type-assertion -- the chain carries `unknown`; the events part of mods fixes what each event answers */
@@ -37,7 +46,7 @@ async function collect(stream: Stream): Promise<unknown> {
 
 /** The chains of hooks, one per event, and what runs them (events.md, "How a hook handles an event"). */
 export function createModChain(options: ModChainOptions): ModChain {
-  const registry = createRegistry();
+  const registry = createRegistry(options.matcherEngine);
   const rules: EventRules = { ...NO_RULES, ...options.rules };
 
   async function* stream(name: string, input: unknown, opts: DispatchOptions): Stream {
@@ -52,6 +61,7 @@ export function createModChain(options: ModChainOptions): ModChain {
         .filter((entry) => opts.only === undefined || entry.plugin.name === opts.only),
       input: frozen,
       rules,
+      matcherMs: options.matcherMs ?? MATCHER_MS,
       ...(groupMs === undefined
         ? {}
         : {
@@ -59,6 +69,9 @@ export function createModChain(options: ModChainOptions): ModChain {
           }),
     };
     try {
+      // The managed settings hooks run first; when one answers, no mod's hook runs.
+      const first = opts.before === undefined ? undefined : await opts.before(frozen);
+      if (first !== undefined) return first;
       return yield* runFrom(ctx, 0, frozen);
     } finally {
       ctx.group?.budget.dispose();

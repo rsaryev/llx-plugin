@@ -17,6 +17,8 @@ export interface Context {
   readonly input: unknown;
   /** What the events part of mods says about this event: result shapes, changes to refuse, what Claude Code receives. */
   readonly rules: EventRules;
+  /** How long the matcher engine has for one test. */
+  readonly matcherMs: number;
 }
 
 /** The events whose hooks have less than the usual 10 seconds (reference.md, "Limits"). */

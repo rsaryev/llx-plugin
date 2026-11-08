@@ -4,6 +4,29 @@ import { MOD_LIMITS } from '../../protocol/mods-limits.ts';
 import type { ModsNamespaceApi } from '../types.ts';
 import { call, parse, type Deps } from './call.ts';
 
+/**
+ * One change of the store at a time, for each store and plugin: a `set` or a `delete` reads the whole
+ * store and writes it back, so two that overlap would each write the store as it was before the other
+ * ("a `set` changes only its own key, so sessions that write different keys don't overwrite each
+ * other", interface.md, "Save from more than one session"). Judgment: this keeps that true for every
+ * session that shares the port in this process; sessions in other processes are the host's to guard
+ * with a lock on the file its `ModStore` writes. The queues are keyed by the port in a `WeakMap`, not
+ * built per host: two hosts that share one port (two sessions) must share its queue, and a queue lives
+ * no longer than the port it serves.
+ */
+const queues = new WeakMap<object, Map<string, Promise<unknown>>>();
+
+function inTurn<T>(store: object, plugin: string, change: () => Promise<T>): Promise<T> {
+  const byPlugin = queues.get(store) ?? new Map<string, Promise<unknown>>();
+  queues.set(store, byPlugin);
+  const done = (byPlugin.get(plugin) ?? Promise.resolve()).then(change, change);
+  byPlugin.set(
+    plugin,
+    done.catch(() => undefined),
+  );
+  return done;
+}
+
 const keyEvent = z.looseObject({ key: z.string() });
 const setEvent = z.looseObject({ key: z.string(), value: z.unknown() });
 
@@ -47,23 +70,20 @@ export function storeApi(deps: Deps): ModsNamespaceApi<'store'> {
         },
         async (e) => {
           const { key, value } = parse('$.store.set', setEvent, e);
-          return save({
-            ...(await store.read(deps.plugin)),
-            [key]: jsonValue('$.store.set', value),
-          });
+          const json = jsonValue('$.store.set', value);
+          return inTurn(store, deps.plugin, async () =>
+            save({ ...(await store.read(deps.plugin)), [key]: json }),
+          );
         },
       ),
     delete: async (...args) =>
-      call(
-        deps,
-        'store.delete',
-        { key: parse('$.store.delete', z.string(), args[0]) },
-        async (e) => {
+      call(deps, 'store.delete', { key: parse('$.store.delete', z.string(), args[0]) }, (e) =>
+        inTurn(store, deps.plugin, async () => {
           const { [parse('$.store.delete', keyEvent, e).key]: _gone, ...rest } = await store.read(
             deps.plugin,
           );
           return save(rest);
-        },
+        }),
       ),
     keys: async () =>
       call(deps, 'store.keys', {}, async () => Object.keys(await store.read(deps.plugin))),

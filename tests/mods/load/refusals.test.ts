@@ -6,8 +6,9 @@
  * line is ours (spec/judgments.md).
  */
 import { expect, test } from 'bun:test';
-import { decideModLoad, orderMods } from '../../../src/mods/load/index.ts';
+import { activeModsLine, decideModLoad, orderMods } from '../../../src/mods/load/index.ts';
 import {
+  inline,
   installed,
   managed,
   modPlugin,
@@ -15,6 +16,7 @@ import {
   policy,
   session,
 } from '../../support/mods-load.ts';
+import { spec } from '../../support/spec.ts';
 
 const register = (on: unknown): void => void on;
 const builtinMod = { ...installed('agents-md'), isBuiltin: true, id: 'agents-md@builtin' };
@@ -107,4 +109,112 @@ test('judgment: no mod loads until the trust prompt is answered, built-in mods e
     const loaded = await answered.host.load([modPlugin(installed('a'), register)]);
     expect(loaded.loaded).toHaveLength(1);
   }
+});
+
+spec('mods.troubleshoot.Refusal messages.disableAllHooks in managed settings', () => {
+  test('your organization turned off hooks from installed plugins: `disableAllHooks in managed settings`, for the organization`s own mods too', () => {
+    const settings = managed({ disableAllHooks: true });
+    for (const candidate of [installed('a'), organizations('b'), inline('c')]) {
+      expect(decideModLoad(settings, candidate)).toMatchObject({
+        load: false,
+        reason: 'disableAllHooks in managed settings',
+      });
+    }
+  });
+
+  test('the debug log line is `hooks module first-mod@inline not loaded: disableAllHooks in managed settings`, as the page prints it for a mod loaded with --plugin-dir', async () => {
+    const { host, debug } = session(
+      { 'first-mod': register },
+      { policy: managed({ disableAllHooks: true }) },
+    );
+    await host.load([modPlugin(inline('first-mod'), register)]);
+    expect(debug).toContain(
+      'hooks module first-mod@inline not loaded: disableAllHooks in managed settings',
+    );
+  });
+});
+
+spec('mods.troubleshoot.Refusal messages.another plugin of that name loads first', () => {
+  test('another enabled plugin holds the name, so the hooks module does not load and the debug log says so', async () => {
+    const holder = installed('same', 'one');
+    const copy = installed('same', 'two');
+    const { host, debug } = session({ same: register });
+    const report = await host.load([modPlugin(holder, register), modPlugin(copy, register)]);
+    expect(report.loaded.map((mod) => mod.id)).toEqual(['same@one']);
+    expect(debug).toContain(
+      'hooks module same@two not loaded: another plugin of that name loads first',
+    );
+  });
+
+  test('a copy that managed settings enable holds the name against one the user installed', () => {
+    const order = orderMods(managed({}), [
+      installed('acme-guard', 'elsewhere'),
+      organizations('acme-guard'),
+    ]);
+    expect(order.ordered.map((mod) => mod.candidate.id)).toContain('acme-guard@acme-tools');
+    expect(order.skipped.map((skip) => skip.reason)).toEqual([
+      'another plugin of that name loads first',
+    ]);
+  });
+});
+
+spec('mods.troubleshoot.No installed plugin loads at all', () => {
+  test('--safe-mode: no installed plugin loads a hooks module, and without the flag it does', async () => {
+    const safe = { ...policy(), flags: { pluginDirs: [], safeMode: true } };
+    const withFlag = session({ a: register }, { policy: safe });
+    const plugin = modPlugin(installed('a'), register);
+    expect((await withFlag.host.load([plugin])).loaded).toEqual([]);
+    const without = session({ a: register });
+    expect((await without.host.load([plugin])).loaded).toHaveLength(1);
+  });
+});
+
+spec('mods.troubleshoot.No mod loads in a directory you opened for the first time', () => {
+  test('before the trust prompt is answered no mod loads; once it is accepted the same mods load', async () => {
+    const plugins = [modPlugin(installed('a'), register), modPlugin(inline('b'), register)];
+    const before = session({ a: register, b: register }, { policy: policy({ isTrusted: false }) });
+    expect((await before.host.load(plugins)).loaded).toEqual([]);
+    const accepted = session({ a: register, b: register }, { policy: policy({ isTrusted: true }) });
+    expect((await accepted.host.load(plugins)).loaded.map((mod) => mod.name)).toEqual(['a', 'b']);
+  });
+});
+
+spec(`mods.troubleshoot.The mods active line doesn't name the mod`, () => {
+  test('a refused module is not on the line, and the debug log has the `hooks module ... not loaded:` line with the reason', async () => {
+    const { host, debug } = session(
+      { 'first-mod': register },
+      { policy: policy({ managed: { allowManagedHooksOnly: true } }) },
+    );
+    await host.load([modPlugin(installed('first-mod'), register)]);
+    expect(activeModsLine(host.active())).toBeUndefined();
+    expect(debug).toEqual([
+      'hooks module first-mod@market not loaded: only managed plugins and built-in plugins run',
+    ]);
+    expect(host.active().filter((mod) => !mod.isBuiltin)).toEqual([]);
+  });
+
+  test('the mods that did load are named, and the refused one is not', async () => {
+    const { host, debug } = session(
+      { accepted: register, refused: register },
+      { policy: managed({ allowManagedHooksOnly: true }) },
+    );
+    const report = await host.load([
+      modPlugin(organizations('accepted'), register),
+      modPlugin(installed('refused'), register),
+    ]);
+    expect(report.loaded.map((mod) => mod.name)).toEqual(['cc-plugin-sec-default', 'accepted']);
+    expect(debug).toContain(
+      'hooks module refused@market not loaded: only managed plugins and built-in plugins run',
+    );
+    expect(activeModsLine(host.active())).toBe('1 mod active · accepted');
+  });
+
+  test('judgment: two mods that loaded are both named, and one turned off is not', async () => {
+    const { host } = session({ a: register, b: register }, { policy: policy({ isTrusted: true }) });
+    await host.load([modPlugin(installed('a'), register)]);
+    await host.loadMod(modPlugin(installed('b'), register));
+    expect(activeModsLine(host.active())).toBe('2 mods active · a, b');
+    await host.unloadMod('b');
+    expect(activeModsLine(host.active())).toBe('1 mod active · a');
+  });
 });

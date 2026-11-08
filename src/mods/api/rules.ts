@@ -10,11 +10,13 @@ const STREAMS: ReadonlySet<string> = new Set(STREAM_EVENTS);
  * `next(e)` returns, the command's own result, and only its `{ deny }` is special (test.md, "Follow
  * the test kit's rules").
  */
-const VALUE_CALLS: ReadonlySet<string> = new Set(
-  API_EVENT_NAMES.filter(
+const VALUE_CALLS: ReadonlySet<string> = new Set([
+  ...API_EVENT_NAMES.filter(
     (name) => !isEventAnswered(name) && !isEngineEvent(name) && !STREAMS.has(name),
   ),
-);
+  // Claude Code fires `settings.read` too, but a hook on it answers like a call: "`next(e)`, `{ value }`, or `{ deny: reason }`" (reference.md).
+  'settings.read',
+]);
 
 /**
  * What the chain knows of the mods API calls (reference.md, "Mods API calls"): a hook on one

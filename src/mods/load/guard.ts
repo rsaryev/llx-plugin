@@ -1,6 +1,7 @@
 import type { DenyRuleChecker } from '../ports.ts';
 import type { ModNext, ModsApi, RegisteredHook } from '../types.ts';
 import { guardOption, type ModsPolicyInput } from './policy-input.ts';
+import type { RefusalBook } from './register-call.ts';
 
 /**
  * The built-in guard `sec-default@builtin` (plugins/mods/admin.md, "Know what happens by default",
@@ -41,9 +42,22 @@ export interface GuardOptions {
   readonly deny: DenyRuleChecker;
   readonly ledger: ApprovalLedger;
   readonly debug: (line: string) => void;
+  /** The line for the transcript (or only the debug log, in a `claude -p` run): the host decides where it is read. */
+  readonly notice?: (line: string) => void;
+  /** The mods the guard already said it refused a lift for: "once for each mod in a session". */
+  readonly told?: Set<string>;
 }
 
 const decisionOf = (result: unknown): unknown => (isRecord(result) ? result.decision : undefined);
+
+/** The line of a lift the guard refused: to the debug log and the transcript, once for each mod in a session. */
+function tell(options: GuardOptions, line: string, mod: string): void {
+  const told = options.told;
+  if (told?.has(mod)) return;
+  told?.add(mod);
+  options.debug(line);
+  options.notice?.(line);
+}
 
 /**
  * A call a user's mod approved, judged against the deny rules (admin.md: "a user's mod can't
@@ -60,7 +74,7 @@ async function checkApproval(options: GuardOptions, e: unknown, result: unknown)
     (verdict === 'deny' && !guardOption(options.policy, 'allowModsToOverrideDenyRules'));
   if (verdict === 'unknown') return { decision: 'deny', reason: CHECK_FAILED };
   if (!lifts) return result;
-  for (const mod of approvers) options.debug(`${mod} ${LIFT_ATTEMPT}`);
+  for (const mod of approvers) tell(options, `${mod} ${LIFT_ATTEMPT}`, mod);
   return { decision: 'deny', reason: `${approvers.join(', ')} ${LIFT_ATTEMPT}` };
 }
 
@@ -121,4 +135,21 @@ export function withApproval(
       return Promise.resolve(out).then(note);
     },
   };
+}
+
+/** `run` the first time it is called; a later call waits for nothing and does nothing (an unload that is asked twice). */
+export function once(run: () => Promise<void>): () => Promise<void> {
+  let started: Promise<void> | undefined;
+  return () => (started ??= run());
+}
+
+/** Takes a mod that unloaded out of the approval ledger and the refusal book, so neither names it again. */
+export function forgetMod(
+  env: { readonly ledger: ApprovalLedger; readonly book: RefusalBook },
+  name: string,
+): void {
+  env.ledger.approvers = env.ledger.approvers.filter((approver) => approver !== name);
+  for (const [reason, refuser] of env.book.refusers) {
+    if (refuser === name) env.book.refusers.delete(reason);
+  }
 }

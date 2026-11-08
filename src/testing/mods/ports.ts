@@ -12,7 +12,9 @@ export interface ModTestRuntime {
       readonly plugin: string;
       /** The test file's path in the plugin folder. */
       readonly file: string;
+      /** The compiler's run output for the file, and the format the host's compiler chose for it. */
       readonly code: string;
+      readonly format: string;
       readonly kit: TestKit;
     },
     signal: AbortSignal,

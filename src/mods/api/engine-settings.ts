@@ -56,16 +56,25 @@ function applyAnswer(
 export async function readEngineSettings(options: EngineReadOptions): Promise<JsonObject> {
   const layers = await options.settings.layers();
   const merged = options.settings.merged(layers);
+  let refused: string | undefined;
   const answer = await options.chain.dispatch(
     'settings.read',
     { layers: structuredClone(layers) },
     {
+      observeResult: (value) => {
+        if (isRecord(value) && typeof value.deny === 'string') refused ??= value.deny;
+      },
       origin: ENGINE_ORIGIN,
       signal: options.signal,
       report: options.report,
+      debug: options.debug,
       core: () => Promise.resolve({ value: merged }),
     },
   );
+  if (refused !== undefined) {
+    options.debug(refusedLine(refused));
+    return merged;
+  }
   if (!isRecord(answer)) return merged;
   if (typeof answer.deny === 'string') {
     options.debug(refusedLine(answer.deny));

@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import type { ModsNamespaceApi } from '../types.ts';
-import { call, parse, type Deps } from './call.ts';
+import { assertLoaded, call, parse, type Deps } from './call.ts';
 import { nameProblem } from './names.ts';
+import { droppedCommand, refusing, waitsInQueue } from './refusal.ts';
 
 /** The registration of `$.command.register` (api.md, "Add a command"). */
 const registration = z.looseObject({
@@ -32,14 +33,33 @@ function register(deps: Deps, event: unknown): void {
 
 export function commandApi(deps: Deps): ModsNamespaceApi<'command'> {
   return {
-    register: async (...args) =>
-      call(deps, 'command.register', parse('$.command.register', registration, args[0]), (e) =>
-        Promise.resolve(register(deps, e)),
-      ),
-    run: async (...args) =>
-      call(deps, 'command.run', parse('$.command.run', run, args[0]), (e) =>
-        deps.ports.commands.run(parse('$.command.run', run, e)),
-      ),
+    register: async (...args) => {
+      assertLoaded(deps, 'command.register');
+      return call(
+        deps,
+        'command.register',
+        parse('$.command.register', registration, args[0]),
+        (e) => Promise.resolve(register(deps, e)),
+      );
+    },
+    run: async (...args) => {
+      const request = parse('$.command.run', run, args[0]);
+      return deps.replay.once(deps.plugin, 'command.run', () =>
+        call(
+          deps,
+          'command.run',
+          request,
+          refusing(deps, 'command.run', async (e) => {
+            const command = parse('$.command.run', run, e);
+            return waitsInQueue(
+              deps.gate.interrupted(),
+              (queue) => deps.ports.commands.run(command, queue),
+              droppedCommand(deps),
+            );
+          }),
+        ),
+      );
+    },
     list: async () =>
       call(deps, 'command.list', {}, () =>
         Promise.resolve(

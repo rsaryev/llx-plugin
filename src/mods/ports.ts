@@ -2,6 +2,7 @@ import type { JsonObject } from '../foundation/index.ts';
 import type { PluginIssue } from '../format/issues.ts';
 import type { PluginFiles } from '../ports/index.ts';
 import type { ApiEventName, HookFailure, HookOrigin, ModMatcher } from '../protocol/mods-events.ts';
+import type { CompileResult } from './load/compile-output.ts';
 import type { ModNext, ModsApi } from './types.ts';
 
 /**
@@ -64,21 +65,69 @@ export interface ModRuntime {
     input: {
       readonly plugin: string;
       readonly entry: string;
+      /** The compiler's run output: the code, in the format the host's compiler chose (`ModCompiler`). */
       readonly code: string;
+      readonly format: string;
       readonly options: JsonObject;
       /** Where the mod draws, a word such as `terminal`, `desktop` or `vscode`: the docs give no closed list. */
       readonly surface: string;
     },
     signal: AbortSignal,
   ): Promise<{ readonly module?: GuestModule; readonly issues: readonly PluginIssue[] }>;
+  /**
+   * Installed mods share one worker (troubleshoot.md, "`it crashed the hooks worker`"). A runtime that
+   * has one calls every listener when the worker stopped responding or crashed and has been replaced:
+   * the modules it held are gone, and the kit loads each mod's module again in the new worker. The
+   * returned promise settles once the kit has done that, so the runtime can hold its events until then.
+   * The kit handles one stop at a time, after any load or reload in progress ends, so a call of the
+   * runtime that loads a module must settle when the worker stops, not wait for its listeners.
+   * Returns the function that removes the listener.
+   */
+  onCrash?(listener: (crash: WorkerCrash) => Promise<void>): () => void;
 }
 
-/** TypeScript, TSX and JSX hooks modules to one JavaScript ES module; the host owns the compiler. */
+/** A stop of the hooks worker, as the host's runtime saw it. */
+export interface WorkerCrash {
+  /** What the runtime saw, for the debug log. */
+  readonly reason: string;
+  /** The mod the runtime traced the stop to (a hook that blocks the thread); absent when it could not. */
+  readonly culprit?: string;
+}
+
+/**
+ * TypeScript, TSX and JSX hooks modules to JavaScript; the host owns the compiler and chooses the
+ * format its engine runs. It returns two outputs: `scan`, an ES module the static scan reads, and
+ * `run`, the code and format `ModRuntime.load` receives. A compiler whose run output is an ES
+ * module (`format: 'esm'`) may return it alone, and the scan reads it.
+ */
 export interface ModCompiler {
   compile(
     input: { readonly files: PluginFiles; readonly entry: string },
     signal: AbortSignal,
-  ): Promise<{ readonly code?: string; readonly issues: readonly PluginIssue[] }>;
+  ): Promise<CompileResult>;
+}
+
+/**
+ * Runs a regular expression of a matcher outside the host's thread, or under a limit (events.md,
+ * "Filter which events a hook handles"): a hook's pattern is written by the mod's author, and a
+ * pattern such as `/^(a+)+$/` can run for ever on the thread that serves the session. Without one
+ * the kit tests a pattern with the engine's own `RegExp`, in this thread.
+ */
+export interface MatcherEngine {
+  /** Prepares a pattern; throws a `SyntaxError` when `source` is not a valid expression, which refuses the module. */
+  compile(source: string, flags: string): MatcherPattern;
+}
+
+/** One pattern ready to test strings. */
+export interface MatcherPattern {
+  /**
+   * Whether `value` matches. May answer later; stops when `limit.signal` aborts, which the kit does
+   * once `limit.ms` has passed without an answer. A rejection counts as a refusal.
+   */
+  test(
+    value: string,
+    limit: { readonly ms: number; readonly signal: AbortSignal },
+  ): boolean | Promise<boolean>;
 }
 
 /** One JSON file per mod; the kit owns `get`, `set`, `delete`, `keys` and the size limit. */

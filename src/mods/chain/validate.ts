@@ -1,5 +1,6 @@
 import { error, type PluginIssue } from '../../format/issues.ts';
 import { TELEMETRY_FILTER, type ModTier } from '../../protocol/mods-events.ts';
+import type { MatcherEngine } from '../ports.ts';
 import type { RegisteredHook } from '../types.ts';
 import { acceptsField, compileMatcher, isUnfiltered, type CompiledMatcher } from './matcher.ts';
 import { isKnownEvent, isStreamEvent, isTelemetryEvent, isWildcard } from './wildcard.ts';
@@ -52,13 +53,14 @@ function duplicates(hooks: readonly RegisteredHook[]): PluginIssue[] {
 export function checkHooks(
   hooks: readonly RegisteredHook[],
   tier: ModTier,
+  engine?: MatcherEngine,
 ): { readonly issues: readonly PluginIssue[]; readonly matchers: readonly CompiledMatcher[] } {
   const issues = [...duplicates(hooks)];
   const matchers: CompiledMatcher[] = [];
   for (const hook of hooks) {
     const found = formProblem(hook) ?? telemetryProblem(hook, tier);
     if (found) issues.push(found);
-    const compiled = compileMatcher(hook.matcher);
+    const compiled = compileMatcher(hook.matcher, engine);
     if ('test' in compiled) matchers.push(compiled);
     else issues.push(error(at(hook.event), `on("${hook.event}"): ${compiled.problem}`));
   }

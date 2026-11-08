@@ -30,6 +30,25 @@ spec('mods.command./reload-plugins', () => {
     expect(starts).toEqual(['one', 'two']);
   });
 
+  test('a mod loaded on its own with loadMod is loaded again by a reload, in the order policy gives', async () => {
+    const seen: string[] = [];
+    const make = (label: string) =>
+      registerOf((on) => {
+        on('tool.call', async (_$: unknown, e: unknown, next: (e: unknown) => Promise<unknown>) => {
+          seen.push(label);
+          return next(e);
+        });
+      });
+    const { host } = session({ a: make('a'), b: make('b') });
+    await host.load([modPlugin(inline('a'), make('a'))]);
+    await host.loadMod(modPlugin(inline('b'), make('b')));
+    const report = await host.reload();
+    expect(report.loaded.map((mod) => mod.name)).toEqual(['a', 'b']);
+    await host.fire('tool.call', { tool: 'Bash' });
+    expect(seen).toEqual(['a', 'b']);
+    expect(host.active()).toHaveLength(2);
+  });
+
   test('session.start reaches each loaded mod once, with the surface, whether it is interactive and the directory', async () => {
     const seen: unknown[] = [];
     const watch = registerOf((on) => {

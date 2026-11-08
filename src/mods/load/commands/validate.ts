@@ -7,6 +7,8 @@ import {
 import { validateManifest } from '../../../format/manifest.ts';
 import type { PluginFiles } from '../../../ports/index.ts';
 import type { ModCompiler } from '../../ports.ts';
+import { scanSourceOf, type CompileResult } from '../compile-output.ts';
+import { thrownByCompiler } from '../engine-faults.ts';
 import { declaredState, missingTypes } from '../types-decl.ts';
 import { callLabel, hookLabel, scanHooksModule, type ModScan } from '../scan/index.ts';
 
@@ -94,6 +96,21 @@ export function scanLines(written: string, scan: ModScan): string[] {
   return lines;
 }
 
+/**
+ * What `validate` reads of a compiler result: the scan output (a compiler with only a scan output is
+ * enough, `validate` runs nothing). As on load, the scan's own problem is the reason when the
+ * compiler gave an output, and the compiler's first issue only when it gave none.
+ */
+function scanOf(
+  compiled: CompileResult,
+  entry: string,
+): { readonly code: string } | { readonly issue: PluginIssue } {
+  const source = scanSourceOf(compiled, entry);
+  if ('code' in source) return source;
+  const hasOutput = compiled.scan !== undefined || compiled.run !== undefined;
+  return { issue: (hasOutput ? undefined : compiled.issues[0]) ?? error(entry, source.problem) };
+}
+
 /** The module's source as the scan reads it: written JavaScript as it is, anything else through the compiler. */
 async function sourceOf(
   input: ValidateInput,
@@ -112,9 +129,15 @@ async function sourceOf(
       issue: error(entry, `${entry}: a TypeScript or JSX hooks module needs a compiler to be read`),
     };
   }
-  const compiled = await compiler.compile({ files, entry }, signal ?? new AbortController().signal);
-  if (compiled.code !== undefined) return { code: compiled.code };
-  return { issue: compiled.issues[0] ?? error(entry, `${entry}: the compiler gave no code`) };
+  try {
+    const compiled = await compiler.compile(
+      { files, entry },
+      signal ?? new AbortController().signal,
+    );
+    return scanOf(compiled, entry);
+  } catch (thrown) {
+    return { issue: thrownByCompiler(entry, thrown) };
+  }
 }
 
 interface Module {

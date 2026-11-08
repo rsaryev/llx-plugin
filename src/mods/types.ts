@@ -58,14 +58,14 @@ export interface ModTimer {
 export type ModsTimerMember = (...args: readonly unknown[]) => ModTimer;
 
 /** The calls that return a timer and not a promise. */
-type TimerEventName = 'clock.after' | 'clock.every';
+export type TimerEventName = 'clock.after' | 'clock.every';
 
 /**
  * `$.ui.resolve(e)` answers at once: the docs destructure its result without `await` (interface.md,
  * "Build a tree from elements"), because the element table was resolved when mods loaded.
  */
 export type ModsSyncMember = (...args: readonly unknown[]) => ElementTable;
-type SyncEventName = 'ui.resolve';
+export type SyncEventName = 'ui.resolve';
 
 /** `$.process.spawn` streams the command's output, so it returns the stream and not a promise (api.md, "Reach files, processes, and the network"). */
 export type ModsStreamMember = (...args: readonly unknown[]) => AsyncGenerator<unknown, unknown>;
@@ -144,10 +144,20 @@ export interface ModPluginInfo {
   readonly api: ModsApi;
 }
 
+/**
+ * Why a hook was skipped, as the line classes it: it threw, it ran over a time limit, or what it
+ * returned had the wrong shape (troubleshoot.md, "`hook skipped`": "A hook threw, exceeded its time
+ * limit, or returned a result of the wrong shape"). A skip because the event came from the mod's
+ * own API call is `re-entry`, and is not reported.
+ */
+export type SkipKind = 'throw' | 'timeout' | 'wrong-shape' | 're-entry';
+
 /** One line the chain reports when it skips a hook: `my-mod: tool.call hook skipped: threw Error: boom`. */
 export interface HookReport {
   readonly plugin: string;
   readonly event: string;
+  /** The class of failure: the line is shown once for each event and kind until the mod reloads. */
+  readonly kind: SkipKind;
   readonly reason: string;
   readonly line: string;
 }
@@ -197,6 +207,13 @@ export interface DispatchOptions {
   /** Claude Code's own behaviour, at the end of the chain. A streaming event gives a stream. */
   readonly core: (e: unknown) => Promise<unknown> | AsyncGenerator<unknown, unknown>;
   readonly report: (report: HookReport) => void;
+  /**
+   * What runs before the first mod's hook (events.md, "Where settings hooks run in the order": the
+   * `PreToolUse` hooks of managed settings run before the first mod's `tool.call` hook). It returns
+   * `undefined` to let the chain run, or the answer of the whole event: then no hook runs, no more
+   * than Claude Code's own behaviour.
+   */
+  readonly before?: (e: unknown) => unknown;
   readonly reentry?: ReentryInfo;
   /**
    * The mod whose mods API call fires the event: only the hooks of the mods that run before it
@@ -213,6 +230,8 @@ export interface DispatchOptions {
   readonly debug?: (line: string) => void;
   /** The limit all the hooks of the event share, in milliseconds; `session.end` has one by default. */
   readonly groupMs?: number;
+  /** Observes each valid hook result before outer hooks can replace it (engine settings refusals). */
+  readonly observeResult?: (value: unknown) => void;
 }
 
 export interface ModChain {

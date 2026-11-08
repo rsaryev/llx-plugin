@@ -2,6 +2,7 @@ import { expect } from './expect.ts';
 import { bindOn, mock, type On } from './mock.ts';
 import { isKnownEvent } from './stubs.ts';
 import type { InlineMod } from './inline-files.ts';
+import type { MountHandle, MountSpec } from './mount.ts';
 import type { TierName, World } from './world.ts';
 
 /**
@@ -18,9 +19,13 @@ export interface TestOptions {
 }
 
 /** `$` of a test: `$.tool.call(input)`, `$.command.run(input)`, `$.classic.Stop(input)`, `$.ui.mount(spec)`. */
-export type TestDollar = Readonly<
-  Record<string, Readonly<Record<string, (input: Record<string, unknown>) => Promise<unknown>>>>
->;
+export type TestDollar = Readonly<{
+  /** `$.ui.mount` draws a site and gives the handle (listed first, so its call is the one a `MountSpec` meets). */
+  ui: { mount(spec: MountSpec): Promise<MountHandle> };
+}> &
+  Readonly<
+    Record<string, Readonly<Record<string, (input: Record<string, unknown>) => Promise<unknown>>>>
+  >;
 
 /** A test's body: `$` acts as Claude Code, `on` registers stubs. */
 export type TestBody = ($: TestDollar, on: On) => unknown;

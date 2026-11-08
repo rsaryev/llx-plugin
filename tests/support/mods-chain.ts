@@ -1,6 +1,6 @@
 import { MODS_API } from '../../src/protocol/mods-api-names.ts';
 import { ENGINE_ORIGIN, type HookOrigin, type ModMatcher } from '../../src/protocol/mods-events.ts';
-import { createModChain } from '../../src/mods/chain/index.ts';
+import { createModChain, type ModChainOptions } from '../../src/mods/chain/index.ts';
 import type { PluginIssue } from '../../src/format/index.ts';
 import type {
   DispatchOptions,
@@ -132,6 +132,7 @@ export interface FireOptions {
   readonly signal?: AbortSignal;
   readonly reentry?: ReentryInfo;
   readonly groupMs?: number;
+  readonly before?: (e: unknown) => unknown;
 }
 
 type Raw = {
@@ -147,11 +148,13 @@ type Raw = {
 export function harness(
   shapeProblem?: (event: string, result: unknown) => string | undefined,
   rules: Partial<EventRules> = {},
+  extra: Pick<ModChainOptions, 'matcherEngine' | 'matcherMs'> = {},
 ) {
   const clock = fixedClock();
   const chain: ModChain = createModChain({
     clock,
     rules: { ...(shapeProblem ? { shapeProblem: (e, r) => shapeProblem(e, r) } : {}), ...rules },
+    ...extra,
   });
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a test fires events by name, without the typed event tables
   const raw = chain as unknown as Raw;
@@ -174,6 +177,7 @@ export function harness(
       }),
     report: (report) => reports.push(report),
     ...(given.reentry ? { reentry: given.reentry } : {}),
+    ...(given.before ? { before: given.before } : {}),
     ...(given.groupMs === undefined ? {} : { groupMs: given.groupMs }),
   });
   const fire = (name: string, input: Ev = {}, given: FireOptions = {}): Promise<unknown> =>

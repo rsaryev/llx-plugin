@@ -3,6 +3,8 @@ import { MOD_EVENT_NAMES, type ApiEventName, type ModTier } from '../../protocol
 import type { HookReport, ModChain } from '../types.ts';
 import type { ModHostPorts } from './ports.ts';
 import type { ModRegistries } from './registries.ts';
+import type { RunGate } from './gate.ts';
+import type { ReplayLedger } from './replay.ts';
 import type { Scope } from './scope.ts';
 import type { StateStore } from './state.ts';
 
@@ -17,6 +19,10 @@ export interface Deps {
   readonly registries: ModRegistries;
   /** `$.state`, shared by every mod. */
   readonly state: StateStore;
+  /** The calls a fresh copy of a mod does not make again (`ReplayLedger`), shared by every mod. */
+  readonly replay: ReplayLedger;
+  /** What the session says about new work: which calls it refuses now (`RunGate`), shared by every mod. */
+  readonly gate: RunGate;
   /** Aborts when the mod's module is unloaded: background work stops with it. */
   readonly signal: AbortSignal;
   readonly report: (report: HookReport) => void;
@@ -64,6 +70,19 @@ export function parse<T extends z.ZodType>(label: string, schema: T, value: unkn
   const parsed = schema.safeParse(value);
   if (parsed.success) return parsed.data;
   throw new Error(`${label}: ${describeIssue(parsed.error)}`);
+}
+
+/**
+ * A registration refuses once the module that made it is gone (troubleshoot.md, "`$.agent.register`
+ * refused"): a reload loads a fresh copy of the module, and a call from code still running in the old
+ * copy, such as a hook that had not returned yet, would register what no copy owns. The docs name
+ * `$.agent.register`; `$.command.register` and `$.tool.register` are refused the same way (judgment).
+ */
+export function assertLoaded(deps: Deps, name: string): void {
+  if (!deps.signal.aborted) return;
+  throw new Error(
+    `${deps.plugin}: $.${name} refused: the hooks module that made the call is no longer loaded (it was reloaded or removed)`,
+  );
 }
 
 /** The text of something thrown. */

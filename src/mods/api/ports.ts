@@ -136,18 +136,31 @@ export interface ModSession {
   usage(): Promise<JsonObject>;
   version(): Promise<string>;
   compact(signal: AbortSignal): Promise<void>;
-  send(to: string, text: string, signal: AbortSignal): Promise<JsonObject>;
+  /**
+   * Sends the message and resolves with `{ isDelivered }`. `refusal` is the reason the session takes
+   * no new work from mods now (`RunGate.refusal`), when it takes none: a host whose target is a
+   * subagent that finished or a teammate answers `{ isDelivered: false, reason }` with the sentence
+   * from `unsentReason`, and still delivers to a subagent that is running.
+   */
+  send(to: string, text: string, signal: AbortSignal, refusal?: string): Promise<JsonObject>;
   append(row: EventData, signal: AbortSignal): Promise<void>;
   authorize(request: EventData, signal: AbortSignal): Promise<unknown>;
 }
 
 export interface ModPrompts {
-  /** `from` names the mod that sends the text; it is absent for `asUser`, which sends the user's own words. */
-  submit(prompt: {
-    readonly text: string;
-    readonly asUser?: true;
-    readonly from?: string;
-  }): Promise<{ readonly drop?: string }>;
+  /**
+   * `from` names the mod that sends the text; it is absent for `asUser`, which sends the user's own
+   * words. It resolves when the turn starts. `queue` aborts when the user stops the turn first: the
+   * kit has then answered the call with a drop, and the host takes the prompt out of its queue.
+   */
+  submit(
+    prompt: {
+      readonly text: string;
+      readonly asUser?: true;
+      readonly from?: string;
+    },
+    queue?: AbortSignal,
+  ): Promise<{ readonly drop?: string }>;
   read(): Promise<{ readonly text: string; readonly cursor: number }>;
   fill(text: string): Promise<{ readonly isFilled: boolean }>;
   suggest(text: string): Promise<{ readonly isShown: boolean }>;
@@ -165,12 +178,24 @@ export interface ModAgents {
 export interface ModCommands {
   /** The names of Claude Code's own commands, which a mod's command cannot take. */
   builtIns(): readonly string[];
-  /** Runs a command; rejects with the reason when it is refused. */
-  run(command: { readonly command: string; readonly args: string }): Promise<unknown>;
+  /**
+   * Runs a command; rejects with the reason when it is refused. `queue` aborts when the user stops
+   * the turn before the command ran: the kit has then rejected the call, and the host drops the command.
+   */
+  run(
+    command: { readonly command: string; readonly args: string },
+    queue?: AbortSignal,
+  ): Promise<unknown>;
 }
 
 export interface ModTools {
-  call(call: EventData, signal: AbortSignal): Promise<unknown>;
+  /**
+   * Runs a tool call. `held` answers whether the session's input is held now (a Stop, a limit or the
+   * end of input): a foreground Bash or PowerShell command that reaches its timeout while it is held
+   * is ended instead of moving to the background, resolves with `isError` set, and its output
+   * includes `HELD_AT_TIMEOUT` (api.md, "Work your mod started before the interruption").
+   */
+  call(call: EventData, signal: AbortSignal, held?: () => Promise<boolean>): Promise<unknown>;
   check(call: EventData, signal: AbortSignal): Promise<unknown>;
 }
 
