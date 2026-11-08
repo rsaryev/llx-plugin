@@ -293,3 +293,4 @@ export {
   type AgedName,
   type CopySweep,
 } from './copy-sweep.ts';
+export * from './version-index.ts';

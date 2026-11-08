@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- Plugin versions and names: `computePluginVersion` (manifest, entry, then the source's commit,
+  digest or `unknown`; command sources hashed, the entry's version ignored), `copyModeHash`,
+  `linkModeHash`, `subdirectoryPathHash`, `unknownVersionSteps`, `pluginNames`, `lookupPlugin`,
+  `folderCollisions` and `listingFields`, with the strict-mode and display-field merge rules proven.
+
 ### Fixed
 
 - Install records and plans (review fixes): a `__proto__` key in `installed_plugins.json` or
