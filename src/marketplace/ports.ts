@@ -19,3 +19,12 @@ export interface SourceFetcher {
     signal: AbortSignal,
   ): Promise<{ readonly files: PluginFiles } | PluginIssue>;
 }
+
+/**
+ * Opens a directory the host names by absolute path (the directory a `command` source printed) as
+ * read-only plugin files rooted there, so the kit can judge what is inside without reading outside
+ * it. `undefined` when the path is not an existing directory.
+ */
+export interface PluginDirectories {
+  open(path: string, signal: AbortSignal): Promise<PluginFiles | undefined>;
+}

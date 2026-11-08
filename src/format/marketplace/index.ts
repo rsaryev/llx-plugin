@@ -55,6 +55,7 @@ export {
   type EntryReading,
   type EntrySlot,
 } from './marketplace.ts';
+export { parsePluginSource } from './plugin-source.ts';
 export { createEntryReader, readEntry, type SourceParser, type SourceReading } from './entries.ts';
 export { DIRECTORY_LISTING_FIELDS, ENTRY_KEYS } from './entry-schema.ts';
 export { effectiveDisplayName, mergeEntryWithManifest, type EntryMerge } from './entry-merge.ts';

@@ -13,7 +13,7 @@ export type {
   NpmFetchPlan,
   RenameStatus,
 } from './types.ts';
-export type { HostFetchPlan, SourceFetcher } from './ports.ts';
+export type { HostFetchPlan, PluginDirectories, SourceFetcher } from './ports.ts';
 export type {
   ArchiveFailure,
   ArchiveReader,
@@ -23,3 +23,12 @@ export type {
   GitTagsFailure,
   Sha256,
 } from '../ports/marketplace.ts';
+export { ARCHIVE_LIMITS, planPluginFetch, type Planned } from './fetch-plan.ts';
+export { isBlockedHost } from './blocked-hosts.ts';
+export {
+  runCommandSource,
+  type CommandSourcePorts,
+  type CommandSourceSetting,
+  type FetchedCommandPlugin,
+} from './command-source.ts';
+export { fetchArchive, type ArchivePorts, type FetchedArchive } from './archive-source.ts';

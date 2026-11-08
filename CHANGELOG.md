@@ -66,6 +66,21 @@
   grammar shared by names, rename targets and dependencies (`PLUGIN_ID_PART`, `pluginIdIssues` with
   the documented "Claude Code cannot install plugin" and "cannot contain spaces" messages,
   `desktopNameIssues` for the Claude Desktop warnings).
+- Plugin sources and their fetch plans (`marketplace`): `parsePluginSource` reads an entry's
+  `source` (a relative path, `"."`, a bare name under `metadata.pluginRoot`, and the `github`,
+  `url`, `git-subdir`, `npm`, `archive` and `command` objects with the documented field rules and
+  messages: `Invalid string: must start with "./"`, `Path contains ".."`, the `unsupported`
+  placeholder, `sha` of 40 lowercase hex, `sha256` of 64 hex, a command of printable ASCII, 500
+  characters at most, with no run of four spaces, `timeout` 1 to 600 and `mode`); `planPluginFetch`
+  turns a source into a `FetchPlan` (a relative path resolves from the marketplace root and not
+  for a `url` or `settings` marketplace, `sha` wins over `ref`, `git-subdir` is a sparse and, over
+  https or SSH, partial clone, npm never runs install scripts or installs dependencies, the npm
+  refusals for git addresses, folders, `npm:` aliases, tarball links and http registries, an archive
+  over https that is not a loopback, link-local or cloud-metadata host with its download and
+  extraction limits, a command through `sh` or `cmd.exe` from the home directory, link mode refused
+  on Windows); `runCommandSource` and `fetchArchive` run the two engines through `CommandRunner`,
+  `HttpClient`, `Sha256`, `ArchiveReader` and the new `PluginDirectories` port and refuse every
+  failure the docs list.
 
 ### Fixed
 
