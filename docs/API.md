@@ -944,8 +944,8 @@ use, so the next call after an update sees the new one. What it does:
 A session takes an update up at its next use, so two updates before that count as one: a plugin
 removed and added back in between never left it. A host that needs each step uses the session between
 the calls. What the host held for a run (the hooks of `addHooks` with `lifetime: 'turn'`) is the
-run's: it ends with `runScoped` as before. Replaces the hand-off of the latest run's hooks and the
-per-run rebuild of the hooks a host makes today.
+run's: it ends with `runScoped` as before. A host no longer rebuilds the hooks of each run or hands
+the latest run's hooks to its sessions: it calls `update` when the plugins or settings change.
 
 Not in the host: reading plugin folders from disk and caching them (the host owns that and feeds new `Plugin` objects
 through `update`), starting servers and monitors, the permission decision of a tool call (`decide` in the rules
