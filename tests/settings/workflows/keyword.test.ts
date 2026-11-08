@@ -12,10 +12,13 @@
  * conversation), § Turn workflows off ("The `ultracode` keyword no longer triggers a run").
  */
 import { describe, expect, test } from 'bun:test';
+import type { SDKMessageOrigin } from '../../../src/protocol/official.ts';
 import {
+  createWorkflowSettingsPolicy,
   keywordTrigger,
   PROMPT_SURFACES,
   type PromptInput,
+  type PromptSurface,
   workflowsDecision,
   type WorkflowsContext,
 } from '../../../src/settings/workflows/index.ts';
@@ -32,6 +35,17 @@ const at = (surface: PromptInput['surface'], origin?: PromptInput['origin']): Pr
   text: audit,
   ...(origin === undefined ? {} : { origin }),
 });
+/** Every origin an SDK application can stamp but `human`: tsc fails here when the SDK adds a kind. */
+const NON_HUMAN_ORIGINS = {
+  channel: { kind: 'channel', server: 'chat' },
+  peer: { kind: 'peer', from: 'other-session' },
+  'task-notification': { kind: 'task-notification' },
+  'auto-continuation': { kind: 'auto-continuation' },
+  coordinator: { kind: 'coordinator' },
+  observer: { kind: 'observer', from: 'other-session', senderTaskId: 'task-1' },
+  'observer-activity': { kind: 'observer-activity' },
+  unclassified: { kind: 'unclassified' },
+} as const satisfies { [K in Exclude<SDKMessageOrigin['kind'], 'human'>]: SDKMessageOrigin };
 const audit = 'ultracode: audit every API endpoint under src/routes/ for missing auth checks';
 
 spec('settings.key.workflowKeywordTriggerEnabled', () => {
@@ -71,11 +85,26 @@ spec('settings.key.workflowKeywordTriggerEnabled', () => {
   });
 
   test('the key leaves workflows themselves alone: the other ways to start one stay available', () => {
-    const decision = workflowsDecision(viewOf(['user', setting(false)]), team);
-    expect(decision.enabled).toBe(true);
-    expect(decision.surfaces.workflowsView).toBe(true);
-    expect(decision.surfaces.workflowCommands).toBe(true);
-    expect(decision.surfaces.ultracodeToggle).toBe(true);
+    const on = createWorkflowSettingsPolicy(viewOf(['user', setting(true)]), team);
+    const off = createWorkflowSettingsPolicy(viewOf(['user', setting(false)]), team);
+    expect(off.workflowsEnabled).toBe(true);
+    expect(off.workflowsEnabled).toBe(on.workflowsEnabled);
+    expect(plain(off.enablement().surfaces)).toEqual(plain(on.enablement().surfaces));
+    expect(off.enablement().surfaces).toMatchObject({
+      workflowsView: true,
+      workflowCommands: true,
+      ultracodeToggle: true,
+    });
+  });
+
+  test('the key leaves /effort ultracode alone: that prompt is the effort setting and reports its own reason', () => {
+    const view = viewOf(['user', setting(false)]);
+    const policy = createWorkflowSettingsPolicy(view, team);
+    const effort = policy.keyword(typed('/effort ultracode'));
+    expect(effort).toMatchObject({ triggers: false, reason: 'noKeyword', highlight: undefined });
+    expect(keywordTrigger(view, team, typed('/effort ultracode'))).toEqual(effort);
+    // A prompt with the keyword in prose is the one the key switches off.
+    expect(policy.keyword(typed(audit)).reason).toBe('keywordSettingOff');
   });
 
   test('the keyword no longer triggers a run when workflows are turned off', () => {
@@ -100,13 +129,16 @@ spec('settings.key.workflowKeywordTriggerEnabled', () => {
   test('it does not trigger for an SDK prompt that is not stamped as human input', () => {
     const unstamped = keywordTrigger(viewOf(), team, at('sdk'));
     expect(unstamped).toMatchObject({ triggers: false, reason: 'notTypedByHuman' });
-    const others = [
-      { kind: 'channel', server: 'chat' },
-      { kind: 'peer', from: 'other-session' },
-      { kind: 'task-notification' },
-    ] as const;
-    for (const origin of others) {
-      expect(keywordTrigger(viewOf(), team, at('sdk', origin)).triggers).toBe(false);
+  });
+
+  test('it does not trigger for an SDK prompt stamped with any origin but human', () => {
+    expect(Object.keys(NON_HUMAN_ORIGINS)).toHaveLength(8);
+    for (const origin of Object.values(NON_HUMAN_ORIGINS)) {
+      expect(keywordTrigger(viewOf(), team, at('sdk', origin))).toMatchObject({
+        triggers: false,
+        reason: 'notTypedByHuman',
+        highlight: undefined,
+      });
     }
   });
 
@@ -119,10 +151,25 @@ spec('settings.key.workflowKeywordTriggerEnabled', () => {
     }
   });
 
-  test('every surface the kit knows is decided', () => {
-    for (const surface of PROMPT_SURFACES) {
-      expect(typeof keywordTrigger(viewOf(), team, at(surface)).triggers).toBe('boolean');
+  test('every surface the kit knows is decided, with the rule the docs give for it', () => {
+    const human: SDKMessageOrigin = { kind: 'human' };
+    const rows = {
+      interactive: [at('interactive'), true],
+      ideExtension: [at('ideExtension'), true],
+      remoteControl: [at('remoteControl'), true],
+      sdk: [at('sdk', human), true],
+      print: [at('print', human), false],
+      scheduledTask: [at('scheduledTask', human), false],
+      relayedEvent: [at('relayedEvent', human), false],
+    } as const satisfies { [S in PromptSurface]: readonly [PromptInput, boolean] };
+    expect(Object.keys(rows)).toEqual([...PROMPT_SURFACES]);
+    for (const [input, expected] of Object.values(rows)) {
+      const verdict = keywordTrigger(viewOf(), team, input);
+      expect(verdict.triggers).toBe(expected);
+      expect(verdict.reason).toBe(expected ? undefined : 'notTypedByHuman');
+      expect(verdict.highlight === undefined).toBe(!expected);
     }
+    expect(PROMPT_SURFACES).toHaveLength(7);
   });
 
   test('a human origin stamped on a surface that is not an SDK prompt changes nothing', () => {
@@ -154,12 +201,18 @@ describe('what the docs leave open (spec/judgments.md)', () => {
     expect(triggers('  /effort ultracode')).toBe(false);
   });
 
-  test('the reasons are checked in the order workflows, surface, dismissal, setting, keyword', () => {
+  test('the reasons are checked in the order workflows, surface, dismissal, keyword, setting', () => {
     const off = viewOf(['managed', { disableWorkflows: true }], ['user', setting(false)]);
     const input: PromptInput = { surface: 'print', text: 'no keyword', dismissed: true };
     expect(keywordTrigger(off, team, input).reason).toBe('workflowsOff');
     expect(keywordTrigger(viewOf(['user', setting(false)]), team, input).reason).toBe(
       'notTypedByHuman',
     );
+    const settingOff = viewOf(['user', setting(false)]);
+    expect(
+      keywordTrigger(settingOff, team, { ...typed('no keyword'), dismissed: true }).reason,
+    ).toBe('dismissed');
+    expect(keywordTrigger(settingOff, team, typed('no keyword')).reason).toBe('noKeyword');
+    expect(keywordTrigger(settingOff, team, typed(audit)).reason).toBe('keywordSettingOff');
   });
 });

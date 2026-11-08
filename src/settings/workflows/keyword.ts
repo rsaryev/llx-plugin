@@ -28,7 +28,10 @@ export interface PromptInput {
   readonly dismissed?: boolean;
 }
 
-/** Why a prompt does not trigger a workflow, in the order the kit checks them (spec/judgments.md). */
+/**
+ * Why a prompt does not trigger a workflow, in the order the kit checks them (spec/judgments.md). The
+ * setting is named only for a prompt that has the keyword: `/effort ultracode` reads the same either way.
+ */
 export type KeywordMiss =
   | 'workflowsOff'
   | 'notTypedByHuman'
@@ -94,8 +97,8 @@ const miss = (reason: KeywordMiss): KeywordVerdict => ({
 /**
  * Whether typing `ultracode` in `prompt` starts a dynamic workflow: workflows are on, the prompt is one
  * a person typed (settings-reference.md, `workflowKeywordTriggerEnabled`; workflows.md, "Where the keyword
- * works"), its highlight was not dismissed, `workflowKeywordTriggerEnabled` is not `false` (default
- * `true`) and the keyword is in the text. The key switches the keyword only: `/effort ultracode`,
+ * works"), its highlight was not dismissed, the keyword is in the text and `workflowKeywordTriggerEnabled` is
+ * not `false` (default `true`). The key switches the keyword only: `/effort ultracode`,
  * `/workflows` and saved workflow commands do not read it.
  */
 export function keywordTrigger(
@@ -106,7 +109,8 @@ export function keywordTrigger(
   if (!workflowsDecision(view, context).enabled) return miss('workflowsOff');
   if (!TYPED[prompt.surface](prompt.origin)) return miss('notTypedByHuman');
   if (prompt.dismissed === true) return miss('dismissed');
-  if (view.get('workflowKeywordTriggerEnabled') === false) return miss('keywordSettingOff');
   const highlight = find(prompt.text);
-  return highlight ? { triggers: true, reason: undefined, highlight } : miss('noKeyword');
+  if (highlight === undefined) return miss('noKeyword');
+  if (view.get('workflowKeywordTriggerEnabled') === false) return miss('keywordSettingOff');
+  return { triggers: true, reason: undefined, highlight };
 }

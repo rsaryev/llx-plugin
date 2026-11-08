@@ -118,6 +118,14 @@
 
 ### Fixed
 
+- Settings, workflow keys: the decision no longer carries `inProgressRunsContinue`, a constant that
+  described no run state (the duty to let a run finish is recorded as a host duty); the size
+  decision returns `largeWorkflowThreshold` and the new `largeWorkflowTokens` (1.5 million) as
+  `undefined` while the host says `ultracode` is on, as the docs say the `Large workflow` warning
+  does not show then; tests table every prompt surface and every non-human SDK origin with its
+  expected verdict and reason, and show that `workflowKeywordTriggerEnabled: false` leaves
+  `/effort ultracode` and the workflow surfaces as they are.
+
 - Settings, hook policy: `allowedHttpHookUrls` pattern `http://localhost:*` now also matches
   `http://localhost/x` (a wildcard port also stands for no port), as the docs example says; a
   `disableAllHooks: true` in the SDK's `managedSettings` is a lock that binds as

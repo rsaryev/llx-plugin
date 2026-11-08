@@ -8,7 +8,8 @@
  * value table; "The default is `medium`, or `small` when you're signed in on a Pro plan"; "the
  * workflow's `Running in background` line names the size in force"), § Cost ("If you choose a size
  * guideline yourself, its agent count replaces the 25-agent threshold. The built-in default guideline
- * leaves the threshold at 25").
+ * leaves the threshold at 25"; "Sessions with ultracode on don't show the warning"; "more than 25
+ * agents, or its projected token total passes 1.5 million").
  */
 import { describe, expect, test } from 'bun:test';
 import { workflowSize, type WorkflowSizeContext } from '../../../src/settings/workflows/index.ts';
@@ -87,6 +88,31 @@ spec('settings.key.workflowSizeGuideline', () => {
   test('the built-in default guideline leaves the threshold at 25', () => {
     expect(workflowSize(viewOf(), team).largeWorkflowThreshold).toBe(25);
     expect(workflowSize(viewOf(), pro).largeWorkflowThreshold).toBe(25);
+  });
+
+  test('the warning also shows past a projected 1.5 million tokens, whatever the guideline', () => {
+    expect(workflowSize(viewOf(), team).largeWorkflowTokens).toBe(1_500_000);
+    expect(workflowSize(viewOf(['user', guideline('small')]), team).largeWorkflowTokens).toBe(
+      1_500_000,
+    );
+  });
+
+  test('a session with ultracode on shows no Large workflow warning', () => {
+    const ultracode = { ...team, ultracode: true };
+    for (const value of [undefined, 'small', 'large', 'unrestricted']) {
+      const view = value === undefined ? viewOf() : viewOf(['user', guideline(value)]);
+      expect(workflowSize(view, ultracode)).toMatchObject({
+        largeWorkflowThreshold: undefined,
+        largeWorkflowTokens: undefined,
+      });
+    }
+    expect(workflowSize(viewOf(), { ...team, ultracode: false }).largeWorkflowThreshold).toBe(25);
+  });
+
+  test("the size in force is what the Running in background line names: the decision's size", () => {
+    expect(workflowSize(viewOf(), team).size).toBe('medium');
+    expect(workflowSize(viewOf(), { ...team, configChoice: 'large' }).size).toBe('large');
+    expect(workflowSize(viewOf(['user', guideline('small')]), team).size).toBe('small');
   });
 
   test('a value that is not one of the four is dropped with a warning, so the default applies', () => {

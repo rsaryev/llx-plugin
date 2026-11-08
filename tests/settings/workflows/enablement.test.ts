@@ -9,7 +9,7 @@
  * settings sets `enableWorkflows`, or sets `disableWorkflows` to `true`"), workflows.md § Turn
  * workflows off ("`/workflows`, the workflow commands, and the `/workflow-authoring` skill are
  * unavailable"; "The `ultracode` keyword no longer triggers a run, and the Ultracode toggle is
- * removed from `/effort`"; "A run that was already in progress keeps going"; organization toggle on
+ * removed from `/effort`"; organization toggle on
  * the admin settings page), env-vars.md § `CLAUDE_CODE_DISABLE_WORKFLOWS` ("Set to `1`").
  */
 import { describe, expect, test } from 'bun:test';
@@ -47,12 +47,6 @@ spec('settings.key.disableWorkflows', () => {
       keyword: false,
       ultracodeToggle: false,
     });
-  });
-
-  test('a run already in progress keeps going', () => {
-    expect(workflowsDecision(viewOf(['user', disable(true)]), team).inProgressRunsContinue).toBe(
-      true,
-    );
   });
 
   test('false is the same as unset: the plan default then decides', () => {

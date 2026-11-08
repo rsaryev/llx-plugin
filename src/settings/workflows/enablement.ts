@@ -35,7 +35,9 @@ export type WorkflowsOnBy = 'enableWorkflows' | 'plan';
 /**
  * What workflows take with them when they are off (workflows.md, "Turn workflows off"): `/workflows`,
  * the workflow commands and the `/workflow-authoring` skill are unavailable, the `ultracode` keyword
- * no longer triggers a run and the Ultracode toggle is removed from `/effort`.
+ * no longer triggers a run and the Ultracode toggle is removed from `/effort`. A run already in progress
+ * keeps going: the kit holds no run state, so that is a duty of the host, which must not cancel a run
+ * because this decision turned to off (spec/judgments.md).
  */
 export interface WorkflowSurfaces {
   readonly workflowsView: boolean;
@@ -52,8 +54,6 @@ export interface WorkflowsDecision {
   /** Why they are on: an explicit `enableWorkflows: true`, or the plan's default. */
   readonly enabledBy: WorkflowsOnBy | undefined;
   readonly surfaces: WorkflowSurfaces;
-  /** A run already in progress keeps going when workflows are turned off. */
-  readonly inProgressRunsContinue: true;
   /** Whether `/config` shows its Dynamic workflows row. */
   readonly configRowVisible: boolean;
 }
@@ -112,7 +112,6 @@ export function workflowsDecision(view: PolicyView, context: WorkflowsContext): 
     offBy,
     enabledBy: enabled ? (explicit ? 'enableWorkflows' : 'plan') : undefined,
     surfaces: surfaces(enabled),
-    inProgressRunsContinue: true,
     configRowVisible: configRowVisible(view),
   };
 }
