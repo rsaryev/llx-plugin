@@ -8,10 +8,8 @@
 import { describe, expect, test } from 'bun:test';
 import {
   PERMISSION_MODE_INPUTS,
-  PERMISSION_MODE_TRAITS,
   type PermissionModeInput,
 } from '../../src/agents/permission-mode.ts';
-import { PERMISSION_MODES } from '../../src/protocol/permission-modes.ts';
 import { DOC_INPUTS, resolve, row } from '../support/permission-modes.ts';
 import type { PermissionMode } from '../../src/protocol/official.ts';
 import { spec } from '../support/spec.ts';
@@ -79,14 +77,8 @@ spec('agents.permissionMode.acceptEdits', () => {
 });
 
 spec('agents.permissionMode.auto', () => {
-  // The classifier is a model call the host makes: whether it blocks the right commands is not
-  // proven here. The kit proves who runs under it and what is routed to it.
-  test('the mode is the one with a background classifier', () => {
-    expect(PERMISSION_MODES.filter((mode) => PERMISSION_MODE_TRAITS[mode].classifier)).toEqual([
-      'auto',
-    ]);
-  });
-
+  // The classifier is a model call the host makes (spec/judgments.md): the kit proves who runs
+  // under it and what is routed to it.
   test('reads and in-scope edits skip the classifier; everything else goes to it', () => {
     expect(row('auto')).toEqual(['allow', 'allow', 'classify', 'classify']);
     expect(row('auto', false)).toEqual(['allow', 'classify', 'classify', 'classify']);

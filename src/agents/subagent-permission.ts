@@ -1,17 +1,16 @@
 import type { PermissionMode } from '../protocol/official.ts';
 import { normalizePermissionMode } from '../protocol/permission-modes.ts';
-import {
-  PERMISSION_MODE_TRAITS,
-  type MainStance,
-  type PermissionModeInput,
-} from './permission-mode.ts';
+import { PERMISSION_MODE_TRAITS, type MainStance } from './permission-mode.ts';
 
 /** What decides the subagent's mode beyond its own `permissionMode`. */
 export interface SubagentPermissionInput {
   /** The main conversation's current mode. */
   readonly main: PermissionMode;
-  /** The subagent's `permissionMode` ("manual" is `default`); `undefined` when it sets none. */
-  readonly set?: PermissionModeInput | undefined;
+  /**
+   * The subagent's `permissionMode` as text (a `PermissionModeInput`; "manual" is `default`);
+   * `undefined` when it sets none. Raw text from a host that is no mode counts as unset.
+   */
+  readonly set?: string | undefined;
   /** Auto mode is available to the subagent: no `disableAutoMode`, a model that supports it. */
   readonly autoAvailable: boolean;
 }

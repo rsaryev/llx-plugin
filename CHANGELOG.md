@@ -86,6 +86,11 @@
 
 ### Fixed
 
+- Permission modes: the dead `classifier` trait is dropped from `PERMISSION_MODE_TRAITS` and its
+  tautology test with it; `BaselineDecision` derives from the SDK's `PermissionBehavior`;
+  `SubagentPermissionInput.set` takes `string` (raw host text that is no mode counts as unset);
+  `spec/judgments.md` records the host-owned subagent classifier review, read-only Bash as a
+  `read` and the `dontAsk` always-deny cases.
 - `resolveSubagentTools`: a `tools` list naming `SubagentHandback` is no longer refused when the
   host grants it (`handback`), in the foreground or the background; `SubagentRun.teammate` keeps
   the task and cron tools in a background run; `AgentToolFields` derives from the SDK's

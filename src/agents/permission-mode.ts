@@ -31,8 +31,6 @@ export interface GrantEnvironment {
 
 /** What the docs say of a mode, apart from its prompting table row (`baselineDecision`). */
 export interface PermissionModeTraits {
-  /** permission-modes.md, `auto`: "a background classifier reviews commands" (a host's model call). */
-  readonly classifier: boolean;
   /** permission-modes.md, `dontAsk`: "auto-denies every tool call that would otherwise prompt". */
   readonly deniesInsteadOfAsking: boolean;
   /** How a subagent follows the main conversation while the main conversation is in this mode. */
@@ -51,37 +49,31 @@ const never = (): boolean => false;
 /** The registry: a mode added to the SDK's union fails the typecheck here. */
 export const PERMISSION_MODE_TRAITS: { readonly [M in PermissionMode]: PermissionModeTraits } = {
   default: {
-    classifier: false,
     deniesInsteadOfAsking: false,
     whenMain: 'lets-set-apply',
     grantedWhenSet: always,
   },
   acceptEdits: {
-    classifier: false,
     deniesInsteadOfAsking: false,
     whenMain: 'forces',
     grantedWhenSet: always,
   },
   auto: {
-    classifier: true,
     deniesInsteadOfAsking: false,
     whenMain: 'forces',
     grantedWhenSet: (environment) => environment.autoAvailable,
   },
   dontAsk: {
-    classifier: false,
     deniesInsteadOfAsking: true,
     whenMain: 'lets-set-apply',
     grantedWhenSet: always,
   },
   bypassPermissions: {
-    classifier: false,
     deniesInsteadOfAsking: false,
     whenMain: 'forces',
     grantedWhenSet: never,
   },
   plan: {
-    classifier: false,
     deniesInsteadOfAsking: false,
     whenMain: 'holds-plan',
     grantedWhenSet: always,

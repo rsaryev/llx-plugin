@@ -4,18 +4,13 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { baselineDecision } from '../../src/agents/permission-baseline.ts';
-import {
-  resolveSubagentPermissionMode,
-  type SubagentPermissionInput,
-} from '../../src/agents/subagent-permission.ts';
+import { resolveSubagentPermissionMode } from '../../src/agents/subagent-permission.ts';
 
 describe('a permissionMode that is no mode counts as unset', () => {
   test('the subagent inherits the main conversation mode', () => {
     // A host passing raw text: readAgent already drops such a value with a warning.
-    const input: SubagentPermissionInput = JSON.parse(
-      '{"main":"default","set":"yolo","autoAvailable":true}',
-    );
-    expect(resolveSubagentPermissionMode(input)).toEqual({
+    const set: string = 'yolo';
+    expect(resolveSubagentPermissionMode({ main: 'default', set, autoAvailable: true })).toEqual({
       mode: 'default',
       denyInsteadOfAsk: false,
       basis: 'inherited',

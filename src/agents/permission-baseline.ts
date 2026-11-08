@@ -1,11 +1,16 @@
-import type { PermissionMode } from '../protocol/official.ts';
+import type { PermissionBehavior, PermissionMode } from '../protocol/official.ts';
 
-/** The kinds of action the "Available modes" table tells apart. */
+/**
+ * The kinds of action the "Available modes" table tells apart. A read-only Bash command (the
+ * built-in read-only set of permissions.md) is a `read`: permission-modes.md has Manual and
+ * `dontAsk` still run it and `acceptEdits` prompt for the other commands "except the built-in
+ * read-only set". Classifying a command as read-only is the host's.
+ */
 export const ACTION_CATEGORIES = ['read', 'edit', 'filesystem-command', 'other'] as const;
 export type ActionCategory = (typeof ACTION_CATEGORIES)[number];
 
 /** `classify`: the mode's background classifier decides (auto mode). */
-export type BaselineDecision = 'allow' | 'ask' | 'deny' | 'classify';
+export type BaselineDecision = PermissionBehavior | 'classify';
 
 /**
  * One tool call as far as a mode's baseline is concerned. `inScope` is "paths in the working

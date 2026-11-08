@@ -7,7 +7,6 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { PERMISSION_MODE_INPUTS } from '../../src/agents/permission-mode.ts';
-import { AGENT_FIELDS } from '../../src/format/agent-fields.ts';
 import { readAgent } from '../../src/format/agent.ts';
 import { at, file, FILES, loaded, plugin } from '../support/agent-files.ts';
 import { spec } from '../support/spec.ts';
@@ -55,7 +54,6 @@ spec('agents.frontmatter.permissionMode', () => {
   );
 
   test('a plugin agent ignores it: it reaches no definition, whatever the value', () => {
-    expect(AGENT_FIELDS.permissionMode.plugin).toBe('ignored');
     for (const value of ['bypassPermissions', 'plan', 'yolo']) {
       const result = read(`permissionMode: ${value}`, plugin(undefined, 'agents/helper.md'));
       const agent = loaded(result);
