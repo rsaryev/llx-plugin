@@ -3,9 +3,10 @@
  * output is inserted as plain text and is not re-scanned"), § Pass arguments to skills (the
  * `ARGUMENTS:` line), § How Claude Code handles the body of a synced skill, § How injected commands
  * run: the whole of `expandSkill`, the way the pieces fit. The frontmatter fields' effects are in
- * expand-effects.test.ts.
+ * expand-fields.test.ts and expand-tools.test.ts.
  */
 import { describe, expect, test } from 'bun:test';
+import type { Environment } from '../../src/ports/index.ts';
 import { abortOf, expandWith, PLUGIN, skillFrom, textOf } from '../support/expand.ts';
 
 const PR_SUMMARY = `## Pull request context
@@ -184,8 +185,20 @@ describe('where the commands run (judgments)', () => {
     expect(moved.runs[0]?.cwd).toBe('/work/app/sub');
   });
 
-  test('a skill that is not run twice reads the environment once per expansion', async () => {
-    const { runs } = await expandWith(skillFrom(GH, '!`gh a`\n!`gh b`'), { env: { A: '1' } });
+  test('one environment snapshot serves every command of an expansion', async () => {
+    let snapshots = 0;
+    const observe = (environment: Environment): Environment => ({
+      get: (name) => environment.get(name),
+      snapshot: () => {
+        snapshots += 1;
+        return environment.snapshot();
+      },
+    });
+    const { runs } = await expandWith(skillFrom(GH, '!`gh a`\n!`gh b`'), {
+      env: { A: '1' },
+      observe,
+    });
+    expect(snapshots).toBe(1);
     expect(runs.map((run) => run.env)).toEqual([{ A: '1' }, { A: '1' }]);
   });
 });

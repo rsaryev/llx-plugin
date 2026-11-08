@@ -91,6 +91,31 @@ spec('skills.frontmatter.model', () => {
     expect(run.expansion.turn.model).toBeUndefined();
   });
 
+  test('"a model that auto mode doesn\'t support also isn\'t used, and the session keeps its current model"', async () => {
+    const models = { allowed: () => true, supportedInMode: (model: string) => model !== 'haiku' };
+    const run = await expandWith(skillFrom('model: haiku', 'x'), {
+      request: { permissionMode: 'auto', limits: { models } },
+    });
+    expect(run.expansion).toMatchObject({
+      turn: { target: 'turn', modelKept: 'unsupported-in-mode' },
+    });
+    if (!run.expansion.ok) throw new Error('unreachable');
+    expect(run.expansion.turn.model).toBeUndefined();
+  });
+
+  test('a forked skill with an excluded value follows the subagent override rules: the newest permitted version of the family', async () => {
+    const models = {
+      allowed: (model: string) => model !== 'opus',
+      substitute: (model: string) => (model === 'opus' ? 'claude-opus-4-6' : undefined),
+    };
+    const run = await expandWith(skillFrom('context: fork\nmodel: opus', 'x'), {
+      request: { limits: { models } },
+    });
+    expect(run.expansion).toMatchObject({
+      turn: { target: 'subagent', model: 'claude-opus-4-6', modelSubstituted: true },
+    });
+  });
+
   test("with `context: fork` the value sets the forked subagent's model instead", async () => {
     const run = await expandWith(skillFrom('context: fork\nmodel: haiku', 'x'));
     expect(run.expansion).toMatchObject({ turn: { target: 'subagent', model: 'haiku' } });

@@ -21,6 +21,15 @@
   substitutes the Bash rules of `allowed-tools` (the docs' "same variable in both places"), where
   `substituteVariables` was only documented to; the judgments record the escaped-placeholder
   append, three backslashes, `$ARGUMENTS[x]` and `${user_config.*}` in typed arguments.
+- Skills: review fixes for `expandSkill`. A skill that declares hooks under the hooks lock keeps
+  its `allowed-tools` pre-approval when it runs through `context: fork`; the plugin sources the
+  managed settings treat like folders are modelled (`ExpandSession.pluginSource`:
+  `skills-directory` loses hooks under the lock and its grant under `allowManagedPermissionRulesOnly`,
+  `inline-managed-session` loses its grant); an injected command's timeout is
+  `BASH_DEFAULT_TIMEOUT_MS` (default 2 minutes) and the timeout message names it; the permission
+  check receives the same CRLF-normalised command the shell runs. The judgments record who owns
+  `EndConversation` in `disallowed`, output past the inline ceiling, and the bundled and managed
+  skills `disableSkillShellExecution` leaves alone.
 
 ### Added
 

@@ -5,7 +5,7 @@
  * `expandSkill`.
  */
 import { expect, test } from 'bun:test';
-import { expandWith, grantsOf, PLUGIN, skillFrom, textOf } from '../support/expand.ts';
+import { commandFrom, expandWith, grantsOf, PLUGIN, skillFrom, textOf } from '../support/expand.ts';
 import { spec } from '../support/spec.ts';
 
 const RENDER = '!`${CLAUDE_SKILL_DIR}/scripts/render.sh data.csv`';
@@ -96,6 +96,21 @@ spec('settings.key.disableSkillShellExecution', () => {
       expect(textOf(run.expansion)).toBe(`A: ${PLACEHOLDER}`);
       expect(run.runs).toHaveLength(0);
     }
+  });
+
+  test('it covers custom commands too: "skills and custom commands"', async () => {
+    for (const origin of [{ kind: 'user' }, { kind: 'project' }, PLUGIN] as const) {
+      const run = await expandWith(commandFrom('', 'A: !`ls`', origin), { request: disabled });
+      expect(textOf(run.expansion)).toBe(`A: ${PLACEHOLDER}`);
+      expect(run.runs).toHaveLength(0);
+    }
+  });
+
+  test('a custom command runs its commands when the setting is off', async () => {
+    const run = await expandWith(commandFrom(GH_RULE, 'A: !`gh pr diff`'), {
+      replies: [{ stdout: 'diff' }],
+    });
+    expect(textOf(run.expansion)).toBe('A: diff');
   });
 
   test('a skill needing no shell does not fail for want of one when commands are disabled', async () => {

@@ -3,6 +3,7 @@ import { error } from '../format/issues.ts';
 import type { SkillShell } from '../format/skill-types.ts';
 import type { CommandResult, CommandRunner } from '../ports/index.ts';
 import type { PermissionBehavior, PermissionMode } from '../protocol/official.ts';
+import type { DocumentedTool } from '../protocol/tool-names.ts';
 import { isNormalResult } from './shell-exit.ts';
 
 /**
@@ -14,13 +15,15 @@ import { isNormalResult } from './shell-exit.ts';
  */
 
 /** The tool a command runs through, as the permission rules name it. */
-const TOOL_NAMES: { readonly [S in SkillShell]: 'Bash' | 'PowerShell' } = {
+type ShellTool = Extract<DocumentedTool, 'Bash' | 'PowerShell'>;
+
+const TOOL_NAMES: { readonly [S in SkillShell]: ShellTool } = {
   bash: 'Bash',
   powershell: 'PowerShell',
 };
 
 export interface ShellCall {
-  readonly tool: 'Bash' | 'PowerShell';
+  readonly tool: ShellTool;
   /** The command after substitution, as it would run. */
   readonly command: string;
   /**
@@ -62,7 +65,28 @@ export type InjectionResults =
   | { readonly ok: false; readonly issue: PluginIssue };
 
 /** "Each command runs under the Bash tool's default 2-minute timeout." */
-const TIMEOUT_MS = 120_000;
+const DEFAULT_TIMEOUT_MS = 120_000;
+
+/**
+ * The Bash tool's default timeout is `BASH_DEFAULT_TIMEOUT_MS` (tools-reference.md, "Timeout and
+ * output limits"; the PowerShell tool reads the same variable). Judgment (spec/judgments.md): a
+ * value that is not a positive whole number of milliseconds is ignored, and `BASH_MAX_TIMEOUT_MS`
+ * is not read since it only caps a timeout the model asks for.
+ */
+function timeoutOf(env: Readonly<Record<string, string>>): number {
+  const value = env['BASH_DEFAULT_TIMEOUT_MS'];
+  const parsed = value !== undefined && /^\d+$/.test(value) ? Number(value) : 0;
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : DEFAULT_TIMEOUT_MS;
+}
+
+const MINUTE_MS = 60_000;
+
+/** `2 minutes`, or seconds when the timeout is not a whole number of minutes. */
+function duration(ms: number): string {
+  if (ms % MINUTE_MS !== 0) return `${ms / 1000} seconds`;
+  const minutes = ms / MINUTE_MS;
+  return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+}
 
 const isControl = (code: number): boolean =>
   code <= 0x08 || (code >= 0x0b && code <= 0x1f) || (code >= 0x7f && code <= 0x9f);
@@ -95,8 +119,8 @@ const shown = (command: string, shell: SkillShell): string =>
  * refused for its carriage returns, and the check comes before the permission check.
  */
 function refusal(planned: PlannedCommand, context: InjectionContext): string | undefined {
-  const marked = shown(planned.command.replaceAll('\r\n', '\n'), context.shell);
-  if (marked === planned.command.replaceAll('\r\n', '\n')) return undefined;
+  const marked = shown(planned.command, context.shell);
+  if (marked === planned.command) return undefined;
   return (
     `No shell command in ${context.name} was run, because the ${TOOL_LABEL[context.shell]} tool does not accept one of them: ` +
     'command contains control characters that would be hidden in the approval dialog. ' +
@@ -148,13 +172,13 @@ const failed = (planned: PlannedCommand, reason: string): string =>
 function failureReason(
   planned: PlannedCommand,
   result: CommandResult,
-  shell: SkillShell,
+  context: InjectionContext,
 ): string | undefined {
   const output = `${result.stdout}${result.stderr}`.trimEnd();
   if (result.startError !== undefined) return result.startError;
   if (result.timedOut)
-    return `timed out after ${TIMEOUT_MS / 60_000} minutes${output === '' ? '' : `\n${output}`}`;
-  if (isNormalResult(planned.command, shell, result.exitCode)) return undefined;
+    return `timed out after ${duration(timeoutOf(context.env))}${output === '' ? '' : `\n${output}`}`;
+  if (isNormalResult(planned.command, context.shell, result.exitCode)) return undefined;
   return output === '' ? `exit code ${result.exitCode ?? 'none'}` : output;
 }
 
@@ -165,15 +189,15 @@ async function execute(
 ): Promise<{ readonly output: string } | { readonly failure: string }> {
   const { shell } = context;
   const result = await runner.run({
-    spec: { form: 'shell', command: planned.command.replaceAll('\r\n', '\n'), shell },
+    spec: { form: 'shell', command: planned.command, shell },
     cwd: context.cwd,
     env: context.env,
-    timeoutMs: TIMEOUT_MS,
+    timeoutMs: timeoutOf(context.env),
     // "With the default `bash` shell, Claude Code merges stderr into stdout."
     mergeStderr: shell === 'bash',
     signal: context.signal,
   });
-  const reason = failureReason(planned, result, shell);
+  const reason = failureReason(planned, result, context);
   return reason === undefined
     ? { output: result.stdout.trimEnd() }
     : { failure: failed(planned, reason) };
@@ -181,11 +205,16 @@ async function execute(
 
 type Step = { readonly output: string } | { readonly failure: string };
 
+/**
+ * One command, with a file's CRLF line endings read as plain newlines: the refusal check, the
+ * permission rules and the shell all see the same text.
+ */
 async function step(
-  planned: PlannedCommand,
+  given: PlannedCommand,
   context: InjectionContext,
   ports: InjectionPorts,
 ): Promise<Step> {
+  const planned = { ...given, command: given.command.replaceAll('\r\n', '\n') };
   const refused = refusal(planned, context);
   if (refused !== undefined) return { failure: refused };
   const answer = await ports.permissions({

@@ -1,7 +1,7 @@
 /** Helpers for the tests of `expandSkill`: fake ports, the real rules matcher as the permission answer. */
 import { readSkill } from '../../src/format/skill.ts';
-import type { Skill, SkillOrigin } from '../../src/format/skill-types.ts';
-import type { CommandRun } from '../../src/ports/index.ts';
+import type { Command, Skill, SkillOrigin } from '../../src/format/skill-types.ts';
+import type { CommandRun, Environment } from '../../src/ports/index.ts';
 import {
   expandSkill,
   type ExpandPorts,
@@ -25,6 +25,20 @@ export function skillFrom(
   const text = `---\nname: ${name}\ndescription: A skill\n${frontmatter}\n---\n${body}`;
   const folder = 'plugin' in origin ? `skills/${name}` : `.claude/skills/${name}`;
   return readSkill(`${folder}/SKILL.md`, text, { origin, dirName: name }).skill;
+}
+
+/**
+ * A custom command of the given origin, with the fields of the same frontmatter the skill reader
+ * gives (there is no command reader yet): `/name` runs `body`.
+ */
+export function commandFrom(
+  frontmatter: string,
+  body: string,
+  origin: SkillOrigin = { kind: 'project' },
+  name = 'pr-summary',
+): Command {
+  const fields = skillFrom(frontmatter, body, origin, name);
+  return { ...fields, kind: 'command', path: `.claude/commands/${name}.md` };
 }
 
 export interface Rules {
@@ -78,17 +92,19 @@ export interface RunOptions {
   readonly replies?: readonly RunnerReply[];
   readonly rules?: Rules;
   readonly env?: Readonly<Record<string, string>>;
+  /** Wraps the environment the ports get, to observe how it is read. */
+  readonly observe?: (environment: Environment) => Environment;
   readonly permissions?: ShellPermission;
 }
 
 /** Expand `skill` with fake ports; commands answer from `replies` (default: exit 0, no output). */
-export async function expandWith(skill: Skill, options: RunOptions = {}): Promise<Run> {
+export async function expandWith(skill: Skill | Command, options: RunOptions = {}): Promise<Run> {
   const runner = scriptedRunner(...(options.replies ?? Array.from({ length: 20 }, () => ({}))));
   const asked: ShellCall[] = [];
   const ports: ExpandPorts = {
     runner,
     locations: locations(),
-    environment: fakeEnvironment(options.env),
+    environment: (options.observe ?? ((found) => found))(fakeEnvironment(options.env)),
     permissions: options.permissions ?? permissionsFrom(options.rules, asked),
   };
   const expansion = await expandSkill(skill, defaultRequest(options.request), ports);

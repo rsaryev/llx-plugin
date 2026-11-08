@@ -1,10 +1,15 @@
 import { error, type PluginIssue } from '../format/issues.ts';
-import type { Command, Skill } from '../format/skill-types.ts';
+import type { Command, Skill, SkillShell } from '../format/skill-types.ts';
 import { ORIGIN_TRAITS } from '../format/skill-types.ts';
 import type { Environment, Locations, CommandRunner } from '../ports/index.ts';
 import type { HooksSettings } from '../protocol/hook-config.ts';
 import type { EffortLevel, PermissionMode } from '../protocol/official.ts';
-import { grantApplies, hooksRegister, type ExpandPolicy } from './expand-policy.ts';
+import {
+  grantApplies,
+  hooksRegister,
+  type ExpandPolicy,
+  type PluginSource,
+} from './expand-policy.ts';
 import {
   readExecutionEnvironment,
   resolveExecution,
@@ -27,7 +32,7 @@ import {
   type SkillVariables,
 } from './variables.ts';
 
-export type { ExpandPolicy } from './expand-policy.ts';
+export type { ExpandPolicy, PluginSource } from './expand-policy.ts';
 export type { ShellCall, ShellPermission } from './shell-run.ts';
 
 /**
@@ -43,7 +48,10 @@ export type { ShellCall, ShellPermission } from './shell-run.ts';
 export type ExpandSession = Pick<
   SkillSession,
   'pluginId' | 'userConfig' | 'windows' | 'isolatedSession' | 'skillRoot'
->;
+> & {
+  /** Where the skill's plugin was loaded from; default `installed`. Only a plugin skill reads it. */
+  readonly pluginSource?: PluginSource;
+};
 
 /** What the host knows about the session beyond the environment the kit reads itself. */
 export type SessionLimits = Omit<TurnSession, 'effortEnvironment'>;
@@ -179,7 +187,7 @@ interface Run {
 }
 
 /** Runs the commands through the tool `resolveShell` chose. */
-async function runAll(run: Run, tool: 'bash' | 'powershell'): Promise<Rendered> {
+async function runAll(run: Run, tool: SkillShell): Promise<Rendered> {
   const { skill, request, ports } = run;
   const planned = run.injections.map((found, index) => ({
     pattern: `${found.open}${found.command}${found.close}`,
@@ -261,7 +269,8 @@ export async function expandSkill(
   const vars = variablesFor(skill, request, ports, turn);
   const injections = findInjections(skill.body);
   const body = await substitutePieces(cut(skill.body, injections), skill, request, vars);
-  const allowed = grantApplies(skill, request.policy)
+  const pluginSource = request.session?.pluginSource;
+  const allowed = grantApplies(skill, request.policy, pluginSource)
     ? await substituteAllowedTools(skill, vars)
     : { rules: [], issues: [] };
   const commands = injections.map((_, index) => body.pieces[2 * index + 1] ?? '');
@@ -277,7 +286,7 @@ export async function expandSkill(
     disallowed: skill.disallowedTools,
     execution,
     turn,
-    ...(skill.hooks !== undefined && hooksRegister(skill, request.policy)
+    ...(skill.hooks !== undefined && hooksRegister(skill, request.policy, pluginSource)
       ? { hooks: skill.hooks }
       : {}),
     issues: [...body.issues, ...allowed.issues],

@@ -8,7 +8,7 @@
  * disableSkillShellExecution. The readers of the same fields are tested in tests/format.
  */
 import { describe, expect, test } from 'bun:test';
-import { modelListing } from '../../src/skills/listing.ts';
+import type { PluginSource } from '../../src/skills/expand-policy.ts';
 import { abortOf, expandWith, grantsOf, PLUGIN, skillFrom, textOf } from '../support/expand.ts';
 import { spec } from '../support/spec.ts';
 
@@ -109,10 +109,31 @@ spec('skills.frontmatter.allowed-tools', () => {
     expect(grantsOf(managed)).toEqual([]);
   });
 
-  test('judgment: a plugin skill keeps its grant under that setting (the docs list no plugin source)', async () => {
+  test('a plugin skill from an installed plugin keeps its grant under that setting', async () => {
     const skill = skillFrom(commit, 'x', PLUGIN);
     const run = await expandWith(skill, {
       request: { policy: { managedPermissionRulesOnly: true } },
+    });
+    expect(grantsOf(run)).toHaveLength(3);
+  });
+
+  test('the same setting ignores `allowed-tools` of a skills-directory plugin and of an `@inline` plugin in a managed Desktop session', async () => {
+    const policy = { managedPermissionRulesOnly: true };
+    const skill = skillFrom(commit, 'x', PLUGIN);
+    const dropped: readonly PluginSource[] = ['skills-directory', 'inline-managed-session'];
+    for (const pluginSource of dropped) {
+      const run = await expandWith(skill, { request: { policy, session: { pluginSource } } });
+      expect(grantsOf(run)).toEqual([]);
+    }
+    const installed = await expandWith(skill, {
+      request: { policy, session: { pluginSource: 'installed' } },
+    });
+    expect(grantsOf(installed)).toHaveLength(3);
+  });
+
+  test('the plugin source matters only under the setting', async () => {
+    const run = await expandWith(skillFrom(commit, 'x', PLUGIN), {
+      request: { session: { pluginSource: 'skills-directory' } },
     });
     expect(grantsOf(run)).toHaveLength(3);
   });
@@ -130,6 +151,26 @@ spec('skills.frontmatter.allowed-tools', () => {
     expect(grantsOf(plain)).toHaveLength(3);
     const plugin = await expandWith(skillFrom(`${commit}\n${hooks}`, 'x', PLUGIN), { request });
     expect(grantsOf(plugin)).toHaveLength(3);
+  });
+
+  test('"When such a skill runs in a subagent through `context: fork`, it keeps the pre-approval"', async () => {
+    const hooks =
+      'hooks:\n  PreToolUse:\n    - matcher: Bash\n      hooks:\n        - type: command\n          command: ./check.sh';
+    const request = { policy: { hooksLockedToPlugins: true } };
+    for (const origin of [{ kind: 'project' }, { kind: 'user' }] as const) {
+      const run = await expandWith(skillFrom(`${commit}\ncontext: fork\n${hooks}`, 'x', origin), {
+        request,
+      });
+      expect(grantsOf(run)).toHaveLength(3);
+      expect('hooks' in run.expansion).toBe(false);
+    }
+  });
+
+  test("the fork exception is the hooks lock's: `allowManagedPermissionRulesOnly` still ignores the field in a forked skill", async () => {
+    const run = await expandWith(skillFrom(`${commit}\ncontext: fork`, 'x'), {
+      request: { policy: { managedPermissionRulesOnly: true } },
+    });
+    expect(grantsOf(run)).toEqual([]);
   });
 });
 
@@ -154,6 +195,18 @@ spec('skills.frontmatter.disallowed-tools', () => {
     const both = await expandWith(skillFrom('allowed-tools: Read\ndisallowed-tools: Edit', 'x'));
     expect(both.expansion).toMatchObject({ grants: ['Read'], disallowed: ['Edit'] });
   });
+
+  test('"A skill\'s `disallowed-tools` still applies" under `allowManagedPermissionRulesOnly`, while its grant does not', async () => {
+    const run = await expandWith(skillFrom('allowed-tools: Read\ndisallowed-tools: Edit', 'x'), {
+      request: { policy: { managedPermissionRulesOnly: true } },
+    });
+    expect(run.expansion).toMatchObject({ grants: [], disallowed: ['Edit'] });
+  });
+});
+
+const lockedFor = (pluginSource: PluginSource) => ({
+  policy: { hooksLockedToPlugins: true },
+  session: { pluginSource },
 });
 
 describe('hooks', () => {
@@ -181,11 +234,33 @@ describe('hooks', () => {
       expect('hooks' in run.expansion).toBe(false);
     });
 
-    test('the listing the model reads never carries them: they exist only for an invoked skill', () => {
-      const skill = skillFrom(HOOKS, 'Secure.');
-      expect(modelListing([skill]).entries).toEqual([
-        { name: 'pr-summary', description: 'A skill' },
-      ]);
+    test('`once: true` is carried through for the host to remove the hook after its first successful run', async () => {
+      const once = HOOKS.replace('type: command', 'type: command\n          once: true');
+      const run = await expandWith(skillFrom(once, 'x'));
+      expect(run.expansion).toMatchObject({
+        hooks: {
+          PreToolUse: [
+            {
+              matcher: 'Bash',
+              hooks: [{ type: 'command', command: './scripts/security-check.sh', once: true }],
+            },
+          ],
+        },
+      });
+    });
+
+    test('hooks of a skills-directory plugin stop under the lock, those of any other plugin keep running', async () => {
+      const dropped = await expandWith(skillFrom(HOOKS, 'x', PLUGIN), {
+        request: lockedFor('skills-directory'),
+      });
+      if (!dropped.expansion.ok) throw new Error('unreachable');
+      expect('hooks' in dropped.expansion).toBe(false);
+      for (const source of ['installed', 'inline-managed-session'] as const) {
+        const kept = await expandWith(skillFrom(HOOKS, 'x', PLUGIN), {
+          request: lockedFor(source),
+        });
+        expect(kept.expansion).toMatchObject({ hooks: declared });
+      }
     });
 
     test('hooks locked to plugins (`strictPluginOnlyCustomization`): a personal or project skill registers none, a plugin skill keeps them', async () => {
@@ -198,5 +273,12 @@ describe('hooks', () => {
       const plugin = await expandWith(skillFrom(HOOKS, 'x', PLUGIN), { request });
       expect(plugin.expansion).toMatchObject({ hooks: declared });
     });
+  });
+});
+
+describe("judgments: the tool pool is the host's", () => {
+  test("`disallowed` is the field as written, `EndConversation` included: whether it can be removed while another tool remains is the host's", async () => {
+    const run = await expandWith(skillFrom('disallowed-tools: EndConversation Edit', 'x'));
+    expect(run.expansion).toMatchObject({ disallowed: ['EndConversation', 'Edit'] });
   });
 });

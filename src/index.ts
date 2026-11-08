@@ -151,6 +151,7 @@ export {
   type ExpandPorts,
   type ExpandRequest,
   type ExpandSession,
+  type PluginSource,
   type Expansion,
   type SessionLimits,
   type ShellCall,

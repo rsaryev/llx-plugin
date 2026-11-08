@@ -12,6 +12,9 @@ import { runInjections, type InjectionContext } from '../../src/skills/shell-run
 import { scriptedRunner } from '../support/runner.ts';
 import { base, failure, plan, run } from '../support/shell-run.ts';
 
+const timeoutMessage = async (env: Record<string, string>): Promise<string> =>
+  failure((await run(['x'], [{ exitCode: null, timedOut: true }], { context: { env } })).result);
+
 describe('how a command runs', () => {
   test('through the runner as one shell line, in the working directory, with the session environment', async () => {
     const { runner } = await run(['gh pr diff'], [{ stdout: 'diff' }]);
@@ -26,6 +29,24 @@ describe('how a command runs', () => {
   test('"each command runs under the Bash tool\'s default 2-minute timeout"', async () => {
     const { runner } = await run(['sleep 1'], [{}]);
     expect(runner.calls[0]?.timeoutMs).toBe(120_000);
+  });
+
+  test('the default timeout is `BASH_DEFAULT_TIMEOUT_MS` (tools-reference.md, "Timeout and output limits"), in the Bash and the PowerShell tool', async () => {
+    for (const shell of ['bash', 'powershell'] as const) {
+      const { runner } = await run(['sleep 1'], [{}], {
+        context: { shell, env: { BASH_DEFAULT_TIMEOUT_MS: '300000' } },
+      });
+      expect(runner.calls[0]?.timeoutMs).toBe(300_000);
+    }
+  });
+
+  test('judgment: a value that is not a positive whole number of milliseconds is ignored; `BASH_MAX_TIMEOUT_MS` is not read', async () => {
+    for (const value of ['', '0', '-5', '1.5', 'soon', '1e5', '99999999999999999999']) {
+      const { runner } = await run(['sleep 1'], [{}], {
+        context: { env: { BASH_DEFAULT_TIMEOUT_MS: value, BASH_MAX_TIMEOUT_MS: '60000' } },
+      });
+      expect(runner.calls[0]?.timeoutMs).toBe(120_000);
+    }
   });
 
   test('"with the default bash shell, Claude Code merges stderr into stdout"', async () => {
@@ -91,6 +112,16 @@ describe('when an injected command fails', () => {
     );
     expect(failure(result)).toContain('Shell command failed for pattern "!`sleep 999`"');
     expect(failure(result)).toContain('timed out');
+  });
+
+  test('a timeout names the limit in force', async () => {
+    expect(await timeoutMessage({})).toContain('timed out after 2 minutes');
+    expect(await timeoutMessage({ BASH_DEFAULT_TIMEOUT_MS: '600000' })).toContain(
+      'after 10 minutes',
+    );
+    expect(await timeoutMessage({ BASH_DEFAULT_TIMEOUT_MS: '90000' })).toContain(
+      'after 90 seconds',
+    );
   });
 
   test('a command that could not start fails with the reason', async () => {
@@ -220,6 +251,20 @@ describe('"No shell command in <name> was run" (errors.md)', () => {
     expect(runner.calls[0]?.spec).toMatchObject({ command: 'node --version\ngit status' });
     const { result: lone } = await run(['a\rb'], []);
     expect(failure(lone)).toContain('a\uFFFDb');
+  });
+
+  test('judgment: the permission check sees the same normalised command the shell runs', async () => {
+    const { asked, runner } = await run(['node --version\r\ngit status'], [{}]);
+    expect(asked[0]?.command).toBe('node --version\ngit status');
+    expect(asked[0]?.command).toBe(
+      runner.calls[0]?.spec.form === 'shell' ? runner.calls[0].spec.command : undefined,
+    );
+  });
+
+  test("judgment: output past the inline ceiling is injected whole (a file and preview are the host's)", async () => {
+    const big = 'x'.repeat(50_000);
+    const { result } = await run(['cat big'], [{ stdout: big }]);
+    expect(result).toEqual({ ok: true, outputs: [big] });
   });
 
   test('a tab and a newline are fine', async () => {
