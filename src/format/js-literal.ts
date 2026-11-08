@@ -35,7 +35,8 @@ export type LiteralRead =
   | { readonly found: LiteralObject; readonly problem?: undefined }
   | { readonly found?: undefined; readonly problem: string };
 
-class NotLiteral extends Error {}
+/** Stands in for a token once the read has failed, so the methods that follow read nothing and stop. */
+const NO_TOKEN: JsToken = { form: 'punct', text: '', start: 0, end: 0 };
 
 /** Where a property added after the last one goes: after its comma when it has one. */
 function afterLast(
@@ -50,6 +51,8 @@ function afterLast(
 const WORDS: Readonly<Record<string, boolean | null>> = { true: true, false: false, null: null };
 
 class Reader {
+  /** The first reason the text is not a literal; once set, every read after it returns a placeholder. */
+  problem: string | undefined;
   private index: number;
 
   constructor(
@@ -63,13 +66,18 @@ class Reader {
     return this.tokens[this.index];
   }
 
-  private fail(message: string): never {
-    throw new NotLiteral(message);
+  /** Records the first problem and moves to the end, so no loop reads on. */
+  private fail(message: string): void {
+    this.problem ??= message;
+    this.index = this.tokens.length;
   }
 
   private take(): JsToken {
     const token = this.peek();
-    if (token === undefined) return this.fail('the text ends inside the literal');
+    if (token === undefined) {
+      this.fail('the text ends inside the literal');
+      return NO_TOKEN;
+    }
     this.index++;
     return token;
   }
@@ -77,7 +85,7 @@ class Reader {
   private expect(text: string): JsToken {
     const token = this.take();
     if (token.form !== 'punct' || token.text !== text) {
-      return this.fail(`expected "${text}" but found "${token.text}"`);
+      this.fail(`expected "${text}" but found "${token.text}"`);
     }
     return token;
   }
@@ -85,6 +93,10 @@ class Reader {
   private atPunct(text: string): boolean {
     const token = this.peek();
     return token?.form === 'punct' && token.text === text;
+  }
+
+  private reading(closer: string): boolean {
+    return this.problem === undefined && !this.atPunct(closer);
   }
 
   value(): unknown {
@@ -95,26 +107,33 @@ class Reader {
     if (token.text === '-') return this.number(this.take().text, -1);
     if (token.text === '{') return this.object();
     if (token.text === '[') return this.array();
-    return this.fail(`"${token.text}" is not a literal`);
+    this.fail(`"${token.text}" is not a literal`);
+    return undefined;
   }
 
   private text(token: JsToken): string {
-    return token.value ?? this.fail('a template literal with ${...} is not a literal');
+    if (token.value !== undefined) return token.value;
+    this.fail('a template literal with ${...} is not a literal');
+    return '';
   }
 
   private number(text: string, sign: number): number {
     const value = Number(text.replaceAll('_', ''));
-    return Number.isNaN(value) ? this.fail(`"${text}" is not a number literal`) : sign * value;
+    if (!Number.isNaN(value)) return sign * value;
+    this.fail(`"${text}" is not a number literal`);
+    return 0;
   }
 
   private word(token: JsToken): boolean | null {
     const known = WORDS[token.text];
-    return known === undefined ? this.fail(`"${token.text}" is not a literal`) : known;
+    if (known !== undefined) return known;
+    this.fail(`"${token.text}" is not a literal`);
+    return null;
   }
 
   private array(): unknown[] {
     const items: unknown[] = [];
-    while (!this.atPunct(']')) {
+    while (this.reading(']')) {
       items.push(this.value());
       if (!this.atPunct(']')) this.expect(',');
     }
@@ -125,7 +144,9 @@ class Reader {
   private key(): string {
     const token = this.take();
     if (token.form === 'word' || token.form === 'number') return token.text;
-    return token.form === 'string' ? this.text(token) : this.fail(`"${token.text}" is not a key`);
+    if (token.form === 'string') return this.text(token);
+    this.fail(`"${token.text}" is not a key`);
+    return '';
   }
 
   private object(): Record<string, unknown> {
@@ -134,7 +155,7 @@ class Reader {
 
   private properties(): LiteralProperty[] {
     const found: LiteralProperty[] = [];
-    while (!this.atPunct('}')) {
+    while (this.reading('}')) {
       found.push(this.property());
       if (!this.atPunct('}')) this.expect(',');
     }
@@ -151,7 +172,7 @@ class Reader {
     return { key, value, valueStart, valueEnd: last?.end ?? valueStart };
   }
 
-  /** The object that starts at the current token. */
+  /** The object that starts at the current token; meaningless when `problem` is set after it. */
   objectLiteral(): LiteralObject {
     const open = this.expect('{');
     const properties = this.properties();
@@ -169,13 +190,9 @@ class Reader {
   }
 }
 
-/** The object literal that starts at `tokens[from]`, or why it is not a literal. */
+/** The object literal that starts at `tokens[from]`, or why it is not a literal. Never throws. */
 export function readObjectLiteral(tokens: readonly JsToken[], from: number): LiteralRead {
   const reader = new Reader(tokens, from);
-  try {
-    return { found: reader.objectLiteral() };
-  } catch (thrown) {
-    if (thrown instanceof NotLiteral) return { problem: thrown.message };
-    throw thrown;
-  }
+  const found = reader.objectLiteral();
+  return reader.problem === undefined ? { found } : { problem: reader.problem };
 }

@@ -14,6 +14,7 @@ import {
   REPLAY_START,
   planReplay,
   replayAgent,
+  type AgentCall,
   type Replay,
   type SavedAgent,
 } from '../../../src/agents/workflow/index.ts';
@@ -28,11 +29,12 @@ const failed = (prompt: string): SavedAgent => ({ prompt, status: 'failed' });
 const running = (prompt: string): SavedAgent => ({ prompt, status: 'running' });
 
 const saved = (replay: Replay): boolean => replay.saved;
+const calls = (prompts: readonly string[]): AgentCall[] => prompts.map((prompt) => ({ prompt }));
 
 spec('workflows.behavior.Which agents run again.Completed', () => {
   test('an unedited script gets every saved result back, in the saved order', () => {
     const run = [done('A'), done('B'), done('C')];
-    const plan = planReplay(run, ['A', 'B', 'C']);
+    const plan = planReplay(run, calls(['A', 'B', 'C']));
     expect(plan).toEqual([
       { saved: true, result: 'A-result' },
       { saved: true, result: 'B-result' },
@@ -42,7 +44,7 @@ spec('workflows.behavior.Which agents run again.Completed', () => {
 
   test('the result returned is the saved one, whatever its shape, null included', () => {
     const run = [done('A', { files: ['x.ts'] }), done('B', null)];
-    expect(planReplay(run, ['A', 'B'])).toEqual([
+    expect(planReplay(run, calls(['A', 'B']))).toEqual([
       { saved: true, result: { files: ['x.ts'] } },
       { saved: true, result: null },
     ]);
@@ -50,14 +52,14 @@ spec('workflows.behavior.Which agents run again.Completed', () => {
 
   test('the doc example: A, B, C, D started as A, C, B, D returns A and runs C, B and D again', () => {
     const run = [done('A'), done('B'), done('C'), done('D')];
-    const plan = planReplay(run, ['A', 'C', 'B', 'D']);
+    const plan = planReplay(run, calls(['A', 'C', 'B', 'D']));
     expect(plan.map(saved)).toEqual([true, false, false, false]);
     expect(plan[1]).toEqual({ saved: false, cause: 'prompt-differs' });
   });
 
   test('the first agent whose prompt differs runs again, and so does every agent after it, even completed ones with the same prompt', () => {
     const run = [done('A'), done('B'), done('C'), done('D')];
-    const plan = planReplay(run, ['A', 'B edited', 'C', 'D']);
+    const plan = planReplay(run, calls(['A', 'B edited', 'C', 'D']));
     expect(plan.map(saved)).toEqual([true, false, false, false]);
     expect(plan[2]).toEqual({ saved: false, cause: 'after-change' });
     expect(plan[3]).toEqual({ saved: false, cause: 'after-change' });
@@ -66,17 +68,43 @@ spec('workflows.behavior.Which agents run again.Completed', () => {
   test('an earlier agent that returns something different changes the prompts after it: asked one agent at a time, the next prompt decides', () => {
     const run = [done('A'), done('B'), done('C')];
     let state = REPLAY_START;
-    const first = replayAgent(run, state, 'A');
+    const first = replayAgent(run, state, { prompt: 'A' });
     state = first.state;
     expect(first.replay).toEqual({ saved: true, result: 'A-result' });
-    const second = replayAgent(run, state, 'B built from a new A');
+    const second = replayAgent(run, state, { prompt: 'B built from a new A' });
     state = second.state;
     expect(second.replay).toEqual({ saved: false, cause: 'prompt-differs' });
-    expect(replayAgent(run, state, 'C').replay).toEqual({ saved: false, cause: 'after-change' });
+    expect(replayAgent(run, state, { prompt: 'C' }).replay).toEqual({
+      saved: false,
+      cause: 'after-change',
+    });
+  });
+
+  test('the same prompt with other options is another call: it runs again and so does every agent after it', () => {
+    const run = [
+      { ...done('A'), options: 'schema:1' },
+      { ...done('B'), options: 'schema:1' },
+      { ...done('C'), options: 'schema:1' },
+    ];
+    const same = { prompt: 'A', options: 'schema:1' };
+    const edited = { prompt: 'B', options: 'schema:2' };
+    const plan = planReplay(run, [same, edited, { prompt: 'C', options: 'schema:1' }]);
+    expect(plan).toEqual([
+      { saved: true, result: 'A-result' },
+      { saved: false, cause: 'options-differ' },
+      { saved: false, cause: 'after-change' },
+    ]);
+  });
+
+  test('a record with no options fingerprint compares the prompt alone, and one side without it differs', () => {
+    expect(planReplay([done('A')], [{ prompt: 'A' }]).map(saved)).toEqual([true]);
+    expect(planReplay([done('A')], [{ prompt: 'A', options: 'x' }]).map(saved)).toEqual([false]);
+    const withOptions = [{ ...done('A'), options: 'x' }];
+    expect(planReplay(withOptions, [{ prompt: 'A' }]).map(saved)).toEqual([false]);
   });
 
   test('an agent the script starts beyond the saved record runs: there is nothing saved for it', () => {
-    const plan = planReplay([done('A')], ['A', 'B']);
+    const plan = planReplay([done('A')], calls(['A', 'B']));
     expect(plan).toEqual([
       { saved: true, result: 'A-result' },
       { saved: false, cause: 'not-saved' },
@@ -84,14 +112,14 @@ spec('workflows.behavior.Which agents run again.Completed', () => {
   });
 
   test('a script that starts fewer agents than the record returns saved results for the ones it starts', () => {
-    expect(planReplay([done('A'), done('B')], ['A']).map(saved)).toEqual([true]);
+    expect(planReplay([done('A'), done('B')], calls(['A'])).map(saved)).toEqual([true]);
   });
 });
 
 spec('workflows.behavior.Which agents run again.Failed', () => {
   test('the doc example: A, B, C, D with B failed returns A from cache and runs B, C and D again', () => {
     const run = [done('A'), failed('B'), done('C'), done('D')];
-    const plan = planReplay(run, ['A', 'B', 'C', 'D']);
+    const plan = planReplay(run, calls(['A', 'B', 'C', 'D']));
     expect(plan).toEqual([
       { saved: true, result: 'A-result' },
       { saved: false, cause: 'failed' },
@@ -101,25 +129,20 @@ spec('workflows.behavior.Which agents run again.Failed', () => {
   });
 
   test('a failed agent runs again even when it is the first, and drags every agent after it', () => {
-    const plan = planReplay([failed('A'), done('B')], ['A', 'B']);
+    const plan = planReplay([failed('A'), done('B')], calls(['A', 'B']));
     expect(plan.map(saved)).toEqual([false, false]);
-  });
-
-  test('stopping one agent alone counts as failing, so the agents after it run again; stopping the whole run does not', () => {
-    expect(RECORDED_WHEN_STOPPED['one-agent']).toBe('failed');
-    expect(RECORDED_WHEN_STOPPED['whole-run']).toBe('running');
   });
 
   test('the agents before the failed one are untouched by it', () => {
     const run = [done('A'), done('B'), failed('C')];
-    expect(planReplay(run, ['A', 'B', 'C']).map(saved)).toEqual([true, true, false]);
+    expect(planReplay(run, calls(['A', 'B', 'C'])).map(saved)).toEqual([true, true, false]);
   });
 });
 
 spec('workflows.behavior.Which agents run again.Still running when you stopped', () => {
   test('an agent that was running when the run was stopped starts over', () => {
     const run = [done('A'), running('B')];
-    const plan = planReplay(run, ['A', 'B']);
+    const plan = planReplay(run, calls(['A', 'B']));
     expect(plan).toEqual([
       { saved: true, result: 'A-result' },
       { saved: false, cause: 'was-running' },
@@ -129,7 +152,7 @@ spec('workflows.behavior.Which agents run again.Still running when you stopped',
   test('stopping the whole run does not count it as failed: the completed agents after it keep their results', () => {
     // Agents run concurrently, so an agent that started later can have finished before one still running.
     const run = [done('A'), running('B'), done('C')];
-    const plan = planReplay(run, ['A', 'B', 'C']);
+    const plan = planReplay(run, calls(['A', 'B', 'C']));
     expect(plan.map(saved)).toEqual([true, false, true]);
     expect(plan[1]).toEqual({ saved: false, cause: 'was-running' });
   });
@@ -142,15 +165,24 @@ spec('workflows.behavior.Which agents run again.Still running when you stopped',
     ];
     const one = [done('A'), { prompt: 'B', status: RECORDED_WHEN_STOPPED['one-agent'] }, done('C')];
     const prompts = ['A', 'B', 'C'];
-    expect(planReplay(whole, prompts).map(saved)).toEqual([true, false, true]);
-    expect(planReplay(one, prompts).map(saved)).toEqual([true, false, false]);
+    expect(planReplay(whole, calls(prompts)).map(saved)).toEqual([true, false, true]);
+    expect(planReplay(one, calls(prompts)).map(saved)).toEqual([true, false, false]);
   });
 });
 
-describe('judgment: a running agent whose prompt changed', () => {
+describe('judgment: a running agent whose prompt or options changed', () => {
+  test('changed options of a running agent are a change like a changed prompt', () => {
+    const run = [{ ...running('B'), options: 'x' }, done('C')];
+    const plan = planReplay(run, [{ prompt: 'B', options: 'y' }, { prompt: 'C' }]);
+    expect(plan.map((each) => (each.saved ? 'saved' : each.cause))).toEqual([
+      'was-running',
+      'after-change',
+    ]);
+  });
+
   test('a changed prompt is a change like any other: every agent after it runs again', () => {
     const run = [running('B'), done('C')];
-    const plan = planReplay(run, ['B edited', 'C']);
+    const plan = planReplay(run, calls(['B edited', 'C']));
     expect(plan).toEqual([
       { saved: false, cause: 'was-running' },
       { saved: false, cause: 'after-change' },

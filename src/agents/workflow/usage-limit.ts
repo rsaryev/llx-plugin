@@ -54,9 +54,8 @@ export interface UsageLimitFacts {
 
 export type UsageLimitDecision =
   | {
+      /** The agents that hit the limit wait for the reset, and "no new agents start" while it lasts. */
       readonly pauses: true;
-      /** The agents that hit the limit wait for the reset; "no new agents start". */
-      readonly startsNewAgents: false;
       /** Shown on the progress line and in the `/workflows` header. */
       readonly msUntilReset: number;
     }
@@ -79,5 +78,5 @@ const CONDITIONS: { readonly [C in NoWaitCause]: (facts: UsageLimitFacts) => boo
 export function usageLimitDecision(facts: UsageLimitFacts): UsageLimitDecision {
   const causes = NO_WAIT_CAUSES.filter((cause) => CONDITIONS[cause](facts));
   if (causes.length > 0) return { pauses: false, failsAgent: true, causes };
-  return { pauses: true, startsNewAgents: false, msUntilReset: facts.msUntilReset };
+  return { pauses: true, msUntilReset: facts.msUntilReset };
 }

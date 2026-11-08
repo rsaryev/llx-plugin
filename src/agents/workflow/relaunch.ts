@@ -16,8 +16,6 @@ export type LeaveWay = (typeof LEAVE_WAYS)[number];
 export type RelaunchIn = 'background-session' | 'resumed-session';
 
 export interface Leaving {
-  /** The run does not continue on its own in any of the three. */
-  readonly continuesOnItsOwn: false;
   /** The run stopped with the session (`Exit and stop tasks`); in the other two it is only not running. */
   readonly stoppedWithSession: boolean;
   /** Where Claude relaunches it: ask Claude in the background session, or resume the session first. */
@@ -26,21 +24,22 @@ export interface Leaving {
   readonly resumeCommand: string | undefined;
 }
 
+/**
+ * How each way of leaving leaves the run. In none of the three does the run continue on its own: it
+ * continues only through a relaunch (`relaunchAfter`), which is where the three differ.
+ */
 export const LEAVING: { readonly [W in LeaveWay]: Leaving } = {
   background: {
-    continuesOnItsOwn: false,
     stoppedWithSession: false,
     relaunchIn: 'background-session',
     resumeCommand: undefined,
   },
   'move-to-background-and-exit': {
-    continuesOnItsOwn: false,
     stoppedWithSession: false,
     relaunchIn: 'background-session',
     resumeCommand: undefined,
   },
   'exit-and-stop-tasks': {
-    continuesOnItsOwn: false,
     stoppedWithSession: true,
     relaunchIn: 'resumed-session',
     resumeCommand: 'claude --resume',
@@ -76,4 +75,19 @@ export function relaunch(facts: RelaunchFacts): Relaunch {
   const cannotFind =
     !facts.resultsFound || (facts.inBackgroundSession && facts.scriptOutsideProjects);
   return cannotFind ? { relaunch: 'fail', error: NOTHING_TO_RESUME } : { relaunch: 'replay' };
+}
+
+/**
+ * What Claude's relaunch does after the person left in `way`: in the background session it is a
+ * relaunch there (so a script outside `~/.claude/projects/` cannot be found), after `Exit and stop
+ * tasks` it happens in the resumed session.
+ */
+export function relaunchAfter(
+  way: LeaveWay,
+  facts: Omit<RelaunchFacts, 'inBackgroundSession'>,
+): Relaunch {
+  return relaunch({
+    ...facts,
+    inBackgroundSession: LEAVING[way].relaunchIn === 'background-session',
+  });
 }

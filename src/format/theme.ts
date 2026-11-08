@@ -34,6 +34,12 @@ export interface Theme {
   readonly overrides: Readonly<Record<string, ThemeColor>>;
   /** Names in `overrides` that are not a documented token: ignored, in file order. */
   readonly unknownTokens: readonly string[];
+  /**
+   * Those entries as written, name to raw value. `/theme` sets "a few single-purpose accents such as
+   * onboarding screen colors" that the reference omits: a copy or a rewrite writes them back
+   * (judgment), so no valid token is lost.
+   */
+  readonly extraOverrides: Readonly<Record<string, unknown>>;
 }
 
 export interface ThemeRead {
@@ -108,31 +114,30 @@ export function readThemeColor(value: unknown): ThemeColor | undefined {
   return undefined;
 }
 
-const isBase = (value: unknown): value is ThemeBase =>
-  typeof value === 'string' && (THEME_BASES as readonly string[]).includes(value);
+const isBase = (value: unknown): value is ThemeBase => THEME_BASES.some((each) => each === value);
 
 interface Overrides {
   readonly overrides: Readonly<Record<string, ThemeColor>>;
-  readonly unknownTokens: readonly string[];
+  readonly extra: Readonly<Record<string, unknown>>;
   readonly issues: readonly PluginIssue[];
 }
 
 /** Keeps the documented tokens with a valid colour; every other entry is ignored, as the docs say. */
 function readOverrides(raw: unknown): Overrides {
-  if (raw === undefined) return { overrides: {}, unknownTokens: [], issues: [] };
+  if (raw === undefined) return { overrides: {}, extra: {}, issues: [] };
   if (!isRecord(raw)) {
     const issue = warning(
       'overrides',
       'overrides must be an object of token names to colors; ignored',
     );
-    return { overrides: {}, unknownTokens: [], issues: [issue] };
+    return { overrides: {}, extra: {}, issues: [issue] };
   }
   const kept: [string, ThemeColor][] = [];
-  const unknownTokens: string[] = [];
+  const extra: [string, unknown][] = [];
   const issues: PluginIssue[] = [];
   for (const [token, value] of Object.entries(raw)) {
     if (!TOKENS.has(token)) {
-      unknownTokens.push(token);
+      extra.push([token, value]);
       continue;
     }
     const color = readThemeColor(value);
@@ -142,7 +147,7 @@ function readOverrides(raw: unknown): Overrides {
         warning(`overrides.${token}`, `${token} is not a color Claude Code accepts; ignored`),
       );
   }
-  return { overrides: Object.fromEntries(kept), unknownTokens, issues };
+  return { overrides: Object.fromEntries(kept), extra: Object.fromEntries(extra), issues };
 }
 
 function parseObject(text: string): Record<string, unknown> | undefined {
@@ -179,7 +184,8 @@ export function readTheme(slug: string, text: string): ThemeRead {
     name: label === '' ? slug : label,
     base,
     overrides: read.overrides,
-    unknownTokens: read.unknownTokens,
+    unknownTokens: Object.keys(read.extra),
+    extraOverrides: read.extra,
   };
   return { theme, issues: [...issues, ...read.issues] };
 }

@@ -115,18 +115,29 @@ const positiveInteger = (text: string | undefined): number | undefined =>
 export interface StallWindowInput {
   /** `stallMs` passed on this agent's `agent()` call. */
   readonly stallMs?: number | undefined;
+  /**
+   * The default the host works out when `CLAUDE_STREAM_IDLE_TIMEOUT_MS` is raised while the stream
+   * watchdog is on ("the default rises with it"); `DEFAULT_STALL_MS` when absent. Only the default
+   * rises: the call's `stallMs` and the environment variable still win over it.
+   */
+  readonly defaultMs?: number | undefined;
   readonly env: Readonly<Record<string, string | undefined>>;
 }
 
 /**
  * How long Claude Code waits for output from an agent before it ends the attempt: the call's own
- * `stallMs`, else `CLAUDE_ASYNC_AGENT_STALL_TIMEOUT_MS`, else 10 minutes. A value that is not a
- * positive whole number is no value (judgment).
+ * `stallMs`, else `CLAUDE_ASYNC_AGENT_STALL_TIMEOUT_MS`, else the default (10 minutes, or the
+ * host's `defaultMs`). A value that is not a positive whole number is no value (judgment).
  */
 export function stallWindowMs(input: StallWindowInput): number {
   const own = input.stallMs !== undefined && Number.isInteger(input.stallMs) && input.stallMs > 0;
+  const rising =
+    input.defaultMs !== undefined && Number.isInteger(input.defaultMs) && input.defaultMs > 0;
   return (
-    (own ? input.stallMs : undefined) ?? positiveInteger(input.env[STALL_ENV]) ?? DEFAULT_STALL_MS
+    (own ? input.stallMs : undefined) ??
+    positiveInteger(input.env[STALL_ENV]) ??
+    (rising ? input.defaultMs : undefined) ??
+    DEFAULT_STALL_MS
   );
 }
 

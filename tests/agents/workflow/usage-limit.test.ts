@@ -30,8 +30,12 @@ const holds: UsageLimitFacts = {
 const decide = (change: Partial<UsageLimitFacts>) => usageLimitDecision({ ...holds, ...change });
 
 spec('workflows.behavior.When a run hits your usage limit', () => {
-  test('with every condition holding, the run pauses, starts no new agent and shows when the limit resets', () => {
-    expect(decide({})).toEqual({ pauses: true, startsNewAgents: false, msUntilReset: 3 * HOUR });
+  test('with every condition holding, the run pauses and shows when the limit resets', () => {
+    expect(decide({})).toEqual({ pauses: true, msUntilReset: 3 * HOUR });
+    expect(decide({ msUntilReset: 90 * 60 * 1000 })).toEqual({
+      pauses: true,
+      msUntilReset: 90 * 60 * 1000,
+    });
   });
 
   test('only an interactive session pauses: claude -p and the Agent SDK, a background session, Remote Control and a teammate fail the agent', () => {

@@ -30,14 +30,13 @@ export interface PluginTextFile {
 
 /**
  * A theme file of the plugin, read (plugins/components.md, "Themes and output styles"): it appears in
- * `/theme` under the file's `name`, marked as from the plugin. `theme` is `undefined` for a file that is
- * not a JSON object.
+ * `/theme` under the file's `name` (`theme.name`, else the slug), marked as from the plugin: a theme has
+ * no `<plugin>:` name, only output styles do. `theme` is `undefined` for a file that is not a JSON object.
  */
 export interface PluginTheme {
   readonly path: string;
   /** The slug: the file name without `.json`. */
   readonly name: string;
-  readonly qualifiedName: string;
   /** The plugin it comes from: `/theme` marks the theme as from it. */
   readonly plugin: string;
   readonly theme: Theme | undefined;

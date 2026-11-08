@@ -10,11 +10,18 @@ import { tokenize, type JsToken } from './js-tokens.ts';
  * keeping every other byte.
  */
 
+/** A `phases` entry as written: a title, or an object with a `title` and whatever else it carries (judgment). */
+export type PhaseEntry = string | { readonly title: string; readonly [field: string]: unknown };
+
 export interface WorkflowMeta {
   readonly name: string;
   readonly description: string;
   /** The stage titles of `phases`, in order; `[]` when there are none. */
   readonly phases: readonly string[];
+  /** The entries behind `phases`, as written, so an object entry keeps its other fields (judgment). */
+  readonly phaseEntries: readonly PhaseEntry[];
+  /** `whenToUse`, when it is a string (judgment: the docs do not name the field). */
+  readonly whenToUse: string | undefined;
   /** Every other literal field, as written. */
   readonly extra: Readonly<Record<string, unknown>>;
 }
@@ -34,6 +41,7 @@ export interface ScriptHead {
 }
 
 const CORE_KEYS: ReadonlySet<string> = new Set(['name', 'description', 'phases']);
+const WHEN_TO_USE = 'whenToUse';
 const OPENING = ['export', 'const', 'meta', '='] as const;
 const NO_LITERAL = 'must be a plain object literal with a name and a description';
 
@@ -65,15 +73,27 @@ function titleOf(entry: unknown): string | undefined {
   return typeof title === 'string' ? title : undefined;
 }
 
+const asEntry = (entry: unknown, title: string): PhaseEntry =>
+  typeof entry === 'string' || !isRecord(entry) ? title : { ...entry, title };
+
+interface ReadPhases {
+  readonly titles: string[];
+  readonly entries: PhaseEntry[];
+  readonly issues: PluginIssue[];
+}
+
 /** `phases`: a list of titles (or of objects with a `title`); what is not one is skipped with a warning. */
-function readPhases(value: unknown): { titles: string[]; issues: PluginIssue[] } {
-  if (value === undefined) return { titles: [], issues: [] };
+function readPhases(value: unknown): ReadPhases {
+  if (value === undefined) return { titles: [], entries: [], issues: [] };
   if (!Array.isArray(value)) {
     const issue = warning('meta.phases', 'meta.phases must be a list of titles; ignored');
-    return { titles: [], issues: [issue] };
+    return { titles: [], entries: [], issues: [issue] };
   }
-  const titles = value.flatMap((entry) => titleOf(entry) ?? []);
-  const skipped = value.length - titles.length;
+  const found = value.flatMap((entry) => {
+    const title = titleOf(entry);
+    return title === undefined ? [] : [{ title, entry: asEntry(entry, title) }];
+  });
+  const skipped = value.length - found.length;
   const issues =
     skipped === 0
       ? []
@@ -83,7 +103,11 @@ function readPhases(value: unknown): { titles: string[]; issues: PluginIssue[] }
             `meta.phases has ${skipped} entries that are not a title; skipped`,
           ),
         ];
-  return { titles, issues };
+  return {
+    titles: found.map((each) => each.title),
+    entries: found.map((each) => each.entry),
+    issues,
+  };
 }
 
 function buildMeta(fields: Record<string, unknown>): {
@@ -97,9 +121,21 @@ function buildMeta(fields: Record<string, unknown>): {
     return { issues: missing };
   }
   const phases = readPhases(fields.phases);
-  const extra = Object.fromEntries(Object.entries(fields).filter(([key]) => !CORE_KEYS.has(key)));
+  const whenToUse = typeof fields[WHEN_TO_USE] === 'string' ? fields[WHEN_TO_USE] : undefined;
+  const extra = Object.fromEntries(
+    Object.entries(fields).filter(
+      ([key]) => !CORE_KEYS.has(key) && !(key === WHEN_TO_USE && whenToUse !== undefined),
+    ),
+  );
   return {
-    meta: { name: name.trim(), description, phases: phases.titles, extra },
+    meta: {
+      name: name.trim(),
+      description,
+      phases: phases.titles,
+      phaseEntries: phases.entries,
+      whenToUse,
+      extra,
+    },
     issues: phases.issues,
   };
 }
@@ -107,21 +143,36 @@ function buildMeta(fields: Record<string, unknown>): {
 const startsWithMeta = (tokens: readonly JsToken[]): boolean =>
   OPENING.every((word, index) => tokens[index]?.text === word);
 
+/** Whether the tokens that came before a lexical problem still can be the start of `export const meta =`. */
+const couldStartMeta = (tokens: readonly JsToken[]): boolean =>
+  OPENING.every((word, index) => tokens[index] === undefined || tokens[index]?.text === word);
+
+const notJavaScript = (problem: string): PluginIssue =>
+  error('meta', `the script is not valid JavaScript: ${problem}`);
+
+/** The script does not begin with `export const meta =`: not the first statement, or a lexical problem cut it short. */
+function notMeta(tokens: readonly JsToken[], problem: string | undefined): ScriptHead {
+  if (problem !== undefined && couldStartMeta(tokens)) {
+    return nothing([notJavaScript(problem)], tokens);
+  }
+  const message = '`export const meta = {…}` must be the first statement of the script';
+  return nothing([error('meta', message)], tokens);
+}
+
 /**
  * Splits a script at the end of its `meta` statement and reads the literal. What the docs leave open
- * (the severity of each finding, blank names) is in spec/judgments.md.
+ * (the severity of each finding, blank names) is in spec/judgments.md. A lexical problem (an
+ * unterminated string, template or comment) is the runtime's to report when it lies after the `meta`
+ * statement ("If the body has a syntax error, Claude Code reports it when you run the workflow"): the
+ * `meta` is still read. When the literal cannot be read at all, the problem may be what broke it, so
+ * it is the error (judgment).
  */
 export function readScriptHead(source: string): ScriptHead {
   const { tokens, problem } = tokenize(source);
-  if (problem !== undefined) {
-    return nothing([error('meta', `the script is not valid JavaScript: ${problem}`)]);
-  }
-  if (!startsWithMeta(tokens)) {
-    const message = '`export const meta = {…}` must be the first statement of the script';
-    return nothing([error('meta', message)], tokens);
-  }
+  if (!startsWithMeta(tokens)) return notMeta(tokens, problem);
   const read = readObjectLiteral(tokens, OPENING.length);
   if (read.found === undefined) {
+    if (problem !== undefined) return nothing([notJavaScript(problem)], tokens);
     const message = `meta ${NO_LITERAL} (${read.problem}); Claude Code drops /<name> from / autocomplete`;
     return nothing([warning('meta', message)], tokens);
   }
@@ -146,103 +197,4 @@ export function readWorkflowMeta(source: string): {
 } {
   const { meta, issues } = readScriptHead(source);
   return { meta, issues };
-}
-
-/** The fields a rewrite sets; a field not given is left as written. */
-export interface MetaPatch {
-  readonly name?: string;
-  readonly description?: string;
-  readonly phases?: readonly string[];
-}
-
-const PATCH_KEYS = ['name', 'description', 'phases'] as const;
-
-/** The two Unicode line separators, which end a line in a JavaScript string; spelled by code point. */
-const LINE_SEPARATOR = String.fromCodePoint(0x2028);
-const PARAGRAPH_SEPARATOR = String.fromCodePoint(0x2029);
-
-/** What a single-quoted JavaScript string must escape: the quote, the backslash and every line break. */
-const ESCAPED: Readonly<Record<string, string>> = {
-  '\\': '\\\\',
-  "'": "\\'",
-  '\n': '\\n',
-  '\r': '\\r',
-  [LINE_SEPARATOR]: '\\u2028',
-  [PARAGRAPH_SEPARATOR]: '\\u2029',
-};
-const NEEDS_ESCAPE = new RegExp(`[${Object.keys(ESCAPED).join('').replace('\\', '\\\\')}]`, 'g');
-
-const quote = (text: string): string =>
-  `'${text.replace(NEEDS_ESCAPE, (char) => ESCAPED[char] ?? char)}'`;
-
-const encode = (value: string | readonly string[]): string =>
-  typeof value === 'string' ? quote(value) : `[${value.map(quote).join(', ')}]`;
-
-interface Splice {
-  readonly start: number;
-  readonly end: number;
-  readonly text: string;
-}
-
-function indentOf(source: string, object: LiteralObject): string {
-  const last = object.properties.at(-1);
-  if (last === undefined) return '  ';
-  const lineStart = source.lastIndexOf('\n', last.valueStart) + 1;
-  return /^[ \t]*/.exec(source.slice(lineStart))?.[0] ?? '  ';
-}
-
-/** The text that appends `added` (`key: value` pieces) after the last property, in the style of the block. */
-function appendix(
-  source: string,
-  object: LiteralObject,
-  added: readonly string[],
-): Splice | undefined {
-  if (added.length === 0) return undefined;
-  const last = object.properties.at(-1);
-  const multiline = source.slice(object.start, object.end).includes('\n');
-  const indent = indentOf(source, object);
-  if (last === undefined) {
-    return { start: object.start + 1, end: object.start + 1, text: ` ${added.join(', ')} ` };
-  }
-  const trailing = object.trailingComma;
-  const at = trailing ? object.afterLast : last.valueEnd;
-  const lines = multiline
-    ? added.map((each) => (trailing ? `\n${indent}${each},` : `,\n${indent}${each}`))
-    : added.map((each) => (trailing ? ` ${each},` : `, ${each}`));
-  return { start: at, end: at, text: lines.join('') };
-}
-
-function splices(source: string, object: LiteralObject, patch: MetaPatch): Splice[] {
-  const replaced: Splice[] = [];
-  const added: string[] = [];
-  for (const key of PATCH_KEYS) {
-    const value = patch[key];
-    if (value === undefined) continue;
-    const existing = object.properties.findLast((each) => each.key === key);
-    if (existing)
-      replaced.push({ start: existing.valueStart, end: existing.valueEnd, text: encode(value) });
-    else added.push(`${key}: ${encode(value)}`);
-  }
-  const appended = appendix(source, object, added);
-  return appended === undefined ? replaced : [...replaced, appended];
-}
-
-/**
- * Sets fields of the `meta` literal and keeps every other byte of the script. A `meta` that is not a
- * literal is left alone (the reasons come back as issues), and so is a script the rewrite would leave
- * without a name or a description: `source` is then `undefined`.
- */
-export function rewriteWorkflowMeta(
-  source: string,
-  patch: MetaPatch,
-): { readonly source: string | undefined; readonly issues: readonly PluginIssue[] } {
-  const head = readScriptHead(source);
-  if (head.object === undefined) return { source: undefined, issues: head.issues };
-  const edited = splices(source, head.object, patch)
-    .toSorted((first, second) => second.start - first.start)
-    .reduce((text, edit) => text.slice(0, edit.start) + edit.text + text.slice(edit.end), source);
-  const check = readWorkflowMeta(edited);
-  return check.meta === undefined
-    ? { source: undefined, issues: check.issues }
-    : { source: edited, issues: check.issues };
 }

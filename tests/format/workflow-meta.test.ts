@@ -8,7 +8,8 @@
  * spec().
  */
 import { describe, expect, test } from 'bun:test';
-import { readWorkflowMeta, rewriteWorkflowMeta } from '../../src/format/workflow-meta.ts';
+import { readWorkflowMeta } from '../../src/format/workflow-meta.ts';
+import { rewriteWorkflowMeta } from '../../src/format/workflow-meta-rewrite.ts';
 import { inspectWorkflowScript } from '../../src/format/workflow-script.ts';
 import { spec } from '../support/spec.ts';
 
@@ -192,10 +193,8 @@ describe('workflow script reading (judgments)', () => {
         "{ name: 'a', description: 'b', whenToUse: 'often', limits: { agents: 3, deep: [1, null, true] } }",
       ),
     );
-    expect(read.meta?.extra).toEqual({
-      whenToUse: 'often',
-      limits: { agents: 3, deep: [1, null, true] },
-    });
+    expect(read.meta?.whenToUse).toBe('often');
+    expect(read.meta?.extra).toEqual({ limits: { agents: 3, deep: [1, null, true] } });
   });
 
   test('string escapes read as JavaScript reads them', () => {
@@ -219,7 +218,6 @@ describe('workflow script reading (judgments)', () => {
       "export const meta = { name: 'a', description: 'b'",
       'export const meta = /* open',
       'export const meta =',
-      "export const meta = { name: 'a', description: 'b' } /*",
     ]) {
       const read = readWorkflowMeta(text);
       expect(read.meta).toBeUndefined();
@@ -227,7 +225,16 @@ describe('workflow script reading (judgments)', () => {
     }
   });
 
-  test('the first statement is found after a byte order mark and a shebang line is not a statement', () => {
+  test('the first statement is found after a byte order mark', () => {
     expect(readWorkflowMeta(`﻿${AUDIT_ROUTES}`).meta?.name).toBe('audit-routes');
+  });
+
+  test('a shebang line or a directive before meta is a statement: meta must be first (an error)', () => {
+    for (const lead of ['#!/usr/bin/env node\n', "'use strict'\n"]) {
+      const read = readWorkflowMeta(`${lead}${AUDIT_ROUTES}`);
+      expect(read.meta).toBeUndefined();
+      expect(read.issues.map((found) => found.severity)).toEqual(['error']);
+      expect(messages(read.issues)[0]).toContain('must be the first statement');
+    }
   });
 });

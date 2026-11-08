@@ -48,6 +48,7 @@ spec('themes.components.Themes and output styles', () => {
     const [dracula] = plugin?.themes ?? [];
     expect(dracula?.path).toBe('themes/dracula.json');
     expect(dracula?.plugin).toBe('my-plugin');
+    expect(dracula).not.toHaveProperty('qualifiedName');
     expect(dracula?.theme?.name).toBe('Dracula');
     expect(dracula?.theme?.base).toBe('dark');
     expect(Object.keys(dracula?.theme?.overrides ?? {})).toEqual(['claude', 'error']);
@@ -120,6 +121,23 @@ spec('themes.components.Themes and output styles', () => {
       base: 'dark',
       overrides: { claude: '#bd93f9', error: '#ff5555', text: 'ansi:white' },
     });
+  });
+
+  test('the copy keeps a token the reference does not list, as written: /theme sets a few such accents', () => {
+    const body = json({
+      name: 'Onboard',
+      overrides: { claude: '#bd93f9', onboardingAccent: '#112233', futureToken: 'ansi256(9)' },
+    });
+    const plugin = readTheme('onboard', body).theme;
+    if (plugin === undefined) throw new Error('the theme reads');
+    const copy = copyOfPluginTheme(plugin, new Set(['onboard']));
+    expect(copy.slug).toBe('onboard-copy');
+    expect(JSON.parse(copy.text)).toEqual({
+      name: 'Onboard',
+      base: 'dark',
+      overrides: { claude: '#bd93f9', onboardingAccent: '#112233', futureToken: 'ansi256(9)' },
+    });
+    expect(readTheme(copy.slug, copy.text).theme).toEqual({ ...plugin, slug: copy.slug });
   });
 });
 

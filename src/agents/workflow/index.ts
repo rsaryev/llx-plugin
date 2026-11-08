@@ -6,4 +6,5 @@ export * from './relaunch.ts';
 export * from './replay.ts';
 export * from './saved-scan.ts';
 export * from './saved.ts';
+export * from './structured-output.ts';
 export * from './usage-limit.ts';

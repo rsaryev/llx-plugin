@@ -196,7 +196,36 @@ spec('workflows.behavior.When an agent stalls and restarts.Awaited directly', ()
   });
 });
 
+describe('the labels and messages of the endings (judgments)', () => {
+  test('the detail line of the attempt after a lost reply or a requested restart reads in the kit words', () => {
+    expect(attemptLabels(2, 'lost-reply').detail).toBe('attempt 2 (lost reply)');
+    expect(attemptLabels(3, 'restarted').detail).toBe('attempt 3 (restarted)');
+  });
+
+  test('the abandoned list reads every ending, the requested restart as restarted on request', () => {
+    const verdict = failureOf(
+      'stalled',
+      'lost-reply',
+      'restarted',
+      'stalled',
+      'lost-reply',
+      'stalled',
+    );
+    expect(verdict.issue.message).toContain(
+      'stalled, lost its reply, restarted on request, stalled, lost its reply, stalled',
+    );
+  });
+});
+
 describe('the stall window (judgments)', () => {
+  test('the default the host raises with the stream idle timeout loses to the environment variable and to stallMs', () => {
+    const env = { CLAUDE_ASYNC_AGENT_STALL_TIMEOUT_MS: '900000' };
+    expect(stallWindowMs({ defaultMs: 1_200_000, env: {} })).toBe(1_200_000);
+    expect(stallWindowMs({ defaultMs: 1_200_000, env })).toBe(900_000);
+    expect(stallWindowMs({ defaultMs: 1_200_000, stallMs: 1_800_000, env })).toBe(1_800_000);
+    expect(stallWindowMs({ defaultMs: 0, env: {} })).toBe(600_000);
+  });
+
   test('a value that is not a positive whole number is no value: the next source applies', () => {
     for (const stallMs of [0, -5, 1.5, Number.NaN]) {
       expect(stallWindowMs({ stallMs, env: {} })).toBe(600_000);

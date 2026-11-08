@@ -96,6 +96,7 @@ spec('themes.config.Create a custom theme.name', () => {
     expect(themeSlug('~/.claude/themes/dracula.json')).toBe('dracula');
     expect(themeSlug('themes/midnight.json')).toBe('midnight');
     expect(themeSlug('C:\\Users\\me\\.claude\\themes\\night.owl.json')).toBe('night.owl');
+    expect(themeSlug('themes/Night.JSON')).toBe('Night');
     expect(customThemeId('dracula')).toBe('custom:dracula');
   });
 });

@@ -10,11 +10,17 @@ export function formatThemeColor(color: ThemeColor): string {
   return color.form === 'ansi256' ? `ansi256(${color.index})` : `ansi:${color.name}`;
 }
 
-/** The file text of a theme: `name`, `base` and `overrides`, two-space JSON. */
+/**
+ * The file text of a theme: `name`, `base` and `overrides`, two-space JSON. The overrides are the
+ * colours the kit read, then the tokens it does not list as they were written (`extraOverrides`).
+ */
 export function themeFileText(theme: Theme): string {
-  const overrides = Object.fromEntries(
-    Object.entries(theme.overrides).map(([token, color]) => [token, formatThemeColor(color)]),
-  );
+  const overrides = {
+    ...Object.fromEntries(
+      Object.entries(theme.overrides).map(([token, color]) => [token, formatThemeColor(color)]),
+    ),
+    ...theme.extraOverrides,
+  };
   return `${JSON.stringify({ name: theme.name, base: theme.base, overrides }, null, 2)}\n`;
 }
 

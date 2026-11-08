@@ -16,6 +16,7 @@ import {
   checkFanOut,
   interruptRun,
   workflowConcurrency,
+  type Interruption,
 } from '../../../src/agents/workflow/index.ts';
 import { spec } from '../../support/spec.ts';
 
@@ -71,9 +72,12 @@ spec('workflows.behavior.Behavior and limits.No mid-run user input', () => {
     }
   });
 
-  test('exactly two interruptions pause a run', () => {
-    const pausing = INTERRUPTIONS.filter((cause) => interruptRun(cause).pauses);
-    expect(pausing).toEqual(['agent-permission-prompt', 'usage-limit-wait']);
+  test('no cause outside the two the docs name pauses a run, whatever else the kit lists', () => {
+    const documented: Interruption[] = ['agent-permission-prompt', 'usage-limit-wait'];
+    const others = INTERRUPTIONS.filter((cause) => !documented.includes(cause));
+    expect(others.length).toBeGreaterThan(0);
+    for (const cause of others) expect(interruptRun(cause).pauses).toBe(false);
+    expect(INTERRUPTIONS.filter((cause) => interruptRun(cause).pauses)).toEqual(documented);
   });
 });
 

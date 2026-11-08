@@ -220,8 +220,10 @@ export {
   type PluginSettingsRead,
 } from './format/plugin-settings.ts';
 export * from './format/theme.ts';
+export * from './format/theme-color.ts';
 export * from './format/theme-tokens.ts';
 export * from './format/theme-write.ts';
 export * from './format/workflow-meta.ts';
+export * from './format/workflow-meta-rewrite.ts';
 export * from './format/workflow-script.ts';
 export * from './agents/workflow/index.ts';

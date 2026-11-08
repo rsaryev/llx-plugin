@@ -39,8 +39,9 @@ export function checkFanOut(call: FanOutCall, items: number): PluginIssue | unde
 
 /**
  * What can interrupt a run. "A run pauses on its own only for agent permission prompts and a
- * usage-limit wait": a question from the script, or a sign-off between stages, is not among them
- * ("For sign-off between stages, run each stage as its own workflow").
+ * usage-limit wait": nothing else pauses it. `script-question` and `stage-sign-off` are the kit's own
+ * names for the two kinds of mid-run input the docs turn away ("For sign-off between stages, run each
+ * stage as its own workflow"), so a host can name why it refuses (spec/judgments.md).
  */
 export const INTERRUPTIONS = [
   'agent-permission-prompt',

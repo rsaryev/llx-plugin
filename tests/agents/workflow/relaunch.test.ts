@@ -16,6 +16,7 @@ import {
   LEAVING,
   NOTHING_TO_RESUME,
   relaunch,
+  relaunchAfter,
   type RelaunchFacts,
 } from '../../../src/agents/workflow/index.ts';
 import { spec } from '../../support/spec.ts';
@@ -29,32 +30,40 @@ const facts: RelaunchFacts = {
 
 const outcome = (change: Partial<RelaunchFacts>) => relaunch({ ...facts, ...change });
 
-spec('workflows.behavior.Resume after you leave the session', () => {
-  test('in none of the three ways of leaving does the run continue on its own', () => {
-    expect(LEAVE_WAYS).toEqual([
-      'background',
-      'move-to-background-and-exit',
-      'exit-and-stop-tasks',
-    ]);
-    for (const way of LEAVE_WAYS) expect(LEAVING[way].continuesOnItsOwn).toBe(false);
-  });
+const WAYS_IN_BACKGROUND = ['background', 'move-to-background-and-exit'] as const;
 
-  test('backgrounding the session or moving to background and exit: relaunch in the background session, the run is only not running', () => {
-    for (const way of ['background', 'move-to-background-and-exit'] as const) {
-      expect(LEAVING[way]).toMatchObject({
-        stoppedWithSession: false,
-        relaunchIn: 'background-session',
-        resumeCommand: undefined,
+spec('workflows.behavior.Resume after you leave the session', () => {
+  test('backgrounding the session or moving to background and exit: Claude relaunches in the background session, which cannot find a script outside ~/.claude/projects/', () => {
+    for (const way of WAYS_IN_BACKGROUND) {
+      expect(relaunchAfter(way, { ...facts, scriptOutsideProjects: true })).toEqual({
+        relaunch: 'fail',
+        error: 'nothing to resume',
       });
+      expect(relaunchAfter(way, facts)).toEqual({ relaunch: 'replay' });
     }
   });
 
-  test('Exit and stop tasks: the run stopped with the session; claude --resume brings the session back, then Claude relaunches', () => {
-    expect(LEAVING['exit-and-stop-tasks']).toMatchObject({
+  test('Exit and stop tasks: the run stopped with the session, claude --resume brings it back, and the relaunch there finds a script outside ~/.claude/projects/', () => {
+    const way = 'exit-and-stop-tasks';
+    expect(relaunchAfter(way, { ...facts, scriptOutsideProjects: true })).toEqual({
+      relaunch: 'replay',
+    });
+    expect(LEAVING[way]).toMatchObject({
       stoppedWithSession: true,
-      relaunchIn: 'resumed-session',
       resumeCommand: 'claude --resume',
     });
+    for (const other of WAYS_IN_BACKGROUND) {
+      expect(LEAVING[other]).toMatchObject({ stoppedWithSession: false, resumeCommand: undefined });
+    }
+  });
+
+  test('in every way of leaving, a fresh session has no earlier run and starts the workflow over, and lost results fail', () => {
+    for (const way of LEAVE_WAYS) {
+      expect(relaunchAfter(way, { ...facts, earlierRun: false, resultsFound: false })).toEqual({
+        relaunch: 'new-run',
+      });
+      expect(relaunchAfter(way, { ...facts, resultsFound: false }).relaunch).toBe('fail');
+    }
   });
 
   test('a relaunch with saved results replays the run from them', () => {

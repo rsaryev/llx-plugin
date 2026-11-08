@@ -42,6 +42,20 @@
 
 ### Fixed
 
+- Workflows and themes (review findings): `stallWindowMs` takes the host's risen default as `defaultMs`, which
+  loses to `stallMs` and to `CLAUDE_ASYNC_AGENT_STALL_TIMEOUT_MS`; a lexical problem in the body of a script
+  (an unterminated string, template or comment) no longer discards a valid `meta`, and a rewrite of such a
+  script works; a rewrite adds a field with the line ending of a CRLF block; `rewriteWorkflowMeta` lives in
+  `workflow-meta-rewrite` and `MetaPatch.phases` takes object entries; `WorkflowMeta` gains `phaseEntries`
+  and `whenToUse`; `Theme.extraOverrides` keeps the tokens the reference omits, so a copy of a plugin theme or
+  a rewrite loses none; `PluginTheme.qualifiedName` is gone (a theme has no `<plugin>:` name);
+  `planReplay`/`replayAgent` compare an options fingerprint too (`AgentCall`, `options-differ`); a
+  schema that contradicts itself (`checkAgentSchema`) and the validation attempts (`afterInvalidOutput`,
+  `structuredOutputAttempts`); `themeColorToHex`; the order of two same-named workflows in one folder no
+  longer depends on the host locale; the literal reader returns a result instead of throwing;
+  `relaunchAfter` replaces the constant `continuesOnItsOwn`, and `startsNewAgents` is gone from the usage-limit
+  decision. Tests assert behaviour instead of reading constants back; the unrecorded judgments have rows.
+
 - Host: `SkillsReload.plugins` leaves out skills-directory plugins while `strictPluginOnlyCustomization`,
   `strictKnownMarketplaces` or `blockedMarketplaces` stop them; reads of the folders (`reloadSkills`,
   `touchFile`, `addDirectory`, `moveTo`) run one after another, so a touched file's skills are no longer

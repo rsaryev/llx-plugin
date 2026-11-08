@@ -60,7 +60,6 @@ export async function readThemes(
     value.push({
       path: file.path,
       name: file.name,
-      qualifiedName: `${context.pluginName}:${file.name}`,
       plugin: context.pluginName,
       theme: read.theme,
     });

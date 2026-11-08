@@ -54,7 +54,7 @@ const RAINBOW_COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'v
  * The tokens of the "Color token reference" tables, the paired shimmer variants, the eight
  * `<color>_FOR_SUBAGENTS_ONLY` names and the `rainbow_<color>` (and `_shimmer`) names. The docs say
  * the list omits "a few single-purpose accents such as onboarding screen colors" (judgment: those
- * are reported as `unknownTokens`, never as a problem).
+ * are kept as `extraOverrides` and listed in `unknownTokens`, never reported as a problem).
  */
 const DOCUMENTED_TOKENS = [
   'claude',

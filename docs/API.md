@@ -289,12 +289,16 @@ it. `listOutputStyles` is the `/output-style` list. The host writes the setting 
 ### Themes (done: `format/theme`, `theme-tokens`, `theme-write`)
 
 ```ts
-import { readTheme, themeSlug, customThemeId, copyOfPluginTheme } from '@rsaryev/claude-plugin-kit';
+import {
+  readTheme, themeSlug, customThemeId, copyOfPluginTheme, themeColorToHex,
+} from '@rsaryev/claude-plugin-kit';
 
 const { theme, issues } = readTheme(themeSlug('themes/dracula.json'), text);
 theme?.name; // `name`, else the slug
 theme?.base; // one of THEME_BASES, `dark` by default
 theme?.overrides; // token -> { form: 'rgb' | 'ansi256' | 'ansi', ... }, only valid colours
+theme?.extraOverrides; // unlisted tokens as written, kept so a copy or a rewrite loses none
+themeColorToHex(color, palette?); // '#rrggbb' for CSS; ansi colours from xterm's palette unless given
 customThemeId('dracula'); // 'custom:dracula', what `/theme` stores
 ```
 
@@ -303,15 +307,18 @@ shown in `/theme` marked as from the plugin), with three optional fields: `name`
 presets `THEME_BASES`, asserted against the SDK's `theme` setting) and `overrides` (token to colour,
 `THEME_TOKEN_NAMES`). Colours are `#rrggbb`, `#rgb`, `rgb(r,g,b)`, `ansi256(n)` or `ansi:<name>`; "Unknown
 tokens and invalid color values are ignored", so each one is dropped with a warning and the theme still
-loads, and `unknownTokens` lists the names. `copyOfPluginTheme` is the copy a user's edit of a plugin
-theme is saved as. The host applies the theme and watches the folder; the kit never renders.
+loads, and `unknownTokens` lists the names of the tokens the reference omits ("a few single-purpose
+accents such as onboarding screen colors": `/theme` sets them), whose raw values `extraOverrides` keeps.
+`copyOfPluginTheme` is the copy a user's edit of a plugin theme is saved as, with those tokens written
+back. A plugin theme is shown under `theme.name` with `plugin` as its origin; it has no `<plugin>:` name.
+Colour forms are exact: `RGB(...)` and `ANSI256(...)` are not colours. The host applies the theme and watches the folder; the kit never renders.
 
 ### Workflows (done: `format/workflow-meta`, `workflow-script`, `agents/workflow`)
 
 ```ts
 import { readWorkflowMeta, rewriteWorkflowMeta, inspectWorkflowScript } from '@rsaryev/claude-plugin-kit';
 
-const { meta } = readWorkflowMeta(source); // name, description, phases, extra; the script never runs
+const { meta } = readWorkflowMeta(source); // name, description, phases, phaseEntries, whenToUse, extra
 rewriteWorkflowMeta(source, { phases: ['Scan', 'Fix'] }).source; // every other byte kept
 inspectWorkflowScript(source).issues; // Date.now(), Math.random(), new Date(), import(), unused phases
 ```
@@ -322,16 +329,20 @@ says breaks a script: a `phases` entry no `phase()` call uses (and a `phase()` t
 only gets its own group), `Date.now()`, `Math.random()` and a no-argument `new Date()` (they throw in the
 script: pass a timestamp or a seed through `args`) and `import()` (the run fails before it starts). A script
 without a readable `meta` is not listed: `Plugin.workflows` has `qualifiedName: undefined` for it.
-A plugin's script runs as `/<plugin>:<meta.name>`.
+A plugin's script runs as `/<plugin>:<meta.name>`. `phases` holds the titles and `phaseEntries` the entries as
+written (an object entry keeps its other fields, and `MetaPatch.phases` takes them back); a lexical problem in
+the body (an unterminated string, template or comment) leaves a valid `meta` readable, since the runtime reports
+the body's errors when the workflow runs. A rewrite adds a field with the line ending of the block.
 
 The runtime is the host's. The decisions its runs need are pure functions over facts the host holds:
 
 | Function | Does |
 | --- | --- |
 | `admitAgent(started)`, `checkFanOut(call, items)`, `workflowConcurrency(env, cpus)`, `interruptRun(cause)` | 1,000 agents total per run, 4,096 items in one `parallel()` or `pipeline()`, 16 concurrent agents by default (`CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS`, 1 to 256), and that a run pauses only for a permission prompt or a usage-limit wait, never for user input |
-| `afterAttempt(endings)`, `attemptLabels`, `stallWindowMs`, `hasStalled`, `afterAgentFailure(site, failure)` | an agent whose output stops restarts at most five times, six attempts: `agent stalled on all 6 attempts`, `agent lost its reply on all 6 attempts`, or `agent abandoned after 6 attempts` listing the endings; `(retry n)` and `attempt n (stalled)` labels; `stallMs` over `CLAUDE_ASYNC_AGENT_STALL_TIMEOUT_MS`; inside `parallel()` or `pipeline()` the result is `null` and the run goes on, awaited directly the run ends with the error |
-| `planReplay(saved, prompts)`, `replayAgent(saved, state, prompt)` | which agents return their saved result on a relaunch: completed ones until the first prompt that differs, failed ones and everything after them run again, a stopped-while-running one starts over (`RECORDED_WHEN_STOPPED`: stopping the whole run counts nobody as failed, stopping one agent counts as failing) |
-| `relaunch(facts)`, `LEAVING` | leaving the session never continues the run; a relaunch replays the saved results, starts over when there is no earlier run, and fails with `nothing to resume` when the results cannot be found or a background session relaunches a script outside `~/.claude/projects/` |
+| `afterAttempt(endings)`, `attemptLabels`, `stallWindowMs`, `hasStalled`, `afterAgentFailure(site, failure)` | an agent whose output stops restarts at most five times, six attempts: `agent stalled on all 6 attempts`, `agent lost its reply on all 6 attempts`, or `agent abandoned after 6 attempts` listing the endings; `(retry n)` and `attempt n (stalled)` labels; `stallMs` over `CLAUDE_ASYNC_AGENT_STALL_TIMEOUT_MS` over the default (`defaultMs`: the host's risen default with `CLAUDE_STREAM_IDLE_TIMEOUT_MS`, which loses to both); inside `parallel()` or `pipeline()` the result is `null` and the run goes on, awaited directly the run ends with the error |
+| `planReplay(saved, calls)`, `replayAgent(saved, state, call)` | which agents return their saved result on a relaunch: completed ones until the first call (prompt, and an options fingerprint when the host keeps one) that differs, failed ones and everything after them run again, a stopped-while-running one starts over (`RECORDED_WHEN_STOPPED`: stopping the whole run counts nobody as failed, stopping one agent counts as failing) |
+| `relaunch(facts)`, `relaunchAfter(way, facts)`, `LEAVING` | leaving the session never continues the run; a relaunch replays the saved results, starts over when there is no earlier run, and fails with `nothing to resume` when the results cannot be found or a background session relaunches a script outside `~/.claude/projects/` |
+| `checkAgentSchema(schema)`, `afterInvalidOutput(failures, env)`, `structuredOutputAttempts(env)` | a `schema` that provably contradicts itself (a `required` key that `additionalProperties: false` rules out) fails the call before the subagent starts, naming the key; output that fails validation five times (`MAX_STRUCTURED_OUTPUT_RETRIES` changes the count) fails it with the last failure |
 | `usageLimitDecision(facts)` | the run pauses (no new agents start) only in an interactive subscription session with `autoContinueAtUsageLimit` on, a reset within 24 hours, fewer than two waits so far and a release with the wait (v2.1.271); otherwise the agent fails, with every cause listed |
 | `workflowArgs(passed)` | the `args` global: structured data as given, `undefined` when omitted |
 | `planWorkflowSave(request)`, `refuseLinks(plan, linked)`, `resolveSavedWorkflows`, `scanSavedWorkflows(folders, request)` | where a script is saved (`.claude/workflows/` of the closest existing folder up to the repository root, or `~/.claude/workflows/`, or `workflows/` under `CLAUDE_CONFIG_DIR`), the paths that must not be symlinks, and which `/<name>` runs (the closest project folder, then the personal one); the scan reads through `FolderScan` |
@@ -430,7 +441,7 @@ interface Plugin {
   readonly monitors: readonly Monitor[];
   readonly outputStyles: readonly PluginTextFile[];
   readonly workflows: readonly PluginWorkflow[]; // path, file name, `<plugin>:<meta.name>`, the read `meta`
-  readonly themes: readonly PluginTheme[]; // path, slug, `<plugin>:<slug>`, the plugin, the read `Theme`
+  readonly themes: readonly PluginTheme[]; // path, slug, the plugin it is marked as from, the read `Theme` (shown under `theme.name`, no `<plugin>:` prefix)
   readonly settings: PluginSettings; // official `Pick<Settings, 'agent' | 'subagentStatusLine'>`
   readonly userConfig: Readonly<Record<string, UserConfigOption>>;
   readonly bin: readonly string[]; // the files directly in bin/

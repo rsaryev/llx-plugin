@@ -206,12 +206,20 @@ describe('judgments: names and unreadable scripts', () => {
     expect(outcome.issue?.severity).toBe('error');
   });
 
-  test('two files of one folder with one name: the first path in sorted order runs', () => {
+  test('two files of one folder with one name: the first path in code-unit order runs', () => {
     const resolved = resolveSavedWorkflows([
       { name: 'r', scope: 'project', distance: 0, path: '/p/.claude/workflows/b.js' },
       { name: 'r', scope: 'project', distance: 0, path: '/p/.claude/workflows/a.js' },
     ]);
     expect(resolved.winners.map((w) => w.path)).toEqual(['/p/.claude/workflows/a.js']);
+  });
+
+  test('the order of that tie is by code unit, not by the host locale: an upper-case name sorts before a lower-case one', () => {
+    const resolved = resolveSavedWorkflows([
+      { name: 'r', scope: 'project', distance: 0, path: '/p/.claude/workflows/a.js' },
+      { name: 'r', scope: 'project', distance: 0, path: '/p/.claude/workflows/B.js' },
+    ]);
+    expect(resolved.winners.map((w) => w.path)).toEqual(['/p/.claude/workflows/B.js']);
   });
 
   test('a script without a readable meta is left out of the list, with the issue at its file', async () => {
