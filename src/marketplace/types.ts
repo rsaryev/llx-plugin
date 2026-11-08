@@ -11,6 +11,14 @@ import type { MarketplaceEntry, MarketplaceSource } from '../format/marketplace/
 /** Header names are lower case, as on the ports (`HttpRequest`). */
 export type HeaderMap = Readonly<Record<string, string>>;
 
+/**
+ * The headers a fetch or download sends, once any command has run. Wrapped, so that a result is
+ * never mistaken for a `PluginIssue` (a header map is a record of strings, and so is an issue).
+ */
+export interface ResolvedHeaders {
+  readonly headers: HeaderMap;
+}
+
 /** The download and extraction limits of an `archive` source (host-marketplace.md). */
 export interface ArchiveLimits {
   readonly maxDownloadBytes: number;

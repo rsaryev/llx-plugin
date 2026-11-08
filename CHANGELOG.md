@@ -81,6 +81,15 @@
   on Windows); `runCommandSource` and `fetchArchive` run the two engines through `CommandRunner`,
   `HttpClient`, `Sha256`, `ArchiveReader` and the new `PluginDirectories` port and refuse every
   failure the docs list.
+- Archive download headers (`marketplace`): `archiveDownloadHeaders` and `resolveHeaders` merge a
+  marketplace `url` source's `headers` (sent to its own origin only) with an entry's (replacing by
+  name), command output over `headers` within a place, and drop `Host`, `Cookie` and `X-Forwarded-*`
+  from catalog and project entries; `helperAllowed` decides whether a `headersHelper` runs
+  (`https://` marketplace URL, settings file and trust, `--add-dir`, `disableCommandPluginSources`
+  and `allowManagedHooksOnly`, single install or update the user accepted); `runHeadersHelper` runs
+  it through `CommandRunner` (10 seconds, JSON object of strings, no credential variables for a
+  catalog or project command) and `helperCache` reuses a `url` source's output for 60 seconds. Entry
+  validation also warns about routing headers and a `headersHelper` without a `sha256` pin.
 
 ### Fixed
 

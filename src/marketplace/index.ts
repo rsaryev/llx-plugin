@@ -12,6 +12,7 @@ export type {
   NormalizedDependency,
   NpmFetchPlan,
   RenameStatus,
+  ResolvedHeaders,
   SubmoduleRule,
 } from './types.ts';
 export type { HostFetchPlan, PluginDirectories, SourceFetcher } from './ports.ts';
@@ -39,3 +40,37 @@ export {
   submoduleRuleFor,
   type SubmoduleEvidence,
 } from './submodules.ts';
+export {
+  archiveDownloadHeaders,
+  entryLayer,
+  resolveHeaders,
+  urlSourceLayer,
+  type DownloadHeaderPorts,
+  type DownloadHeaderRequest,
+  type EntryDeclaration,
+  type EntryHeaders,
+  type UrlSourceHeaders,
+} from './download-headers.ts';
+export {
+  runHeadersHelper,
+  helperCache,
+  type HelperCache,
+  type HeadersHelperPorts,
+} from './header-helper.ts';
+export { mergeHeaders, normalizeHeaders, withoutRoutingHeaders } from './header-map.ts';
+export {
+  HEADER_ORIGINS,
+  HEADER_PLACES,
+  HELPER_REASONS,
+  PLUGIN_OPERATIONS,
+  helperAllowed,
+  type HeaderLayer,
+  type HeaderOrigin,
+  type HeaderPlace,
+  type HeadersSetting,
+  type HelperEffect,
+  type HelperReason,
+  type HelperVerdict,
+  type PluginOperation,
+} from './header-policy.ts';
+export { isCredentialVariable, withoutCredentials } from './credential-variables.ts';

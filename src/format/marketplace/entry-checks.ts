@@ -1,5 +1,6 @@
 import { error, warning, type PluginIssue } from '../issues.ts';
 import { nameReservedIssues } from '../names.ts';
+import { isRoutingHeader } from './header-names.ts';
 import { desktopNameIssues, pluginIdIssues } from './ids.ts';
 import { isRecord } from './marketplace-schema.ts';
 import type { MarketplaceEntry, PluginSource, PluginSourceKind, ReadMode } from './types.ts';
@@ -85,25 +86,34 @@ export interface HeaderFields {
 
 const HEADER_FIELDS = ['headers', 'headersHelper'] as const;
 
-/** `headers`/`headersHelper` on a source that ignores them, and a helper without `"strict": false`. */
-export function headerIssues(
-  entry: HeaderFields,
-  source: PluginSource,
-  base: string,
-): PluginIssue[] {
+/** `headers`/`headersHelper` on a source that ignores them: "only apply to "archive" sources". */
+function ignoredHeaderIssues(entry: HeaderFields, base: string): PluginIssue[] {
+  return HEADER_FIELDS.filter((key) => entry[key] !== undefined).map((field) =>
+    warning(
+      `${base}.${field}`,
+      `Plugin "${entry.name}" sets headers/headersHelper, which only apply to "archive" sources; they have no effect on this entry.`,
+    ),
+  );
+}
+
+/** "Header "x" is a request-routing/identity header that catalog entries may not set". */
+function routingHeaderIssues(headers: unknown, base: string): PluginIssue[] {
+  if (!isRecord(headers)) return [];
+  return Object.keys(headers)
+    .filter(isRoutingHeader)
+    .map((name) =>
+      warning(
+        `${base}.headers.${name}`,
+        `Header "${name}" is a request-routing/identity header that catalog entries may not set; Claude Code drops it at download time.`,
+      ),
+    );
+}
+
+/** A helper without `"strict": false` is an error; one on an archive without a pin is a warning. */
+function helperIssues(entry: HeaderFields, source: PluginSource, base: string): PluginIssue[] {
+  if (entry.headersHelper === undefined) return [];
   const found: PluginIssue[] = [];
-  if (!TAKES_HEADERS[source.kind]) {
-    for (const field of HEADER_FIELDS.filter((key) => entry[key] !== undefined)) {
-      found.push(
-        warning(
-          `${base}.${field}`,
-          `Plugin "${entry.name}" sets headers/headersHelper, which only apply to "archive" sources; they have no effect on this entry.`,
-        ),
-      );
-    }
-    return found;
-  }
-  if (entry.headersHelper !== undefined && entry.strict) {
+  if (entry.strict) {
     found.push(
       error(
         `${base}.headersHelper`,
@@ -111,7 +121,26 @@ export function headerIssues(
       ),
     );
   }
+  const pinned = 'sha256' in source && source.sha256 !== undefined;
+  if (!pinned) {
+    found.push(
+      warning(
+        `${base}.source.sha256`,
+        `Plugin "${entry.name}" fetches its archive with a headersHelper but sets no sha256 pin`,
+      ),
+    );
+  }
   return found;
+}
+
+/** The header reports of an entry: the fields on a source that ignores them, or the ones that apply to an archive. */
+export function headerIssues(
+  entry: HeaderFields,
+  source: PluginSource,
+  base: string,
+): PluginIssue[] {
+  if (!TAKES_HEADERS[source.kind]) return ignoredHeaderIssues(entry, base);
+  return [...routingHeaderIssues(entry.headers, base), ...helperIssues(entry, source, base)];
 }
 
 /** Where plugin.json sits for a source whose files are inside the marketplace; other sources are not read before install. */

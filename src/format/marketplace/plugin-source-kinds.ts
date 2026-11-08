@@ -76,7 +76,7 @@ const FOUR_SPACES = / {4}/;
  * 500 characters, with no run of four or more spaces"), one report per rule broken. The docs give
  * the rules, not the wording of the refusal: the messages are the kit's (spec/judgments.md).
  */
-function commandTextIssues(command: string, path: string): PluginIssue[] {
+export function commandTextIssues(command: string, path: string): PluginIssue[] {
   const found: PluginIssue[] = [];
   if (!PRINTABLE_ASCII.test(command)) {
     found.push(error(path, 'The command must be printable ASCII, so users can review all of it'));

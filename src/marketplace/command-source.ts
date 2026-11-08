@@ -39,7 +39,9 @@ export interface FetchedCommandPlugin {
 }
 
 /** `sh -c <command>`, or `cmd.exe /c <command>`: the exec form of the shell the docs name. */
-const SHELLS: { readonly [S in CommandFetchPlan['shell']]: (command: string) => CommandSpec } = {
+export const SHELLS: {
+  readonly [S in CommandFetchPlan['shell']]: (command: string) => CommandSpec;
+} = {
   sh: (command) => ({ form: 'exec', command: 'sh', args: ['-c', command] }),
   cmd: (command) => ({ form: 'exec', command: 'cmd.exe', args: ['/c', command] }),
 };
