@@ -1,5 +1,5 @@
 import type { PolicyKey } from '../../protocol/settings-keys.ts';
-import type { PolicyScope } from '../layers.ts';
+import type { KeyHolder, PolicyScope } from '../layers.ts';
 import type { PolicyView } from '../view.ts';
 
 /** Where an `enabledPlugins` decision came from: a file, or the plugin's own `defaultEnabled`. */
@@ -17,11 +17,22 @@ export interface EnabledDecision {
 const KEY = 'enabledPlugins' satisfies PolicyKey;
 
 /**
+ * Whether a file's entry for the id counts. A `--add-dir` directory is the lowest source and "Only a
+ * `true` value has an effect" there (plugins/loading.md, "Find where a plugin is enabled"), so any
+ * other value of its entry is passed over and a lower file, or the manifest, decides.
+ */
+const decides = (holder: KeyHolder<typeof KEY>, id: string): boolean =>
+  Object.hasOwn(holder.value, id) && (holder.scope !== 'addDir' || holder.value[id] === true);
+
+/**
  * Whether a plugin is on (settings-reference.md, `enabledPlugins`; plugins/org.md, "Control
  * matrix"). The highest file that has an entry for this id decides, so project beats user, local
  * beats project, and managed beats every other file: a managed `true` cannot be turned off and a
  * managed `false` cannot be turned on. With no entry anywhere the plugin follows its manifest
  * `defaultEnabled`, which is `true` when the manifest does not say (manifest-reference.md).
+ *
+ * A `--add-dir` directory ranks below user settings, and only its `true` counts: it never turns a
+ * plugin off and never overrides another file (plugins/loading.md).
  *
  * Judgment (spec/judgments.md): the SDK also types a list or an object as an entry, which the
  * settings docs do not describe; only `false` turns a plugin off, so those read as enabled.
@@ -31,7 +42,7 @@ export function enabledPlugin(
   id: string,
   manifestDefaultEnabled = true,
 ): EnabledDecision {
-  const holder = view.eachFromHighest(KEY).find((each) => Object.hasOwn(each.value, id));
+  const holder = view.eachFromHighest(KEY).find((each) => decides(each, id));
   if (holder === undefined) {
     return {
       on: manifestDefaultEnabled,

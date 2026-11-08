@@ -101,10 +101,47 @@ spec('settings.key.prependPlugins', () => {
     expect(empty.guard).toEqual({ loads: false, placement: 'absent' });
   });
 
+  test('an organization mod that no list names is reported in unlisted, after prepend and before the users', () => {
+    const result = order([acme({})], managedMachine);
+    expect(plain(result.prepend)).toEqual([]);
+    expect(plain(result.append)).toEqual([]);
+    expect(plain(result.unlisted)).toEqual(['acme-guard@acme-tools', 'acme-audit@acme-tools']);
+    expect(result.skipped).toEqual([]);
+  });
+
+  test('a listed organization mod is not unlisted, and a mod not force-enabled by managed settings is never one', () => {
+    const result = order(
+      [
+        acme({
+          prependPlugins: ['sec-default@builtin', 'acme-guard@acme-tools'],
+          enabledPlugins: {
+            'acme-guard@acme-tools': true,
+            'acme-audit@acme-tools': true,
+            'acme-off@acme-tools': false,
+          },
+        }),
+      ],
+      managedMachine,
+      orgMods('acme-guard@acme-tools', 'acme-audit@acme-tools', 'acme-off@acme-tools', 'x@y'),
+    );
+    expect(plain(result.prepend)).toEqual(['sec-default@builtin', 'acme-guard@acme-tools']);
+    expect(plain(result.unlisted)).toEqual(['acme-audit@acme-tools']);
+    const appended = order([acme({ appendPlugins: ['acme-audit@acme-tools'] })], managedMachine);
+    expect(plain(appended.append)).toEqual(['acme-audit@acme-tools']);
+    expect(plain(appended.unlisted)).toEqual(['acme-guard@acme-tools']);
+  });
+
   test('a guard named in appendPlugins does not keep the guard: only prependPlugins names it', () => {
     const result = order([acme({ appendPlugins: ['sec-default@builtin'] })], managedMachine);
     expect(result.guard).toEqual({ loads: true, placement: 'outermost' });
     expect(plain(result.append)).toEqual([]);
+    expect(plain(result.skipped)).toEqual([
+      {
+        id: 'sec-default@builtin',
+        reason:
+          'appendPlugins names sec-default@builtin, which is not an enabled managed plugin with a hooks module; skipped',
+      },
+    ]);
     const listed = order(
       [acme({ prependPlugins: ['acme-guard@acme-tools'], appendPlugins: ['sec-default@builtin'] })],
       managedMachine,

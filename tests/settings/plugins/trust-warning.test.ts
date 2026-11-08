@@ -7,7 +7,7 @@
  * supplies it and the kit returns it unchanged.
  */
 import { describe, expect, test } from 'bun:test';
-import { trustWarning, TRUST_MESSAGE_JOINER } from '../../../src/settings/plugins/index.ts';
+import { trustWarning } from '../../../src/settings/plugins/index.ts';
 import { spec } from '../../support/spec.ts';
 import { viewOf } from '../../support/plugin-settings.ts';
 
@@ -24,12 +24,6 @@ spec('settings.key.pluginTrustMessage', () => {
     const warning = trustWarning(viewOf(['managed', { pluginTrustMessage: message }]), standard);
     expect(warning.startsWith(standard)).toBe(true);
     expect(warning.endsWith(message)).toBe(true);
-  });
-
-  test('the message is added, never substituted for the standard text', () => {
-    const warning = trustWarning(viewOf(['managed', { pluginTrustMessage: message }]), standard);
-    expect(warning).not.toBe(message);
-    expect(warning).toContain(standard);
   });
 
   test('the key is managed only: user, project, local and --settings values change nothing', () => {
@@ -54,8 +48,7 @@ spec('settings.key.pluginTrustMessage', () => {
 describe('what the docs leave open (spec/judgments.md)', () => {
   test('the standard warning and the organization text are separated by a blank line', () => {
     const warning = trustWarning(viewOf(['managed', { pluginTrustMessage: message }]), standard);
-    expect(warning).toBe(`${standard}${TRUST_MESSAGE_JOINER}${message}`);
-    expect(TRUST_MESSAGE_JOINER).toBe('\n\n');
+    expect(warning).toBe(`${standard}\n\n${message}`);
   });
 
   test('an empty or blank message adds nothing', () => {

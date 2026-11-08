@@ -2,7 +2,7 @@
  * settings.md § Settings precedence ("managed settings, command line, project local, shared
  * project, user"; a key set at a higher level overrides the same key lower down) and § Precedence
  * examples (the project value beats the user value, local beats project, managed beats everything,
- * `--settings` beats every file except managed). `parent` and `addDir` are not ranked by the docs:
+ * `--settings` beats every file except managed). `parent` is not ranked by the docs; `addDir` is the lowest source of `enabledPlugins`:
  * spec/judgments.md. The keys' own behaviour has requirement ids, so this file is not under spec().
  */
 import { describe, expect, test } from 'bun:test';

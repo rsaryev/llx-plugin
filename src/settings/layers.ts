@@ -7,7 +7,8 @@ import { admits } from './key-spec.ts';
  * precedence": managed, command line, project local, shared project, user). `flag` is the
  * `--settings` JSON. `parent` is the policy-tier settings an embedding host passes through the
  * Agent SDK's `managedSettings`; `addDir` is a `--add-dir` directory's `.claude/settings*.json`,
- * which carries two keys only. The docs rank neither: spec/judgments.md.
+ * which carries two keys only. The docs rank `parent` nowhere (spec/judgments.md); they rank `addDir`
+ * lowest of the sources of `enabledPlugins` (plugins/loading.md, "Find where a plugin is enabled").
  */
 export const POLICY_SCOPES = [
   'managed',
@@ -15,8 +16,8 @@ export const POLICY_SCOPES = [
   'flag',
   'local',
   'project',
-  'addDir',
   'user',
+  'addDir',
 ] as const;
 export type PolicyScope = (typeof POLICY_SCOPES)[number];
 
@@ -27,8 +28,8 @@ export const SCOPE_RANK: { readonly [S in PolicyScope]: number } = {
   flag: 5,
   local: 4,
   project: 3,
-  addDir: 2,
-  user: 1,
+  user: 2,
+  addDir: 1,
 };
 
 export interface SettingsLayer {

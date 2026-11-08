@@ -77,6 +77,12 @@
 
 ### Fixed
 
+- Settings, plugin keys: a `--add-dir` directory now ranks below user settings and only its `true`
+  `enabledPlugins` entry counts (plugins/loading.md), so it neither turns a plugin off nor overrides
+  another file; the built-in guard's `pluginConfigs` options are read from managed settings only;
+  `modOrder` reports the organization's mods that no list names (`unlisted`); a `pluginConfigs`
+  entry that is not an object is dropped with a warning instead of shadowing a lower file; the
+  option value types come from the SDK; tests no longer restate a constant or a neighbour.
 - Settings: the policy view returns each key's value through a merge strategy typed over the key,
   with no cast; the `hooks` of a user, project, local or `--settings` file drop only the entries
   that fail (a bad handler, group or event) and keep the rest, while a managed source still ignores

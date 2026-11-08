@@ -125,6 +125,41 @@ spec('settings.key.enabledPlugins', () => {
     }
   });
 
+  test('--add-dir is the lowest source: a user false beats its true, and its false changes nothing', () => {
+    const addDirTrue = ['addDir', { enabledPlugins: { 'p@m': true } }] as const;
+    const addDirFalse = ['addDir', { enabledPlugins: { 'p@m': false } }] as const;
+    const userTrue = ['user', { enabledPlugins: { 'p@m': true } }] as const;
+    const userFalse = ['user', { enabledPlugins: { 'p@m': false } }] as const;
+
+    const falseBelow = enabledPlugin(viewOf(addDirTrue, userFalse), 'p@m');
+    expect(falseBelow.on).toBe(false);
+    expect(falseBelow.decidedBy).toBe('user');
+
+    const ignored = enabledPlugin(viewOf(addDirFalse, userTrue), 'p@m', false);
+    expect(ignored.on).toBe(true);
+    expect(ignored.decidedBy).toBe('user');
+  });
+
+  test('a --add-dir true alone turns the plugin on; its false alone leaves the manifest default', () => {
+    const on = enabledPlugin(viewOf(['addDir', { enabledPlugins: { 'p@m': true } }]), 'p@m', false);
+    expect(on.on).toBe(true);
+    expect(on.decidedBy).toBe('addDir');
+    const off = enabledPlugin(
+      viewOf(['addDir', { enabledPlugins: { 'p@m': false } }]),
+      'p@m',
+      true,
+    );
+    expect(plain(off)).toEqual({
+      on: true,
+      decidedBy: 'defaultEnabled',
+      blockedByManaged: false,
+      hiddenInMarketplace: false,
+    });
+    expect(
+      enabledPlugin(viewOf(['addDir', { enabledPlugins: { 'p@m': false } }]), 'p@m', false).on,
+    ).toBe(false);
+  });
+
   test('each plugin id is decided on its own: another id in a higher file does not shadow it', () => {
     const view = viewOf(
       ['user', { enabledPlugins: { 'a@m': false } }],

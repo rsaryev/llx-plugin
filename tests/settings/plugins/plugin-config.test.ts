@@ -20,6 +20,10 @@ const entry = (value: string, option = 'mode') => ({
   pluginConfigs: { 'p@m': { options: { [option]: value } } },
 });
 
+const guardOption = (allowManagedModsOnly: boolean) => ({
+  pluginConfigs: { 'cc-plugin-sec-default@builtin': { options: { allowManagedModsOnly } } },
+});
+
 spec('settings.key.pluginConfigs', () => {
   test('the docs example stores the api_endpoint option of the deployer plugin', () => {
     const view = viewOf([
@@ -152,11 +156,29 @@ spec('settings.key.pluginConfigs', () => {
         'cc-plugin-sec-default@builtin': { options: { allowManagedModsOnly: true } },
       },
     };
-    for (const scope of ['project', 'local', 'flag'] as const) {
+    for (const scope of ['user', 'project', 'local', 'flag'] as const) {
       expect(
         plain(pluginConfig(viewOf([scope, guardEntry]), 'cc-plugin-sec-default@builtin').options),
       ).toEqual({});
     }
+  });
+
+  test('a user guard option does not loosen or replace the managed one, and a managed entry without it is not filled by user', () => {
+    const userTrue = viewOf(['user', guardOption(true)], ['managed', guardOption(false)]);
+    expect(plain(pluginConfig(userTrue, 'cc-plugin-sec-default@builtin').options)).toEqual({
+      allowManagedModsOnly: false,
+    });
+    const userFalse = viewOf(['user', guardOption(false)], ['managed', guardOption(true)]);
+    expect(plain(pluginConfig(userFalse, 'cc-plugin-sec-default@builtin').options)).toEqual({
+      allowManagedModsOnly: true,
+    });
+    const unmanaged = viewOf(['user', guardOption(true)], ['managed', { pluginConfigs: {} }]);
+    expect(plain(pluginConfig(unmanaged, 'cc-plugin-sec-default@builtin').options)).toEqual({});
+  });
+
+  test('the user file still supplies the options of another plugin', () => {
+    const view = viewOf(['user', { pluginConfigs: { 'p@m': { options: { a: 1 } } } }]);
+    expect(plain(pluginConfig(view, 'p@m').options)).toEqual({ a: 1 });
   });
 });
 
@@ -207,14 +229,28 @@ describe('what the docs leave open (spec/judgments.md)', () => {
     );
   });
 
-  test('an entry that is not an object, or whose fields are not objects, holds nothing', () => {
-    const view = viewOf([
-      'user',
-      { pluginConfigs: { 'a@m': 'text', 'b@m': { options: 'x', mcpServers: [] } } },
-    ]);
-    expect(plain(pluginConfig(view, 'a@m').options)).toEqual({});
+  test('a field that is not an object holds nothing', () => {
+    const view = viewOf(['user', { pluginConfigs: { 'b@m': { options: 'x', mcpServers: [] } } }]);
     expect(plain(pluginConfig(view, 'b@m').options)).toEqual({});
     expect(plain(pluginConfig(view, 'b@m').mcpServers)).toEqual({});
+  });
+
+  test('an entry that is not an object is dropped with a warning and does not shadow a lower file', () => {
+    const view = viewOf(
+      ['user', { pluginConfigs: { 'p@m': { options: { a: 1 } } } }],
+      ['managed', { pluginConfigs: { 'p@m': 'x' } }],
+    );
+    const config = pluginConfig(view, 'p@m');
+    expect(plain(config.options)).toEqual({ a: 1 });
+    expect(config.issues.map((issue) => issue.path)).toEqual(['pluginConfigs:p@m']);
+    expect(config.issues.map((issue) => issue.severity)).toEqual(['warning']);
+  });
+
+  test('an entry that is not an object, with nothing below it, holds nothing and still warns', () => {
+    const config = pluginConfig(viewOf(['user', { pluginConfigs: { 'a@m': 'text' } }]), 'a@m');
+    expect(plain(config.options)).toEqual({});
+    expect(plain(config.mcpServers)).toEqual({});
+    expect(config.issues.map((issue) => issue.path)).toEqual(['pluginConfigs:a@m']);
   });
 
   test('a server whose values are not an object is dropped with a warning', () => {

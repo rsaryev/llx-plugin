@@ -27,6 +27,12 @@ export interface ModOrderResult {
   readonly prepend: readonly string[];
   /** Run after every mod a user installs, in this order. */
   readonly append: readonly string[];
+  /**
+   * The organization's mods that no list names: they run right after `prepend` and before every
+   * mod a user installs, in the order `orgMods` holds them (plugins/mods/events.md, "The order mods
+   * run in").
+   */
+  readonly unlisted: readonly string[];
   readonly skipped: readonly SkippedMod[];
   readonly guard: { readonly loads: boolean; readonly placement: GuardPlacement };
 }
@@ -110,7 +116,8 @@ function skipReason(request: Request, from: ListOrigin, id: string): string | un
  * the settings cannot show: the marketplace is a directory on the machine and lists the plugin by a
  * relative path, so it loads in place. The kit adds the third, a managed `enabledPlugins` `true`.
  *
- * Judgment (spec/judgments.md): a repeated id keeps its first place, the two spellings of the guard
+ * Judgment (spec/judgments.md): the organization's mods that no list names are `unlisted`, in the
+ * order of `orgMods`, a repeated id keeps its first place, the two spellings of the guard
  * are one id, text that is no plugin id and a guard in a user list are skipped with a reason, and a
  * managed layer counts as managed settings whatever the host says.
  */
@@ -131,9 +138,15 @@ export function modOrder(
   );
   // "An id listed in both `prependPlugins` and `appendPlugins` is prepended."
   const prepended = new Set(prepend.taken.map(canonical));
+  const appended = append.taken.filter((id) => !prepended.has(canonical(id)));
+  const listed = new Set([...prepended, ...appended]);
   return {
     prepend: prepend.taken,
-    append: append.taken.filter((id) => !prepended.has(canonical(id))),
+    append: appended,
+    // "A mod that counts as yours runs before users' mods even when you list it nowhere."
+    unlisted: [...orgMods].filter(
+      (id) => forceEnabledByManaged(view, id) && !listed.has(canonical(id)),
+    ),
     skipped: [...prepend.skipped, ...append.skipped],
     guard: guardOf(prependListing, prepend.taken, hasManaged || teamLogin),
   };

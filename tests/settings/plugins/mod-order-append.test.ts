@@ -108,12 +108,34 @@ describe('what the docs leave open (spec/judgments.md)', () => {
     expect(plain(result.prepend)).toEqual(['acme-guard@acme-tools', 'acme-audit@acme-tools']);
   });
 
-  test('the two spellings of the guard are one id: a repeat or an overlap with appendPlugins counts once', () => {
+  test('the two spellings of the guard are one id: a repeat inside prependPlugins counts once', () => {
     const result = order(
       [acme({ prependPlugins: ['sec-default@builtin', 'cc-plugin-sec-default@builtin'] })],
       managedMachine,
     );
     expect(plain(result.prepend)).toEqual(['sec-default@builtin']);
+    expect(result.skipped).toEqual([]);
+  });
+
+  test('the guard in prependPlugins under one spelling and appendPlugins under the other is prepended once and the append copy is skipped', () => {
+    const result = order(
+      [
+        acme({
+          prependPlugins: ['sec-default@builtin'],
+          appendPlugins: ['cc-plugin-sec-default@builtin'],
+        }),
+      ],
+      managedMachine,
+    );
+    expect(plain(result.prepend)).toEqual(['sec-default@builtin']);
+    expect(plain(result.append)).toEqual([]);
+    expect(plain(result.skipped)).toEqual([
+      {
+        id: 'cc-plugin-sec-default@builtin',
+        reason:
+          'appendPlugins names cc-plugin-sec-default@builtin, which is not an enabled managed plugin with a hooks module; skipped',
+      },
+    ]);
   });
 
   test('a text that is no plugin id is skipped with the reason', () => {
