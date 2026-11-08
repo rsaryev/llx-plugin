@@ -20,6 +20,12 @@
   fake.
 - `EFFORT_LEVELS`, asserted equal to the SDK's `EffortLevel`, and the official `EffortLevel`,
   `SlashCommand` and `ResolvedSettingSource` types re-exported.
+- Permission rules (`rules`): `parseRule` and `formatRule` for `Tool` and `Tool(specifier)` (literal
+  parentheses, `Bash(*)` as bare, `domain:` and `Tool(param:value)` specifiers, the malformed-rule
+  message), `matchRule` for bare rules, tool-name globs (with the allow-glob anchoring rule) and
+  input-parameter rules, `evaluateRules` in deny, ask, allow order, and `ruleIssues` for the
+  matches-no-tool warning. `PERMISSION_MODES`, `PERMISSION_BEHAVIORS`, `normalizePermissionMode`
+  (`manual` is `default`), `DOCUMENTED_TOOLS`, and the SDK's tool input and output types.
 
 ### Fixed
 

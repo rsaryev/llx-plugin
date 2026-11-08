@@ -147,11 +147,34 @@ The host maps its own tools to Claude Code's names and inputs before dispatching
 `Write`, `Edit`…, typed by the official `ToolInputSchemas`), so a plugin's `"matcher": "Write|Edit"`
 and `"if": "Bash(git *)"` mean what they mean in Claude Code.
 
-## Permission rules (planned)
+## Permission rules (done: syntax, bare, parameter and glob rules, precedence; planned: Bash, path, domain)
 
-`parseRule('Bash(git push *)')` and `matchRule(rule, toolName, input)`: Claude Code's rule syntax
-(permissions.md), used by the `if` field of hooks, `allowed-tools` of skills and commands, and a
-host's own permission system. Every example table in permissions.md is a requirement.
+Claude Code's rule syntax (permissions.md), used by the `if` field of hooks, `allowed-tools` of
+skills and commands, and a host's own permission system. Pure functions over data, no ports.
+
+```ts
+import { evaluateRules, parseRule, ruleIssues } from '@rsaryev/claude-plugin-kit';
+
+const { rule, issues } = parseRule('Agent(model:opus)', { behavior: 'deny', source: { kind: 'user' } });
+const verdict = evaluateRules(rules, { toolName: 'Agent', input: { model: 'opus' } }, context);
+// verdict.behavior is 'deny' | 'ask' | 'allow' | undefined, with the rule that matched
+```
+
+| Function                         | Status  | Does                                                                         |
+| -------------------------------- | ------- | ---------------------------------------------------------------------------- |
+| `parseRule(text, { behavior, source })` | done | `Tool` / `Tool(specifier)` to a `PermissionRule`; a skipped rule is `rule: undefined` plus issues |
+| `formatRule(value)`              | done    | the text of an official `PermissionRuleValue`                                |
+| `matchRule(rule, call, context)` | done    | bare rules, tool-name globs and `Tool(param:value)`; other specifiers go to the matcher of the tool's rule format |
+| `evaluateRules(rules, call, context)` | done | deny, then ask, then allow; the first match wins and specificity never reorders |
+| `ruleIssues(rules, knownTools)`  | done    | the matches-no-tool startup warning (typos and labels such as `Stop Task`)   |
+| Bash, path, domain, skill and agent matchers | planned | fill `SPECIFIER_MATCHERS` per rule format                       |
+| `decide`, tool catalog, `evaluateIf` | planned | modes and the hook `if` field                                          |
+
+`parseRule` returns the official `{ toolName, ruleContent? }` in `rule.value` and the read form in
+`rule.specifier` (`param`, `domain` or `text`), so matching never parses text again. Deny and ask
+rules read `name:value` as an input parameter; an allow rule keeps each tool's own syntax.
+`SPECIFIER_MATCHERS` holds one matcher per `RuleFormatId` (the "Rule format" table of
+tools-reference.md); a format whose matcher is not written yet matches nothing.
 
 ## Testing kit (planned)
 
