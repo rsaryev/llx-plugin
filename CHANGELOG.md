@@ -60,6 +60,16 @@
 
 ### Added
 
+- MCP: `${VAR}` for servers of the settings scopes, not only plugins' (`expandMcpServer`,
+  `expandEnvText`): `command`, `args` and `env` of a stdio server, `url` and `headers` of a remote
+  one, over a lookup function and no plugin. An empty string counts as set, an unset variable
+  without a default keeps its text with a missing-variable warning, a `url` that does not parse
+  after expansion drops the server, and the covered credential variables read as empty toward a
+  remote server with a debug line naming the ones the user set (`credential-env`, one list for
+  plugin and non-plugin servers). `displayReference` gives what `/mcp` and `claude mcp list` show
+  (the `${VAR}` by name; a managed server's host only) and `mcpEndpointKey` the endpoint two
+  servers are duplicates by (URL spellings that differ only in scheme or host case, default port or
+  a trailing slash are one; a command is its arguments too).
 - Spec: the requirement set now counts the docs' prose, not only their tables. Every heading of
   the plugin, mods, skills, subagents, hooks, MCP, managed MCP, settings, managed settings,
   permissions, environment, CLI, workflows, themes, output styles and channels pages is either

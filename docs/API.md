@@ -416,6 +416,20 @@ const { resolved, issues: more } = await resolveMcpServer('db', servers.db, scop
 | `validateUserConfigValues(config)` | one error per declared option whose value (saved, else `default`) would not be accepted: `required` and empty, a value of the wrong `type`, `multiple` not an array of strings, outside `options`, below `min` or above `max`; the dialog is the host's |
 | `rejectUserConfigInShell(guard, template, context, path)`, `HEADERS_HELPER_GUARD` | the shell-field check on the template, with the message errors.md quotes; monitors and shell-form hooks pass a guard of their own |
 
+#### Servers of the settings scopes (done: `format/mcp-env`, `credential-env`, `mcp-endpoint`)
+
+Pure over a lookup function (`(name) => string | undefined`, for example `(n) => env.get(n)`), so they
+need no plugin and no `SubstitutionScope`. Plugin servers resolve through `resolveMcpServer`, which
+shares the per-reference rule (`resolveEnvReference`) with this expander, so the two cannot drift.
+
+| API | What it does |
+| --- | --- |
+| `expandMcpServer(name, server, lookup)` | `${VAR}` and `${VAR:-default}` in `command`, `args` and `env` (stdio) or `url` and `headers` (remote; `headersHelper` is left as written). Returns `{ server, issues, missing, debug }`: an empty string counts as set so its default is ignored; an unset variable with no default keeps the `${VAR}` text and is a warning (`missing` is the `claude mcp list` warning's data); a covered credential variable reads as empty in `url` and `headers` only, with no warning; `server` is `undefined` with an error `'url' is not a valid URL` when the expanded `url` does not parse; `debug` has one line per covered variable the user has set, containing `never expanded toward a remote server` and never a value |
+| `expandEnvText(text, lookup, readsAsEmpty?)` | the same rule for one string: `{ text, missing, credentials }` |
+| `displayReference(server, scope)` | the URL or command line `/mcp`, `claude mcp list` and `claude mcp get` show: the `${VAR}` reference by name for `local`, `project` and `user`; `https://host/…` for `managed` |
+| `mcpEndpointKey(server)` | equal for two servers exactly when they are one endpoint: URLs that differ only in the case of scheme or host, the scheme's default port or a trailing slash; a different path, query, userinfo or non-default port is two; a stdio server is its `command` and `args`. Plugins and connectors are matched with the servers above them by this key |
+| `CREDENTIAL_ENV_NAMES`, `readsAsEmptyTowardRemote(name)`, `credentialDebugLine(name)` | the five names mcp.md writes (`ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `AWS_BEARER_TOKEN_BEDROCK`, `HTTPS_PROXY`, `NPM_TOKEN`), matched exactly; `ANTHROPIC_BASE_URL` and `API_KEY` expand |
+
 A bundle whose own `user_config` has a required setting with no saved value is not started and
 reports `Bundled MCP server "<name>" was not started: it needs configuration`; the rest of the
 plugin loads. Without a `McpBundleReader` a bundle is a warning. Paths given to the reader are

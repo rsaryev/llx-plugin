@@ -50,6 +50,23 @@ export {
 } from './format/mcp-sources.ts';
 export type { McpLoadContext } from './format/mcp-bundles.ts';
 export {
+  CREDENTIAL_ENV_NAMES,
+  NOT_EXPANDED_TOWARD_REMOTE,
+  credentialDebugLine,
+  readsAsEmptyTowardRemote,
+} from './format/credential-env.ts';
+export {
+  MCP_DISPLAY_SCOPES,
+  displayReference,
+  expandEnvText,
+  expandMcpServer,
+  type EnvExpansion,
+  type EnvLookup,
+  type McpDisplayScope,
+  type McpExpansion,
+} from './format/mcp-env.ts';
+export { mcpEndpointKey } from './format/mcp-endpoint.ts';
+export {
   LSP_FIELDS,
   LSP_TRANSPORTS,
   mergeLspSources,

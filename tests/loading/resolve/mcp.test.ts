@@ -12,7 +12,13 @@
  * components.test.ts; here the same rows are asserted through the real MCP resolver.
  */
 import { describe, expect, test } from 'bun:test';
-import { mcpServerKey, resolveMcpServer, type ResolvedUserConfig } from '../../../src/index.ts';
+import {
+  expandMcpServer,
+  mcpServerKey,
+  resolveMcpServer,
+  type PluginMcpServer,
+  type ResolvedUserConfig,
+} from '../../../src/index.ts';
 import { fakeEnvironment, locations } from '../../support/ports.ts';
 import { PATHS, scopeOf, userConfig } from '../../support/mcp-scope.ts';
 import { spec } from '../../support/spec.ts';
@@ -198,6 +204,43 @@ describe('a url that does not resolve (troubleshooting.md, "URL is unset or inva
     for (const url of ['wss://x.test/s', 'http://localhost:3000/mcp']) {
       const { resolved } = await resolveMcpServer('api', { type: 'ws', url }, scopeOf());
       expect(resolved?.server).toMatchObject({ url });
+    }
+  });
+});
+
+describe('plugin and settings-scope servers expand alike (judgment)', () => {
+  const env = {
+    EMPTY: '',
+    HOST: 'h.example',
+    NPM_TOKEN: 't',
+    ANTHROPIC_BASE_URL: 'https://proxy.example',
+  };
+  const values = new Map(Object.entries(env));
+  const servers: readonly PluginMcpServer[] = [
+    {
+      type: 'http',
+      url: '${ANTHROPIC_BASE_URL}/${EMPTY:-d}/${MISSING}',
+      headers: { A: 'Bearer ${NPM_TOKEN:-x}', B: '${HOST}', C: '${MISSING:-dflt}' },
+    },
+    {
+      command: '${HOST}',
+      args: ['${EMPTY:-d}', '${MISSING}', '${NPM_TOKEN}'],
+      env: { K: '${MISSING:-z}' },
+    },
+  ];
+
+  test('one rule for both: the resolved server is the expanded one, with the same unset variables', async () => {
+    for (const server of servers) {
+      const plugin = await resolveMcpServer(
+        'srv',
+        server,
+        scopeOf({ environment: fakeEnvironment(env) }),
+      );
+      const own = expandMcpServer('srv', server, (name) => values.get(name));
+      expect(plugin.resolved?.server).toEqual(own.server);
+      expect(plugin.issues.map((found) => found.message)).toEqual(
+        own.issues.map((found) => found.message),
+      );
     }
   });
 });
