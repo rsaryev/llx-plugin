@@ -14,7 +14,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { resolveHookCommand } from '../../../src/index.ts';
-import { hook, resolve, scopeOf } from '../../support/hook-scope.ts';
+import { hook, PATHS, resolve, scopeOf } from '../../support/hook-scope.ts';
 import { locations } from '../../support/ports.ts';
 import { windowsLocations } from '../../support/windows-locations.ts';
 
@@ -86,6 +86,21 @@ describe('hook resolution (hooks.md, judgments in spec/judgments.md)', () => {
     );
     expect(issues).toEqual([]);
     expect(resolved?.spec).toMatchObject({ command: '"$CLAUDE_PROJECT_DIR"/check.sh' });
+  });
+
+  test('shellPaths environment-reference keeps bash path variables for the shell, in the environment', async () => {
+    const { resolved } = await resolveHookCommand(
+      hook({ command: '"${CLAUDE_PLUGIN_ROOT}/x.sh" ${CLAUDE_PROJECT_DIR}' }),
+      scopeOf(),
+      { shellPaths: 'environment-reference' },
+    );
+    expect(resolved?.spec).toMatchObject({
+      command: '"${CLAUDE_PLUGIN_ROOT}/x.sh" ${CLAUDE_PROJECT_DIR}',
+    });
+    expect(resolved?.environment).toMatchObject({
+      CLAUDE_PLUGIN_ROOT: PATHS.CLAUDE_PLUGIN_ROOT,
+      CLAUDE_PROJECT_DIR: PATHS.CLAUDE_PROJECT_DIR,
+    });
   });
 
   test('a variable the host cannot resolve is a warning and stays as written', async () => {

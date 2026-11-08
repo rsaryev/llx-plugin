@@ -4,6 +4,8 @@
 
 ### Added
 
+- `resolveHookCommand` option `shellPaths`: keep a bash hook's path variables as environment
+  references, so a folder name with shell metacharacters is never parsed as shell.
 - `locationsWithoutPlugin`: the scope a host gives `resolveHookCommand` for a settings hook.
 - `prepareSubstituter` and `prepareContentSubstitution`: synchronous substitution for a host
   that reads a body lazily, with the path variables asked for once when it prepares.

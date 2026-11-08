@@ -4,11 +4,11 @@ import type { HookHandlerOf } from '../../protocol/hook-config.ts';
 import { warning } from '../../format/issues.ts';
 import { exportedEnvironment } from './exported-environment.ts';
 import { fieldRunner } from './field-runner.ts';
-import type { SubstitutionScope } from './scope.ts';
+import type { FieldPolicy, MonitorPaths, PathRendering, SubstitutionScope } from './scope.ts';
 import { rejectUserConfigInShell } from './shell-guard.ts';
 import { HOOK_GUARD } from './shell-guard-hook.ts';
 import { substituter } from './substitute.ts';
-import type { Surface } from './surfaces.ts';
+import { SURFACE_POLICY, type Surface } from './surfaces.ts';
 
 /** A `command` hook handler, as the official type has it. */
 export type HookCommandHandler = HookHandlerOf<'command'>;
@@ -22,6 +22,13 @@ export interface HookCommandOptions {
    * Windows host without Git Bash says `powershell`. Default `bash`.
    */
   readonly defaultShell?: ShellKind;
+  /**
+   * How a bash shell-form command carries a path variable: `pasted` (the default) writes the path
+   * into the command; `environment-reference` leaves `${CLAUDE_PLUGIN_ROOT}` for the shell to read
+   * from the process environment, where `environment` puts it, so a folder name holding shell
+   * metacharacters is never parsed as shell. Judgment (spec/judgments.md), as `monitorPaths`.
+   */
+  readonly shellPaths?: MonitorPaths;
 }
 
 /**
@@ -44,6 +51,19 @@ export interface HookCommandResolution {
   readonly resolved: ResolvedHookCommand | undefined;
   readonly issues: readonly PluginIssue[];
 }
+
+/** What `shellPaths` makes of a bash command's path rendering; PowerShell's is always a reference. */
+const BASH_PATHS: { readonly [M in MonitorPaths]: PathRendering } = {
+  pasted: 'normalized',
+  'environment-reference': 'shell-reference',
+};
+
+const shellPolicy = (shell: ShellKind, options: HookCommandOptions): FieldPolicy => {
+  const policy = SURFACE_POLICY[SHELL_SURFACES[shell]];
+  return shell === 'bash'
+    ? { ...policy, paths: BASH_PATHS[options.shellPaths ?? 'pasted'] }
+    : policy;
+};
 
 /** The surface of each shell: PowerShell rewrites the placeholders, bash gets forward slashes. */
 const SHELL_SURFACES: { readonly [S in ShellKind]: Surface } = {
@@ -130,10 +150,9 @@ async function shellForm(
   );
   if (refused) return { spec: undefined, issues: [refused] };
   const shell = handler.shell ?? options.defaultShell ?? 'bash';
-  const run = fieldRunner(substituter(scope), base);
-  const command = await run.one(SHELL_SURFACES[shell], handler.command, 'command');
+  const command = await substituter(scope).run(handler.command, shellPolicy(shell, options), path);
   return {
-    spec: { form: 'shell', command: command.value, shell },
+    spec: { form: 'shell', command: command.text, shell },
     issues: [...command.issues, ...SHELL_CHECKS[shell](handler.command, path)],
   };
 }
