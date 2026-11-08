@@ -148,8 +148,11 @@ function missingDependencies(graph: GraphFacts | undefined): readonly InstallPla
 
 const settingsLabel = (scope: ConfigScope): string => `${scope} settings`;
 
-/** The first reason the name is refused, or `undefined`. */
-function nameRefusal(found: AddFetched, source: MarketplaceSource | undefined): string | undefined {
+/** The first reason the name is refused, or `undefined`; `plugin install --marketplace` runs the same check. */
+export function nameRefusal(
+  found: Pick<AddFetched, 'name' | 'registered'>,
+  source: MarketplaceSource | undefined,
+): string | undefined {
   const issues = [
     ...validationNameIssues(found.name),
     ...loadNameIssues(

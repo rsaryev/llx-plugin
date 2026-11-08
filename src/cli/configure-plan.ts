@@ -35,6 +35,11 @@ export interface ConfigurablePlugin {
 
 export interface ConfigureFacts {
   readonly loaded: readonly ConfigurablePlugin[];
+  /**
+   * The host could read the saved values back after `--values-stdin`; `false` leaves `unconfigured`
+   * out of the `--json` object ("when they could be read back, the `unconfigured` ones"). Default `true`.
+   */
+  readonly readBack?: boolean;
 }
 
 /** What the host stores, split by where it goes. */
@@ -180,7 +185,7 @@ function split(
   return { settings, secrets };
 }
 
-function saveValues(plugin: ConfigurablePlugin, text: string): ConfigurePlan {
+function saveValues(plugin: ConfigurablePlugin, text: string, readBack: boolean): ConfigurePlan {
   const read = readGiven(text);
   if ('problems' in read) return refusal(read.problems);
   const checked = checkGiven(plugin.config.declared, read.given);
@@ -191,7 +196,7 @@ function saveValues(plugin: ConfigurablePlugin, text: string): ConfigurePlan {
       fields: {
         pluginId: plugin.id,
         saved: Object.keys(checked.accepted),
-        unconfigured: [...unsetKeys(after)],
+        ...(readBack ? { unconfigured: [...unsetKeys(after)] } : {}),
       },
     }),
     save: split(plugin, checked.accepted),
@@ -204,5 +209,5 @@ export function planConfigure(args: ConfigureArguments, facts: ConfigureFacts): 
   if (plugin === undefined) return notInstalled(args.plugin);
   return args.valuesStdin === undefined
     ? describePlugin(plugin)
-    : saveValues(plugin, args.valuesStdin);
+    : saveValues(plugin, args.valuesStdin, facts.readBack !== false);
 }

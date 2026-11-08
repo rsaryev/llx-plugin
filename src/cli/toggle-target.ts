@@ -25,7 +25,6 @@ export interface ToggleArguments {
   /** `name` or `name@marketplace` (`name@synced` for a plugin synced from claude.ai). */
   readonly plugin: string;
   readonly scope?: string;
-  readonly json?: boolean;
 }
 
 export interface ToggleFacts {

@@ -80,6 +80,12 @@ spec('cli.plugin.Accept a displayed install command', () => {
       catalog: [['other@m', COMMAND_ENTRY]],
     });
     expect(lastJson(found)).toMatchObject({ outcome: 'failed' });
+    expect(shownCommandOf(found)).toMatchObject({
+      command: 'node build.js',
+      plugin: 'other@m',
+      acceptCommandMatched: false,
+    });
+    expect(shownCommandOf(found).sha256).not.toBe(sha256);
   });
 
   test('a marketplace catalog that changed since is not accepted', async () => {
@@ -91,12 +97,27 @@ spec('cli.plugin.Accept a displayed install command', () => {
   });
 
   test("a change the run's own refresh fetched counts as a change", async () => {
-    const sha256 = await shown({ found: { catalog: 'cached-before-the-refresh' } });
-    const refreshed = await run(
-      setup({ args: { acceptCommand: sha256 }, found: { catalog: 'fetched-by-the-refresh' } }),
+    const refreshing = {
+      marketplaces: [{ name: 'm', source: 'github' as const, autoUpdate: false }],
+    };
+    const stale = await run(
+      setup({
+        found: { catalog: 'cached-before-the-refresh', refreshFailed: true },
+        context: refreshing,
+      }),
     );
+    expect(printed(stale).stdout).toContain('marketplace not refreshed');
+    const sha256 = shownCommandOf(stale).sha256;
+    const refreshed = await run(
+      setup({
+        args: { acceptCommand: sha256 },
+        found: { catalog: 'fetched-by-the-refresh' },
+        context: refreshing,
+      }),
+    );
+    expect(printed(refreshed).stdout).not.toContain('marketplace not refreshed');
     expect(lastJson(refreshed)).toMatchObject({ outcome: 'failed' });
-    expect(lastJson(refreshed)['shownCommand']).toMatchObject({ acceptCommandMatched: false });
+    expect(shownCommandOf(refreshed)).toMatchObject({ acceptCommandMatched: false });
   });
 
   test('acceptCommandMatched is absent when no --accept-command was passed', async () => {

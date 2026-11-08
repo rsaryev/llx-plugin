@@ -90,6 +90,22 @@ spec('cli.plugin.plugin install.--config <key=value>', () => {
     expect(lines).toContain('files.root');
   });
 
+  test('a bundled server whose bundle is referenced by URL is not read: its keys are not known and the message says to configure it in /plugin', async () => {
+    const found = await run(
+      withConfig(['remote.root=/srv'], {
+        found: { options: { declared, unreadServers: ['remote'] } },
+      }),
+    );
+    expect(effectsOf(found)?.servers).toEqual({});
+    const lines = printed(found).stdout.join('\n');
+    expect(lines).toContain(
+      "isn't declared in this plugin's userConfig or by its bundled MCP servers.",
+    );
+    expect(lines).toContain('Declared keys: api_url, api_token, retries.');
+    expect(lines).toContain('Configure "remote" in /plugin');
+    expect(lines).not.toContain('remote.root,');
+  });
+
   test('a value that fails its declared type or bound refuses the install and installs nothing', async () => {
     const found = await run(withConfig(['retries=9']));
     expect(printed(found).exitCode).toBe(1);
@@ -119,71 +135,6 @@ spec('cli.plugin.plugin install.--config <key=value>', () => {
   test('a flag with no = is a usage error', () => {
     const begun = startInstall({ plugin: 'formatter@m', config: ['api_url'] }, contextOf());
     expect(begun).toMatchObject({ kind: 'done', output: { kind: 'usage-error' } });
-  });
-});
-
-spec('cli.plugin.plugin install.--marketplace <source>', () => {
-  const added = { name: 'deploy-market', alreadyKnown: false };
-  const marketSetup = (extra: Setup = {}): Setup => ({
-    ...extra,
-    args: { plugin: 'deploy-helper', marketplace: 'your-org/plugins', ...extra.args },
-    catalog: [
-      ['deploy-helper@deploy-market', { ...plugin0('deploy-helper', 'deploy-market') }],
-      ['deploy-helper@other', { ...plugin0('deploy-helper', 'other') }],
-    ],
-    found: { addedMarketplace: added, ...extra.found },
-  });
-
-  test('says the marketplace is added first, to the user settings, then installs the plugin', async () => {
-    const found = await run(marketSetup());
-    expect(printed(found).stdout).toEqual([
-      'Successfully added marketplace: deploy-market (declared in user settings)',
-      'Successfully installed plugin: deploy-helper@deploy-market (scope: user)',
-    ]);
-  });
-
-  test('the plan adds the marketplace source to the user settings even with --scope project', () => {
-    const begun = startInstall(
-      { plugin: 'deploy-helper', marketplace: 'your-org/plugins', scope: 'project' },
-      contextOf(),
-    );
-    expect(begun).toMatchObject({
-      kind: 'prepare',
-      pending: {
-        scope: 'project',
-        addMarketplace: {
-          scope: 'user',
-          source: { kind: 'github', repo: 'your-org/plugins' },
-        },
-      },
-    });
-  });
-
-  test('a marketplace already added from that source is reused: no add line', async () => {
-    const found = await run(
-      marketSetup({ found: { addedMarketplace: { name: 'deploy-market', alreadyKnown: true } } }),
-    );
-    expect(printed(found).stdout).toEqual([
-      'Successfully installed plugin: deploy-helper@deploy-market (scope: user)',
-    ]);
-  });
-
-  test('looks the bare name up in that marketplace only', async () => {
-    const found = await run(marketSetup());
-    expect(effectsOf(found)?.id).toBe('deploy-helper@deploy-market');
-  });
-
-  test('wants the plugin name by itself, without @marketplace', () => {
-    const begun = startInstall(
-      { plugin: 'deploy-helper@m', marketplace: 'your-org/plugins' },
-      contextOf(),
-    );
-    expect(begun).toMatchObject({ kind: 'done', output: { kind: 'usage-error' } });
-  });
-
-  test('a source that is none of the forms ends the command with a failed result', () => {
-    const begun = startInstall({ plugin: 'x', marketplace: 'not a source' }, contextOf());
-    expect(begun).toMatchObject({ kind: 'done', output: { kind: 'result' } });
   });
 });
 
@@ -260,12 +211,3 @@ describe('the refresh before the install', () => {
     expect(begun).toMatchObject({ pending: { refresh: { outcome: 'skip' } } });
   });
 });
-
-function plugin0(name: string, marketplace: string) {
-  return {
-    name,
-    marketplace,
-    source: { kind: 'github' as const, repo: `acme/${name}` },
-    dependencies: [],
-  };
-}

@@ -19,7 +19,7 @@ import { spec } from '../support/spec.ts';
 
 const enable = (
   graph: GraphFacts,
-  args: { plugin?: string; scope?: string; json?: boolean } = {},
+  args: { plugin?: string; scope?: string } = {},
   blocked?: ReadonlySet<string>,
 ) =>
   planEnable(
@@ -83,9 +83,7 @@ spec('cli.plugin.plugin enable', () => {
   });
 
   test('--json reports already_in_goal_state and alreadyInGoalState true so a script can treat it as success', () => {
-    const plan = enable(world(['formatter@m', { scope: 'project', enabled: true }]), {
-      json: true,
-    });
+    const plan = enable(world(['formatter@m', { scope: 'project', enabled: true }]));
     expect(jsonLine(plan)).toMatchObject({
       command: 'enable',
       outcome: 'failed',
@@ -131,12 +129,14 @@ describe('enabling a plugin that declares dependencies', () => {
       ]);
     });
 
-    test('fails and prints the claude plugin install command for a dependency that is not installed', () => {
-      const plan = planEnable(named, { graph: world(app) });
+    test('fails and prints the claude plugin install command for each dependency that is not installed', () => {
+      const two = ['app@m', { scope: 'user', enabled: false, deps: ['lib', 'util'] }] as const;
+      const plan = planEnable(named, { graph: world(two) });
       expect(plan.writes).toEqual([]);
       const found = human(plan);
       expect(found.exitCode).toBe(1);
       expect(found.stderr.join('\n')).toContain('claude plugin install lib@m');
+      expect(found.stderr.join('\n')).toContain('claude plugin install util@m');
     });
 
     test('fails and names a dependency your organization policy blocks', () => {

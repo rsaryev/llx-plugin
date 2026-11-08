@@ -259,8 +259,12 @@ export function concludeUninstall(
       ? []
       : [`Removed ${pruned.length} auto-installed plugins: ${pruned.join(', ')}`]),
   ];
+  // Judgment: `--keep-data` also keeps the folders of the plugins `--prune` removes (spec/judgments.md).
   const prunedCleanup = pruned.flatMap((id) =>
-    cleanupOf(id, uninstallRetention({ id, scope: start.scope, remaining })),
+    cleanupOf(
+      id,
+      uninstallRetention({ id, scope: start.scope, keepData: start.keepData, remaining }),
+    ),
   );
   return {
     output: commandSucceeded('uninstall', successMessage(nameOf(start.id), start.scope, extra), {

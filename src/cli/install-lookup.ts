@@ -4,6 +4,7 @@ import { NOT_REFRESHED } from '../updates/refresh-before-install.ts';
 import type { DisplayedCommand } from './command-acceptance.ts';
 import type { InstallFound } from './install-plan.ts';
 import type { PendingInstall } from './install-start.ts';
+import { nameRefusal } from './marketplace-add.ts';
 import { matchingIds, qualifiedCommands } from './plugin-ref.ts';
 import { commandFailed, type CommandOutput } from './result.ts';
 
@@ -49,6 +50,23 @@ export function locate(pending: PendingInstall, found: InstallFound): Located {
       { failureCode: 'ambiguous_plugin' },
     ),
   };
+}
+
+/**
+ * The refusal of a marketplace `--marketplace` just added, by the checks of `marketplace add` (an
+ * invalid or reserved name, the download-folder rule): `invalid_name`, before any lookup. Nothing
+ * prints ahead of it (judgment: the add did not happen).
+ */
+export function marketplaceRefusal(
+  pending: PendingInstall,
+  found: InstallFound,
+): CommandOutput | undefined {
+  const added = found.addedMarketplace;
+  if (added === undefined || added.alreadyKnown) return undefined;
+  const reason = nameRefusal(added, pending.addMarketplace?.source);
+  return reason === undefined
+    ? undefined
+    : commandFailed('install', reason, { failureCode: 'invalid_name' });
 }
 
 /** What prints ahead of the result: the marketplace that was added, a refresh that failed. */

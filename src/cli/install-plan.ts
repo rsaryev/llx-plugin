@@ -1,6 +1,7 @@
 import type { CatalogPlugin, GraphFacts } from '../marketplace/dependency-graph.ts';
 import { installClosure, type InstallStep } from '../marketplace/dependency-install-plan.ts';
 import type { InstallScope } from '../marketplace/install-scopes.ts';
+import type { RegisteredMarketplace } from '../format/marketplace/marketplace-names.ts';
 import type { Sha256 } from '../ports/marketplace.ts';
 import {
   decideAcceptance,
@@ -17,7 +18,7 @@ import {
   type InstallOptions,
 } from './install-config.ts';
 import type { PendingInstall } from './install-start.ts';
-import { beforeLines, displayedOf, locate } from './install-lookup.ts';
+import { beforeLines, displayedOf, locate, marketplaceRefusal } from './install-lookup.ts';
 import {
   commandFailed,
   commandSucceeded,
@@ -45,8 +46,16 @@ export interface InstallFound {
   readonly catalog: string;
   /** The plugin's `userConfig` and its bundled servers'. */
   readonly options: InstallOptions;
-  /** The marketplace `--marketplace` added or reused. */
-  readonly addedMarketplace?: { readonly name: string; readonly alreadyKnown: boolean };
+  /**
+   * The marketplace `--marketplace` added or reused. `registered` is the fetch's fact for the
+   * download-folder rule: "A new one is added under the same organization policy checks as `claude
+   * plugin marketplace add`", so a name that command refuses refuses the install.
+   */
+  readonly addedMarketplace?: {
+    readonly name: string;
+    readonly alreadyKnown: boolean;
+    readonly registered: readonly RegisteredMarketplace[];
+  };
   /** The refresh the plan asked for failed: "the install proceeds from the cached catalog". */
   readonly refreshFailed?: boolean;
   /** The installed copy's directory exists; `false` for a record whose directory is gone ("not cached"), which a reinstall restores. */
@@ -142,7 +151,7 @@ function configRefusal(config: ConfigOutcome): CommandOutput {
   const lines = config.refused.map((problem) => `--config ${problem.key}: ${problem.message}`);
   return commandFailed('install', ['Failed to install plugin:', ...lines].join('\n'), {
     failureCode: 'invalid_config',
-    fields: { refused: config.refused.map((problem) => problem.key) },
+    fields: { invalidKeys: config.refused.map((problem) => problem.key) },
   });
 }
 
@@ -225,6 +234,8 @@ export async function planInstall(
   sha256: Sha256,
 ): Promise<InstallRun> {
   const before = beforeLines(found);
+  const refused = marketplaceRefusal(pending, found);
+  if (refused !== undefined) return ended(refused, []);
   const located = locate(pending, found);
   if ('end' in located) return ended(located.end, before);
   const { id, entry } = located;

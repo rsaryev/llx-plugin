@@ -27,6 +27,11 @@ import type { SavedValues } from './configure-plan.ts';
 export interface InstallOptions {
   readonly declared: DeclaredOptions;
   readonly bundledServers?: Readonly<Record<string, DeclaredOptions>>;
+  /**
+   * Bundled MCP servers whose bundle the manifest references by URL: "isn't read at install time, so
+   * its keys aren't listed". Their keys are not known keys, and the message says to configure them in `/plugin`.
+   */
+  readonly unreadServers?: readonly string[];
 }
 
 /** The `--config` flags as `key` → `value`; a flag with no `=` is a usage error. */
@@ -119,19 +124,27 @@ export function notYetSetLine(id: string, outcome: ConfigOutcome): string | unde
   return `${outcome.unset.length} userConfig options not yet set${required} — run /plugin configure ${id} in Claude Code, or pass --config KEY=VALUE.`;
 }
 
-/** One `⚠ Installed, but --config not applied` line per key that names no option, each followed by the keys that do exist. */
+/**
+ * One `⚠ Installed, but --config not applied` line per key that names no option, each followed by the
+ * keys that do exist. A bundle the manifest references by URL adds `Configure "<server>" in /plugin` (judgment: the
+ * docs say only that "the message says to configure it in `/plugin`").
+ */
 export function notAppliedLines(
   outcome: ConfigOutcome,
   options: InstallOptions,
 ): readonly string[] {
-  const bundled = Object.keys(options.bundledServers ?? {}).length > 0;
+  const unread = options.unreadServers ?? [];
+  const bundled = Object.keys(options.bundledServers ?? {}).length > 0 || unread.length > 0;
   const where = bundled
     ? "this plugin's userConfig or by its bundled MCP servers"
     : "this plugin's userConfig";
   const keys = Object.keys(knownKeys(options));
   const known = keys.length === 0 ? 'none' : keys.join(', ');
+  const configure = unread.map(
+    (server) => `. Configure "${server}" in /plugin: its bundle is not read at install time`,
+  );
   return outcome.notApplied.map(
     (problem) =>
-      `⚠ Installed, but --config not applied: --config key "${problem.key}" isn't declared in ${where}. Declared keys: ${known}`,
+      `⚠ Installed, but --config not applied: --config key "${problem.key}" isn't declared in ${where}. Declared keys: ${known}${configure.join('')}`,
   );
 }

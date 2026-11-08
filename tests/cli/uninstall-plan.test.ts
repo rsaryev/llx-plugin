@@ -10,61 +10,19 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { renderCommand } from '../../src/cli/result.ts';
+import { dataPreservedMark } from '../../src/cli/uninstall-plan.ts';
 import {
-  concludeUninstall,
-  dataPreservedMark,
-  startUninstall,
-  type AfterRemoval,
-  type UninstallArguments,
-  type UninstallStart,
-} from '../../src/cli/uninstall-plan.ts';
-import type { InstalledRecord } from '../../src/marketplace/dependency-graph.ts';
-import { facts, installed } from '../support/dependency-facts.ts';
+  ID,
+  conclude,
+  lastJson,
+  lines,
+  record,
+  removing,
+  start,
+  unscoped,
+  world,
+} from '../support/uninstall.ts';
 import { spec } from '../support/spec.ts';
-
-const ID = 'formatter@my-marketplace';
-
-const world = (...have: Parameters<typeof installed>[]) =>
-  facts(
-    [],
-    have.map(([id, one]) => installed(id, one)),
-  );
-
-const unscoped = (graph = world([ID, { scope: 'user' }])): UninstallStart =>
-  startUninstall({ plugin: ID }, { graph, tty: true });
-
-const start = (
-  args: Partial<UninstallArguments>,
-  graph = world([ID, { scope: 'project' }]),
-  tty = true,
-): UninstallStart => startUninstall({ plugin: ID, scope: 'project', ...args }, { graph, tty });
-
-const removing = (found: UninstallStart): Extract<UninstallStart, { kind: 'remove' }> => {
-  if (found.kind !== 'remove') throw new Error(`expected a removal, got ${found.kind}`);
-  return found;
-};
-
-const NOTHING_LEFT: AfterRemoval = { remaining: [] };
-
-const conclude = (
-  args: Partial<UninstallArguments>,
-  after: AfterRemoval = NOTHING_LEFT,
-  graph = world([ID, { scope: 'project' }]),
-) => concludeUninstall(removing(start(args, graph)), after);
-
-const record = (id: string, scope: InstalledRecord['scope'] = 'user'): InstalledRecord => ({
-  id,
-  scope,
-  dependencies: [],
-});
-
-const lines = (found: ReturnType<typeof conclude>, json = false) =>
-  renderCommand(found.output, { json });
-
-const lastJson = (found: ReturnType<typeof conclude>): Record<string, unknown> => {
-  const out = renderCommand(found.output, { json: true }).stdout;
-  return JSON.parse(out.at(-1) ?? '{}');
-};
 
 spec('cli.plugin.plugin uninstall.-s, --scope <scope>', () => {
   test('the scope the plugin is removed from is the flag value', () => {
@@ -80,8 +38,11 @@ spec('cli.plugin.plugin uninstall.-s, --scope <scope>', () => {
 
   test('a plugin installed at project only is not uninstalled from the default user scope', () => {
     const found = unscoped(world([ID, { scope: 'project' }]));
-    expect(found).toMatchObject({ kind: 'done' });
-    expect(JSON.stringify(found)).toContain('is not installed');
+    if (found.kind !== 'done') throw new Error('expected a refusal');
+    const out = renderCommand(found.output, { json: false });
+    expect(out.exitCode).toBe(1);
+    expect(out.stderr[0]).toStartWith(`Failed to uninstall plugin "${ID}":`);
+    expect(out.stderr[0]).toContain('is not installed at scope user');
   });
 
   test('a scope outside user, project and local is a usage error', () => {
@@ -185,73 +146,6 @@ spec('cli.plugin.plugin uninstall.--keep-data', () => {
     const found = conclude({}, { remaining: [record(ID, 'user')] });
     expect(found.cleanup).toEqual([]);
     expect(found.removeRecord).toBe(true);
-  });
-});
-
-spec('cli.plugin.plugin uninstall.--prune', () => {
-  const graph = world(
-    [ID, { scope: 'project', deps: ['lib'] }],
-    ['lib@my-marketplace', { scope: 'project', auto: true }],
-    ['mine@my-marketplace', { scope: 'project' }],
-  );
-
-  test('also removes the auto-installed dependencies no remaining plugin needs', () => {
-    const begun = removing(start({ prune: true, yes: true }, graph));
-    expect(begun.prune).toEqual({ orphans: ['lib@my-marketplace'], confirm: 'skip' });
-    const done = concludeUninstall(begun, {
-      remaining: [record('mine@my-marketplace', 'project')],
-    });
-    expect(done.removePruned).toEqual(['lib@my-marketplace']);
-    expect(lines(done).stdout.join('\n')).toContain(
-      'Removed 1 auto-installed plugins: lib@my-marketplace',
-    );
-  });
-
-  test('a dependency another remaining plugin still needs stays', () => {
-    const shared = world(
-      [ID, { scope: 'project', deps: ['lib'] }],
-      ['lib@my-marketplace', { scope: 'project', auto: true }],
-      ['other@my-marketplace', { scope: 'project', deps: ['lib'] }],
-    );
-    expect(removing(start({ prune: true, yes: true }, shared)).prune.orphans).toEqual([]);
-  });
-
-  test('without a terminal and without -y the uninstall is refused before anything is removed', () => {
-    const found = start({ prune: true }, graph, false);
-    expect(found).toMatchObject({ kind: 'done', output: { kind: 'usage-error' } });
-  });
-
-  test('with a terminal and without -y the host is told to ask before it removes them', () => {
-    expect(removing(start({ prune: true }, graph, true)).prune.confirm).toBe('ask');
-  });
-
-  test('a declined confirmation uninstalls the plugin and prunes nothing', () => {
-    const begun = removing(start({ prune: true }, graph, true));
-    const done = concludeUninstall(begun, { remaining: [], pruneConfirmed: false });
-    expect(done.removePruned).toEqual([]);
-    expect(lines(done).exitCode).toBe(0);
-  });
-});
-
-spec('cli.plugin.plugin uninstall.-y, --yes', () => {
-  const graph = world(
-    [ID, { scope: 'project', deps: ['lib'] }],
-    ['lib@my-marketplace', { scope: 'project', auto: true }],
-  );
-
-  test('skips the --prune confirmation prompt', () => {
-    expect(removing(start({ prune: true, yes: true }, graph, true)).prune.confirm).toBe('skip');
-  });
-
-  test('is what lets --prune run when stdin or stdout is not a terminal', () => {
-    expect(removing(start({ prune: true, yes: true }, graph, false)).kind).toBe('remove');
-  });
-});
-
-describe('--prune confirmation with nothing to prune', () => {
-  test('asks for nothing when no dependency is orphaned', () => {
-    const only = world([ID, { scope: 'project' }]);
-    expect(removing(start({ prune: true }, only, true)).prune.confirm).toBe('none');
   });
 });
 

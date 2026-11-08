@@ -113,11 +113,21 @@ spec('cli.plugin.plugin configure', () => {
     expect(human(found).stderr[0]).toStartWith('Failed to save configuration:');
   });
 
-  test('a value that is not a single-line string is refused', () => {
-    expect(plan({ valuesStdin: '{"api_url":"a\\nb"}' }).save).toBeUndefined();
-    expect(plan({ valuesStdin: '{"retries":3}' }).save).toBeUndefined();
-    expect(plan({ valuesStdin: '[1]' }).save).toBeUndefined();
-    expect(plan({ valuesStdin: 'not json' }).save).toBeUndefined();
+  test.each([
+    ['a value with a line break', '{"api_url":"a\\nb"}', { option: 'api_url' }],
+    ['a value that is not a string', '{"retries":3}', { option: 'retries' }],
+    ['an array instead of an object', '[1]', undefined],
+    ['text that is not JSON', 'not json', undefined],
+  ])('%s is refused: nothing saved, exit 1, the failure prefix', (_what, valuesStdin, at) => {
+    const found = plan({ valuesStdin });
+    expect(found.save).toBeUndefined();
+    const out = human(found);
+    expect(out.exitCode).toBe(1);
+    expect(out.stderr[0]).toStartWith(SAVE_FAILED);
+    const refused = json(plan({ valuesStdin, json: true }))['refused'];
+    expect(refused).toMatchObject({ message: expect.any(String) });
+    if (at === undefined) expect(refused).not.toHaveProperty('option');
+    else expect(refused).toMatchObject(at);
   });
 
   test('only the full name@marketplace id is accepted: a bare name has no installed plugin', () => {
@@ -132,6 +142,17 @@ spec('cli.plugin.plugin configure', () => {
   test('--json with --values-stdin carries the saved option names and the ones still unconfigured', () => {
     const found = json(plan({ json: true, valuesStdin: '{"retries":"1"}' }, { api_url: 'u' }));
     expect(found).toMatchObject({ saved: ['retries'], unconfigured: ['api_token'] });
+  });
+
+  test('--json with --values-stdin leaves unconfigured out when the saved values could not be read back', () => {
+    const found = json(
+      planConfigure(
+        { plugin: ID, json: true, valuesStdin: '{"retries":"1"}' },
+        { loaded: [{ id: ID, config: { declared, values: {} } }], readBack: false },
+      ),
+    );
+    expect(found).toMatchObject({ saved: ['retries'] });
+    expect(found).not.toHaveProperty('unconfigured');
   });
 
   test('--json for a refused value prints a refused object with the message and the one option at fault', () => {

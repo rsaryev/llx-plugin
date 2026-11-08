@@ -27,7 +27,6 @@ export interface DisableArguments {
   readonly plugin?: string;
   readonly scope?: string;
   readonly all?: boolean;
-  readonly json?: boolean;
 }
 
 export const NAME_OR_ALL = 'Please specify a plugin name or use --all to disable all plugins';

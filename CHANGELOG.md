@@ -4,6 +4,19 @@
 
 ### Fixed
 
+- CLI plugin lifecycle: `plugin install --marketplace` runs the name checks of `marketplace add` on the
+  marketplace it just added (an impersonating or reserved name, the `claudeai-` prefix, the
+  download-folder rule) and refuses with `invalid_name` (`InstallFound.addedMarketplace.registered`);
+  a bundled MCP server whose bundle is referenced by URL is `InstallOptions.unreadServers`: its keys
+  are not listed and the not-applied line says to configure it in `/plugin`; the `invalid_config`
+  failure lists its keys in `invalidKeys`, not `refused`; `plugin configure --values-stdin --json`
+  leaves `unconfigured` out when `ConfigureFacts.readBack` is `false`; `uninstall --keep-data` keeps
+  the data folder of a plugin `--prune` removes too; the unused `json` field of `ToggleArguments` and
+  `DisableArguments` is gone. The accept-command, configure, `--prune`, scope and enable-dependency
+  tests assert the refusal, the shown command, the pruned cleanup and each missing dependency; the
+  codes and usage errors the docs do not quote, and the deferral of `install_records_unreadable`, are
+  recorded in spec/judgments.md.
+
 - CLI session flags: what an `--add-dir` directory loads is derived from the whole plan, so
   `--safe-mode`, `--disable-slash-commands`, `--setting-sources` without `project` (and `--restricted`)
   remove what they remove from it too, `--bare` keeps only skills, and `CLAUDE.local.md` is its own
