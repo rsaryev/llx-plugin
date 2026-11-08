@@ -25,6 +25,13 @@ interface FileOrigin {
   readonly plugin?: undefined;
 }
 
+/** An agent of the `--agents` flag: JSON, not a file, so `path` is how the host names the definition. */
+export interface FlagOrigin {
+  readonly path: string;
+  readonly source: 'flag';
+  readonly plugin?: undefined;
+}
+
 interface PluginOrigin {
   readonly path: string;
   readonly source: 'plugin';

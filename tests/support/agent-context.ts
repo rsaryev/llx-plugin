@@ -1,4 +1,5 @@
-import type { SkillCatalog, McpPolicy } from '../../src/agents/context.ts';
+import type { McpPolicy } from '../../src/agents/mcp-scope.ts';
+import type { SkillCatalog } from '../../src/agents/preload-skills.ts';
 import type { TextFileReader } from '../../src/ports/index.ts';
 
 /** A skill catalog over fixed names; `hidden` skills set `disable-model-invocation: true`. */

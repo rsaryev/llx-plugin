@@ -4,9 +4,10 @@
  * settings-reference.md (`skillListingBudgetFraction`: "greater than 0 and at most 1"). The drop
  * order and the cap of one description are in listing.test.ts.
  */
-import { describe, expect, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { FALLBACK_BUDGET_CHARS, listingLine, modelListing } from '../../src/skills/listing.ts';
 import { skillWith } from '../support/skills.ts';
+import { spec } from '../support/spec.ts';
 
 /** Forty skills with names of one width and a 400-character description each. */
 const DESCRIPTION = 'x'.repeat(400);
@@ -24,7 +25,7 @@ const keptWithin = (limit: number) =>
 const keptIn = (result: ReturnType<typeof modelListing>) =>
   result.entries.filter((entry) => entry.description !== undefined).length;
 
-describe('the listing budget', () => {
+spec('skills.behavior.Skill descriptions are cut short', () => {
   test('"The budget scales at 1% of the model\'s context window": exactly `floor(window * 0.01 * 4)` characters', () => {
     for (const contextWindow of [200_000, 123_457]) {
       const limit = Math.floor(contextWindow * 0.01 * 4);

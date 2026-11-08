@@ -165,23 +165,23 @@ describe('skillOverrides on the listing (skills.md § Override skill visibility 
 const skills = (count: number, size = 100) =>
   Array.from({ length: count }, (_, at) => described(`skill-${at}`, `${at}`.padEnd(size, 'x')));
 
-describe('the listing size', () => {
-  spec('skills.frontmatter.description', () => {
-    test('"`skillListingMaxDescChars`" lowers or raises the cap (default 1536)', () => {
-      const long = described('a', 'x'.repeat(3000));
-      expect(listed([long], { maxDescChars: 50 })[0]?.description).toHaveLength(50);
-      expect(listed([long], { maxDescChars: 2048 })[0]?.description).toHaveLength(2048);
-      expect(listed([long])[0]?.description).toHaveLength(1536);
-    });
-
-    test('a cap that is not a positive integer is ignored', () => {
-      const long = described('a', 'x'.repeat(2000));
-      for (const bad of [0, -1, 1.5, Number.NaN]) {
-        expect(listed([long], { maxDescChars: bad })[0]?.description).toHaveLength(1536);
-      }
-    });
+spec('skills.frontmatter.description', () => {
+  test('"`skillListingMaxDescChars`" lowers or raises the cap (default 1536)', () => {
+    const long = described('a', 'x'.repeat(3000));
+    expect(listed([long], { maxDescChars: 50 })[0]?.description).toHaveLength(50);
+    expect(listed([long], { maxDescChars: 2048 })[0]?.description).toHaveLength(2048);
+    expect(listed([long])[0]?.description).toHaveLength(1536);
   });
 
+  test('a cap that is not a positive integer is ignored', () => {
+    const long = described('a', 'x'.repeat(2000));
+    for (const bad of [0, -1, 1.5, Number.NaN]) {
+      expect(listed([long], { maxDescChars: bad })[0]?.description).toHaveLength(1536);
+    }
+  });
+});
+
+spec('skills.behavior.Skill descriptions are cut short', () => {
   test('"keeps every skill\'s name but drops the descriptions": all names survive a tiny budget', () => {
     const result = modelListing(skills(5), { budget: { chars: 1 } });
     expect(result.entries.map((entry) => entry.name)).toEqual(skills(5).map((skill) => skill.name));
@@ -212,6 +212,31 @@ describe('the listing size', () => {
     expect(byName).toEqual({ 'skill-0': true, 'skill-1': false, 'skill-2': true, 'skill-3': true });
     expect(result.descriptionsDropped).toEqual(['skill-1']);
     expect(result.overBudget).toBe(false);
+  });
+
+  test('"the combined text is capped at 1,536 characters regardless of budget": a roomy budget does not lift the cap', () => {
+    const entry = listed([described('a', 'k'.repeat(3000))], { budget: { chars: 1_000_000 } })[0];
+    expect(entry?.description).toHaveLength(1536);
+  });
+
+  test('"set low-priority entries to name-only ... so they list without a description" frees the budget for the others', () => {
+    const all = skills(4);
+    const budget = { chars: 400 };
+    const crowded = modelListing(all, { budget });
+    expect(crowded.descriptionsDropped.length).toBeGreaterThan(0);
+    const relieved = modelListing(all, {
+      budget,
+      overrides: { 'skill-1': 'name-only', 'skill-2': 'name-only' },
+    });
+    expect(relieved.descriptionsDropped.length).toBeLessThan(crowded.descriptionsDropped.length);
+    expect(relieved.entries.find((entry) => entry.name === 'skill-1')).toEqual({ name: 'skill-1' });
+  });
+
+  test('"The Skills row in /context reports the size of the listing after the budget is applied": `chars` is what the model receives', () => {
+    const result = modelListing(skills(30), { budget: { chars: 1_500 } });
+    const received = result.entries.map((entry) => `${listingLine(entry)}\n`).join('');
+    expect(result.chars).toBe(received.length);
+    expect(result.chars).toBeLessThanOrEqual(1_500);
   });
 
   test('within the budget nothing is dropped', () => {

@@ -12,7 +12,9 @@ export type {
   SkillsListing,
   SkillsOptions,
 } from './session-skills.ts';
-export type { ResolveOptions, SessionAgent } from './session-components.ts';
+export type { FolderSkillSource, FolderSkillSources, SkillsReload } from './session-folders.ts';
+export type { AgentsOptions, ResolveOptions, SessionAgent } from './session-components.ts';
+export type { AgentOverrides, AgentsReload } from './session-agents.ts';
 export type {
   HostPlugin,
   HostPorts,

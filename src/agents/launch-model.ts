@@ -1,3 +1,4 @@
+import { builtinModelAlias, type BuiltinModelInput } from './builtin-model.ts';
 import { EFFORT_LEVELS } from '../protocol/effort.ts';
 import type { AgentDefinition, EffortLevel } from '../protocol/official.ts';
 
@@ -16,11 +17,18 @@ const isAlias = (value: string | undefined): value is ModelAlias =>
   MODEL_ALIASES.some((alias) => alias === value);
 
 /** Where the chosen model came from. */
-export type ModelSource = 'invocation' | 'definition' | 'env' | 'main';
+export type ModelSource = 'invocation' | 'definition' | 'env' | 'builtin' | 'main';
 
 export interface SubagentModelInput {
   /** The `model` parameter of this Agent tool call: an alias ("Claude can't pass a full model ID or `inherit`"). */
   readonly invocation?: string | undefined;
+  /**
+   * The model an installed mod set in its `agent.spawn` hook: "Claude Code uses that model in place of
+   * the per-invocation parameter". Any model the mod names counts (it is no Claude call, so the alias
+   * limit of the parameter does not bind it); judgment: ignored while the model is forced, because the
+   * docs say only Claude's own call is withdrawn there.
+   */
+  readonly modModel?: string | undefined;
   /** The definition's `model`: an alias, a full model ID or `inherit`. */
   readonly definition?: string | undefined;
   /** `CLAUDE_CODE_SUBAGENT_MODEL`. */
@@ -33,6 +41,12 @@ export interface SubagentModelInput {
   readonly mainFamily?: string | undefined;
   /** `ANTHROPIC_DEFAULT_OPUS_MODEL` is set, so `opus` means the model you set. */
   readonly opusPinned?: boolean | undefined;
+  /**
+   * Set when the subagent is a built-in (not a user or project agent of the same name, which keeps its
+   * own `model`): its name and how the session connects. Explore on a Fable main conversation runs on
+   * the `opus` alias over a subscription, Console or LLM gateway ("Built-in subagents").
+   */
+  readonly builtin?: BuiltinModelInput | undefined;
 }
 
 export interface SubagentModel {
@@ -68,6 +82,8 @@ type Pick = (input: SubagentModelInput) => string | undefined;
 const PICKS: { readonly [S in ModelSource]: Pick } = {
   // Judgment: a value that is no alias is not something Claude can pass, so it counts as unset.
   invocation: (input) => {
+    const mod = written(input.modModel);
+    if (mod !== undefined) return aliasOrMain(mod, input);
     const value = written(input.invocation);
     return isAlias(value) ? aliasOrMain(value, input) : undefined;
   },
@@ -82,12 +98,13 @@ const PICKS: { readonly [S in ModelSource]: Pick } = {
     const value = written(input.envModel);
     return value === INHERIT ? undefined : value;
   },
+  builtin: (input) => builtinModelAlias(input.builtin, input.mainFamily),
   main: (input) => input.mainModel,
 };
 
-const ORDER: readonly ModelSource[] = ['invocation', 'definition', 'env', 'main'];
+const ORDER: readonly ModelSource[] = ['invocation', 'definition', 'env', 'builtin', 'main'];
 /** "While `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` is on, Claude Code ignores the `model` field ... and Claude can't pass a model." */
-const FORCED_ORDER: readonly ModelSource[] = ['env', 'main'];
+const FORCED_ORDER: readonly ModelSource[] = ['env', 'builtin', 'main'];
 
 /** The model a subagent runs on, in "the subagent model order" of sub-agents.md. */
 export function resolveSubagentModel(input: SubagentModelInput): SubagentModel {

@@ -5,7 +5,8 @@ import {
   readMonitorList,
   readSettings,
 } from './readers-config.ts';
-import { pathFiles, textFiles } from './readers-text.ts';
+import { readThemes, readWorkflows } from './readers-assets.ts';
+import { textFiles } from './readers-text.ts';
 import type { ComponentReader, ReadKind } from './reader-types.ts';
 
 /**
@@ -15,7 +16,7 @@ import type { ComponentReader, ReadKind } from './reader-types.ts';
  * `skills`, `commands`, `agents` and `outputStyles` keep the path, name and text of each file: the
  * streams that own those formats (skills, agents, content) replace the entry with a reader that
  * parses it, and nothing else in loading changes. `hooks`, `mcpServers`, `lspServers`, `monitors`
- * and `settings` read their JSON through the format readers; `workflows` and `themes` keep paths;
+ * and `settings` read their JSON through the format readers; `workflows` and `themes` read the `meta` block and the theme file;
  * `bin` hands over the listing.
  */
 export const COMPONENT_READERS: { readonly [K in ReadKind]: ComponentReader<K> } = {
@@ -23,8 +24,8 @@ export const COMPONENT_READERS: { readonly [K in ReadKind]: ComponentReader<K> }
   commands: textFiles('commands', (context) => context.discovered.commands),
   agents: textFiles('agents', (context) => context.discovered.agents),
   outputStyles: textFiles('outputStyles', (context) => context.discovered.outputStyles),
-  workflows: pathFiles((context) => context.discovered.workflows),
-  themes: pathFiles((context) => context.discovered.themes),
+  workflows: readWorkflows,
+  themes: readThemes,
   hooks: readHooks,
   mcpServers: readMcpServers,
   lspServers: readLspServers,

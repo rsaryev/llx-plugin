@@ -1,7 +1,9 @@
 import type { PluginIssue } from '../format/issues.ts';
 import type { Plugin } from '../loading/index.ts';
 import type { HookPorts } from '../hooks/index.ts';
+import type { FolderScan } from '../ports/folder-scan.ts';
 import type { EffortLevel, PermissionMode } from '../protocol/official.ts';
+import type { PermissionRule } from '../rules/index.ts';
 import type { ParentSettingsContext } from '../settings/hooks/index.ts';
 import type { PolicyView } from '../settings/index.ts';
 import type { OptionValues } from '../settings/plugins/index.ts';
@@ -21,8 +23,12 @@ export interface HostPlugin {
   readonly source?: NonNullable<ExpandSession['pluginSource']>;
 }
 
-/** What the host passes: the ports, with the ones its hook handler types need. */
-export type HostPorts = HookPorts;
+/**
+ * What the host passes: the ports, with the ones its hook handler types need, and `folders`, the
+ * scope folders the personal, project, managed and added-directory skills are read from; without it
+ * a session lists the plugins' skills only.
+ */
+export type HostPorts = HookPorts & { readonly folders?: FolderScan };
 
 export interface PluginHostOptions {
   readonly plugins: readonly HostPlugin[];
@@ -53,8 +59,32 @@ export interface SessionOptions {
   readonly trusted?: boolean;
   /** Extra folders path rules in a hook's `if` treat as inside the project. */
   readonly additionalDirectories?: readonly string[];
+  /**
+   * The directories passed with `--add-dir` or `/add-dir`, in the order they were added. Their
+   * `.claude/skills` and `.claude/commands` load (`permissions.additionalDirectories` of a settings
+   * file grants file access only: skills.md, "Load skills from a directory outside the project").
+   */
+  readonly addedDirectories?: readonly string[];
+  /**
+   * The commands other sources already use: the host's built-in commands, its bundled skills and its
+   * MCP prompts, as typed without the slash (`usage`, `code-review`). The plugins' skills count
+   * already. Only a synced skill's short name yields to them; a skill of the folders replaces a
+   * built-in or bundled command of its name (skills.md, "Resolve skills that share a name" and "When a
+   * synced skill name matches another command").
+   */
+  readonly takenCommands?: readonly string[];
   /** The answer for a skill's shell placeholder; absent, an `ask`, which aborts the expansion. */
   readonly permissions?: ShellPermission;
+  /**
+   * The `--agents` flag, already parsed from JSON: agent names to definitions (sub-agents.md, "Choose the
+   * subagent scope"). The host reads the flag, or the file `-p` takes; `readFlagAgents` reads the value.
+   */
+  readonly agents?: unknown;
+  /**
+   * The permission rules in force (settings and `--disallowedTools`): an `Agent(name)` deny rule switches
+   * that subagent off, a bare `Agent` deny rule all of them (sub-agents.md, "Disable specific subagents").
+   */
+  readonly permissionRules?: readonly PermissionRule[];
 }
 
 /** A resolved list and what was found wrong while resolving it. */

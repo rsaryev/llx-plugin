@@ -18,8 +18,11 @@ export interface ToolEntry {
   readonly spawn?: readonly string[] | 'any';
 }
 
-const AGENT_TOOL = 'Agent';
+export const AGENT_TOOL = 'Agent';
 const AGENT_NAMES: ReadonlySet<string> = new Set([AGENT_TOOL, 'Task']);
+
+/** Whether a tool name is the Agent tool: `Task` (its name before 2.1.63) "still work[s] as an alias". */
+export const isAgentToolName = (name: string): boolean => AGENT_NAMES.has(name);
 
 /** `Name(content)` splits at the first `(` when the entry ends in `)`; anything else is a name. */
 function splitEntry(text: string): { readonly name: string; readonly content?: string } {

@@ -89,7 +89,9 @@ export async function kitRegistry(dir: string): Promise<Registry> {
   const catalog = readCatalog(plugin);
   return {
     loaded: true,
-    agents: (await session.agents()).resolved.map((agent) => agent.name).toSorted(),
+    agents: (await session.agents({ builtin: false })).resolved
+      .map((agent) => agent.name)
+      .toSorted(),
     slashCommands: listing.menu.map((entry) => entry.name).toSorted(),
     skills: initSkills(catalog),
     mcpServers: (await session.mcpServers()).resolved.map((server) => server.key).toSorted(),

@@ -6,6 +6,7 @@ export const CORE_SCOPES: readonly PageScope[] = [
     page: 'skills.md',
     category: 'skills',
     slug: 'behavior',
+    phrases: ['Resolve skills that share a name'],
     skip: [
       [
         /^(Bundled skills|Check your setup with \/doctor|Run and verify your app|Run your checks before each commit|Work on Claude API projects)$/,

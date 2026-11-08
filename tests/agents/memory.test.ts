@@ -9,7 +9,7 @@
  * block-level HTML comments do not count.
  */
 import { describe, expect, test } from 'bun:test';
-import { planAgentMemory, truncateMemoryIndex } from '../../src/agents/context.ts';
+import { planAgentMemory, truncateMemoryIndex } from '../../src/agents/memory.ts';
 import { readAgent } from '../../src/format/agent.ts';
 import { AGENT_MEMORY_SCOPES } from '../../src/format/agent-fields.ts';
 import { file, loaded, plugin } from '../support/agent-files.ts';

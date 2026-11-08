@@ -423,6 +423,101 @@
   `modelSettings` and the `availableModels` gate on `--model` join the session overrides;
   `managedChangeAdvice` answers "A managed change hasn't reached you". New `permissionRulesOf`
   (host) parses the lists with the source of each file.
+- Skills review: a `Skill(name)` allow or ask rule matches the invoked name and the skill's own name (a
+  deny rule still sees every name); the file an injected command's oversized output is saved to is cut at
+  64 MiB, between two UTF-8 characters, and the note says so; judgments record the host mapping of Claude's
+  `args`, the SDK command lists, and how `&` and entities in a description are handled.
+- Sub-agent catalog review: a `Task(...)` deny rule works as an alias of `Agent(...)`; `readFlagAgents`
+  reports the schema problems of every definition before the `-` names and cuts more than 20 lines to
+  `…and N more`; `resolveSubagentModel` takes `builtin: { name, connection }` and runs Explore on the `opus`
+  alias for a Fable main model over a subscription, Console or LLM gateway; `AgentOverrides` let a host pass
+  its deny rules, `--agents` value and `interactive` per call to `agentCatalog` and `reloadAgents`, and
+  `session.selectAgent` picks the session agent; the judgments file keeps all its earlier rows again.
+
+### Added
+
+- Skills: visibility, access, injection, lifecycle. `skills/visibility` holds the four `skillOverrides`
+  states as one registry that the listing, the menu and the invocation check read (`overrideMenuLabel` is
+  the `/skills` label); `skillNamesOf` gives the names a `Skill(...)` deny rule sees (nested unqualified
+  name, synced and plugin forms, aliases); `stackSkills` expands the first skill plus five stacked after it;
+  `invokeSkill`, `startTurn` and `reattachAfterCompaction` keep skill content, grants and the compaction
+  budget (5,000 tokens each, 25,000 in all); `launchFork` says what a `context: fork` skill starts;
+  `frontmatterIssues` gives the upload error for fields outside the Agent Skills spec. Injected commands
+  now follow the Bash tool: output past the inline ceiling is saved through `ExpandPorts.scratch` and
+  injected as a path and a preview (`bashOutputMaxChars`), a command moved to the background at its
+  timeout renders the skill with a note, exit 1 is classified like Claude's own commands, and
+  `disableSkillShellExecution` leaves managed skills alone. `Expansion.ignoredGrants` lists the grants
+  the managed settings withheld.
+- Sub-agents: the catalog. `scanAgents` reads the `.claude/agents/` folders of the managed directory, the
+  project and its parents, the added directories and `~` through `FolderScan`, skipping the files Claude
+  Code skips; `readFlagAgents` reads the `--agents` JSON; `builtinAgents` lists Explore, Plan, general-purpose
+  and the other built-ins with the switches that remove them; `resolveAgents` picks one definition per name
+  by the documented priority and applies `Agent(name)` deny rules; `resolveSubagentType`, `spawnableAgents`
+  (the `Agent(types)` allowlist), `spawnDepthLimit`/`nestingAt`, `namedSubagent`, `agentMentions`,
+  `selectSessionAgent` and `resumeSessionAgent` decide who runs, who may spawn whom and how a subagent is
+  named. A session gets `reloadAgents`, `agentCatalog`, `SessionOptions.agents` and `permissionRules`, and
+  `session.agents()` now lists every subagent (with `source`; `builtin: false` leaves the built-ins out).
+  The working-directory-to-repository-root rule is shared with the skills scan (`foundation/project-directories`).
+- Themes: `readTheme` reads a custom theme file (`~/.claude/themes/<slug>.json`, `themes/<slug>.json`
+  in a plugin): `name` defaulting to the slug, `base` among the six presets (asserted against the SDK's
+  `theme` setting), `overrides` over the documented tokens with `#rrggbb`, `#rgb`, `rgb()`, `ansi256()` and
+  `ansi:<name>` colours; unknown tokens and invalid colours are dropped with an issue. `copyOfPluginTheme`
+  is the copy an edit of a plugin theme is saved as. `Plugin.themes` now holds the read `Theme` of each
+  file and the plugin it comes from (`PluginPath` is gone: `PluginTheme` and `PluginWorkflow` replace it).
+- Workflows: `readWorkflowMeta` and `rewriteWorkflowMeta` read and rewrite the literal `meta` block of a
+  saved script without running it, `inspectWorkflowScript` reports the `phases` the body does not use,
+  `Date.now()`, `Math.random()`, a no-argument `new Date()` and `import()`; `Plugin.workflows` holds the
+  read `meta` and runs as `/<plugin>:<meta.name>`. Pure run decisions in `agents/workflow`: the six-attempt
+  stall policy and its three errors, the 1,000-agent and 4,096-item caps, concurrency, which agents run
+  again on a relaunch, leaving the session and `nothing to resume`, the usage-limit wait, the `args`
+  global, and where a script is saved and which `/<name>` runs (`scanSavedWorkflows` over `FolderScan`).
+- Skills: the skills and command files outside plugins. `scanFolders`, `scanNested` and
+  `resolveFolderSkills` read `.claude/skills/<name>/SKILL.md` and `.claude/commands/**.md` of the managed
+  directory, `~`, the project and its parents up to the repository root (a linked worktree stops at its
+  top and may borrow the main checkout's), each added directory, the directories below the working
+  directory a touched file is in, and the skills synced from claude.ai, through a new `FolderScan` port
+  (`ports/folder-scan`, with the `folderScan` fake and the shared `foundation/folder-walk`). Names clash as
+  skills.md says: enterprise over personal over project, a skill over a command file, a nested or
+  added-directory skill under `<dir>:<name>`, a synced skill's short name yielding to any other command;
+  a symlinked skill folder loads once. A skill folder holding a plugin manifest is reported as a
+  `<name>@skills-dir` plugin. New `managed` skill origin.
+- Host: `HostPorts.folders`, `SessionOptions.addedDirectories`, `session.reloadSkills` (the first read and
+  `/reload-skills`) and `session.touchFile`; `strictPluginOnlyCustomization` for skills is applied to the
+  folders. A plugin skill is also typed by its frontmatter `name` without the prefix when no command uses
+  it. `readSkillMentions` takes the listed `names`, so `/apps/web:deploy` is one word.
+- Host: `SessionOptions.takenCommands` (the host's built-in commands, bundled skills and MCP prompts a
+  synced skill's short name yields to); `session.addDirectory` (`/add-dir`) and `session.moveTo` (`/cd`),
+  which read the folders again on a live session and keep its skill hooks, `once` keys and nested
+  directories; `session.skillSources()` with each listed folder skill's scope, origin, names and the names
+  it gave up (`yielded`, `heldBy`) and the `shadowed` ones, for the `claude.ai sync` group of `/skills`.
+- Spec: the same-name table of skills.md names its rows by phrase (`PageScope.phrases`), which adds six
+  requirements (bundled skill, built-in command, added directory, two added directories, plugin skill,
+  synced short name).
+
+### Fixed
+
+- Workflows and themes (review findings): `stallWindowMs` takes the host's risen default as `defaultMs`, which
+  loses to `stallMs` and to `CLAUDE_ASYNC_AGENT_STALL_TIMEOUT_MS`; a lexical problem in the body of a script
+  (an unterminated string, template or comment) no longer discards a valid `meta`, and a rewrite of such a
+  script works; a rewrite adds a field with the line ending of a CRLF block; `rewriteWorkflowMeta` lives in
+  `workflow-meta-rewrite` and `MetaPatch.phases` takes object entries; `WorkflowMeta` gains `phaseEntries`
+  and `whenToUse`; `Theme.extraOverrides` keeps the tokens the reference omits, so a copy of a plugin theme or
+  a rewrite loses none; `PluginTheme.qualifiedName` is gone (a theme has no `<plugin>:` name);
+  `planReplay`/`replayAgent` compare an options fingerprint too (`AgentCall`, `options-differ`); a
+  schema that contradicts itself (`checkAgentSchema`) and the validation attempts (`afterInvalidOutput`,
+  `structuredOutputAttempts`); `themeColorToHex`; the order of two same-named workflows in one folder no
+  longer depends on the host locale; the literal reader returns a result instead of throwing;
+  `relaunchAfter` replaces the constant `continuesOnItsOwn`, and `startsNewAgents` is gone from the usage-limit
+  decision. Tests assert behaviour instead of reading constants back; the unrecorded judgments have rows.
+
+- Host: `SkillsReload.plugins` leaves out skills-directory plugins while `strictPluginOnlyCustomization`,
+  `strictKnownMarketplaces` or `blockedMarketplaces` stop them; reads of the folders (`reloadSkills`,
+  `touchFile`, `addDirectory`, `moveTo`) run one after another, so a touched file's skills are no longer
+  overwritten by a reload that was reading at the same time.
+- Tests: the troubleshooting tests name the budget, the per-entry cap and the host-supplied plugin root
+  they exercise; judgments of the folder scan (dot-folders, `taken`, exact local names, bare plugin names,
+  `additionalDirectories`, the main checkout's commands) and every class of refused name have their own
+  tests.
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
   short label and the amounts of each row of the Limits table, not the page's sentences, so the
   repository holds facts and identifiers only.
@@ -1519,3 +1614,6 @@
 ### Fixed (policy completion)
 
 - resolveEnv resolves settings environment values with scope, trust and launch-environment rules; envChange and envAfterCd model later application without unsetting removed variables. General readers cover agent view, theme, teammate mode, worktree settings, processWrapper argv parsing, command-line hook gates and plugin defaults. The host supplies the startup-safe variable classification and performs process execution.
+### Fixed (content completion)
+
+- Split subagent context by responsibility: persistent memory, preloaded skills and scoped MCP servers; add folder trust diagnostics and model allowlist substitution. The host still owns provider resolution, connections and prompt assembly.

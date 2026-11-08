@@ -13,6 +13,7 @@ import type { HookEvent } from '../protocol/official.ts';
 import { hookSessionGates, type HookSessionGates } from '../settings/hooks/index.ts';
 import type { PolicyScope } from '../settings/index.ts';
 import type { ActivePlugin, HostState } from './state.ts';
+import type { SessionDirectories } from './session-directories.ts';
 import type { SessionOptions } from './types.ts';
 
 /** Where the hooks of a settings file of each scope are declared (hooks.md, "Hook locations"). */
@@ -46,11 +47,10 @@ function sessionOf(
   state: HostState,
   gates: HookSessionGates,
   options: SessionOptions,
-): HookSession {
+): Omit<HookSession, 'cwd'> {
   return {
     sessionId: options.sessionId,
     transcriptPath: options.transcriptPath,
-    cwd: options.cwd,
     permissionMode: options.permissionMode,
     ...(options.effort === undefined ? {} : { effort: options.effort }),
     interactive: options.interactive ?? true,
@@ -82,26 +82,22 @@ export interface HookPart {
   ): Promise<HookOutcome<E>>;
 }
 
-/**
- * The hooks of a session: every enabled plugin's, then the settings files', through the engine
- * with the policy of the settings. A skill's hooks join them when the skill is expanded
- * (`registerSkillHooks`), and a skill's `once` hook that ran is dropped after the dispatch.
- */
-export function createHookPart(
+/** The engine for one working directory: path rules in an `if` read it, so a `/cd` builds another. */
+function engineFor(
   state: HostState,
+  gates: HookSessionGates,
   options: SessionOptions,
-): HookPart & SkillHooksRegistrar {
+  cwd: string,
+) {
   const { ports } = state.options;
-  const gates = hookSessionGates(state.view, state.parent);
-  const session = sessionOf(state, gates, options);
   const windows = state.options.windows ?? false;
-  const engine = createHookEngine(ports, {
+  return createHookEngine(ports, {
     windows,
     ifEvaluator: ifEvaluatorFor({
       paths: {
-        cwd: options.cwd,
+        cwd,
         home: ports.locations.homeDir(),
-        primaryWorkingDirectory: options.cwd,
+        primaryWorkingDirectory: cwd,
         additionalDirectories: options.additionalDirectories ?? [],
         platform: windows ? 'windows' : 'posix',
       },
@@ -110,6 +106,22 @@ export function createHookPart(
       state.active.find((plugin) => plugin.id === id)?.userConfig ?? { declared: {}, values: {} },
     httpPolicy: gates.httpPolicy,
   });
+}
+
+/**
+ * The hooks of a session: every enabled plugin's, then the settings files', through the engine
+ * with the policy of the settings. A skill's hooks join them when the skill is expanded
+ * (`registerSkillHooks`), and a skill's `once` hook that ran is dropped after the dispatch. The
+ * registry outlives a `/cd`: only the working directory the hooks see changes.
+ */
+export function createHookPart(
+  state: HostState,
+  options: SessionOptions,
+  directories: SessionDirectories,
+): HookPart & SkillHooksRegistrar {
+  const gates = hookSessionGates(state.view, state.parent);
+  const session = sessionOf(state, gates, options);
+  let engine = { cwd: directories.cwd(), run: engineFor(state, gates, options, directories.cwd()) };
   let registry = createHookRegistry([
     ...state.active.flatMap(pluginEntries),
     ...settingsEntries(gates),
@@ -120,7 +132,14 @@ export function createHookPart(
       registry = registry.without(previous.map((entry) => entry.id)).with(entries);
     },
     async dispatch(event, facts, { signal }) {
-      const outcome = await engine.dispatch(registry, { event, facts, session, signal });
+      const cwd = directories.cwd();
+      if (engine.cwd !== cwd) engine = { cwd, run: engineFor(state, gates, options, cwd) };
+      const outcome = await engine.run.dispatch(registry, {
+        event,
+        facts,
+        session: { ...session, cwd },
+        signal,
+      });
       registry = registry.without(outcome.consumedOnce);
       return outcome;
     },

@@ -257,3 +257,18 @@ export * from './format/mcp-contract.ts';
 export { readAgent } from './format/agent.ts';
 
 export * from './settings/env/index.ts';
+export * from './format/theme.ts';
+export * from './format/theme-color.ts';
+export * from './format/theme-tokens.ts';
+export * from './format/theme-write.ts';
+export * from './format/workflow-meta.ts';
+export * from './format/workflow-meta-rewrite.ts';
+export * from './format/workflow-script.ts';
+export * from './agents/workflow/index.ts';
+export * from './agents/catalog/index.ts';
+
+// File readers retain their unqualified public names; setting readers stay in settings/general.
+export { readTheme } from './format/theme.ts';
+export { readTheme as readThemeSetting } from './settings/general/look-and-feel.ts';
+export type { FailureCause } from './marketplace/node-deps-failure.ts';
+export type { FailureCause as WorkflowFailureCause } from './agents/workflow/attempts.ts';

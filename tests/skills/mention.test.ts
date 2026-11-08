@@ -54,7 +54,7 @@ spec('skills.invocation.(default)', () => {
 const NOT_INLINE = new Set(['code-review', 'loop']);
 const stackable = (command: string) => !NOT_INLINE.has(command);
 
-describe('stacked skills (skills.md § Stack several skills in one message)', () => {
+spec('skills.behavior.Stack several skills in one message', () => {
   test('`/write-tests /fix-issue 123` loads both skills, each with the trailing `123`', () => {
     expect(readSkillMentions('/write-tests /fix-issue 123')).toEqual([
       { how: 'direct', command: 'write-tests', arguments: '123' },

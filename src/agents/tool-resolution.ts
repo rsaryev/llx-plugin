@@ -26,12 +26,15 @@ export interface ToolRefusal {
   readonly matchedNoTools: readonly string[];
 }
 
+/** What the `Agent` tool may spawn: a list of types, any type, or none (without the tool). */
+export type SpawnTypes = readonly string[] | 'any' | 'none';
+
 export type ToolsOutcome =
   | {
       readonly ok: true;
       readonly tools: readonly string[];
       /** The subagent types the `Agent` tool may spawn; `none` without the tool. */
-      readonly spawnTypes: readonly string[] | 'any' | 'none';
+      readonly spawnTypes: SpawnTypes;
     }
   | { readonly ok: false; readonly refusal: ToolRefusal };
 

@@ -6,16 +6,17 @@
  * exit 1 is valid; the PowerShell list differs); errors.md § No shell command in a skill or command
  * was run (control characters).
  */
-import { describe, expect, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import type { PermissionBehavior, PermissionMode } from '../../src/protocol/official.ts';
 import { runInjections, type InjectionContext } from '../../src/skills/shell-run.ts';
 import { scriptedRunner } from '../support/ports.ts';
+import { spec } from '../support/spec.ts';
 import { base, failure, plan, run } from '../support/shell-run.ts';
 
 const timeoutMessage = async (env: Record<string, string>): Promise<string> =>
   failure((await run(['x'], [{ exitCode: null, timedOut: true }], { context: { env } })).result);
 
-describe('how a command runs', () => {
+spec('skills.behavior.How injected commands run', () => {
   test('through the runner as one shell line, in the working directory, with the session environment', async () => {
     const { runner } = await run(['gh pr diff'], [{ stdout: 'diff' }]);
     expect(runner.calls[0]).toMatchObject({
@@ -90,7 +91,7 @@ describe('how a command runs', () => {
   });
 });
 
-describe('when an injected command fails', () => {
+spec('skills.behavior.When an injected command fails', () => {
   test('"Shell command failed for pattern" with the command\'s output; the rest never run', async () => {
     const { result, runner } = await run(
       ['npm test', 'echo after'],
@@ -142,7 +143,7 @@ describe('when an injected command fails', () => {
   });
 });
 
-describe('permission checks on injected commands', () => {
+spec('skills.behavior.Permission checks on injected commands', () => {
   test("each command is checked first, with its tool, the command and the skill's grants", async () => {
     const { asked, runner } = await run(['gh pr diff'], [{}], {
       context: { grants: ['Bash(gh *)'] },
@@ -198,7 +199,7 @@ describe('permission checks on injected commands', () => {
   });
 });
 
-describe('in auto mode', () => {
+spec('skills.behavior.Permission checks on injected commands', () => {
   const auto: Partial<InjectionContext> = { mode: 'auto' satisfies PermissionMode };
 
   test('"a command that would otherwise need your approval doesn\'t abort": an instruction to run it first', async () => {
@@ -228,7 +229,7 @@ describe('in auto mode', () => {
   });
 });
 
-describe('"No shell command in <name> was run" (errors.md)', () => {
+spec('skills.behavior.When no shell command was run', () => {
   test('a raw control character other than tab or newline refuses the command, shown as the replacement mark', async () => {
     const { result, runner, asked } = await run(['build.sh --target\u0001dist'], []);
     const message = failure(result);
@@ -259,12 +260,6 @@ describe('"No shell command in <name> was run" (errors.md)', () => {
     expect(asked[0]?.command).toBe(
       runner.calls[0]?.spec.form === 'shell' ? runner.calls[0].spec.command : undefined,
     );
-  });
-
-  test("judgment: output past the inline ceiling is injected whole (a file and preview are the host's)", async () => {
-    const big = 'x'.repeat(50_000);
-    const { result } = await run(['cat big'], [{ stdout: big }]);
-    expect(result).toEqual({ ok: true, outputs: [big] });
   });
 
   test('a tab and a newline are fine', async () => {

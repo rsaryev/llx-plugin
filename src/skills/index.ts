@@ -12,24 +12,46 @@ export {
 } from './output-style-select.ts';
 export {
   INVOKERS,
-  OVERRIDE_STATES,
   checkInvocation,
   invocationPolicy,
-  overrideState,
   type DenialReason,
   type InvocationPolicy,
   type InvocationVerdict,
   type Invocable,
   type Invoker,
+} from './invocation.ts';
+export {
+  OVERRIDE_EXPOSURE,
+  OVERRIDE_STATES,
+  exposureOf,
+  overrideMenuLabel,
+  overrideState,
+  type Exposure,
   type ModelListing,
   type OverrideState,
   type SkillOverrides,
-} from './invocation.ts';
+} from './visibility.ts';
 export {
   commandEntryGrants,
   loadCommandEntries,
   type CommandEntriesLoaded,
 } from './command-entries.ts';
+export { skillNamesOf } from './skill-rule.ts';
+export {
+  EMPTY_LEDGER,
+  REATTACH_TOKENS_PER_SKILL,
+  REATTACH_TOKENS_TOTAL,
+  invokeSkill,
+  reattachAfterCompaction,
+  startTurn,
+  type SkillDelivery,
+  type Invocation,
+  type LoadedSkill,
+  type ReattachOptions,
+  type SkillLedger,
+  type TokenCounter,
+} from './lifecycle.ts';
+export { stackSkills, type Stack, type StackOptions } from './stack.ts';
 export { readSkillMentions, type SkillMention } from './mention.ts';
 export {
   listingLine,
@@ -60,6 +82,19 @@ export {
   type TurnSession,
   type WaitReason,
 } from './execution.ts';
+export {
+  launchFork,
+  type ForkAgents,
+  type ForkLaunch,
+  type ForkResult,
+  type ForkStartContext,
+} from './fork.ts';
+export {
+  AGENT_SKILLS_FIELDS,
+  DISTRIBUTION_PATHS,
+  frontmatterIssues,
+  type DistributionPath,
+} from './portable.ts';
 export { parseArguments } from './arguments.ts';
 export {
   substitute,
@@ -100,3 +135,28 @@ export {
   type HooksAdmission,
   type HookUsage,
 } from './hook-limits.ts';
+export type { FolderScan, RepositoryChain, ScanFolder } from '../ports/folder-scan.ts';
+export {
+  SCAN_SCOPES,
+  type ScanContext,
+  type ScanRequest,
+  type ScanScope,
+} from './scan/locations.ts';
+export {
+  scanFolders,
+  scanScope,
+  type ScanOutcome,
+  type ScannedEntry,
+  type SkillsDirectoryPlugin,
+} from './scan/scan.ts';
+export { scanNested, type NestedScan } from './scan/nested.ts';
+export {
+  resolveFolderSkills,
+  type NameHolder,
+  type Resolution,
+  type ResolveFolderOptions,
+  type ResolvedFolderSkill,
+  type ShadowedEntry,
+  type YieldedName,
+} from './scan/resolve.ts';
+export { isStrictlyBelow } from './scan/names.ts';

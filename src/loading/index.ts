@@ -16,7 +16,13 @@ export type { ConfigInput, Discovered, DiscoveredFile } from './discovered.ts';
 export { loadPlugin, type LoadPluginInput } from './load-plugin.ts';
 export { mergeHooks } from './merge-hooks.ts';
 export { classifyPluginFolder, type PluginFolderKind } from './plugin-folder.ts';
-export type { LoadedPlugin, Plugin, PluginPath, PluginTextFile } from './plugin-model.ts';
+export type {
+  LoadedPlugin,
+  Plugin,
+  PluginTextFile,
+  PluginTheme,
+  PluginWorkflow,
+} from './plugin-model.ts';
 export type {
   ComponentRead,
   ComponentReader,

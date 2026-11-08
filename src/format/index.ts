@@ -35,6 +35,7 @@ export {
   type HooksModules,
 } from './mod-files.ts';
 export { readAgent } from './agent.ts';
+export { readFlagAgents, type FlagAgentsRead } from './agent-flag.ts';
 export {
   agentFileName,
   agentNameProblem,

@@ -24,6 +24,7 @@ describe('the testing entry', () => {
       'fakeMcp',
       'fakeModel',
       'fixedClock',
+      'folderScan',
       'locations',
       'memoryFiles',
       'memoryScratch',

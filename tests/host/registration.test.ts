@@ -80,7 +80,7 @@ describe('one registration per name', () => {
         'agents/b.md': md({ name: 'same', description: 'Second.' }),
         'agents/sub/c.md': md({ name: 'same', description: 'Nested.' }),
       })
-    ).agents();
+    ).agents({ builtin: false });
     expect(agents.resolved.map((agent) => [agent.name, agent.definition.description])).toEqual([
       ['plug:same', 'First.'],
       ['plug:sub:same', 'Nested.'],

@@ -1,5 +1,4 @@
 import { error, warning, type PluginIssue } from '../format/issues.ts';
-import type { Command, Skill } from '../format/skill-types.ts';
 import type { SlashCommand } from '../protocol/official.ts';
 import { hookSessionGates } from '../settings/hooks/index.ts';
 import { createSkillSettingsPolicy } from '../settings/skills/index.ts';
@@ -14,6 +13,8 @@ import {
   menuEntries,
   modelListing,
   type ExpandPorts,
+  type ExpandRequest,
+  type ExpandSession,
   type Expansion,
   type Invocable,
   type Invoker,
@@ -21,8 +22,15 @@ import {
   type ModelListingResult,
   type ShellPermission,
 } from '../skills/index.ts';
+import type { SessionDirectories } from './session-directories.ts';
+import {
+  createFolderSkills,
+  type FolderSkillSources,
+  type SkillsReload,
+} from './session-folders.ts';
 import type { SkillHooksRegistrar } from './session-hooks.ts';
-import type { ActivePlugin, HostState } from './state.ts';
+import { pluginEntries, type Entry } from './session-skill-entries.ts';
+import type { HostState } from './state.ts';
 import type { SessionOptions } from './types.ts';
 
 /** Who asks for the skill: the user typing `/name`, or the model calling it. */
@@ -34,6 +42,10 @@ export interface ExpandOptions {
   readonly signal: AbortSignal;
   /** Default `user`: the skill is checked against `user-invocable`; `model` against `disable-model-invocation`. */
   readonly invoker?: SkillInvoker;
+  /** The `bashOutputMaxChars` setting: how much of an injected command's result arrives inline. */
+  readonly bashOutputMaxChars?: number;
+  /** Bare mode: an injected command that reaches its timeout stops instead of moving to the background. */
+  readonly bare?: boolean;
 }
 
 /** What the model is told and what the `/` menu offers; `usage`, `activated` and the budget as `modelListing`. */
@@ -47,27 +59,42 @@ export interface SkillsListing {
 export interface SkillPart {
   skills(options?: SkillsOptions): SkillsListing;
   expandSkill(name: string, options: ExpandOptions): Promise<Expansion>;
+  /**
+   * Reads the folders again: the managed directory, `~/.claude/skills` and `~/.claude/commands`, the
+   * project and its parents, the added directories and the skills synced from claude.ai, and the
+   * nested directories a touched file loaded. The first call is what lists them at all; later calls
+   * are `/reload-skills`, which picks up a skills directory created during the session (skills.md,
+   * "Edit a skill during a session"). Needs `HostPorts.folders`.
+   */
+  reloadSkills(options: { readonly signal: AbortSignal }): Promise<SkillsReload>;
+  /**
+   * Claude read or edited a file: the `.claude/skills` of the directories between the working
+   * directory and the file load, once, and stay for the session (skills.md, "Load skills in
+   * monorepos and subdirectories").
+   */
+  touchFile(path: string, options: { readonly signal: AbortSignal }): Promise<SkillsReload>;
+  /**
+   * `/add-dir`: the directory's `.claude/skills` and `.claude/commands` load now, after the ones added
+   * before it (skills.md, "Load skills from a directory outside the project"). The session's skill
+   * hooks, `once` keys and nested directories stay. Needs `HostPorts.folders`.
+   */
+  addDirectory(path: string, options: { readonly signal: AbortSignal }): Promise<SkillsReload>;
+  /**
+   * `/cd`: the new working directory's project skills load next to the added directories' (skills.md,
+   * "Load skills in monorepos and subdirectories"), and hook input `cwd` follows it. The session goes
+   * on as for `addDirectory` (spec/judgments.md). Needs `HostPorts.folders`.
+   */
+  moveTo(cwd: string, options: { readonly signal: AbortSignal }): Promise<SkillsReload>;
+  /**
+   * Where each folder skill the last read listed came from, and what name it gave up: the
+   * `claude.ai sync` group of `/skills` and the note under it for a synced skill that lost its short
+   * name (skills.md, "When a synced skill name matches another command").
+   */
+  skillSources(): FolderSkillSources;
 }
 
-interface Entry {
-  readonly plugin: ActivePlugin;
-  readonly invocable: Skill | Command;
-}
-
-/** Without an answer from the host a shell placeholder asks, and an `ask` aborts the expansion (skills.md, "Permission checks on injected commands"). */
-const ASKS: ShellPermission = () => 'ask';
-
-/**
- * A plugin's skill and command of one name are one entry, the command's: Claude Code 2.1.319 lists
- * `<plugin>:<name>` in `slash_commands` with the command's own `user-invocable`, whichever of the
- * two the plugin has under that name (spec/judgments.md, "oracle 2.1.319").
- */
-const entriesOf = (state: HostState): readonly Entry[] =>
-  state.active.flatMap((plugin) => {
-    const commanded = new Set(plugin.catalog.commands.map((command) => command.command));
-    const skills = plugin.catalog.skills.filter((skill) => !commanded.has(skill.command));
-    return [...skills, ...plugin.catalog.commands].map((invocable) => ({ plugin, invocable }));
-  });
+/** What a hook's source is named after: the plugin, else where the skill lives (`user`, `project`). */
+const ownerOf = (entry: Entry): string => entry.plugin?.id ?? entry.invocable.origin.kind;
 
 function failed(name: string, message: string): Expansion {
   return { ok: false, issues: [error(`/${name}`, message)] };
@@ -102,9 +129,12 @@ function shellDisabled(state: HostState): boolean {
 function skillHookRegistration(registrar: SkillHooksRegistrar) {
   const used = new Map<string, HookUsage>();
   const counted = new Map<string, HookUsage>();
-  return (entry: Entry, hooks: NonNullable<Extract<Expansion, { ok: true }>['hooks']>) => {
+  return (
+    entry: Entry,
+    hooks: NonNullable<Extract<Expansion, { ok: true }>['hooks']>,
+  ): readonly PluginIssue[] => {
     const source = hookSourceOf(entry.invocable.origin);
-    const prefix = `skill:${entry.plugin.id}:${entry.invocable.command}`;
+    const prefix = `skill:${ownerOf(entry)}:${entry.invocable.command}`;
     const others = used.get(source) ?? NO_HOOKS_YET;
     const own = counted.get(prefix) ?? NO_HOOKS_YET;
     const base = {
@@ -128,12 +158,23 @@ function skillHookRegistration(registrar: SkillHooksRegistrar) {
     const entries: readonly RegisteredHandler[] = registerHooks(hooks, {
       idPrefix: prefix,
       source: { kind: 'skill', label: '[skill]' },
-      pluginId: entry.plugin.id,
+      ...(entry.plugin === undefined ? {} : { pluginId: entry.plugin.id }),
     });
     registrar.registerSkillHooks(prefix, entries);
-    return [] as readonly PluginIssue[];
+    return [];
   };
 }
+
+/** What a skill's variables resolve against: its plugin's, or nothing but the platform for a folder's. */
+const sessionOf = (entry: Entry, windows: boolean): ExpandSession =>
+  entry.plugin === undefined
+    ? { windows }
+    : {
+        pluginId: entry.plugin.id,
+        userConfig: entry.plugin.userConfig,
+        windows,
+        ...(entry.plugin.source === undefined ? {} : { pluginSource: entry.plugin.source }),
+      };
 
 /** The expansion with the warnings of registering its hooks, when it has hooks to register. */
 function withHooks(
@@ -149,31 +190,61 @@ function withHooks(
     : { ...expansion, issues: [...expansion.issues, ...issues] };
 }
 
+/** Without an answer from the host a shell placeholder asks, and an `ask` aborts the expansion (skills.md, "Permission checks on injected commands"). */
+const ASKS: ShellPermission = () => 'ask';
+
+/** What the host says about the shell tool an injected command runs through. */
+const shellLimits = (
+  request: ExpandOptions,
+): Pick<ExpandRequest, 'bashOutputMaxChars' | 'bare'> => ({
+  ...(request.bashOutputMaxChars === undefined
+    ? {}
+    : { bashOutputMaxChars: request.bashOutputMaxChars }),
+  ...(request.bare === undefined ? {} : { bare: request.bare }),
+});
+
 export function createSkillPart(
   state: HostState,
   options: SessionOptions,
-  registrar: SkillHooksRegistrar,
+  parts: { readonly registrar: SkillHooksRegistrar; readonly directories: SessionDirectories },
 ): SkillPart {
+  const { registrar, directories } = parts;
   const addHooks = skillHookRegistration(registrar);
   const { ports } = state.options;
   const windows = state.options.windows ?? false;
-  const entries = entriesOf(state);
+  const plugins = pluginEntries(state);
+  const folders = createFolderSkills(state, directories, () => [
+    ...(options.takenCommands ?? []),
+    ...plugins.flatMap((entry) => entry.names),
+  ]);
+  const entries = (): readonly Entry[] => [...plugins, ...folders.current()];
   const overrides = state.view.get('skillOverrides');
   const hooksLocked = hookSessionGates(state.view, state.parent).pluginOnlyHooks;
-  const invocables: readonly Invocable[] = entries.map((entry) => entry.invocable);
   const expandPorts: ExpandPorts = {
     runner: ports.commands,
     locations: ports.locations,
     environment: ports.environment,
     permissions: options.permissions ?? ASKS,
+    ...(ports.scratch === undefined ? {} : { scratch: ports.scratch }),
   };
   return {
-    skills: (listing = {}) => ({
-      model: modelListing(invocables, { ...listing, ...(overrides && { overrides }) }),
-      menu: menuEntries(invocables, overrides === undefined ? {} : { overrides }),
-    }),
+    skills: (listing = {}) => {
+      const invocables: readonly Invocable[] = entries().map((entry) => entry.invocable);
+      return {
+        model: modelListing(invocables, { ...listing, ...(overrides && { overrides }) }),
+        menu: menuEntries(invocables, overrides === undefined ? {} : { overrides }),
+      };
+    },
+    reloadSkills: ({ signal }) => folders.reload(signal),
+    touchFile: (path, { signal }) => folders.touch(path, signal),
+    addDirectory: (path, { signal }) => folders.addDirectory(path, signal),
+    moveTo: (cwd, { signal }) => folders.moveTo(cwd, signal),
+    skillSources: () => folders.sources(),
     async expandSkill(name, request) {
-      const entry = entries.find((each) => each.invocable.command === name);
+      const all = entries();
+      const entry =
+        all.find((each) => each.invocable.command === name) ??
+        all.find((each) => each.names.includes(name));
       if (entry === undefined) return failed(name, `Unknown skill: ${name}`);
       const invoker = request.invoker ?? 'user';
       const verdict = checkInvocation(entry.invocable, invoker, overrides);
@@ -188,17 +259,13 @@ export function createSkillPart(
           disableShellExecution: shellDisabled(state),
           shells: state.options.shells ?? { bash: true, powershell: windows },
           context: { interactive: options.interactive ?? true, trigger: invoker },
-          session: {
-            pluginId: entry.plugin.id,
-            userConfig: entry.plugin.userConfig,
-            windows,
-            ...(entry.plugin.source === undefined ? {} : { pluginSource: entry.plugin.source }),
-          },
+          session: sessionOf(entry, windows),
           policy: {
             hooksLockedToPlugins: hooksLocked,
             managedPermissionRulesOnly: managedPermissionRulesOnly(state),
           },
-          cwd: options.cwd,
+          cwd: directories.cwd(),
+          ...shellLimits(request),
           signal: request.signal,
         },
         expandPorts,

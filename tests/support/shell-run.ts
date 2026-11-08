@@ -6,6 +6,12 @@ import {
   type PlannedCommand,
   type ShellCall,
 } from '../../src/skills/shell-run.ts';
+import type { ScratchFiles } from '../../src/ports/index.ts';
+import type {
+  SkillCommandResult,
+  SkillCommandRun,
+  SkillCommandRunner,
+} from '../../src/skills/shell-ports.ts';
 import { scriptedRunner, type RunnerReply } from './ports.ts';
 
 export const base: InjectionContext = {
@@ -56,3 +62,34 @@ export const failure = (result: Awaited<ReturnType<typeof run>>['result']): stri
   if (result.ok) throw new Error('expected a failure');
   return result.issue.message;
 };
+
+/** A runner that answers every run with `result` and records what it was asked. */
+export function fixedRunner(
+  result: Partial<SkillCommandResult>,
+): SkillCommandRunner & { readonly calls: SkillCommandRun[] } {
+  const calls: SkillCommandRun[] = [];
+  return {
+    calls,
+    run: (given) => {
+      calls.push(given);
+      return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', timedOut: false, ...result });
+    },
+  };
+}
+
+/** Runs one command through `runner`, with an optional scratch port and the given context. */
+export async function runThrough(
+  runner: SkillCommandRunner,
+  command: string,
+  setup: Setup & { readonly scratch?: ScratchFiles } = {},
+) {
+  return runInjections(
+    [plan(command)],
+    { ...base, ...setup.context },
+    {
+      runner,
+      permissions: () => setup.behavior ?? 'allow',
+      ...(setup.scratch === undefined ? {} : { scratch: setup.scratch }),
+    },
+  );
+}

@@ -7,7 +7,7 @@
  * `--agents`"; § Trust required for inline MCP servers. The example is the docs' browser-tester.
  */
 import { describe, expect, test } from 'bun:test';
-import { resolveAgentMcpServers } from '../../src/agents/context.ts';
+import { resolveAgentMcpServers } from '../../src/agents/mcp-scope.ts';
 import { readAgent } from '../../src/format/agent.ts';
 import type { AgentMcpServerSpec } from '../../src/protocol/official.ts';
 import { AGENT_SOURCES, type AgentSource } from '../../src/format/agent-record.ts';

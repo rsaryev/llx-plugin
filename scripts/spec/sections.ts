@@ -44,10 +44,14 @@ function itemIds(texts: readonly string[]): string[] {
   return [...new Set(labels.filter((label): label is string => label !== undefined))];
 }
 
-/** A table row's identifiers: its code spans or short first-cell text; a sentence has none. */
-function rowIds(cells: readonly string[]): string[] {
+/**
+ * A table row's identifiers: its code spans or short first-cell text; a sentence has none, unless
+ * the section names its rows by phrase (`PageScope.phrases`).
+ */
+function rowIds(cells: readonly string[], phrases: boolean): string[] {
+  const limit = phrases ? Number.POSITIVE_INFINITY : MAX_LEAD;
   return cells.flatMap((cell) =>
-    keysOf(cell).filter((key) => key.length > 0 && key.length <= MAX_LEAD && !LINK.test(key)),
+    keysOf(cell).filter((key) => key.length > 0 && key.length <= limit && !LINK.test(key)),
   );
 }
 
@@ -92,7 +96,12 @@ function fromSection(scope: PageScope, page: Page, heading: Heading): Requiremen
         ...(labelled.length >= MIN_ITEMS ? labelled : []),
         ...page.tables
           .filter((table) => table.heading === heading && table.rows.length >= MIN_ITEMS)
-          .flatMap((table) => rowIds(table.rows.map((row) => row[0] ?? ''))),
+          .flatMap((table) =>
+            rowIds(
+              table.rows.map((row) => row[0] ?? ''),
+              scope.phrases?.some((rule) => matches(rule, heading)) ?? false,
+            ),
+          ),
       ];
   const whole = keys.length === 0 || items.length > labelled.length;
   return [...(whole ? [base] : []), ...keys.map((key) => `${base}.${key}`)].map(make);

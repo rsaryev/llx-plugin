@@ -3,7 +3,7 @@ import { error } from '../format/issues.ts';
 import { pathNotFound } from '../format/messages.ts';
 import type { PluginIssue } from '../format/issues.ts';
 import type { DiscoveredFile } from './discovered.ts';
-import type { PluginPath, PluginTextFile } from './plugin-model.ts';
+import type { PluginTextFile } from './plugin-model.ts';
 import type { ComponentRead, ReaderContext, ReadKind } from './reader-types.ts';
 
 const qualify = (plugin: string, name: string): string => `${plugin}:${name}`;
@@ -59,22 +59,3 @@ export const textFiles =
     );
     return { value: read.flat(), issues };
   };
-
-/** Workflows and themes: loading keeps the path and name; the file is the host's to run or apply. */
-export const pathFiles =
-  (find: (context: ReaderContext) => readonly DiscoveredFile[]) =>
-  (context: ReaderContext): Promise<ComponentRead<readonly PluginPath[]>> =>
-    Promise.resolve({
-      value: find(context).flatMap((file) =>
-        file.path === undefined
-          ? []
-          : [
-              {
-                path: file.path,
-                name: file.name,
-                qualifiedName: qualify(context.pluginName, file.name),
-              },
-            ],
-      ),
-      issues: [],
-    });

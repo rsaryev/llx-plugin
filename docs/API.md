@@ -98,6 +98,75 @@ same fields of its source file. Each failure (both or neither of `source` and `c
 or out-of-folder `source`, a refused name) is an error issue for that entry, and the other entries
 still load; an `allowedTools` rule that does not parse is dropped with a warning.
 
+### Skills and commands of the folders (done: `ports/folder-scan`, `foundation/folder-walk`, `skills/scan`)
+
+The skills a person or an organization keeps outside a plugin: `.claude/skills/<name>/SKILL.md` and
+the flat `.claude/commands/**.md` of the managed (enterprise) directory, `~`, the project and its
+parents, each directory passed with `--add-dir`, a `.claude/skills` below the working directory, and
+the skills downloaded from claude.ai into `~/.claude/skills/synced/` (skills.md, "Choose where skills
+load"). The kit reads them through the `FolderScan` port (`managedDirectory`, `open(dir)` giving
+`{ dir, files: PluginFiles, hostPath, canonicalPath }`, `repository(cwd)` giving the working
+directory and its parents up to the repository root, and the main checkout of a linked worktree,
+`directoriesBelow(start, touched)`); the fake is `folderScan(record, { managed, repositories, worktrees })`.
+
+```ts
+import { resolveFolderSkills, scanFolders, scanNested } from '@rsaryev/claude-plugin-kit';
+
+const context = { folders, request: { home, cwd, addedDirectories: ['../cli'] }, signal };
+const outcome = await scanFolders(context); // { entries, plugins, issues, watch }
+const nested = await scanNested(context, '/repo/apps/web/src/page.ts', loadedDirectories);
+const { resolved, shadowed } = resolveFolderSkills([...outcome.entries, ...nested.entries], {
+  cwd,
+  addedDirectories: ['../cli'],
+  taken: ['usage'], // commands other sources use: only a synced skill's short name yields to them
+});
+resolved[0]; // { invocable: Skill | Command, scope, names: ['deploy', 'deploy-staging'] }
+```
+
+- `scanFolders` reads the scopes in precedence order (`SCAN_SCOPES`): managed, personal, project, the
+  added directories, synced. A refused name (`anthropic-skills`, a folder `synced` in any
+  capitalization, a zero-width space or `<`) is an error issue and the skill does not load; a link that
+  leads nowhere is a warning. A symlinked skill folder is read from its target. `watch` lists the
+  skills folders that exist and that a session watches (personal, project, added directories).
+  `plugins` lists the skill folders of the personal and project locations that hold
+  `.claude-plugin/plugin.json` as `<name>@skills-dir` (a project's needs the workspace trust dialog,
+  `requiresTrust`, and is looked for in the working directory only); the host opens one with
+  `FolderScan.open(dir)` and `loadPlugin`.
+- `scanNested` reads the `.claude/skills` of the directories between the working directory and a touched
+  file, outermost first, skipping `loaded` ones; the session keeps them for the rest of its life.
+- `resolveFolderSkills` decides the names: enterprise over personal over project (the nearest
+  directory first); a skill over a command file of one name; a nested skill that clashes is
+  `<subdir path>:<name>` with its directory in the description, and the root one keeps the plain name; an
+  added directory's skill that clashes with a local skill or an earlier added directory takes the folder
+  name as prefix (`cli:verify`, `b/cli:verify` when two folders share a name); a synced skill is
+  `anthropic-skills:<name>` and also its short name unless another command uses it, names compared
+  ignoring case, spacing, invisible characters and compatibility forms. The same real folder reached
+  through several links is one skill. `names` lists every name that invokes an entry: a skill is typed
+  by its frontmatter `name` and by its folder's name.
+- `resolveFolderSkills` also says, per entry, the `yielded` names (a preferred name another command
+  already used, with the folder skill or command file that holds it as `heldBy`) and returns the
+  `shadowed` entries that lost every name.
+- The host: `HostPorts.folders` and `SessionOptions.addedDirectories` turn it on;
+  `SessionOptions.takenCommands` names the commands the host's own sources use (built-in commands,
+  bundled skills, MCP prompts), which only a synced skill's short name yields to.
+  `session.reloadSkills({ signal })` (the `/reload-skills` of Claude Code, and the first read) lists the
+  folders next to the plugins' skills, and `session.touchFile(path, { signal })` loads the nested ones.
+  `session.addDirectory(path, { signal })` (`/add-dir`) and `session.moveTo(cwd, { signal })` (`/cd`)
+  read the folders again on the live session: its skill hooks, `once` keys and nested directories stay
+  (judgments in `spec/judgments.md`), and hook input `cwd` follows the move. The reads of one session
+  run one after another. `session.skillSources()` returns `{ entries, shadowed }` for the last read:
+  per listed skill its `scope` (`synced` is the `claude.ai sync` group of `/skills`), `origin`, `names`
+  and `yielded`, which is what the note under that group is built from.
+  `strictPluginOnlyCustomization` for `skills` stops the personal, project, added-directory and synced
+  sources, never the managed directory. A skill of the managed directory keeps its hooks and its
+  `allowed-tools` grant under the locks. `SkillsReload.plugins` leaves out the skills-directory plugins
+  while the settings stop them (`strictPluginOnlyCustomization` set to `true` or to any kind,
+  `strictKnownMarketplaces` without a `skills-dir` entry, `blockedMarketplaces` with one); the folder's
+  `SKILL.md` is still a plain skill unless skills are locked.
+- A plugin's skill whose frontmatter `name` differs from its folder's is also typed by the bare name
+  (`/fancy` for `/my-plugin:fancy`) unless a command already uses it; `readSkillMentions` takes
+  `names` so a directory-qualified name (`/apps/web:deploy`) is one word.
+
 ### Skill substitution (done: `skills/arguments`, `skills/substitute`, `skills/variables`)
 
 What a skill's text becomes before the model reads it (skills.md, "Available string
@@ -164,7 +233,7 @@ resolveExecution(skill, { interactive: true, backgroundTasksDisabled: false, tri
 model catalogue (`availableModels`, the family substitution, auto mode support) is the host's:
 `ModelAvailability` is the three questions the kit asks.
 
-### Skill expansion (done: `skills/shell-scan`, `shell-exit`, `shell-run`, `expand`, `expand-policy`, `hook-limits`)
+### Skill expansion (done: `skills/shell-scan`, `shell-run`, `shell-result`, `shell-refusal`, `shell-ports`, `expand`, `expand-shell`, `expand-types`, `expand-policy`, `hook-limits`)
 
 What a skill becomes when it is invoked: the text the model receives and what the host must apply
 for the turn (skills.md, "Inject dynamic context", "How injected commands run", "Pre-approve tools
@@ -196,9 +265,31 @@ whitespace (`KEY=!`cmd`` stays literal); with bash a non-zero exit fails except 
 `rg`, `egrep`, `fgrep`, `find`, `diff`, `test`, `[`, `git diff` and `git grep` (PowerShell: no `find`
 or `diff`, plus `findstr`); each command runs under the `BASH_DEFAULT_TIMEOUT_MS` timeout (2 minutes by default) with stderr merged for bash;
 a synced skill's commands are not run on the owner's machine (`isolatedSession` says otherwise).
-The host owns registering and firing the hooks, the process, the working directory after a `cd`,
-moving a long command to the background, saving output past the inline ceiling to a file, and
-keeping `EndConversation` out of `disallowed` while another tool remains.
+The commands follow the Bash tool's rules: a command that reaches its timeout is moved to the
+background when the runner reports it (`SkillCommandResult.background`; the kit asks for the move with
+`moveToBackgroundOnTimeout` unless the line starts with `sleep`, background tasks are disabled or the
+session is bare), and the skill renders with a note that names the task and its file, otherwise the
+invocation aborts; a valid result past the inline ceiling is written through `ExpandPorts.scratch` and
+injected as a path and a preview (`bashOutputMaxChars` sizes the ceiling); a failure past 10,000
+characters is a head-and-tail excerpt. `disableSkillShellExecution` leaves a `managed` skill alone.
+`Expansion.ignoredGrants` lists the `allowed-tools` the managed settings withheld. The host owns
+registering and firing the hooks, the process, the working directory after a `cd`, starting the
+background task, and keeping `EndConversation` out of `disallowed` while another tool remains.
+
+### Skill visibility, access, stacking, lifecycle and forks (done: `skills/visibility`, `skill-rule`, `stack`, `lifecycle`, `fork`, `portable`)
+
+```ts
+import { stackSkills, skillNamesOf, invokeSkill, reattachAfterCompaction, launchFork } from '@rsaryev/claude-plugin-kit';
+```
+
+| Name                                          | Does                                                                                                   |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `OVERRIDE_EXPOSURE`, `exposureOf(skill, overrides)` | the `skillOverrides` table as a registry over `on`, `name-only`, `user-invocable-only`, `off`: what Claude is told and whether the `/` menu lists the skill; the listing, the menu and `checkInvocation` all read it; `overrideMenuLabel` is the `/skills` label (`user-only`) |
+| `skillNamesOf(skill, aliases?)`               | every name a skill goes by (command, nested unqualified name, synced forms, the host's aliases) for `PreparedCall.skillNames`, which a `Skill(...)` deny rule reads |
+| `stackSkills(message, catalog, options?)`     | the first skill plus up to five stacked after it and the argument text they share; a fork, an open-ended command (`takesCommandArguments`), a hidden or unknown name ends the stack; non-interactive loads the first only |
+| `invokeSkill`, `startTurn`, `reattachAfterCompaction` | the ledger of skill content in a conversation: a repeated identical rendering gets a note, a different one the full content again, grants clear at the next message, compaction keeps the latest invocation of each skill (5,000 tokens each, 25,000 in all, newest first) |
+| `launchFork(execution, command, text, agents)` | what a `context: fork` skill starts: the agent type, the content as its task, its startup context (Explore and Plan load no CLAUDE.md), waiting or background, the tool set; an unknown agent is an error |
+| `frontmatterIssues(text, path)`               | the hard error an upload, the Skills API or `package_skill.py` gives a field outside the Agent Skills spec; Claude Code accepts every field |
 
 ### Output styles (done: `format/output-style`, `skills/output-style-select`)
 
@@ -216,6 +307,70 @@ argument of `/output-style` (case-insensitive) and the custom styles in preceden
 says whether Claude Code's software engineering section stays in the prompt: only the full prompt has
 it. `listOutputStyles` is the `/output-style` list. The host writes the setting and injects the
 `instructions` of `active.style`; the kit never sends a prompt.
+
+### Themes (done: `format/theme`, `theme-tokens`, `theme-write`)
+
+```ts
+import {
+  readTheme, themeSlug, customThemeId, copyOfPluginTheme, themeColorToHex,
+} from '@rsaryev/claude-plugin-kit';
+
+const { theme, issues } = readTheme(themeSlug('themes/dracula.json'), text);
+theme?.name; // `name`, else the slug
+theme?.base; // one of THEME_BASES, `dark` by default
+theme?.overrides; // token -> { form: 'rgb' | 'ansi256' | 'ansi', ... }, only valid colours
+theme?.extraOverrides; // unlisted tokens as written, kept so a copy or a rewrite loses none
+themeColorToHex(color, palette?); // '#rrggbb' for CSS; ansi colours from xterm's palette unless given
+customThemeId('dracula'); // 'custom:dracula', what `/theme` stores
+```
+
+A theme file is `~/.claude/themes/<slug>.json`, or `themes/<slug>.json` in a plugin (`Plugin.themes`,
+shown in `/theme` marked as from the plugin), with three optional fields: `name`, `base` (one of the six
+presets `THEME_BASES`, asserted against the SDK's `theme` setting) and `overrides` (token to colour,
+`THEME_TOKEN_NAMES`). Colours are `#rrggbb`, `#rgb`, `rgb(r,g,b)`, `ansi256(n)` or `ansi:<name>`; "Unknown
+tokens and invalid color values are ignored", so each one is dropped with a warning and the theme still
+loads, and `unknownTokens` lists the names of the tokens the reference omits ("a few single-purpose
+accents such as onboarding screen colors": `/theme` sets them), whose raw values `extraOverrides` keeps.
+`copyOfPluginTheme` is the copy a user's edit of a plugin theme is saved as, with those tokens written
+back. A plugin theme is shown under `theme.name` with `plugin` as its origin; it has no `<plugin>:` name.
+Colour forms are exact: `RGB(...)` and `ANSI256(...)` are not colours. The host applies the theme and watches the folder; the kit never renders.
+
+### Workflows (done: `format/workflow-meta`, `workflow-script`, `agents/workflow`)
+
+```ts
+import { readWorkflowMeta, rewriteWorkflowMeta, inspectWorkflowScript } from '@rsaryev/claude-plugin-kit';
+
+const { meta } = readWorkflowMeta(source); // name, description, phases, phaseEntries, whenToUse, extra
+rewriteWorkflowMeta(source, { phases: ['Scan', 'Fix'] }).source; // every other byte kept
+inspectWorkflowScript(source).issues; // Date.now(), Math.random(), new Date(), import(), unused phases
+```
+
+A saved workflow is a JavaScript script that begins with `export const meta = { name, description }` as
+a literal; the kit reads and rewrites that literal without executing anything, and reports what workflows.md
+says breaks a script: a `phases` entry no `phase()` call uses (and a `phase()` title with no entry, which
+only gets its own group), `Date.now()`, `Math.random()` and a no-argument `new Date()` (they throw in the
+script: pass a timestamp or a seed through `args`) and `import()` (the run fails before it starts). A script
+without a readable `meta` is not listed: `Plugin.workflows` has `qualifiedName: undefined` for it.
+A plugin's script runs as `/<plugin>:<meta.name>`. `phases` holds the titles and `phaseEntries` the entries as
+written (an object entry keeps its other fields, and `MetaPatch.phases` takes them back); a lexical problem in
+the body (an unterminated string, template or comment) leaves a valid `meta` readable, since the runtime reports
+the body's errors when the workflow runs. A rewrite adds a field with the line ending of the block.
+
+The runtime is the host's. The decisions its runs need are pure functions over facts the host holds:
+
+| Function | Does |
+| --- | --- |
+| `admitAgent(started)`, `checkFanOut(call, items)`, `workflowConcurrency(env, cpus)`, `interruptRun(cause)` | 1,000 agents total per run, 4,096 items in one `parallel()` or `pipeline()`, 16 concurrent agents by default (`CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS`, 1 to 256), and that a run pauses only for a permission prompt or a usage-limit wait, never for user input |
+| `afterAttempt(endings)`, `attemptLabels`, `stallWindowMs`, `hasStalled`, `afterAgentFailure(site, failure)` | an agent whose output stops restarts at most five times, six attempts: `agent stalled on all 6 attempts`, `agent lost its reply on all 6 attempts`, or `agent abandoned after 6 attempts` listing the endings; `(retry n)` and `attempt n (stalled)` labels; `stallMs` over `CLAUDE_ASYNC_AGENT_STALL_TIMEOUT_MS` over the default (`defaultMs`: the host's risen default with `CLAUDE_STREAM_IDLE_TIMEOUT_MS`, which loses to both); inside `parallel()` or `pipeline()` the result is `null` and the run goes on, awaited directly the run ends with the error |
+| `planReplay(saved, calls)`, `replayAgent(saved, state, call)` | which agents return their saved result on a relaunch: completed ones until the first call (prompt, and an options fingerprint when the host keeps one) that differs, failed ones and everything after them run again, a stopped-while-running one starts over (`RECORDED_WHEN_STOPPED`: stopping the whole run counts nobody as failed, stopping one agent counts as failing) |
+| `relaunch(facts)`, `relaunchAfter(way, facts)`, `LEAVING` | leaving the session never continues the run; a relaunch replays the saved results, starts over when there is no earlier run, and fails with `nothing to resume` when the results cannot be found or a background session relaunches a script outside `~/.claude/projects/` |
+| `checkAgentSchema(schema)`, `afterInvalidOutput(failures, env)`, `structuredOutputAttempts(env)` | a `schema` that provably contradicts itself (a `required` key that `additionalProperties: false` rules out) fails the call before the subagent starts, naming the key; output that fails validation five times (`MAX_STRUCTURED_OUTPUT_RETRIES` changes the count) fails it with the last failure |
+| `usageLimitDecision(facts)` | the run pauses (no new agents start) only in an interactive subscription session with `autoContinueAtUsageLimit` on, a reset within 24 hours, fewer than two waits so far and a release with the wait (v2.1.271); otherwise the agent fails, with every cause listed |
+| `workflowArgs(passed)` | the `args` global: structured data as given, `undefined` when omitted |
+| `planWorkflowSave(request)`, `refuseLinks(plan, linked)`, `resolveSavedWorkflows`, `scanSavedWorkflows(folders, request)` | where a script is saved (`.claude/workflows/` of the closest existing folder up to the repository root, or `~/.claude/workflows/`, or `workflows/` under `CLAUDE_CONFIG_DIR`), the paths that must not be symlinks, and which `/<name>` runs (the closest project folder, then the personal one); the scan reads through `FolderScan` |
+
+The size guideline and the off switches are in "Settings" (`createWorkflowSettingsPolicy`). The host
+runs the scripts, measures time, writes the files and checks the links; the kit holds no run state.
 
 ## Marketplace
 
@@ -459,8 +614,8 @@ interface Plugin {
   readonly lspServers: Readonly<Record<string, LspServer>>;
   readonly monitors: readonly Monitor[];
   readonly outputStyles: readonly PluginTextFile[];
-  readonly workflows: readonly PluginPath[];
-  readonly themes: readonly PluginPath[];
+  readonly workflows: readonly PluginWorkflow[]; // path, file name, `<plugin>:<meta.name>`, the read `meta`
+  readonly themes: readonly PluginTheme[]; // path, slug, the plugin it is marked as from, the read `Theme` (shown under `theme.name`, no `<plugin>:` prefix)
   readonly settings: PluginSettings; // official `Pick<Settings, 'agent' | 'subagentStatusLine'>`
   readonly userConfig: Readonly<Record<string, UserConfigOption>>;
   readonly bin: readonly string[]; // the files directly in bin/
@@ -1016,7 +1171,10 @@ host.plugins: readonly { id; name; enabled }[]   // every plugin given, with whe
 host.issues: readonly PluginIssue[]              // what the format readers found in enabled plugins
 host.openSession(options: SessionOptions): PluginSession;
 // SessionOptions: { sessionId; cwd; permissionMode; transcriptPath; effort?: { level };
-//   interactive? (true); trusted? (true); additionalDirectories?; permissions?: ShellPermission }
+//   interactive? (true); trusted? (true); additionalDirectories?; addedDirectories?;
+//   permissions?: ShellPermission; agents? (the parsed `--agents` value);
+//   permissionRules?: PermissionRule[] (`Agent(name)` deny rules switch subagents off) }
+// HostPorts adds `folders?: FolderScan` (docs/API.md, "Skills and commands of the folders")
 ```
 
 A plugin runs when `HostPlugin.enabled` says so, else when `enabledPlugins` of the settings says so,
@@ -1028,9 +1186,12 @@ The session:
 | Method | Returns |
 | --- | --- |
 | `skills(options?)` | `{ model, menu }`: `modelListing` and `menuEntries` over the skills and commands of every enabled plugin, named `<plugin>:<name>`. The two invocation flags and the budget apply; `skillOverrides` leaves a plugin skill alone, as skills.md says. |
+| `reloadSkills({ signal })`, `touchFile(path, { signal })`, `addDirectory(path, { signal })`, `moveTo(cwd, { signal })` | The folders' skills and commands (docs/API.md, "Skills and commands of the folders"): `reloadSkills` reads the managed, personal, project, added and synced folders and lists them next to the plugins' skills; `touchFile` loads the `.claude/skills` below the working directory on the way to a file; `addDirectory` is `/add-dir` and `moveTo` is `/cd` on the live session. Each returns `{ issues, watch, plugins }`. Needs `HostPorts.folders`. |
+| `skillSources()` | Where each listed folder skill came from: `{ entries: { command, names, scope, origin, yielded }[], shadowed }` of the last read, for the `claude.ai sync` group and the note under it. |
 | `expandSkill(name, { arguments?, signal, invoker? })` | The `Expansion` of `expandSkill`: text with `$ARGUMENTS`, `${CLAUDE_PLUGIN_ROOT}` and the plugin's options substituted, shell placeholders run through the runner. `invoker` is `user` (default) or `model`. An unknown name, a skill of a disabled plugin or a refused invoker is `{ ok: false, issues }`. `disableSkillShellExecution` of the settings replaces the placeholders. Without `SessionOptions.permissions` a shell placeholder asks, which aborts the expansion. |
 | `dispatch(event, facts, { signal })` | The `HookOutcome<E>` of the engine. `facts` is the event's own fields (`EventFactsOf<E>`); the common fields come from the session. Handlers of every enabled plugin, then of the settings files, run with `if` read by the rules module and the policy of the settings: `disableAllHooks`, `allowManagedHooksOnly` (plugins force-enabled in managed `enabledPlugins` exempt), the `hooks` lock of `strictPluginOnlyCustomization`, `allowedHttpHookUrls`, `httpHookAllowedEnvVars`. A skill's `once` hook that ran is dropped after the dispatch. |
-| `agents(options?)` | `Resolved<SessionAgent>`: the official `AgentDefinition` of each plugin agent under `<plugin>:<name>`, its prompt with the plugin variables substituted, and `extras` (`color`, `isolation`, `cacheTtl`). |
+| `agents(options?)` | `Resolved<SessionAgent>`: every subagent of the session (docs/API.md, "Sub-agents: the catalog") as the official `AgentDefinition` under the name a call uses (`<plugin>:<name>` for a plugin agent), `extras` (`color`, `isolation`, `cacheTtl`) and its `source`. A plugin agent's prompt has the plugin variables substituted; any other prompt is as written. `builtin: false` leaves the built-ins out (their prompt is empty, so an SDK with its own built-ins gets only the rest). |
+| `reloadAgents({ signal })`, `agentCatalog()` | Reads the managed, project, personal and added `.claude/agents/` folders through `HostPorts.folders` (the first call lists them at all) and returns `{ issues, watch }`; `agentCatalog()` is the `AgentCatalog` of the last read: built-ins, the `--agents` flag (`SessionOptions.agents`, already parsed), the folders and the enabled plugins, minus what `SessionOptions.permissionRules` deny with `Agent(name)` or `Agent` (`Task(...)` reads as `Agent(...)`). A host that rebuilds its run state per run passes `AgentOverrides` (`permissionRules`, `flag`, `interactive`) to `agentCatalog(overrides)` or `reloadAgents({ signal, overrides })`: they replace the session's values for that call only. `selectAgent({ flag, setting }, overrides?)` is `selectSessionAgent` over that catalog. |
 | `mcpServers(options?)`, `lspServers(options?)`, `monitors(options?)` | `Resolved<ResolvedMcpServer>`, `Resolved<ResolvedLspServer>`, `Resolved<ResolvedMonitor>`: the substituted configs, with `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}` and `${user_config.*}` resolved. A server that cannot start is left out and its issue is in `issues`. |
 | `outputStyles()` | The `OutputStyle` of each enabled plugin, `id` `<plugin>:<name>`. |
 
@@ -1511,7 +1672,7 @@ const window = effectiveAutoCompactWindow({ field: agent.definition.autoCompactW
 
 | Function                                   | Status | Does                                                                                   |
 | ------------------------------------------ | ------ | -------------------------------------------------------------------------------------- |
-| `resolveSubagentModel(input)`              | done   | the "subagent model order": the invocation alias, the definition (`inherit` selects the main model), `CLAUDE_CODE_SUBAGENT_MODEL` (`inherit` is unset), the main model; a family alias of the main model's family becomes the main model's exact model (`[1m]` included), only `opus` when the family cannot be told (unless `ANTHROPIC_DEFAULT_OPUS_MODEL`); `force` skips the invocation and the definition. `from` says where it came from |
+| `resolveSubagentModel(input)`              | done   | the "subagent model order": the invocation alias, the definition (`inherit` selects the main model), `CLAUDE_CODE_SUBAGENT_MODEL` (`inherit` is unset), the built-in rule (`builtin: { name: 'Explore', connection }`: on a Fable main model Explore runs on the `opus` alias over a `subscription`, `console` or `llm-gateway` connection and stays on the main model on `bedrock`, `vertex`, `foundry`, `claude-platform-on-aws` or `claude-apps-gateway`), the main model; a family alias of the main model's family becomes the main model's exact model (`[1m]` included), only `opus` when the family cannot be told (unless `ANTHROPIC_DEFAULT_OPUS_MODEL`); `force` skips the invocation and the definition. `from` says where it came from |
 | `resolveSubagentEffort(input)`             | done   | `CLAUDE_CODE_EFFORT_LEVEL` (`auto`/`unset` send none), the invocation parameter, the `effort` field, then the session level only on the main conversation's model |
 | `effectiveAutoCompactWindow(input)`        | done   | the variable (clamped to 100000..1000000) wins, the field only lowers the inherited window, none for a session run as the agent |
 | `turnLimitOutcome(maxTurns, turns)`        | done   | `{ stop, partial }` once `maxTurns` is reached |
@@ -1556,6 +1717,44 @@ whether the folder is trusted (a parent folder's trust and a `-p` session do not
 skill content, connecting servers, creating the memory directory, the memory instructions for the
 system prompt and merging `addTools` into the tool pool are the host's.
 
+## Sub-agents: the catalog (done: `agents/catalog`, `format/agent-flag`)
+
+Where a subagent comes from and which definition a name means (sub-agents.md, "Choose the subagent
+scope", "Built-in subagents", "Invoke subagents explicitly"). All pure over the folders a host lets the
+kit read and over facts it passes; the session wires them (`reloadAgents`, `agentCatalog`).
+
+```ts
+import { scanAgents, resolveAgents, builtinAgents, readFlagAgents, resolveSubagentType,
+  catalogAgentOf, agentMentions, selectSessionAgent, spawnableAgents } from '@rsaryev/claude-plugin-kit';
+
+const scanned = await scanAgents({ folders, request: { home, cwd, addedDirectories } });
+const catalog = resolveAgents({
+  builtin: builtinAgents({ interactive: true, disableExplorePlan: false, disableAll: false }),
+  flag: readFlagAgents(JSON.parse(agentsFlag)).agents.map(catalogAgentOf),
+  scanned: scanned.entries,
+  plugin: pluginRecords.map(catalogAgentOf),
+  denied: permissionRules, // `Agent(Explore)` deny rules disable that subagent, `Agent` all of them
+});
+const run = resolveSubagentType(catalog, call.subagent_type); // { ok, agent } or { ok: false, message }
+```
+
+| Function | What it does |
+| --- | --- |
+| `readFlagAgents(value)` | The parsed `--agents` JSON: each key an agent name, `prompt` the system prompt, the frontmatter fields read as a file reads them, `color` and `experimental` ignored, a name starting with `-` refused with `<name>: agent names must not start with '-'` (reported only when no definition has a schema problem, as errors.md orders the checks; more than 20 error lines end in `…and N more`). |
+| `builtinAgents(policy)` | Explore and Plan (Write and Edit denied, no CLAUDE.md or git status at start), general-purpose, claude, statusline-setup (Sonnet) and claude-code-guide (Haiku); `CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS` drops the first two, `CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS` all of them in non-interactive mode. |
+| `scanAgents(context)` | `{ entries, issues, watch }`: `.claude/agents/**.md` of the managed directory, the project and its parents (nearest first; a linked worktree may borrow the main checkout), each added directory and `~`, through `FolderScan`. A file with no name is documentation (skipped, silent); a name starting with `-`, containing `:` or over 256 characters, a name with no description, and YAML that does not parse skip the file with an error. `watch` lists the personal and project folders that exist (not the managed ones, not `--add-dir`'s), none for `watch: false` (`--disable-slash-commands`). `allows` applies `strictPluginOnlyCustomization`. |
+| `resolveAgents(sources)` | The `AgentCatalog`: one definition per name by the priority table (managed 1, `--agents` 2, project 3, user 4, plugin 5, built-in after them); among nested project folders the nearest wins; `shadowed` says who lost, `disabled` what a deny rule switched off, `delegation` is false when the `Agent` tool is denied. |
+| `resolveSubagentType(catalog, type)` | The agent an Agent call runs. Without `subagent_type` it is `general-purpose`, else `subagent_type is required: the general-purpose agent is not available in this session. Available agents: ...`. |
+| `spawnableAgents(catalog, spawnTypes)` | The catalog an agent sees through its Agent tool: the `Agent(worker, researcher)` allowlist (`spawnTypes` is what `resolveSubagentTools` returns). |
+| `spawnDepthLimit(env)`, `nestingAt({ layer, limit, fork })` | Three layers by default (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`); at the limit `Agent` is withheld from a subagent, and a fork keeps it but cannot spawn. |
+| `namedSubagent(facts)` | What a `name` on the Agent call does with agent teams on: addressable, and a teammate in an interactive session when the main conversation makes a non-fork call without `isolation`. |
+| `agentMentions(message, catalog)`, `agentTypeahead(catalog)` | `@"code-reviewer (agent)"` and `@agent-<name>` (scoped for plugin agents) select a subagent; the message goes to Claude unchanged; a name in prose selects nothing. |
+| `selectSessionAgent(catalog, { flag, setting })`, `resumeSessionAgent(catalog, name, searched)`, `sessionAgentLabel(agent)` | `--agent` over the `agent` setting; a plugin agent by its bare name when one plugin has it, else the scoped name; the resume warning of errors.md when the agent is gone (never for `claude`); the `@<name>` header. |
+
+`Agent(name)` deny rules are read by the permission rules module; the catalog only consumes
+`PermissionRule[]`. The prompt of a built-in is empty: Claude Code's own is not published. Prompts,
+launch decisions (model, effort, tools) and the memory of an agent stay in the sections above.
+
 ## Testing kit (done: `testing`)
 
 `@rsaryev/claude-plugin-kit/testing`: one in-memory fake per port, so a host tests its integration
@@ -1565,7 +1764,7 @@ when the script is spent, so a test never passes by accident.
 ```ts
 import {
   fakeEnvironment, fakeMcp, fakeModel, fixedClock, locations,
-  memoryFiles, memoryScratch, recordingHttp, scriptedRunner,
+  folderScan, memoryFiles, memoryScratch, recordingHttp, scriptedRunner,
 } from '@rsaryev/claude-plugin-kit/testing';
 
 const files = memoryFiles({ '.claude-plugin/plugin.json': '{"name":"demo"}' }); // PluginFiles
@@ -1573,7 +1772,8 @@ const runner = scriptedRunner({ stdout: 'ok' }, { exitCode: 2, stderr: 'no' }); 
 const web = recordingHttp({ status: 200, body: '{}' }); // HttpClient, `requests`
 ```
 
-`memoryFiles(record)` is the `PluginFiles` of a plugin folder, so a test loads a plugin with
+`folderScan(record, options)` is a `FolderScan` over an in-memory disk of absolute paths (links
+follow wherever they lead; the record is read again at each `open`). `memoryFiles(record)` is the `PluginFiles` of a plugin folder, so a test loads a plugin with
 `loadPlugin({ files })` and passes it to `createPluginHost`. `fakeModel(...)` answers `evaluate` and
 `runAgent`, `fakeMcp({ connected, tools })` an `McpCaller`, `fixedClock(start)` a `Clock` that moves
 only on `advance(ms)`, `locations(options)` fixed POSIX paths (`<plugins>/<id>`), `fakeEnvironment(record)`
@@ -1582,3 +1782,7 @@ an `Environment`, `memoryScratch()` the `ScratchFiles`. The mods test kit stays 
 ## Environment and general settings readers
 
 resolveEnv resolves settings environment values with scope, trust and launch-environment rules; envChange and envAfterCd model later application without unsetting removed variables. General readers cover agent view, theme, teammate mode, worktree settings, processWrapper argv parsing, command-line hook gates and plugin defaults. The host supplies the startup-safe variable classification and performs process execution.
+
+## Agent runtime policy
+
+Split subagent context by responsibility: persistent memory, preloaded skills and scoped MCP servers; add folder trust diagnostics and model allowlist substitution. The host still owns provider resolution, connections and prompt assembly.

@@ -18,3 +18,12 @@ test('arrays preserve mixed quote styles and static template literals', () => {
   expect(testIds(`${call}\`the call's input\`, () => {})`)).toEqual(["the call's input"]);
   expect(testIds(`${call}\`dynamic.\${event}\`, () => {})`)).toEqual([]);
 });
+
+test('a bracket inside an array ID does not end the array; escaped quotes stay part of the ID', () => {
+  const call = 'spe' + 'c(';
+  expect(testIds(`${call}['rule.[glob]', "the server's tools"], () => {})`)).toEqual([
+    'rule.[glob]',
+    "the server's tools",
+  ]);
+  expect(testIds(`${call}'the server\\'s tools', () => {})`)).toEqual(["the server's tools"]);
+});
