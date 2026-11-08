@@ -32,6 +32,7 @@ const FORMAT_OF_TOOL: ReadonlyMap<string, RuleFormatId> = new Map<string, RuleFo
   ['Edit', 'edit-path'],
   ['Write', 'edit-path'],
   ['NotebookEdit', 'edit-path'],
+  ['MultiEdit', 'edit-path'],
   ['Skill', 'skill-name'],
   ['Agent', 'subagent-type'],
   ['WebFetch', 'domain'],

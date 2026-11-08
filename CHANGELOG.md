@@ -61,3 +61,9 @@
   a glob such as `src/**/*.{ts,tsx}` or a path with a space.
 - The layer check now rejects `Date`, timers, `fetch`, `crypto`, `performance` and `globalThis` in
   `src/`, as the docs state.
+- Path rules: an `Edit` rule now covers the legacy `MultiEdit` (and a `Read` deny rule blocks it),
+  while `MultiEdit(docs/**)` is accepted and never matches; a `Read` deny or ask rule reaches every
+  LSP call and no `!` carve-out reopens one; `Read(./.env)` names the `.env` of the current directory
+  only, not one at any depth; a file named `..hidden` is matched by a rule instead of being taken for
+  a parent climb; `Read(src/**/*.ts)` as a deny or ask rule reaches a nested `src`; a `/` rule with
+  no usable text guards its anchor, not the filesystem root.

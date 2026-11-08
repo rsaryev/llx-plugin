@@ -5,7 +5,7 @@ import { anchorPattern, readPathSpecifier, type PathSpecifier } from './anchor.t
 import { DEPTH } from './depth.ts';
 import { compileGlobs, globMatches, isUsablePattern, type GlobEntry } from './glob.ts';
 import { absolutePath, relativeWithin, resolvePath } from './posix.ts';
-import { COVERAGE, requestedPath, searchesDirectory } from './tools.ts';
+import { COVERAGE, PATHLESS_CALLS, requestedPath, searchesDirectory } from './tools.ts';
 
 /** The text pattern of a path rule, or `undefined` for a bare or parameter rule. */
 export function pathSpecifierOf(rule: PermissionRule): PathSpecifier | undefined {
@@ -82,7 +82,10 @@ function matchesPath(scope: Scope, path: string): boolean {
   const { rule, specifier, paths } = scope;
   const { root, pattern, underCwd } = anchorPattern(specifier, rule.source, paths);
   if (!isUsablePattern(pattern)) {
-    return GUARDS_EXACT_PATH[rule.behavior] && path === resolvePath(root, pattern);
+    // `/` alone is the anchor itself: the slash only anchors the text, it is not the filesystem root.
+    return (
+      GUARDS_EXACT_PATH[rule.behavior] && path === resolvePath(root, pattern.replace(/^\//, ''))
+    );
   }
   const relative = relativeWithin(root, path);
   if (relative === undefined) return false;
@@ -124,12 +127,19 @@ export function matchPathRule(
 /**
  * Tools whose path rules "are accepted but never match": "Claude Code checks file permissions
  * against `Edit(path)` and `Read(path)` rules. It accepts a rule with a path other than `*` for one of
- * the tools below but doesn't match a read, search, or edit against it" (permissions.md). `Tool(*)`
+ * the tools below but doesn't match a read, search, or edit against it" (permissions.md; it lists the
+ * legacy MultiEdit with Write and NotebookEdit). `Tool(*)`
  * is read as every use of the tool, because the docs ask for the bare name for that. LSP is in the
  * Read format of tools-reference.md but its input has no path field the docs name: a deny or ask rule
  * on it covers every call and an allow rule none, the safe side (spec/judgments.md).
  */
-const UNMATCHED_FORMS: ReadonlySet<string> = new Set(['Write', 'Glob', 'Grep', 'NotebookEdit']);
+const UNMATCHED_FORMS: ReadonlySet<string> = new Set([
+  'Write',
+  'Glob',
+  'Grep',
+  'NotebookEdit',
+  'MultiEdit',
+]);
 const COVERS_UNREADABLE: { readonly [B in PermissionBehavior]: boolean } = {
   allow: false,
   deny: true,
@@ -146,7 +156,8 @@ export const matchFileRule: SpecifierMatcher = (rule, call, ctx) => {
       ? specifier.pattern.trim() === '*'
       : COVERS_UNREADABLE[rule.behavior];
   }
-  return covered.includes(call.toolName) && matchPathRule(rule, call, ctx, []);
+  if (!covered.includes(call.toolName)) return false;
+  return PATHLESS_CALLS.has(call.toolName) || matchPathRule(rule, call, ctx, []);
 };
 
 /**

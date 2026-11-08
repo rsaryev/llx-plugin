@@ -72,7 +72,7 @@ const FIELDS: readonly (readonly [string, string, string, unknown, unknown])[] =
 for (const [id, , rule, hit, miss] of FIELDS) {
   const tool = id.split('.')[2] ?? '';
   spec(id, () => {
-    test(`a path rule reads the path from the ${tool} input and from no other field`, () => {
+    test(`a path rule reads the path from the ${tool} input`, () => {
       expect(matches(rule, tool, hit)).toBe(true);
       expect(matches(rule, tool, miss)).toBe(false);
     });

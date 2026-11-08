@@ -11,6 +11,7 @@ import { call, matchContext, parsed } from './rule-context.ts';
 const PATH_FIELDS: Readonly<Record<string, Record<string, unknown>>> = {
   Read: { file_path: undefined },
   Edit: { file_path: undefined, old_string: 'a', new_string: 'b' },
+  MultiEdit: { file_path: undefined, edits: [] },
   Write: { file_path: undefined, content: 'x' },
   NotebookEdit: { notebook_path: undefined, new_source: 'x' },
   Glob: { pattern: '*', path: undefined },

@@ -46,9 +46,12 @@ describe('a `!` pattern carves paths out of the rules listed before it (same sou
   });
 
   test('a ./path rule is carved out too, and a rule after the carve-out blocks again', () => {
-    expect(verdict([['Read(./logs/**)'], ['Read(!logs/keep/**)']], '/work/app/logs/a.txt')).toBe(
-      'deny',
-    );
+    const files = [['Read(./docs/*.md)'], ['Read(!docs/readme.md)']] as const;
+    expect(verdict(files, '/work/app/docs/readme.md')).toBeUndefined();
+    expect(verdict(files, '/work/app/docs/secret.md')).toBe('deny');
+    const whole = [['Read(./logs/**)'], ['Read(!logs/keep/**)']] as const;
+    expect(verdict(whole, '/work/app/logs/a.txt')).toBe('deny');
+    expect(verdict(whole, '/work/app/logs/keep/x')).toBe('deny');
     const reblocked = [['Read(*.env)'], ['Read(!sample.env)'], ['Read(sample.env)']] as const;
     expect(verdict(reblocked, '/work/app/sample.env')).toBe('deny');
   });
@@ -135,6 +138,29 @@ describe('a pattern that is not usable as a gitignore pattern', () => {
     expect(verdict([['Read(#notes.txt)']], '/work/app/other.txt')).toBeUndefined();
     expect(verdict([['Read(#notes.txt)']], '/work/app/a/#notes.txt')).toBeUndefined();
     expect(verdict([['Read(#notes.txt)']], '/work/app/#notes.txt', 'ask')).toBe('ask');
+  });
+
+  test('a blank (./ leaves no text) or / deny or ask rule guards only its exact path, the anchor', () => {
+    for (const text of ['Read(./)', 'Read(/)']) {
+      expect([text, verdict([[text]], '/work/app')]).toEqual([text, 'deny']);
+      expect([text, verdict([[text]], '/work/app', 'ask')]).toEqual([text, 'ask']);
+      expect([text, verdict([[text]], '/work/app/a.txt')]).toEqual([text, undefined]);
+      expect([text, verdict([[text]], '/work/other')]).toEqual([text, undefined]);
+    }
+  });
+
+  test('an allow rule that is blank (./) or / approves nothing', () => {
+    for (const text of ['Read(./)', 'Read(/)']) {
+      for (const path of ['/work/app', '/work/app/a.txt']) {
+        const read = call('Read', inputFor('Read', path));
+        const allow = [parsed(text, 'allow')];
+        expect([text, path, evaluateRules(allow, read, matchContext).behavior]).toEqual([
+          text,
+          path,
+          undefined,
+        ]);
+      }
+    }
   });
 
   test('an allow rule with an unusable pattern approves nothing', () => {

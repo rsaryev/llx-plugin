@@ -30,6 +30,11 @@ const WRITE_FIELD = 'file_path' as const satisfies keyof FileWriteInput;
 const GLOB_FIELD = 'path' as const satisfies keyof GlobInput;
 const GREP_FIELD = 'path' as const satisfies keyof GrepInput;
 const NOTEBOOK_FIELD = 'notebook_path' as const satisfies keyof NotebookEditInput;
+/**
+ * The legacy MultiEdit tool is not in the SDK's types, so its field is a judgment: it edits one file
+ * like Edit and takes the same `file_path` (spec/judgments.md).
+ */
+const MULTI_EDIT_FIELD = 'file_path';
 
 /** @public A compile-time drift guard: the SDK's path fields are strings (Glob and Grep optional). */
 export type PathFieldsAreText = Assert<
@@ -49,6 +54,7 @@ export type PathFieldsAreText = Assert<
 export const PATH_TOOLS: ReadonlyMap<string, PathTool> = new Map<string, PathTool>([
   ['Read', { field: READ_FIELD, searches: false, reads: true }],
   ['Edit', { field: EDIT_FIELD, searches: false, reads: false }],
+  ['MultiEdit', { field: MULTI_EDIT_FIELD, searches: false, reads: false }],
   ['Write', { field: WRITE_FIELD, searches: false, reads: false }],
   ['NotebookEdit', { field: NOTEBOOK_FIELD, searches: false, reads: false }],
   ['Glob', { field: GLOB_FIELD, searches: true, reads: true }],
@@ -79,17 +85,26 @@ export const searchesDirectory = (toolName: string): boolean =>
 
 /**
  * Which call tools a path rule of `ruleTool` and `behavior` covers (the tool itself is always one):
- * "`Edit` rules apply to all built-in tools that edit files" (Write, NotebookEdit), Read rules reach
- * Grep and Glob, "An `Edit(...)` allow rule also grants read access to the same path", and "A
+ * "`Edit` rules apply to all built-in tools that edit files" (Write, NotebookEdit, the legacy
+ * MultiEdit), Read rules reach Grep and Glob, a Read deny or ask rule also LSP ("Read, Grep, Glob,
+ * LSP", tools-reference.md; the path an LSP call names is not a field the docs give, so `file-rules.ts`
+ * covers every LSP call), "An `Edit(...)` allow rule also grants read access to the same path", and "A
  * `Read(...)` deny rule also blocks the Edit and Write tools" but not NotebookEdit (permissions.md,
  * "What `Read` and `Edit` rules cover"; tools-reference.md).
  */
 type Coverage = { readonly [B in PermissionBehavior]: readonly string[] };
 
-const EDITS = ['Edit', 'Write', 'NotebookEdit'];
+const EDITS = ['Edit', 'Write', 'NotebookEdit', 'MultiEdit'];
 const READS = ['Read', 'Glob', 'Grep'];
+const READS_AND_LSP = [...READS, 'LSP'];
+
+/** The call tools whose path no field of the docs names: a rule that reaches them covers every call. */
+export const PATHLESS_CALLS: ReadonlySet<string> = new Set(['LSP']);
 
 export const COVERAGE: ReadonlyMap<string, Coverage> = new Map<string, Coverage>([
-  ['Read', { allow: READS, ask: READS, deny: [...READS, 'Edit', 'Write'] }],
+  [
+    'Read',
+    { allow: READS, ask: READS_AND_LSP, deny: [...READS_AND_LSP, 'Edit', 'Write', 'MultiEdit'] },
+  ],
   ['Edit', { allow: [...EDITS, ...READS], ask: EDITS, deny: EDITS }],
 ]);

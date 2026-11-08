@@ -8,11 +8,13 @@ import type { PermissionBehavior } from '../../protocol/official.ts';
  * current directory. Every other pattern shape matches at the same depth in every rule type."
  *
  * "Single directory segment" is read as: one literal directory name (a wildcard is allowed in it, `**`
- * is not), one slash, and something below it (`src/**`, `src/*.ts`, `src/index.ts`). A pattern that
- * begins with `/`, `**` or `!`, or holds two directories, is another shape. Widening `src/index.ts` is
- * a judgment (the docs show `src/**` only); it errs towards blocking (spec/judgments.md).
+ * is not), one slash, and something below it (`src/**`, `src/*.ts`, `src/index.ts`), including a `**`
+ * between that directory and the rest (`src/**` followed by `/*.ts`: still one named directory, so
+ * it is widened). A pattern that begins with `/`, `**` or `!`, or holds two directories, is another
+ * shape. Widening `src/index.ts` and `src/**` followed by more path is a judgment (the docs show
+ * `src/**` only); it errs towards blocking (spec/judgments.md).
  */
-const SINGLE_DIRECTORY = /^(?!\*\*)(?!\.{1,2}\/)[^/!][^/]*\/[^/]+\/?$/;
+const SINGLE_DIRECTORY = /^(?!\*\*)(?!\.{1,2}\/)[^/!][^/]*\/(?:[^/]+\/?|\*\*\/.+)$/;
 
 const widen = (pattern: string): string =>
   SINGLE_DIRECTORY.test(pattern) ? `**/${pattern}` : pattern;

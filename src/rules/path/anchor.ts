@@ -1,4 +1,5 @@
 import type { PathContext, RuleSource } from '../types.ts';
+import { isUsablePattern } from './glob.ts';
 import { dirnameOf, normalizeAbsolute, resolvePath, toPosixPath } from './posix.ts';
 
 /**
@@ -10,11 +11,15 @@ import { dirnameOf, normalizeAbsolute, resolvePath, toPosixPath } from './posix.
 export const ANCHORS = ['root', 'home', 'source', 'cwd'] as const;
 export type AnchorId = (typeof ANCHORS)[number];
 
-/** A path pattern as written: its anchor, the gitignore text after the prefix, and whether it is a `!`. */
+/**
+ * A path pattern as written: its anchor, the gitignore text after the prefix, whether it is a `!`, and
+ * whether it was written `./path` (the current directory named, not a gitignore name at any depth).
+ */
 export interface PathSpecifier {
   readonly anchor: AnchorId;
   readonly pattern: string;
   readonly negated: boolean;
+  readonly dotted: boolean;
 }
 
 /** The prefixes that anchor a pattern, longest first. */
@@ -31,11 +36,12 @@ const PREFIXES: readonly (readonly [string, AnchorId])[] = [
 export function readPathSpecifier(text: string): PathSpecifier {
   const negated = text.startsWith('!');
   const body = negated ? text.slice(1) : text;
-  if (negated) return { anchor: 'cwd', pattern: body, negated };
+  if (negated) return { anchor: 'cwd', pattern: body, negated, dotted: false };
   const prefix = PREFIXES.find(([lead]) => body.startsWith(lead));
   if (prefix !== undefined)
-    return { anchor: prefix[1], pattern: body.slice(prefix[0].length), negated };
-  return { anchor: 'cwd', pattern: body.startsWith('./') ? body.slice(2) : body, negated };
+    return { anchor: prefix[1], pattern: body.slice(prefix[0].length), negated, dotted: false };
+  const dotted = body.startsWith('./');
+  return { anchor: 'cwd', pattern: dotted ? body.slice(2) : body, negated, dotted };
 }
 
 /**
@@ -90,6 +96,9 @@ export interface Anchored {
 
 const CLIMB = /^\.\.\//;
 
+/** A bare name or glob with no slash, the only gitignore form that matches at any depth by itself. */
+const isNameOnly = (pattern: string): boolean => isUsablePattern(pattern) && !pattern.includes('/');
+
 export function anchorPattern(
   specifier: PathSpecifier,
   source: RuleSource,
@@ -105,7 +114,10 @@ export function anchorPattern(
     pattern = pattern.slice(3);
     climbed = true;
   }
-  // `//`, `~/` and `/` patterns are paths from their root: gitignore anchors them with a slash.
-  const text = specifier.anchor === 'cwd' ? pattern : `/${pattern}`;
+  // `//`, `~/` and `/` patterns are paths from their root: gitignore anchors them with a slash. So is
+  // `./name`: permissions.md reads `Read(./.env)` as "the `.env` file in the current directory", apart
+  // from `Read(.env)`, which is any `.env` at or under it (a gitignore name matches at every depth).
+  const rooted = specifier.anchor !== 'cwd' || (specifier.dotted && isNameOnly(pattern));
+  const text = rooted ? `/${pattern}` : pattern;
   return { root, pattern: text, underCwd: specifier.anchor === 'cwd' && !climbed };
 }

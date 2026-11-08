@@ -27,6 +27,14 @@ spec('permissions.rule.Read(./.env)', () => {
       expect([path, denies('Read(./.env)', path)]).toEqual([path, false]);
     }
   });
+
+  test('is not the .env of a directory below the current one, in any rule type', () => {
+    for (const path of [ENV_NESTED, '/work/app/pkg/.env']) {
+      for (const check of [allows, asks, denies]) {
+        expect([path, check('Read(./.env)', path)]).toEqual([path, false]);
+      }
+    }
+  });
 });
 
 spec('permissions.rule.Read(.env)', () => {

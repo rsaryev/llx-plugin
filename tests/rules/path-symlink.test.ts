@@ -52,10 +52,79 @@ describe('prepareCall records where a requested path really points', () => {
   });
 
   test('a new file resolves through the directory on its way that is a link', async () => {
-    const target = await prepared('Write', '/work/app/out/new.txt', {
-      '/work/app/out': '/elsewhere/out',
+    const resolver = fakeResolver(
+      { '/work/app/out': '/elsewhere/out' },
+      { missing: ['/work/app/out/new.txt'] },
+    );
+    const target = await prepareCall(
+      call('Write', inputFor('Write', '/work/app/out/new.txt')),
+      matchContext.paths,
+      resolver,
+    );
+    expect('failure' in target ? undefined : target.resolvedPaths).toEqual([
+      '/elsewhere/out/new.txt',
+    ]);
+    expect(resolver.asked).toEqual(['/work/app/out/new.txt', '/work/app/out']);
+  });
+
+  test('several missing levels are appended below the nearest parent that exists', async () => {
+    const resolver = fakeResolver(
+      { '/work/app/out': '/elsewhere/out' },
+      { missing: ['/work/app/out/a/b/new.txt', '/work/app/out/a/b', '/work/app/out/a'] },
+    );
+    const target = await prepareCall(
+      call('Write', inputFor('Write', '/work/app/out/a/b/new.txt')),
+      matchContext.paths,
+      resolver,
+    );
+    expect('failure' in target ? undefined : target.resolvedPaths).toEqual([
+      '/elsewhere/out/a/b/new.txt',
+    ]);
+    expect(resolver.asked).toEqual([
+      '/work/app/out/a/b/new.txt',
+      '/work/app/out/a/b',
+      '/work/app/out/a',
+      '/work/app/out',
+    ]);
+  });
+
+  test('a new file whose parents all exist unlinked comes back unchanged', async () => {
+    const resolver = fakeResolver({}, { missing: ['/work/app/out/new.txt'] });
+    const write = call('Write', inputFor('Write', '/work/app/out/new.txt'));
+    expect(await prepareCall(write, matchContext.paths, resolver)).toEqual(write);
+  });
+
+  test('when not even the root resolves, the call comes back as it was after the whole walk', async () => {
+    const resolver = fakeResolver(
+      {},
+      { missing: ['/work/app/out/new.txt', '/work/app/out', '/work/app', '/work', '/'] },
+    );
+    const write = call('Write', inputFor('Write', '/work/app/out/new.txt'));
+    expect(await prepareCall(write, matchContext.paths, resolver)).toEqual(write);
+    expect(resolver.asked).toEqual([
+      '/work/app/out/new.txt',
+      '/work/app/out',
+      '/work/app',
+      '/work',
+      '/',
+    ]);
+  });
+
+  test('a failure from a parent of a new file is returned as the failure, and the walk stops', async () => {
+    const resolver = fakeResolver(
+      {},
+      { missing: ['/work/app/out/new.txt'], loops: ['/work/app/out'] },
+    );
+    const result = await prepareCall(
+      call('Write', inputFor('Write', '/work/app/out/new.txt')),
+      matchContext.paths,
+      resolver,
+    );
+    expect(result).toEqual({
+      failure: 'loop',
+      message: 'symlinks of /work/app/out form a loop',
     });
-    expect(target.resolvedPaths).toEqual(['/elsewhere/out/new.txt']);
+    expect(resolver.asked).toEqual(['/work/app/out/new.txt', '/work/app/out']);
   });
 
   test('a path given relatively is resolved against the current directory first', async () => {

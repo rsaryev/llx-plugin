@@ -37,8 +37,11 @@ export function compileGlobs(entries: readonly GlobEntry[], platform: Platform):
  */
 const DIRECTORY_PROBE = '.claude-kit-directory-probe';
 
-/** Whether the compiled patterns select `relative` (`''` and `..` paths never reach the engine). */
+/**
+ * Whether the compiled patterns select `relative`. `''` and a parent climb (`..`, `../x`) never reach
+ * the engine, which throws on them; a name that merely starts with two dots (`..hidden`) is a file.
+ */
 export function globMatches(globs: Ignore, relative: string, directory: boolean): boolean {
-  if (relative === '' || relative.startsWith('..')) return false;
+  if (relative === '' || relative === '..' || relative.startsWith('../')) return false;
   return globs.ignores(relative) || (directory && globs.ignores(`${relative}/${DIRECTORY_PROBE}`));
 }

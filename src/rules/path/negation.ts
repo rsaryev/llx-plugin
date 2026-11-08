@@ -2,6 +2,7 @@ import type { PermissionBehavior } from '../../protocol/official.ts';
 import type { MatchContext, PermissionRule, PreparedCall, RuleSource } from '../types.ts';
 import type { PathSpecifier } from './anchor.ts';
 import { matchPathRule, pathSpecifierOf } from './file-rules.ts';
+import { requestedPath } from './tools.ts';
 
 /**
  * `!` negation (permissions.md, "Special characters and `!` negation"): "A deny or ask pattern that
@@ -55,6 +56,8 @@ export function isCarvedOut(
 ): boolean {
   const rule = rules[index];
   if (rule === undefined || !CARVES[rule.behavior]) return false;
+  // A call with no path the kit reads (LSP) is never carved out: there is nothing for a `!` to match.
+  if (requestedPath(call, ctx.paths) === undefined) return false;
   const carveOuts = carveOutsAfter(rule, rules.slice(index + 1));
   return carveOuts.length > 0 && !matchPathRule(rule, call, ctx, carveOuts);
 }
