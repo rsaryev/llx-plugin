@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- `bun run bench`: times `loadPlugin` (from disk and from memory), host assembly, the skill
+  listing and `PreToolUse` dispatch over the real plugins of the corpus.
+
 ### Fixed
 
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
