@@ -225,6 +225,11 @@ const verdict = evaluateRules(rules, { toolName: 'Agent', input: { model: 'opus'
 | `TOOL_CATALOG`, `catalogEntry`, `isKnownTool`, `KNOWN_TOOLS`, `toolRequiresPermission` | done | the 46 tools of the tools table: the "Permission required" column and the rule format of each (`command`, `powershell-command`, `read-path`, `edit-path`, `skill-name`, `subagent-type`, `domain`, `bare`); `KNOWN_TOOLS` feeds `ruleIssues`, `toolRequiresPermission` feeds `DecideContext.requiresPermission` |
 | `availableTools(candidates, session)` | done | the tools Claude sees: a bare deny rule or glob removes a tool, a scoped rule does not, `EndConversation` stays while another tool remains, Glob and Grep are absent by default on posix |
 | `resolveSubagentTools(request)`   | done    | the tools of a non-fork subagent from `tools` and `disallowedTools`, the two filters of the tools available to subagents, and the zero-tools refusal as an issue |
+| `parseToolInput(tool, raw)`       | done    | a hook's `tool_input` read against its tool's table (hooks.md, "PreToolUse input"): `{ input, issues }`, issues at `tool_input.<field>`; unlisted fields and tools without a table pass through |
+| `TOOL_INPUT_FIELDS`               | done    | per tool and field: `type`, `optional`, `role` (`primary`, `subject`, `param`, `structured`), `source` (`sdk` or `docs`) and the zod `schema`; the roles drive which parameter rules are ignored |
+| `answerQuestions(input, selections)` | done | AskUserQuestion answered for a hook's `updatedInput`: `answers` maps question text to the label, multi-select joined with commas; `{ input, issues }` |
+| `effectiveExitPlanModeInput(input)`, `effectiveSearchMode(input)` | done | ExitPlanMode without the ignored `allowedPrompts`; WebSearch's `standard` or `extended` (absent is the full search) |
+| `expandToolPath(path, at)`, `expandToolInputPath(tool, input, at)` | done | the absolute `file_path` of `Write`, `Edit` and `Read` as hooks receive it: `~` and relative paths expanded, backslashes on Windows |
 
 `parseRule` returns the official `{ toolName, ruleContent? }` in `rule.value` and the read form in
 `rule.specifier` (`param`, `domain` or `text`), so matching never parses text again. Deny and ask

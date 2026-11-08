@@ -65,6 +65,16 @@
   `EndConversation` exception, Glob and Grep absent by default on posix) and `resolveSubagentTools`
   (`tools`, `disallowedTools`, the filters of the tools available to subagents, the zero-tools
   refusal as an issue).
+- Tool inputs (`rules/tools/inputs`): `parseToolInput` reads a hook's `tool_input` against the
+  hooks.md table of its tool (Bash, PowerShell, Write, Edit, Read, Glob, Grep, WebFetch, WebSearch,
+  Agent, AskUserQuestion, ExitPlanMode) and reports a wrong type or a missing required field as an
+  issue at `tool_input.<field>`; `TOOL_INPUT_FIELDS` gives each field its type, optionality, role
+  (primary, subject, param, structured) and source (SDK or docs only), and the roles now decide
+  which parameter rules are ignored; `answerQuestions` answers AskUserQuestion for `updatedInput`
+  (labels joined with commas); `effectiveExitPlanModeInput` drops the ignored `allowedPrompts`;
+  `effectiveSearchMode` (an absent `mode` is the full search); `expandToolPath` and
+  `expandToolInputPath` give `Write`, `Edit` and `Read` the absolute `file_path` a hook receives
+  (backslashes on Windows).
 
 ### Fixed
 

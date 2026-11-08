@@ -1,15 +1,7 @@
 import type { PermissionBehavior } from '../protocol/official.ts';
-import type {
-  BashInput,
-  FileEditInput,
-  FileReadInput,
-  FileWriteInput,
-  GlobInput,
-  GrepInput,
-  NotebookEditInput,
-  WebFetchInput,
-} from '../protocol/official-tools.ts';
+import type { NotebookEditInput } from '../protocol/official-tools.ts';
 import type { SpecifierSyntax } from './specifier-formats.ts';
+import { isIgnoredInParameterRule } from './tools/inputs/roles.ts';
 import { wildcardRegExp } from './tool-pattern.ts';
 import type { PermissionRule, PreparedCall, Specifier } from './types.ts';
 
@@ -18,24 +10,17 @@ type ParamSpecifier = Extract<Specifier, { readonly form: 'param' }>;
 /**
  * The primary content field of each tool, as permissions.md ("Match by input parameter") lists
  * them: a parameter rule on one "would be bypassable by a compound command, so Claude Code ignores
- * it and emits a startup warning". The list is per tool: `url` is `WebFetch`'s primary field, and a
- * `url` parameter of another tool stays an ordinary parameter. Each field is checked against the
- * SDK's input type of the tool; PowerShell has none (spec/judgments.md).
+ * it and emits a startup warning". The fields of the tools hooks.md tabulates are the `primary`
+ * role of `TOOL_INPUT_FIELDS` (`tools/inputs`), each checked against the SDK's input type; the one
+ * tool of the list without a table is `NotebookEdit`, below. `url` is `WebFetch`'s primary field,
+ * and a `url` parameter of another tool stays an ordinary parameter.
  */
-const PRIMARY_FIELD_OF: ReadonlyMap<string, string> = new Map([
-  ['Bash', 'command' satisfies keyof BashInput],
-  ['PowerShell', 'command'],
-  ['Read', 'file_path' satisfies keyof FileReadInput],
-  ['Edit', 'file_path' satisfies keyof FileEditInput],
-  ['Write', 'file_path' satisfies keyof FileWriteInput],
-  ['Grep', 'path' satisfies keyof GrepInput],
-  ['Glob', 'path' satisfies keyof GlobInput],
+const PRIMARY_FIELD_WITHOUT_TABLE: ReadonlyMap<string, string> = new Map([
   ['NotebookEdit', 'notebook_path' satisfies keyof NotebookEditInput],
-  ['WebFetch', 'url' satisfies keyof WebFetchInput],
 ]);
 
 export const isPrimaryField = (toolName: string, field: string): boolean =>
-  PRIMARY_FIELD_OF.get(toolName) === field;
+  isIgnoredInParameterRule(toolName, field) || PRIMARY_FIELD_WITHOUT_TABLE.get(toolName) === field;
 
 /**
  * A parameter name: an identifier of two letters or more (`model`, `run_in_background`), or a flag

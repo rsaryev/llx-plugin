@@ -60,3 +60,20 @@ export {
   type SubagentRequest,
   type SubagentTools,
 } from './tools/subagent-tools.ts';
+export {
+  TOOL_INPUT_FIELDS,
+  type FieldRole,
+  type FieldSource,
+  type FieldSpec,
+  type FieldType,
+  type InputToolName,
+} from './tools/inputs/fields.ts';
+export { parseToolInput, type InputParse } from './tools/inputs/parse-input.ts';
+export {
+  answerQuestions,
+  type AnsweredQuestions,
+  type AskedQuestions,
+} from './tools/inputs/ask-user-question.ts';
+export { effectiveExitPlanModeInput } from './tools/inputs/exit-plan-mode.ts';
+export { effectiveSearchMode, type WebSearchMode } from './tools/inputs/web-search.ts';
+export { expandToolInputPath, expandToolPath } from './tools/inputs/tool-path.ts';
