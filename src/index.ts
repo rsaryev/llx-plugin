@@ -81,3 +81,20 @@ export {
   type SkillOriginKind,
   type SkillShell,
 } from './format/skill-types.ts';
+export { parseArguments } from './skills/arguments.ts';
+export {
+  substitute,
+  substituteArguments,
+  type ArgumentInput,
+  type Substitution,
+  type SubstitutionInput,
+} from './skills/substitute.ts';
+export {
+  buildVariables,
+  substituteVariables,
+  type SkillSession,
+  type SkillVariablePorts,
+  type SkillVariables,
+  type VariableSource,
+  type VariablesSubstituted,
+} from './skills/variables.ts';

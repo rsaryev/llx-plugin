@@ -70,6 +70,39 @@ closed list of documented keys, `FIELD_READERS` the reader of each; any other ke
 without an issue. Whatever a host does with a field (forking, the model override, matching
 `paths`) is decided by the runtime functions that read the same `Skill`.
 
+### Skill substitution (done: `skills/arguments`, `skills/substitute`, `skills/variables`)
+
+What a skill's text becomes before the model reads it (skills.md, "Available string
+substitutions"). Arguments first, then `${CLAUDE_*}` over the result, so a variable inside an
+argument value is replaced too:
+
+```ts
+import { buildVariables, substitute } from '@rsaryev/claude-plugin-kit';
+
+const vars = buildVariables(skill, { sessionId, effort: 'high' }, { locations, environment });
+const { text, issues } = await substitute(skill.body, {
+  rawArguments: '"hello world" second', // as typed after the command name
+  names: skill.arguments,
+  vars,
+});
+```
+
+| Name                                        | Does                                                                                   |
+| ------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `parseArguments(raw)`                       | shell-style split: `"hello world" second` is two arguments                             |
+| `substituteArguments(content, input)`       | `$ARGUMENTS`, `$ARGUMENTS[N]`, `$N` (0-based), `$name`; one pass over the original text, so a value is never expanded; `\$` before a token escapes it (a doubled backslash does not); an index with no argument stays, a named one becomes empty; `ARGUMENTS: <value>` is appended when arguments were typed and no placeholder received one |
+| `buildVariables(skill, session, ports)`     | the `SubstitutionScope` of `loading/resolve` plus the names this skill leaves as written: `CLAUDE_SESSION_ID`, `CLAUDE_EFFORT` and `CLAUDE_SKILL_DIR` travel as `scope.extra` |
+| `substituteVariables(text, vars)`           | the six `${CLAUDE_*}` variables through `loading/resolve` (the `markdown-content` surface); also for the Bash rules of `allowed-tools` |
+| `substitute(content, { rawArguments, names, vars })` | both stages                                                               |
+
+`${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PLUGIN_DATA}` are substituted only for a plugin skill and stay
+as written elsewhere, without asking the host for a folder. A synced skill keeps
+`${CLAUDE_PROJECT_DIR}` and `${CLAUDE_SESSION_ID}` as literal text unless the host says the session
+is isolated (`isolatedSession`, a cloud or Cowork session). `${CLAUDE_SKILL_DIR}` is the folder of
+the `SKILL.md` (for a plugin skill its subfolder, not the plugin root), built from `Skill.dir` and
+the origin's root through `Locations`. `effort` is the level in force while the skill runs: when the
+skill sets its own, pass the one `resolveTurnOverrides` chose.
+
 ### Output styles (done: `format/output-style`, `skills/output-style-select`)
 
 ```ts

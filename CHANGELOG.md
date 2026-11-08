@@ -10,6 +10,15 @@
 
 ### Added
 
+- Skills: substitution in a skill's text. `substituteArguments` expands `$ARGUMENTS`,
+  `$ARGUMENTS[N]`, `$N` and `$name` over the original text in one pass (shell-style quoting through
+  `parseArguments`, `\$` escapes, an index with no argument stays as written, a named one becomes
+  empty, an argument value is never expanded, `ARGUMENTS: <value>` is appended when nothing
+  received the arguments). `buildVariables` and `substituteVariables` substitute `${CLAUDE_SESSION_ID}`,
+  `${CLAUDE_EFFORT}`, `${CLAUDE_SKILL_DIR}`, `${CLAUDE_PROJECT_DIR}`, `${CLAUDE_PLUGIN_ROOT}` and
+  `${CLAUDE_PLUGIN_DATA}` through `loading/resolve` (the plugin pair for plugin skills only), for the
+  body and for the Bash rules of `allowed-tools`; `substitute` does both, arguments first.
+  `ORIGIN_TRAITS.substitutesSessionVariables`.
 - Skills: `readSkill` reads a `SKILL.md` into a `Skill` (the shared `InvocableFrontmatter` of
   skills and commands): `description` (else the first non-empty body line), `when_to_use`,
   `argument-hint`, `arguments`, `disable-model-invocation`, `user-invocable`, `allowed-tools`,

@@ -35,6 +35,13 @@ export interface OriginTraits {
   /** `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PLUGIN_DATA}`: "Substituted only in plugin skills". */
   readonly substitutesPluginVariables: boolean;
   /**
+   * `${CLAUDE_PROJECT_DIR}` and `${CLAUDE_SESSION_ID}`. A synced skill is not substituted these
+   * in a session on the owner's machine: "the two placeholders reach Claude as literal text"
+   * (skills.md, "How Claude Code handles the body of a synced skill"). An isolated session (cloud,
+   * Cowork) is the host's decision, as for `runsShell`.
+   */
+  readonly substitutesSessionVariables: boolean;
+  /**
    * Whether `` !`command` `` blocks run. A skill synced from claude.ai "doesn't run `!` commands"
    * in a session on the owner's machine (skills.md, "How Claude Code handles the body of a synced
    * skill"); a cloud or Cowork session is the host's decision, not an origin's.
@@ -43,10 +50,18 @@ export interface OriginTraits {
 }
 
 export const ORIGIN_TRAITS: { readonly [K in SkillOriginKind]: OriginTraits } = {
-  plugin: { substitutesPluginVariables: true, runsShell: true },
-  user: { substitutesPluginVariables: false, runsShell: true },
-  project: { substitutesPluginVariables: false, runsShell: true },
-  synced: { substitutesPluginVariables: false, runsShell: false },
+  plugin: { substitutesPluginVariables: true, substitutesSessionVariables: true, runsShell: true },
+  user: { substitutesPluginVariables: false, substitutesSessionVariables: true, runsShell: true },
+  project: {
+    substitutesPluginVariables: false,
+    substitutesSessionVariables: true,
+    runsShell: true,
+  },
+  synced: {
+    substitutesPluginVariables: false,
+    substitutesSessionVariables: false,
+    runsShell: false,
+  },
 };
 
 /** The frontmatter a skill and a command share, with the documented defaults applied. */

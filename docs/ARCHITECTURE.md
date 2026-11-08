@@ -23,7 +23,7 @@ agent, not a model client and not a sandbox. It runs anywhere JavaScript runs.
 | 3     | `foundation`  | Shared by mods and the layer-4 streams: budgets, result shapes (planned)      |
 | 4     | `agents`      | Sub-agent definitions and their scoping (planned)                             |
 | 4     | `hooks`       | The hook engine: select, run through ports, merge outputs (planned)           |
-| 4     | `skills`      | Skill and command expansion (planned); `output-style-select.ts` picks the active output style (done) |
+| 4     | `skills`      | Skill and command expansion (planned); `arguments.ts`, `substitute.ts` and `variables.ts` substitute arguments and `${CLAUDE_*}` in a skill's text (done, `${CLAUDE_*}` through `loading/resolve`); `output-style-select.ts` picks the active output style (done) |
 | 4     | `mods`        | The mods runtime: events, guest hooks through a host runtime (planned)        |
 | 5     | `host`        | `createPluginHost`, sessions: composition of the modules above (planned)      |
 | 6     | `testing`     | Fakes of every port for hosts' tests (planned)                                |

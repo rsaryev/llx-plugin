@@ -183,6 +183,13 @@ describe('what an origin allows (skills.md § Available string substitutions, §
     }
   });
 
+  test('a synced skill gets no session variables on the owner machine, every other origin does', () => {
+    expect(ORIGIN_TRAITS.synced.substitutesSessionVariables).toBe(false);
+    for (const kind of ['plugin', 'user', 'project'] as const) {
+      expect(ORIGIN_TRAITS[kind].substitutesSessionVariables).toBe(true);
+    }
+  });
+
   test('a skill synced from claude.ai does not run `!` commands in a local session', () => {
     expect(ORIGIN_TRAITS.synced.runsShell).toBe(false);
     for (const kind of ['plugin', 'user', 'project'] as const) {
