@@ -93,7 +93,10 @@ export function readSkillFields(fields: Readonly<Record<string, unknown>>): Fiel
     values.push(outcome.values);
     problems.push(...outcome.problems);
   }
-  return { values: Object.assign({}, ...values), problems };
+  return {
+    values: values.reduce<SkillFieldValues>((all, next) => ({ ...all, ...next }), {}),
+    problems,
+  };
 }
 
 /** The first non-empty line of a Markdown body, as written (skills.md: `description` is optional). */

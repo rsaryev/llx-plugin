@@ -138,7 +138,7 @@ describe('readSkill', () => {
 });
 
 describe('the skill folder and the name (the minimum; skills.frontmatter.name refines it)', () => {
-  test('the directory of the file is the skill folder, with either separator', () => {
+  test('the directory of the file is the skill folder, with either separator (judgment)', () => {
     expect(readSkill('skills/review/SKILL.md', 'x', PROJECT_LAYOUT).skill.dir).toBe(
       'skills/review',
     );

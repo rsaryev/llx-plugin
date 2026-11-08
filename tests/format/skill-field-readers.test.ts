@@ -2,7 +2,8 @@
  * skills.md § Frontmatter reference (description, when_to_use, argument-hint, arguments) and
  * § Angle brackets in a skill description show as `&lt;` and `&gt;`. Each block proves what the
  * kit reads from the field; how a bad value is reported is the kit's judgment (spec/judgments.md)
- * and is tested outside spec().
+ * and is tested outside spec(). The angle-bracket display belongs to a skill listing the kit does
+ * not have yet, so it is a judgment here and proves nothing for the description requirement.
  */
 import { describe, expect, test } from 'bun:test';
 import { escapeAngleBrackets, firstContentLine } from '../../src/format/skill-fields.ts';
@@ -44,12 +45,31 @@ spec('skills.frontmatter.description', () => {
     expect(readFields('name: empty', '').skill.description).toBeUndefined();
   });
 
-  test('"Angle brackets in the text show as `&lt;` and `&gt;`"; square brackets display as typed', () => {
+  test('a bare number is text (changelog: `description: 3000` once crashed)', () => {
+    const { skill, issues } = readFields('description: 3000');
+    expect(skill.description).toBe('3000');
+    expect(issues).toEqual([]);
+  });
+});
+
+describe('angle brackets (judgment: the skill keeps the text as written)', () => {
+  // skills.md says Claude Code displays `<` and `>` as `&lt;` and `&gt;`, in the skill listing.
+  // The kit has no listing yet: the helper is tested here, and the skills stream applies it.
+  test('escapeAngleBrackets replaces `<` and `>` only; square brackets display as typed', () => {
     expect(escapeAngleBrackets('Deploy <branch> to <env>')).toBe(
       'Deploy &lt;branch&gt; to &lt;env&gt;',
     );
     expect(escapeAngleBrackets('Deploy [branch]')).toBe('Deploy [branch]');
-    expect(readFields('description: Deploy <branch>').skill.description).toBe('Deploy <branch>');
+  });
+
+  test('description and when_to_use are kept as written, not escaped', () => {
+    const { skill } = readFields('description: Deploy <branch>\nwhen_to_use: Use on <branch>');
+    expect(skill.description).toBe('Deploy <branch>');
+    expect(skill.whenToUse).toBe('Use on <branch>');
+  });
+
+  test('a bare number is the declared name as text (changelog: `name: 3000` once crashed)', () => {
+    expect(readFields('name: 3000').skill.name).toBe('3000');
   });
 });
 
@@ -93,10 +113,6 @@ spec('skills.frontmatter.when_to_use', () => {
   test('without it, the description does not borrow from the body', () => {
     expect(readFields('description: d', 'Body').skill.whenToUse).toBeUndefined();
   });
-
-  test('keeps angle brackets as written; the display escapes them like the description', () => {
-    expect(readFields('when_to_use: Use on <branch>').skill.whenToUse).toBe('Use on <branch>');
-  });
 });
 
 spec('skills.frontmatter.argument-hint', () => {
@@ -124,6 +140,20 @@ describe('argument-hint written without quotes (judgment)', () => {
     expect(readFields('argument-hint: [filename, format]').skill.argumentHint).toBe(
       '[filename, format]',
     );
+  });
+
+  test('changelog: `[topic: foo | bar]` is a list of one map, written back as the text typed', () => {
+    const { skill, issues } = readFields('argument-hint: [topic: foo | bar]');
+    expect(skill.argumentHint).toBe('[topic: foo | bar]');
+    expect(issues).toEqual([]);
+    expect(readFields('argument-hint: [a: 1, b]').skill.argumentHint).toBe('[a: 1, b]');
+    expect(readFields('argument-hint: [topic:]').skill.argumentHint).toBe('[topic:]');
+  });
+
+  test('a nested item cannot be written back: it is dropped with a warning', () => {
+    const { skill, issues } = readFields('argument-hint: [a, [b]]');
+    expect(skill.argumentHint).toBe('[a]');
+    expect(messages(issues)).toEqual(['argument-hint has an item that is not text']);
   });
 
   test('`[filename] [format]` is not YAML: the skill loads with no fields and says why', () => {
@@ -161,6 +191,10 @@ spec('skills.frontmatter.arguments', () => {
 
   test('absent declares no names', () => {
     expect(readFields('description: d').skill.arguments).toEqual([]);
+  });
+
+  test('a comma also separates names (judgment: a comma in a name is not meaningful)', () => {
+    expect(readFields('arguments: issue, branch').skill.arguments).toEqual(['issue', 'branch']);
   });
 
   test('a table where names belong is dropped with a warning', () => {

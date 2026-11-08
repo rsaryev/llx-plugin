@@ -73,6 +73,11 @@
 
 ### Fixed
 
+- Skills: an unquoted `argument-hint: [topic: foo | bar]` is written back as that text instead of
+  being dropped; the unknown-event warning of a skill's `hooks` no longer repeats the `hooks.`
+  prefix; the shell list is checked against the host's `ShellKind`; the judgments cover an
+  unbalanced list delimiter, an unknown hook event kept with a warning, the comma split of
+  `arguments` and the skill folder of a Windows path.
 - `listOutputStyles` marks one row current: a custom style that reuses a built-in id or an earlier
   style's id is no longer listed, matching what `resolveOutputStyle` selects.
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not

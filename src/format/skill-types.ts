@@ -1,5 +1,7 @@
 import type { EffortLevel } from '../protocol/official.ts';
 import type { HooksSettings } from '../protocol/hook-config.ts';
+import type { Assert, Equal } from '../protocol/type-equality.ts';
+import type { ShellKind } from '../ports/command-runner.ts';
 
 /**
  * The model of a skill and of a command (skills.md, "Configure skills"; plugins/components.md,
@@ -9,8 +11,11 @@ import type { HooksSettings } from '../protocol/hook-config.ts';
  */
 
 /** The shells `shell` accepts (skills.md, frontmatter reference: "`bash` (default) or `powershell`"). */
-export const SKILL_SHELLS = ['bash', 'powershell'] as const;
+export const SKILL_SHELLS = ['bash', 'powershell'] as const satisfies readonly ShellKind[];
 export type SkillShell = (typeof SKILL_SHELLS)[number];
+
+/** @public A compile-time drift guard: a shell added to `ShellKind` fails the typecheck here. */
+export type SkillShellsMatchShellKind = Assert<Equal<SkillShell, ShellKind>>;
 
 /**
  * Where a skill came from, which decides what the runtime may do with its text. A plugin skill is

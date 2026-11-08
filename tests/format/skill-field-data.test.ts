@@ -48,9 +48,17 @@ spec('skills.frontmatter.hooks', () => {
     const { issues } = readFields(
       'hooks:\n  BeforeEverything:\n    - hooks:\n        - type: command\n          command: ./x.sh',
     );
-    expect(issues).toHaveLength(1);
-    expect(issues[0]?.message).toContain('"BeforeEverything" is not a hook event');
-    expect(issues[0]?.message.startsWith('hooks.')).toBe(true);
+    expect(messages(issues)).toEqual([
+      'hooks.BeforeEverything "BeforeEverything" is not a hook event',
+    ]);
+  });
+
+  test('an unknown event is warned about and kept, as the hooks reader keeps it (judgment)', () => {
+    const { skill, issues } = readFields(
+      'hooks:\n  Stop:\n    - hooks:\n        - type: command\n          command: ./done.sh\n  Bogus:\n    - hooks:\n        - type: command\n          command: ./x.sh',
+    );
+    expect(messages(issues)).toEqual(['hooks.Bogus "Bogus" is not a hook event']);
+    expect(Object.keys(skill.hooks ?? {})).toEqual(['Stop', 'Bogus']);
   });
 
   test('a handler the hooks reader refuses leaves the skill loaded and without hooks (judgment)', () => {
@@ -98,6 +106,20 @@ spec('skills.frontmatter.paths', () => {
     expect(readFields('paths: my dir/**, *.md').skill.paths).toEqual(['my dir/**', '*.md']);
   });
 
+  test('an opener with no closer swallows the rest of the string: one item (judgment)', () => {
+    expect(readFields('paths: a{b, c,d').skill.paths).toEqual(['a{b, c,d']);
+    expect(readFields('allowed-tools: Bash(a b, Read').skill.allowedTools).toEqual([
+      'Bash(a b, Read',
+    ]);
+  });
+
+  test('`paths` counts a parenthesis as a group too: `foo(bar, baz)` is one pattern (judgment)', () => {
+    expect(readFields('paths: foo(bar, baz), lib/**').skill.paths).toEqual([
+      'foo(bar, baz)',
+      'lib/**',
+    ]);
+  });
+
   test('absent means the skill is not limited to any path', () => {
     expect(readFields('description: d').skill.paths).toEqual([]);
   });
@@ -118,11 +140,16 @@ spec('skills.frontmatter.metadata', () => {
     }
   });
 
-  test('"Don\'t reuse frontmatter field names such as `paths` as keys": they set nothing', () => {
+  test('"Don\'t reuse frontmatter field names such as `paths` as keys": they are kept, and set nothing', () => {
     const { skill } = readFields(
       'metadata:\n  paths: src/**\n  disable-model-invocation: true\n  allowed-tools: Bash(rm *)\n  hooks: {}',
     );
-    expect(skill.metadata).toBeDefined();
+    expect(skill.metadata).toEqual({
+      paths: 'src/**',
+      'disable-model-invocation': true,
+      'allowed-tools': 'Bash(rm *)',
+      hooks: {},
+    });
     expect(skill.paths).toEqual([]);
     expect(skill.disableModelInvocation).toBe(false);
     expect(skill.allowedTools).toEqual([]);
