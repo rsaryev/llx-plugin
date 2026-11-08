@@ -162,7 +162,11 @@ describe('fields an entry accepts beside its own', () => {
     );
     expect(entry).toBeDefined();
     expect(issues.map((found) => [found.severity, found.path, found.message])).toEqual([
-      ['warning', 'plugins[0].icon', "Unknown field 'icon'. Claude Code ignores it at load time."],
+      [
+        'warning',
+        'plugins[0].icon',
+        "Unknown field 'icon' (commonly seen in a VS Code/Cursor extension manifest). Claude Code ignores unrecognized fields at load time, so it's safe to keep.",
+      ],
       [
         'warning',
         'plugins[0].supportUrl',

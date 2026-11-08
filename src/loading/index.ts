@@ -23,3 +23,4 @@ export type {
   ReadKind,
   ReaderContext,
 } from './reader-types.ts';
+export * from './validate/index.ts';

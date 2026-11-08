@@ -1,6 +1,7 @@
 import { blocksLoading, error, type PluginIssue } from '../issues.ts';
 import { withoutDuplicates, type IndexedEntry } from './entry-checks.ts';
 import { readEntry } from './entries.ts';
+import { ENTRY_KEYS } from './entry-schema.ts';
 import { isRecord, typeName, unknownField } from './marketplace-schema.ts';
 import { parsePluginSource } from './plugin-source.ts';
 import type { MarketplaceEntry, PluginSourceKind } from './types.ts';
@@ -58,7 +59,7 @@ function readItem(item: Readonly<Record<string, unknown>>, index: number) {
   const known = Object.fromEntries(Object.entries(item).filter(([key]) => isItemKey(key)));
   const unknown = Object.keys(item)
     .filter((key) => !isItemKey(key))
-    .map((key) => unknownField(key, `plugins[${index}].${key}`));
+    .map((key) => unknownField(key, `plugins[${index}].${key}`, ENTRY_KEYS));
   const reading = readEntry(
     needsRelaxedStrict(item) ? { ...known, strict: false } : known,
     { index, context: {}, mode: 'load' },

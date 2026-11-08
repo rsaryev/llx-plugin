@@ -473,6 +473,43 @@ The kit never spawns a monitor: the host runs `command` in a shell in the sessio
 directory, outside the sandbox, keeps the set of started names (a name in it is never returned
 again), and turns what the process prints into notifications.
 
+## Validating (done: `loading/validate`, `format/validate`)
+
+```ts
+import { validatePlugin } from '@rsaryev/claude-plugin-kit';
+
+const { target, issues } = await validatePlugin({ files, label: 'my-plugin' });
+for (const { severity, file, path, message } of issues) console.log(severity, file, path, message);
+```
+
+`validatePlugin` reproduces `claude plugin validate <dir>` of the Claude Code release the kit
+tracks: the same folder, the same findings, the same wording (docs/SPEC.md, "Sources of truth", the
+oracle). It reads the folder through the `PluginFiles` port, never throws, and never follows a
+symlink (a link is skipped, with the warning the official CLI gives).
+
+| API | What it does |
+| --- | --- |
+| `validatePlugin({ files, label?, signal? })` | picks what to validate as the CLI does: `.claude-plugin/marketplace.json` (the marketplace, its entries whose folder is inside it, and the plugin at the root too when it has a `plugin.json`), else `.claude-plugin/plugin.json`, else a bare skills tree or `.claude/{skills,commands,agents}` folder (`components`), else the error `No manifest found in directory…`; a folder that does not exist is `File not found: <label>` |
+| `ValidationReport` | `{ target: 'marketplace' \| 'plugin' \| 'components' \| 'none', issues }` |
+| `ValidationIssue` | `{ severity: 'error' \| 'warning', file, path, message }`: the folder-relative file, the place inside it (`name`, `plugins.0.source`, `plugins[0].version`, `hooks.Stop`, `frontmatter`, `directory`) and the CLI's own text |
+
+What it checks: the manifest's schema, then (when the schema passes) the name advice and the
+recommended `version`, `description` and `author`; unknown fields with the CLI's hints; declared
+paths; the inline `hooks` and `mcpServers`; `hooks/hooks.json` and `.mcp.json`; the frontmatter of
+every `SKILL.md` and of every Markdown file under `agents/` and `commands/` (paths the manifest
+declares are not read); `CLAUDE.md` at the root; and, for a marketplace, the top-level fields, each
+entry, the entry's own `plugin.json` (findings prefixed `plugins[i] plugin.json → `) and the
+cross-check of the entry's `version` with it. Schema errors name their place with dots
+(`plugins.0.name`), the validator's own checks with brackets (`plugins[0].name`), as the CLI does.
+
+Validating and loading differ on purpose. `loadPlugin` answers "does it load, and what is in it";
+`validatePlugin` also reports advice and checks the loader never makes. Where the two read the same
+text they read it the same way: plugin hooks (`hooks/hooks.json`, the inline `hooks`) drop an entry
+they cannot read and keep the rest, except under `PreToolUse` and `PermissionRequest`, where a guard
+that went missing fails the file, and frontmatter that plain YAML refuses is retried with the plain
+value of a line quoted, as Claude Code does. Checks that need the network or the marketplace
+directory service (the `directory` profile) are not made.
+
 ## Ports (done)
 
 Interfaces the host implements, in `src/ports/` (type-only, one file per port, all exported from the

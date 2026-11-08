@@ -10,12 +10,23 @@ output.
 | ------------------------------------------------ | --------------------------------------------------- | ------------------------------------ |
 | Claude Code docs (code.claude.com)               | behaviour: fields, events, rules, defaults, errors  | `.cache/claude-docs/` (gitignored)   |
 | `@anthropic-ai/claude-agent-sdk` type declarations | shapes: hook inputs/outputs, tools, agents, MCP, settings | `node_modules/` (pinned)       |
-| Real plugins (official and community marketplaces) | what plugins actually use (planned: the corpus)   | `.cache/corpus/` (gitignored)        |
+| Real plugins (official and community marketplaces) | what plugins actually use (the corpus)            | `.cache/corpus/` (gitignored)        |
+| The oracle: `claude plugin validate --json` of the same release | message wording, and the checks only the validator makes, where the docs are silent | `.cache/corpus/oracle/<release>/` (gitignored) |
 
 Nothing else is evidence: not memory, not another host's behaviour (Localix included), not a
 plausible guess. Where the docs are silent, the kit makes a **judgment**, recorded with its reason
 in the code comment next to it and listed in `spec/judgments.md`; a judgment never counts toward
 compatibility.
+
+**The oracle** is the official CLI of the release the kit tracks (`requirements.claudeCode`),
+observed as a black box: run on an input, its output read, the program itself never opened, unpacked
+or decompiled. What it prints decides the wording of a validator message and which checks the
+validator makes beyond what the docs describe. Where the docs speak, they win: a doc requirement is
+proved by a `spec(id)` test on what the docs say, and the oracle's longer wording is asserted
+beside it, outside `spec(...)`, unless a requirement id is exactly that behaviour. Each behaviour
+taken from the oracle is a row in `spec/judgments.md` marked `oracle 2.1.319` (the release), with an
+input that shows it written by hand (never a third party's file copied); moving to a new release
+means re-running the corpus and re-checking those rows.
 
 ## Requirements
 

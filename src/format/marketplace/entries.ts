@@ -1,8 +1,8 @@
 import { blocksLoading, error, warning, type PluginIssue } from '../issues.ts';
 import { MANIFEST_SCHEMAS } from '../manifest-schema.ts';
 import { defined } from './defined.ts';
-import { headerIssues, nameIssues, versionIssues } from './entry-checks.ts';
-import { isEntryKey, readEntryFields, type EntryFields } from './entry-schema.ts';
+import { headerIssues, nameReports, versionIssues } from './entry-checks.ts';
+import { ENTRY_KEYS, isEntryKey, readEntryFields, type EntryFields } from './entry-schema.ts';
 import type { EntryReader, EntryReading, EntrySlot } from './marketplace.ts';
 import { isRecord, typeName, unknownField } from './marketplace-schema.ts';
 import { readRelevance } from './relevance.ts';
@@ -23,14 +23,23 @@ export interface SourceReading {
 }
 export type SourceParser = (raw: unknown, slot: EntrySlot) => SourceReading;
 
-const dropped = (...issues: PluginIssue[]): EntryReading => ({ entry: undefined, issues });
+const dropped = (...issues: PluginIssue[]): EntryReading => ({
+  entry: undefined,
+  issues,
+  schemaSound: false,
+});
 
 /** `name`: required, and an install id (letters, digits, `.`, `_`, `-`). A wrong type is the field reader's report. */
 function readName(raw: Readonly<Record<string, unknown>>, base: string, slot: EntrySlot) {
   const path = `${base}.name`;
-  if (raw.name === undefined) return [error(path, 'Invalid input')];
-  if (typeof raw.name !== 'string') return [];
-  return nameIssues(raw.name, path, slot.mode ?? 'load');
+  if (raw.name === undefined) {
+    return {
+      shape: [error(path, 'Invalid input: expected string, received undefined')],
+      reserved: [],
+    };
+  }
+  if (typeof raw.name !== 'string') return { shape: [], reserved: [] };
+  return nameReports(raw.name, path, slot.mode ?? 'load', slot.context.marketplaceName);
 }
 
 /** `source`: required, a string or an object; what it means is the parser's. */
@@ -146,19 +155,21 @@ function crossIssues(
   { fields, name, source }: Parts,
   slot: EntrySlot,
   base: string,
+  sound: boolean,
 ): PluginIssue[] {
   const header = { ...fields, name, strict: fields.strict ?? true };
   const manifest = slot.context.pluginManifests?.get(slot.index);
   return [
     ...headerIssues(header, source, base),
-    ...versionIssues(fields.version, source, manifest, base),
+    // An entry the schema already rejects is not compared with its manifest (oracle 2.1.319).
+    ...(sound ? versionIssues(fields.version, source, manifest, base) : []),
   ];
 }
 
 const unknownKeys = (raw: Readonly<Record<string, unknown>>, base: string): PluginIssue[] =>
   Object.keys(raw)
     .filter((key) => !isEntryKey(key))
-    .map((key) => unknownField(key, `${base}.${key}`));
+    .map((key) => unknownField(key, `${base}.${key}`, ENTRY_KEYS));
 
 /** Reads one raw `plugins[i]`; never throws. */
 export function readEntry(raw: unknown, slot: EntrySlot, parseSource: SourceParser): EntryReading {
@@ -169,20 +180,24 @@ export function readEntry(raw: unknown, slot: EntrySlot, parseSource: SourcePars
   const { fields, issues: fieldIssues } = readEntryFields(raw, base);
   const source = readSource(raw.source, slot, base, parseSource);
   const apart = readApart(raw, base);
+  const named = readName(raw, base, slot);
   const issues = [
-    ...readName(raw, base, slot),
+    ...named.shape,
+    ...named.reserved,
     ...fieldIssues,
     ...source.issues,
     ...apart.issues,
     ...unknownKeys(raw, base),
   ];
+  // The reserved-name ruling does not stop the comparison with the entry's manifest (oracle 2.1.319).
+  const sound = !blocksLoading([...named.shape, ...fieldIssues, ...source.issues, ...apart.issues]);
   const name = fields?.name;
   if (fields === undefined || name === undefined || source.source === undefined) {
     return dropped(...issues);
   }
   const parts = { fields, name, source: source.source };
-  issues.push(...crossIssues(parts, slot, base));
-  if (blocksLoading(issues)) return dropped(...issues);
+  issues.push(...crossIssues(parts, slot, base, sound));
+  if (blocksLoading(issues)) return { entry: undefined, issues, schemaSound: sound };
   return { entry: build(parts, apart), issues };
 }
 

@@ -54,7 +54,7 @@ const unknownKeys = (
 ): PluginIssue[] =>
   Object.keys(value)
     .filter((key) => !keys.includes(key))
-    .map((key) => unknownField(key, `${base}.${key}`));
+    .map((key) => unknownField(key, `${base}.${key}`, keys));
 
 /** The signals as the model holds them: the recognized keys only. */
 const signalsOf = (parsed: z.output<typeof signalsSchema>): RelevanceSignals =>

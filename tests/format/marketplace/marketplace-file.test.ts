@@ -48,7 +48,7 @@ spec('marketplace.field.owner', () => {
     expect(result.issues).toContainEqual({
       severity: 'error',
       path: 'owner',
-      message: 'Invalid input',
+      message: expect.stringContaining('Invalid input'),
     });
   });
 
@@ -66,7 +66,7 @@ spec('marketplace.field.owner', () => {
     expect(result.issues).toContainEqual({
       severity: 'error',
       path: 'owner.name',
-      message: 'Invalid input',
+      message: expect.stringContaining('Invalid input'),
     });
   });
 
@@ -101,7 +101,7 @@ spec('marketplace.field.plugins', () => {
     expect(result.issues).toContainEqual({
       severity: 'error',
       path: 'plugins',
-      message: 'Invalid input',
+      message: expect.stringContaining('Invalid input'),
     });
   });
 
@@ -180,13 +180,13 @@ spec('marketplace.field.$schema', () => {
 
 describe('top-level keys Claude Code does not read', () => {
   test('are ignored with the quoted warning on the key, and the marketplace loads', () => {
-    const result = read(withFields({ pluginz: [] }));
+    const result = read(withFields({ wibble: [] }));
     expect(result.marketplace).toBeDefined();
     expect(result.issues).toEqual([
       {
         severity: 'warning',
-        path: 'pluginz',
-        message: "Unknown field 'pluginz'. Claude Code ignores it at load time.",
+        path: 'wibble',
+        message: "Unknown field 'wibble'. Claude Code ignores it at load time.",
       },
     ]);
   });

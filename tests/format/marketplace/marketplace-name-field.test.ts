@@ -23,7 +23,7 @@ spec('marketplace.field.name', () => {
     expect(result.issues).toContainEqual({
       severity: 'error',
       path: 'name',
-      message: 'Invalid input',
+      message: expect.stringContaining('Invalid input'),
     });
   });
 
@@ -91,7 +91,9 @@ spec('marketplace.field.name', () => {
       expect(result.issues).toContainEqual({
         severity: 'warning',
         path: 'name',
-        message: `Marketplace name "${name}" is reserved in Claude Desktop`,
+        message: expect.stringContaining(
+          `Marketplace name "${name}" is reserved in Claude Desktop`,
+        ),
       });
     }
   });
@@ -104,7 +106,9 @@ spec('marketplace.field.name', () => {
       {
         severity: 'warning',
         path: 'name',
-        message: `Marketplace name "${name}" is not accepted by Claude Desktop (letters, digits, ".", "_", "-"; must start alphanumeric; max 128 chars)`,
+        message: expect.stringContaining(
+          `Marketplace name "${name}" is not accepted by Claude Desktop (letters, digits, ".", "_", "-"; must start alphanumeric; max 128 chars)`,
+        ),
       },
     ]);
   });

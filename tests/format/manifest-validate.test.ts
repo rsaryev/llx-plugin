@@ -8,8 +8,10 @@ import { readManifest, validateManifest } from '../../src/format/index.ts';
 import { spec } from '../support/spec.ts';
 
 const complete = { version: '1.0.0', description: 'Demo', author: { name: 'Team' } };
+/** The docs say what a finding is about; the advice after the first sentence is the oracle's wording (tests/format/validate). */
+const lead = (message: string): string => message.split('. ')[0] ?? message;
 const issuesFor = (name: string) =>
-  validateManifest({ name, ...complete }).map((found) => [found.severity, found.message]);
+  validateManifest({ name, ...complete }).map((found) => [found.severity, lead(found.message)]);
 
 spec('manifest.field.name', () => {
   test('may not hold a space, @, :, a path separator, a control or a bidi character', () => {

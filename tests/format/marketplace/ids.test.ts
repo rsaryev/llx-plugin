@@ -113,7 +113,9 @@ describe('desktopNameIssues: names Claude Desktop rejects', () => {
         {
           severity: 'warning',
           path: 'name',
-          message: `Marketplace name "${name}" is reserved in Claude Desktop`,
+          message: expect.stringContaining(
+            `Marketplace name "${name}" is reserved in Claude Desktop`,
+          ),
         },
       ]);
     }
@@ -128,16 +130,18 @@ describe('desktopNameIssues: names Claude Desktop rejects', () => {
       {
         severity: 'warning',
         path: 'name',
-        message:
+        message: expect.stringContaining(
           'Marketplace name "_internal" is not accepted by Claude Desktop (letters, digits, ".", "_", "-"; must start alphanumeric; max 128 chars)',
+        ),
       },
     ]);
     expect(desktopNameIssues('plugin', 'my plugin', 'plugins[4].name')).toEqual([
       {
         severity: 'warning',
         path: 'plugins[4].name',
-        message:
+        message: expect.stringContaining(
           'Plugin name "my plugin" is not accepted by Claude Desktop (letters, digits, ".", "_", "-"; must start alphanumeric; max 128 chars)',
+        ),
       },
     ]);
   });

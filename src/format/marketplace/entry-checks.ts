@@ -1,6 +1,7 @@
 import { error, warning, type PluginIssue } from '../issues.ts';
 import { nameReservedIssues } from '../names.ts';
 import { isRoutingHeader } from './header-names.ts';
+import { OFFICIAL_NAMES } from './marketplace-name-lists.ts';
 import { desktopNameIssues, pluginIdIssues } from './ids.ts';
 import { isRecord } from './marketplace-schema.ts';
 import type { MarketplaceEntry, PluginSource, PluginSourceKind, ReadMode } from './types.ts';
@@ -50,20 +51,33 @@ export function withoutDuplicates(read: readonly IndexedEntry[]): {
  * not: "Claude Code still installs and loads a plugin whose name they refuse" (manifest-reference.md,
  * "`name`").
  */
-const RESERVED: { readonly [M in ReadMode]: (name: string, path: string) => PluginIssue[] } = {
+const RESERVED: {
+  readonly [M in ReadMode]: (name: string, path: string, marketplace?: string) => PluginIssue[];
+} = {
   load: () => [],
   // The kebab-case advice is the manifest's own; entries may use capitals (the id grammar allows them).
-  validate: (name, path) => nameReservedIssues(name).map((found) => ({ ...found, path })),
+  // An official marketplace lists Anthropic's own plugins, so its entries pass.
+  validate: (name, path, marketplace) =>
+    OFFICIAL_NAMES.some((official) => official === marketplace)
+      ? []
+      : nameReservedIssues(name, 'entry').map((found) => ({ ...found, path })),
 };
 
-/** The grammar of the install id, Claude Desktop's, and (when validating) the reserved names. */
-export function nameIssues(name: string, path: string, mode: ReadMode): PluginIssue[] {
-  if (name === '') return [error(path, 'Plugin must have a name')];
-  return [
-    ...pluginIdIssues('plugin', name, path),
-    ...desktopNameIssues('plugin', name, path),
-    ...RESERVED[mode](name, path),
-  ];
+/**
+ * The reports on a name, in two parts: what is wrong with its shape, which an entry cannot be
+ * read past, and the reserved-name ruling, which leaves the entry otherwise sound.
+ */
+export function nameReports(
+  name: string,
+  path: string,
+  mode: ReadMode,
+  marketplace?: string,
+): { readonly shape: PluginIssue[]; readonly reserved: PluginIssue[] } {
+  if (name === '') return { shape: [error(path, 'Plugin must have a name')], reserved: [] };
+  return {
+    shape: [...pluginIdIssues('plugin', name, path), ...desktopNameIssues('plugin', name, path)],
+    reserved: RESERVED[mode](name, path, marketplace),
+  };
 }
 
 /** Which sources `headers` and `headersHelper` apply to: "only apply to "archive" sources". */
@@ -149,7 +163,7 @@ const MANIFEST_FILE: {
 } = {
   relative: (source) =>
     'bare' in source
-      ? `${source.path === '.' ? '.' : `./${source.path}`}/.claude-plugin/plugin.json`
+      ? `${source.path === '.' ? '' : `${source.path}/`}.claude-plugin/plugin.json`
       : undefined,
   github: () => undefined,
   url: () => undefined,
@@ -177,7 +191,7 @@ export function versionIssues(
   return [
     warning(
       `${base}.version`,
-      `Entry declares version "${version}" but ${file} says "${theirs}". At install time, plugin.json wins`,
+      `Entry declares version "${version}" but ${file} says "${theirs}". At install time, plugin.json wins (calculatePluginVersion precedence) — the entry version is silently ignored. Update this entry to "${theirs}" to match.`,
     ),
   ];
 }

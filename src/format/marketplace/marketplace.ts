@@ -26,6 +26,8 @@ import type {
 export interface EntryReading {
   readonly entry: MarketplaceEntry | undefined;
   readonly issues: readonly PluginIssue[];
+  /** The entry's fields pass the schema; absent is taken as true. */
+  readonly schemaSound?: boolean;
 }
 
 /** Where an entry stands in its marketplace. */
@@ -66,14 +68,17 @@ function nameIssues(name: string, mode: ReadMode, context: MarketplaceContext): 
   ];
 }
 
-/** The warnings of a marketplace that otherwise loads: no description anywhere, no plugins. */
+/**
+ * The warnings of a marketplace whose schema passes: no description anywhere, no plugins. A
+ * marketplace the schema rejects gets neither (oracle 2.1.319).
+ */
 function completenessIssues(top: TopLevel): PluginIssue[] {
   const found: PluginIssue[] = [];
+  if (top.plugins.length === 0)
+    found.push(warning('plugins', 'Marketplace has no plugins defined'));
   if (top.description === undefined && top.metadata?.description === undefined) {
     found.push(warning('description', NO_DESCRIPTION));
   }
-  if (top.plugins.length === 0)
-    found.push(warning('plugins', 'Marketplace has no plugins defined'));
   return found;
 }
 
@@ -86,23 +91,61 @@ function renameIssues(top: TopLevel, mode: ReadMode): PluginIssue[] {
   return validateRenames(top.renames, names);
 }
 
+/** What reading the entries needs of the top level: they are read whether or not it is sound. */
+interface EntryHost {
+  readonly name: string | undefined;
+  readonly plugins: readonly unknown[];
+  readonly pluginRoot: string | undefined;
+}
+
 function readEntries(
-  top: TopLevel,
+  top: EntryHost,
   context: MarketplaceContext,
   readEntry: EntryReader,
   mode: ReadMode,
-): { entries: MarketplaceEntry[]; issues: PluginIssue[] } {
+): { entries: MarketplaceEntry[]; issues: PluginIssue[]; schemaSound: boolean } {
   const read: IndexedEntry[] = [];
   const issues: PluginIssue[] = [];
-  const pluginRoot = top.metadata?.pluginRoot;
+  let schemaSound = true;
+  const { pluginRoot } = top;
   top.plugins.forEach((raw, index) => {
-    const slot = { index, context, mode, ...(pluginRoot === undefined ? {} : { pluginRoot }) };
+    const slot = {
+      index,
+      context: { ...context, ...(top.name === undefined ? {} : { marketplaceName: top.name }) },
+      mode,
+      ...(pluginRoot === undefined ? {} : { pluginRoot }),
+    };
     const reading = readEntry(raw, slot);
     issues.push(...reading.issues);
+    if (reading.schemaSound === false) schemaSound = false;
     if (reading.entry !== undefined) read.push({ index, entry: reading.entry });
   });
   const unique = withoutDuplicates(read);
-  return { entries: unique.entries, issues: [...issues, ...unique.issues] };
+  return { entries: unique.entries, issues: [...issues, ...unique.issues], schemaSound };
+}
+
+function marketplaceOf(top: TopLevel, entries: MarketplaceEntry[]): Marketplace {
+  return {
+    name: top.name,
+    owner: top.owner,
+    plugins: entries,
+    ...(top.description === undefined ? {} : { description: top.description }),
+    ...(top.version === undefined ? {} : { version: top.version }),
+    ...(top.metadata === undefined ? {} : { metadata: top.metadata }),
+    forceRemoveDeletedPlugins: top.forceRemoveDeletedPlugins,
+    allowCrossMarketplaceDependenciesOn: top.allowCrossMarketplaceDependenciesOn,
+    renames: top.renames,
+  };
+}
+
+/** The entries are read whether or not the top level is sound: the schema reports every one beside its errors (oracle 2.1.319). */
+function hostOf(raw: Readonly<Record<string, unknown>>): EntryHost {
+  const metadata = isRecord(raw.metadata) ? raw.metadata : {};
+  return {
+    name: typeof raw.name === 'string' ? raw.name : undefined,
+    plugins: Array.isArray(raw.plugins) ? raw.plugins : [],
+    pluginRoot: typeof metadata.pluginRoot === 'string' ? metadata.pluginRoot : undefined,
+  };
 }
 
 function assemble(
@@ -121,27 +164,22 @@ function assemble(
   }
   const { top, issues: topIssues } = readTopLevel(raw);
   const named = typeof raw.name === 'string' ? nameIssues(raw.name, mode, context) : [];
-  if (top === undefined) return { marketplace: undefined, issues: [...topIssues, ...named] };
-  const { entries, issues: entryIssues } = readEntries(top, context, readEntry, mode);
+  if (top === undefined) {
+    const { issues: entryIssues } = readEntries(hostOf(raw), context, readEntry, mode);
+    return { marketplace: undefined, issues: [...topIssues, ...named, ...entryIssues] };
+  }
+  const host = { name: top.name, plugins: top.plugins, pluginRoot: top.metadata?.pluginRoot };
+  const { entries, issues: entryIssues, schemaSound } = readEntries(host, context, readEntry, mode);
+  const sound = schemaSound && !blocksLoading([...topIssues, ...named]);
   const issues = [
     ...topIssues,
     ...named,
-    ...completenessIssues(top),
+    ...(sound ? completenessIssues(top) : []),
     ...entryIssues,
     ...renameIssues(top, mode),
   ];
   if (blocksLoading([...topIssues, ...named])) return { marketplace: undefined, issues };
-  const marketplace: Marketplace = {
-    name: top.name,
-    owner: top.owner,
-    plugins: entries,
-    ...(top.description === undefined ? {} : { description: top.description }),
-    ...(top.version === undefined ? {} : { version: top.version }),
-    ...(top.metadata === undefined ? {} : { metadata: top.metadata }),
-    forceRemoveDeletedPlugins: top.forceRemoveDeletedPlugins,
-    allowCrossMarketplaceDependenciesOn: top.allowCrossMarketplaceDependenciesOn,
-    renames: top.renames,
-  };
+  const marketplace = marketplaceOf(top, entries);
   return { marketplace, issues };
 }
 

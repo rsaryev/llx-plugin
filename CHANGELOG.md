@@ -11,6 +11,13 @@
   hooks drop an entry they cannot read with a warning (an error under `PreToolUse` and
   `PermissionRequest`, where a missing guard fails the file) instead of failing the whole file;
   `settings.json` hooks keep failing whole, as settings.md says.
+- Marketplace: the entries are read and reported beside an unsound top level; the "no description"
+  and "no plugins" warnings and the entry version cross-check are made only when the schema passes
+  (a reserved name does not stop the cross-check); unknown-field hints skip the keys the validator
+  only lets through and never suggest a key more than half the misspelling's length away.
+- Validator wording: the messages of a reserved or non-kebab plugin name, a name Claude Desktop
+  rejects, a missing required field and a version mismatch are the official CLI's, not shortened
+  ones; the docs-quoted part of each is still asserted under `spec()`.
 - Agents: one subagent tool resolution. `resolveCatalogSubagentTools` is gone; `resolveSubagentTools`
   keeps what it did that the other did not (`ExitWorktree` withheld from a subagent in its own working
   directory, the `Glob` and `Grep` a `tools` list names without `Bash`), and the `tools.tool.*` tests
@@ -50,6 +57,21 @@
 
 ### Added
 
+- Validating: `validatePlugin({ files, label?, signal? })` reproduces `claude plugin validate <dir>`
+  of the tracked Claude Code release over a `PluginFiles` folder: it picks the marketplace, the
+  plugin or a bare components folder as the CLI does and returns `{ target, issues }` with each
+  issue's `severity`, `file`, `path` and the CLI's own `message`. It checks the manifest (schema,
+  advice, unknown fields, declared paths, inline hooks and MCP servers, the map form of `commands`),
+  `hooks/hooks.json`, `.mcp.json`, the frontmatter of skills, agents and commands, `CLAUDE.md`, and,
+  for a marketplace, every entry and the manifest of each entry inside it; it never follows a
+  symlink and says so as the CLI does. Exports `ValidationIssue`, `ValidationReport`,
+  `ValidationTarget`, `VALIDATION_TARGETS`.
+- Evidence: the oracle (the official CLI of the same release, run as a black box) is a recognised
+  source in docs/SPEC.md and AGENTS.md (E5a) for message wording and validator-only checks; every
+  behaviour taken from it is a row `oracle 2.1.319` in spec/judgments.md with an input of its own.
+- Corpus: `bun run corpus` compares the oracle with `validatePlugin` (verdict agreement, findings
+  with the same severity and message, findings at the same file and path, what the kit misses or
+  adds) and prints `loadPlugin`'s verdict on a separate line.
 - Host: `expandSkill` registers a skill's frontmatter hooks into the session (they keep running for
   the rest of it, `once` removes one after its first successful run, a skill past 1,024 hooks or
   16,384 matcher characters for its source "registers none of its hooks"); a manifest command's

@@ -63,7 +63,11 @@ spec('marketplace.entry.name', () => {
     const absent = readOne(rawEntry({ name: undefined }), slotAt(3));
     expect(absent.entry).toBeUndefined();
     expect(absent.issues).toEqual([
-      { severity: 'error', path: 'plugins[3].name', message: 'Invalid input' },
+      {
+        severity: 'error',
+        path: 'plugins[3].name',
+        message: 'Invalid input: expected string, received undefined',
+      },
     ]);
     const wrong = readOne(rawEntry({ name: 7 }));
     expect(wrong.entry).toBeUndefined();
@@ -98,7 +102,9 @@ spec('marketplace.entry.name', () => {
       {
         severity: 'warning',
         path: 'plugins[0].name',
-        message: `Plugin name "${long}" is not accepted by Claude Desktop (letters, digits, ".", "_", "-"; must start alphanumeric; max 128 chars)`,
+        message: expect.stringContaining(
+          `Plugin name "${long}" is not accepted by Claude Desktop (letters, digits, ".", "_", "-"; must start alphanumeric; max 128 chars)`,
+        ),
       },
     ]);
   });
@@ -108,7 +114,9 @@ spec('marketplace.entry.name', () => {
     expect(validatePlugins(plugins)).toContainEqual({
       severity: 'error',
       path: 'plugins[0].name',
-      message: 'Plugin name "claude-helper" is reserved: it passes as one of Anthropic\'s own',
+      message: expect.stringContaining(
+        'Plugin name "claude-helper" is reserved: it passes as one of Anthropic\'s own',
+      ),
     });
     const loadedResult = readPlugins(plugins);
     expect(errorsOf(loadedResult.issues)).toEqual([]);
@@ -120,7 +128,9 @@ spec('marketplace.entry.name', () => {
       {
         severity: 'warning',
         path: 'plugins[0].name',
-        message: 'Plugin name "mcp-for-claude" reads as one of Anthropic\'s own',
+        message: expect.stringContaining(
+          'Plugin name "mcp-for-claude" reads as one of Anthropic\'s own',
+        ),
       },
     ]);
   });

@@ -140,7 +140,8 @@ spec('marketplace.entry.version', () => {
         severity: 'warning',
         path: 'plugins[0].version',
         message:
-          'Entry declares version "1.0.0" but ./plugins/my-plugin/.claude-plugin/plugin.json says "2.0.0". At install time, plugin.json wins',
+          'Entry declares version "1.0.0" but plugins/my-plugin/.claude-plugin/plugin.json says "2.0.0". ' +
+          'At install time, plugin.json wins (calculatePluginVersion precedence) — the entry version is silently ignored. Update this entry to "2.0.0" to match.',
       },
     ]);
     expect(result.marketplace?.plugins[0]?.version).toBe('1.0.0');

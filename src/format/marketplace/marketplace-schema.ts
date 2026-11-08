@@ -1,4 +1,5 @@
 import { error, warning, type PluginIssue } from '../issues.ts';
+import { unknownFieldFinding } from '../validate/unknown-fields.ts';
 import type { MarketplaceMetadata, Owner } from './types.ts';
 import type { Renames } from './renames.ts';
 
@@ -40,8 +41,12 @@ export function typeName(value: unknown): string {
   return typeof value;
 }
 
-/** A required field that is absent: the docs quote `owner: Invalid input`. */
-const missing = (path: string): PluginIssue => error(path, 'Invalid input');
+/**
+ * A required field that is absent. The docs quote `owner: Invalid input` as an example; the oracle
+ * (docs/SPEC.md) names the type that was expected after it, and so does the kit.
+ */
+const missing = (path: string, expected: string): PluginIssue =>
+  error(path, `Invalid input: expected ${expected}, received undefined`);
 const mismatch = (path: string, expected: string, value: unknown): PluginIssue =>
   error(path, `Invalid input: expected ${expected}, received ${typeName(value)}`);
 
@@ -90,10 +95,10 @@ const OWNER_STRINGS = ['email', 'url'] as const;
 
 /** `owner`: an object with a `name` (non-empty) and optional `email` and `url`. */
 export function readOwner(value: unknown): Read<Owner> {
-  if (value === undefined) return fail(missing('owner'));
+  if (value === undefined) return fail(missing('owner', 'object'));
   if (!isRecord(value)) return fail(mismatch('owner', 'object', value));
   const name = value.name;
-  if (name === undefined) return fail(missing('owner.name'));
+  if (name === undefined) return fail(missing('owner.name', 'string'));
   if (!isString(name)) return fail(mismatch('owner.name', 'string', name));
   if (name === '') return fail(error('owner.name', 'Author name cannot be empty'));
   const rest = stringFields(value, OWNER_STRINGS, 'owner.');
@@ -107,15 +112,20 @@ function readMetadata(value: unknown): Read<MarketplaceMetadata> {
   if (!isRecord(value)) return fail(mismatch('metadata', 'object', value));
   const unknown = Object.keys(value)
     .filter((key) => !isMetadataKey(key))
-    .map((key) => unknownField(key, `metadata.${key}`));
+    .map((key) => unknownField(key, `metadata.${key}`, METADATA_KEYS));
   const strings = stringFields(value, METADATA_KEYS, 'metadata.');
   if (strings.issues.length > 0) return fail(...strings.issues, ...unknown);
   return { value: strings.values, issues: unknown };
 }
 
-/** The warning the docs quote for a key Claude Code does not read, at `path`. */
-export const unknownField = (key: string, path: string): PluginIssue =>
-  warning(path, `Unknown field '${key}'. Claude Code ignores it at load time.`);
+/**
+ * The warning for a key Claude Code does not read, at `path`: the docs quote its plain form
+ * (`Unknown field '<key>'`); the oracle adds where the key probably comes from (docs/SPEC.md).
+ */
+export const unknownField = (key: string, path: string, known: readonly string[]): PluginIssue => {
+  const found = unknownFieldFinding(key, known, path, 'other');
+  return warning(found.path, found.message);
+};
 
 function readStringList(value: unknown, path: string): Read<readonly string[]> {
   if (value === undefined) return absent();
@@ -142,7 +152,7 @@ function readRenames(value: unknown): Read<Readonly<Record<string, string | null
 
 /** `name`: required; empty is "Marketplace must have a name"; the grammar is the caller's. */
 function readName(value: unknown): Read<string> {
-  if (value === undefined) return fail(missing('name'));
+  if (value === undefined) return fail(missing('name', 'string'));
   if (!isString(value)) return fail(mismatch('name', 'string', value));
   if (value === '') return fail(error('name', 'Marketplace must have a name'));
   return ok(value);
@@ -150,7 +160,7 @@ function readName(value: unknown): Read<string> {
 
 /** `plugins`: required array, handed on as it is. */
 function readPlugins(value: unknown): Read<readonly unknown[]> {
-  if (value === undefined) return fail(missing('plugins'));
+  if (value === undefined) return fail(missing('plugins', 'array'));
   if (!Array.isArray(value)) return fail(mismatch('plugins', 'array', value));
   return ok(value);
 }
@@ -211,7 +221,7 @@ export function readTopLevel(raw: Readonly<Record<string, unknown>>): TopLevelRe
   const read = readAll(raw);
   const unknown = Object.keys(raw)
     .filter((key) => !isMarketplaceKey(key))
-    .map((key) => unknownField(key, key));
+    .map((key) => unknownField(key, key, MARKETPLACE_KEYS));
   const issues = [...Object.values(read).flatMap((one) => one.issues), ...unknown];
   const { name, owner, plugins } = read;
   if (

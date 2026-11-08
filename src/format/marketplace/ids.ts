@@ -67,6 +67,13 @@ export function pluginIdIssues(part: IdPart, name: string, path: string): Plugin
 }
 
 const DESKTOP_MAX_LENGTH = 128;
+/** What the oracle adds about the sync (docs/SPEC.md, "Sources of truth"; spec/judgments.md). */
+const DESKTOP_DROPS: { readonly [P in IdPart]: string } = {
+  marketplace:
+    'The Claude Desktop managed marketplace sync (allowedPluginMarketplaces) will reject the whole marketplace.',
+  plugin:
+    'The Claude Desktop managed marketplace sync (allowedPluginMarketplaces) will drop this entry.',
+};
 /** Claude Desktop's managed marketplace sync rejects these "in any casing" (troubleshooting.md). */
 const DESKTOP_RESERVED = new Set(['org', 'org-provisioned', 'unknown']);
 
@@ -75,13 +82,18 @@ export function desktopNameIssues(part: IdPart, name: string, path: string): Plu
   if (name === '') return [];
   const found: PluginIssue[] = [];
   if (part === 'marketplace' && DESKTOP_RESERVED.has(name.toLowerCase())) {
-    found.push(warning(path, `Marketplace name "${name}" is reserved in Claude Desktop`));
+    found.push(
+      warning(
+        path,
+        `Marketplace name "${name}" is reserved in Claude Desktop. Claude Code accepts it, but the Claude Desktop managed marketplace sync (allowedPluginMarketplaces) will reject the whole marketplace.`,
+      ),
+    );
   }
   if (!isPluginIdPart(name) || name.length > DESKTOP_MAX_LENGTH) {
     found.push(
       warning(
         path,
-        `${LABEL[part]} name "${name}" is not accepted by Claude Desktop (letters, digits, ".", "_", "-"; must start alphanumeric; max ${DESKTOP_MAX_LENGTH} chars)`,
+        `${LABEL[part]} name "${name}" is not accepted by Claude Desktop (letters, digits, ".", "_", "-"; must start alphanumeric; max ${DESKTOP_MAX_LENGTH} chars). ${DESKTOP_DROPS[part]}`,
       ),
     );
   }

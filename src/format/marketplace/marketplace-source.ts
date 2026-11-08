@@ -74,7 +74,7 @@ const unknownKeys = (
 ): PluginIssue[] =>
   Object.keys(raw)
     .filter((key) => key !== 'source' && !Object.hasOwn(shape, key))
-    .map((key) => unknownField(key, key));
+    .map((key) => unknownField(key, key, Object.keys(shape)));
 
 /** One reader per type: the schema of its fields, and what the parsed fields build. */
 function reader<S extends z.ZodObject>(

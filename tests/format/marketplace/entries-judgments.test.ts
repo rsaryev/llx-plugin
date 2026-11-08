@@ -82,7 +82,8 @@ describe('judgment: the version warning', () => {
   test('names the plugin.json of a root-source entry inside .claude-plugin', () => {
     const entry = rawEntry({ source: '.', version: '1.0.0' });
     expect(readPlugins([entry], manifests('2.0.0')).issues[0]?.message).toBe(
-      'Entry declares version "1.0.0" but ./.claude-plugin/plugin.json says "2.0.0". At install time, plugin.json wins',
+      'Entry declares version "1.0.0" but .claude-plugin/plugin.json says "2.0.0". ' +
+        'At install time, plugin.json wins (calculatePluginVersion precedence) — the entry version is silently ignored. Update this entry to "2.0.0" to match.',
     );
   });
 

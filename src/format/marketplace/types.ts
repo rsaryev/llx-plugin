@@ -234,6 +234,8 @@ export interface MarketplaceContext {
   /** The marketplace is hosted on claude.ai, the only one whose name may start with `claudeai-` (marketplace-reference.md, "Reserved names"). */
   readonly hostedOnClaudeAi?: boolean;
   readonly platform?: 'posix' | 'windows';
+  /** The marketplace's own `name`: an official marketplace's entries are not checked against the reserved plugin names (oracle 2.1.319). */
+  readonly marketplaceName?: string;
   /** `plugin.json` of each relative-path entry by entry index, for the `plugins[i] plugin.json →` reports. */
   readonly pluginManifests?: ReadonlyMap<number, unknown>;
 }

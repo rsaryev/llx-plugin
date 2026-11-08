@@ -1,6 +1,7 @@
 /** Claude Code's plugin format: reading and validating what a plugin folder holds. */
 export { SEVERITIES, blocksLoading, type PluginIssue, type Severity } from './issues.ts';
 export { readManifest, validateManifest, type ManifestResult } from './manifest.ts';
+export type { ValidationIssue } from './validate/finding.ts';
 export type {
   CommandEntry,
   PluginChannel,

@@ -19,6 +19,10 @@ The kit implements what Anthropic publishes, and nothing it remembers or guesses
   `spec/judgments.md`. A judgment is tested outside `spec(...)` and never counts as compatibility.
 - **E5** Report compatibility only from `docs/COMPATIBILITY.md` (`bun run compat`): the share
   proven overall and per category. Never state a percentage or "supported" from your own reading.
+- **E5a** Message wording and validator-only checks the docs do not describe come from the oracle,
+  `claude plugin validate` of the same release, run as a black box on inputs (never read or
+  unpacked). Record each such behaviour in `spec/judgments.md` as `oracle <release>` with a minimal
+  input of your own, and test it outside `spec(...)`. Where the docs speak, the docs win.
 - **E6** Another host's behaviour (Localix, a blog, an issue) is a lead to check against the docs,
   never evidence. Port code from Localix only after its behaviour is checked against the docs.
 
