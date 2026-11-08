@@ -51,6 +51,10 @@ export interface CallFacts {
   readonly parts: ShellVerdict;
   /** A tool no rule, hook or mode stops (`EndConversation`). */
   readonly exempt: boolean;
+  /** A Bash command that asks to run outside the sandbox (`dangerouslyDisableSandbox: true`). */
+  readonly unsandboxed: boolean;
+  /** A `SubagentHandback` call, the delivery of a subagent's report. */
+  readonly handback: boolean;
 }
 
 const NONE: CallFacts = {
@@ -71,6 +75,8 @@ const NONE: CallFacts = {
   readBlockPrompt: false,
   parts: UNREAD,
   exempt: false,
+  unsandboxed: false,
+  handback: false,
 };
 
 type Builder = (call: PreparedCall, ctx: DecideContext) => Partial<CallFacts>;
@@ -139,12 +145,20 @@ const promptsUnderReadBlock = (
   return counted.readsOutside || counted.untraceable;
 };
 
+/** "Commands that ask to run outside the sandbox": the unsandboxed retry's `dangerouslyDisableSandbox` parameter. */
+const asksOutsideSandbox = (input: unknown): boolean =>
+  typeof input === 'object' &&
+  input !== null &&
+  'dangerouslyDisableSandbox' in input &&
+  input.dangerouslyDisableSandbox === true;
+
 const bashFacts: Builder = (call, ctx) => {
   const command = commandOf(call.input);
   if (command === undefined) return { shell: true };
   const parts = shellVerdict(command, ctx.match.paths, ctx.protectedPaths, call.resolvedPaths);
   return {
     shell: true,
+    unsandboxed: asksOutsideSandbox(call.input),
     parts,
     readOnly: parts.readOnly,
     readReason: 'read-only-command',
@@ -218,6 +232,8 @@ const INTERACTION_TOOLS: ReadonlySet<string> = new Set(['AskUserQuestion']);
  */
 const EXEMPT_TOOLS: ReadonlySet<string> = new Set(['EndConversation']);
 
+const HANDBACK_TOOL = 'SubagentHandback';
+
 /** What `call` is, in the session `ctx` describes. */
 export function factsOf(call: PreparedCall, ctx: DecideContext): CallFacts {
   const built = { ...NONE, ...BUILDERS.get(call.toolName)?.(call, ctx) };
@@ -229,6 +245,7 @@ export function factsOf(call: PreparedCall, ctx: DecideContext): CallFacts {
     readOnly: built.readOnly || noPermission,
     readReason: noPermission && !built.readOnly ? 'no-permission-required' : built.readReason,
     exempt: EXEMPT_TOOLS.has(call.toolName),
+    handback: call.toolName === HANDBACK_TOOL,
     interaction:
       INTERACTION_TOOLS.has(call.toolName) ||
       ctx.requiresUserInteraction?.has(call.toolName) === true,

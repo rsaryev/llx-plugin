@@ -78,9 +78,9 @@ const GATES: readonly Gate[] = [
   // "Tools matched by an explicit ask rule" are never auto-approved; dontAsk denies them.
   ({ verdict, strategy }) =>
     verdict === 'ask' ? pending(strategy.prompt('ask-rule'), 'unenforced') : undefined,
-  // A hook ask prompts, and auto mode "still shows you those prompts".
-  ({ ctx, strategy }) =>
-    hookAsks(ctx) ? pending(strategy.prompt('hook'), 'unenforced') : undefined,
+  // A hook ask prompts, and auto mode "still shows you those prompts" (with its own paths for a few calls).
+  ({ ctx, facts, strategy }) =>
+    hookAsks(ctx) ? pending(strategy.hookAsk(facts), 'unenforced') : undefined,
   // "Recognized `rm` and `rmdir` critical-path removals, which no allow rule or PreToolUse hook allow approves".
   ({ facts, ctx, strategy }) =>
     facts.criticalRemoval ? pending(strategy.criticalRemoval(ctx), 'never') : undefined,

@@ -17,3 +17,5 @@ export type { WorktreeAnswer, WorktreeLocation, WorktreePath } from './worktree-
 export { resolveDefer } from './defer.ts';
 export type { DeferResolution, DeferTurn } from './defer.ts';
 export { preToolUseHookOutcome } from './pre-tool-use-outcome.ts';
+export { CLASSIFIER_CAP, isUnrecordedCall, restoredNote } from './classifier-note.ts';
+export type { ClassifierNote, ClassifierTrust } from './classifier-note.ts';

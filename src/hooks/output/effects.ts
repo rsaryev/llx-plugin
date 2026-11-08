@@ -1,4 +1,5 @@
 import type { HookSpecificOutputOf } from '../../protocol/hook-events.ts';
+import type { ClassifierTrust } from './classifier-note.ts';
 
 /**
  * What a merged output asks the host to do, beside the decision itself (hooks.md, "Decision
@@ -26,6 +27,8 @@ interface ToolResultEffects {
   readonly updatedToolOutput?: unknown;
   /** The note for the auto mode classifier, at most 2,000 characters over every hook. */
   readonly classifierContext?: string;
+  /** How much weight the classifier may give the note (`classifier-note.ts`). */
+  readonly classifierTrust?: ClassifierTrust;
 }
 
 /** `SessionStart`, `UserPromptSubmit`, `UserPromptExpansion`. */

@@ -9,6 +9,11 @@ const allow = (reason: DecisionReason): Decision => ({ outcome: 'allow', reason 
 const ask = (reason: DecisionReason): Decision => ({ outcome: 'ask', reason });
 const deny = (reason: DecisionReason): Decision => ({ outcome: 'deny', reason });
 const classify = (reason: DecisionReason): Decision => ({ outcome: 'classify', reason });
+const classifyThenPrompt = (reason: DecisionReason): Decision => ({
+  outcome: 'classify',
+  reason,
+  thenPrompt: true,
+});
 
 /**
  * What differs between the permission modes (permissions.md, "Permission modes"; permission-modes.md),
@@ -18,6 +23,8 @@ const classify = (reason: DecisionReason): Decision => ({ outcome: 'classify', r
 export interface ModeStrategy {
   /** What a would-be prompt becomes: a prompt, or in `dontAsk` a denial. */
   prompt(reason: DecisionReason): Decision;
+  /** What a PreToolUse hook's `ask` becomes: a prompt, or in `dontAsk` a denial; auto mode has its own paths. */
+  hookAsk(facts: CallFacts): Decision;
   /** "Protected-path writes", per mode (permission-modes.md, "Protected paths"). */
   protectedWrite(ctx: DecideContext): Decision;
   /** "Critical-path removals in each permission mode". */
@@ -37,6 +44,7 @@ export interface ModeStrategy {
 /** Manual mode: reads in scope only; everything else asks. The other modes change what they must. */
 const PROMPTING: ModeStrategy = {
   prompt: ask,
+  hookAsk: () => ask('hook'),
   protectedWrite: () => ask('protected-path'),
   criticalRemoval: () => ask('critical-path'),
   networkRead: () => ask('network-path'),
@@ -44,6 +52,19 @@ const PROMPTING: ModeStrategy = {
   modMayApprove: () => true,
   hookMayAllow: () => true,
   rules: (rules) => rules,
+};
+
+/**
+ * A hook's `ask` in auto mode "normally sends the tool call to the permission prompt, and the
+ * classifier doesn't decide it". Two paths differ (hooks.md, "PreToolUse `ask` decisions in auto
+ * mode"): a call Claude Code's own checks flag too, a protected-path write or a command that asks to
+ * run outside the sandbox, which the classifier reviews first ("can deny one of these calls before
+ * any prompt appears. If it approves, the call normally still goes to the prompt"); and
+ * `SubagentHandback`, which no prompt guards ("the call runs even if the classifier objects").
+ */
+const autoHookAsk = (facts: CallFacts): Decision => {
+  if (facts.handback) return allow('no-permission-required');
+  return facts.protectedWrite || facts.unsandboxed ? classifyThenPrompt('hook') : ask('hook');
 };
 
 /** "Interactive terminal sessions with bypass permissions available": plan mode's blocks are not enforced. */
@@ -99,6 +120,7 @@ export const MODES: { readonly [M in PermissionMode]: ModeStrategy } = {
   },
   auto: {
     ...PROMPTING,
+    hookAsk: autoHookAsk,
     protectedWrite: classifiedProtectedWrite,
     criticalRemoval: autoRemoval,
     baseline: (facts) => {
@@ -111,6 +133,7 @@ export const MODES: { readonly [M in PermissionMode]: ModeStrategy } = {
   dontAsk: {
     ...PROMPTING,
     prompt: deny,
+    hookAsk: () => deny('hook'),
     protectedWrite: () => deny('protected-path'),
     criticalRemoval: () => deny('critical-path'),
     networkRead: () => deny('network-path'),

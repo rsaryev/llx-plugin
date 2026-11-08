@@ -1417,3 +1417,7 @@ const web = recordingHttp({ status: 200, body: '{}' }); // HttpClient, `requests
 `runAgent`, `fakeMcp({ connected, tools })` an `McpCaller`, `fixedClock(start)` a `Clock` that moves
 only on `advance(ms)`, `locations(options)` fixed POSIX paths (`<plugins>/<id>`), `fakeEnvironment(record)`
 an `Environment`, `memoryScratch()` the `ScratchFiles`. The mods test kit stays `modsTesting`.
+
+## Hook classifier annotations and auto-mode rewrites
+
+Hook output exposes classifierContext with its shared 2,000-character cap and classifierTrust; notes for unrecorded read-only lookups are discarded. reviewHookRewrite decides whether a changed call applies, is denied, or drops a further rewrite on a repeat. afterHandbackDenial counts the three retry notices; the host delivers them.

@@ -57,6 +57,13 @@ export {
 } from './decide/approval-memory.ts';
 export { decide } from './decide/decide.ts';
 export {
+  CHANGED_INPUT_DENIAL,
+  reviewHookRewrite,
+  type HookRewriteCall,
+  type HookRewriteSession,
+  type HookRewriteVerdict,
+} from './decide/hook-rewrite.ts';
+export {
   catalogEntry,
   isKnownTool,
   KNOWN_TOOLS,

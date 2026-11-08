@@ -118,3 +118,5 @@ The foundation's names win; a design that says otherwise means this:
 | `scripts/`      | the other gates (`check-*.ts`)                                              |
 | `config/lint/`  | the quality lint (`quality.json`) and the kit's own rules (`kit-rules.js`)  |
 | `.cache/`       | pulled docs, the corpus, test reports: local only                           |
+
+Hook output exposes classifierContext with its shared 2,000-character cap and classifierTrust; notes for unrecorded read-only lookups are discarded. reviewHookRewrite decides whether a changed call applies, is denied, or drops a further rewrite on a repeat. afterHandbackDenial counts the three retry notices; the host delivers them.

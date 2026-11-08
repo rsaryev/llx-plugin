@@ -1100,3 +1100,7 @@
   PowerShell, the path and option variables the process receives) and `substituteContent` (path
   variables and non-sensitive options in a skill, command or agent body, a placeholder for a
   sensitive one), with the `HOOK_GUARD` message.
+
+### Fixed (exec completion)
+
+- Hook output exposes classifierContext with its shared 2,000-character cap and classifierTrust; notes for unrecorded read-only lookups are discarded. reviewHookRewrite decides whether a changed call applies, is denied, or drops a further rewrite on a repeat. afterHandbackDenial counts the three retry notices; the host delivers them.
