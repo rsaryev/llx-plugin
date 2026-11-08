@@ -95,7 +95,8 @@ describe('session.addHooks', () => {
 
   test('hooks for an event name the official union does not know register nothing', async () => {
     const { session, runner } = await opened();
-    session.addHooks('agent:a', JSON.parse('{"NotAnEvent":[{"hooks":[]}]}'), AGENT);
+    // `HooksSettings` is keyed by any string, so a typed literal reaches the registration unparsed.
+    session.addHooks('agent:a', { NotAnEvent: [{ hooks: [] }] }, AGENT);
     await session.dispatch('PreToolUse', bash, { signal: signal() });
     expect(runner.calls).toHaveLength(0);
   });
@@ -131,6 +132,17 @@ describe('the turn lifetime', () => {
     expect(session.hasHooks('PreToolUse')).toBe(false);
   });
 
+  test('a view kept past the callback refuses `turn` registrations, which nothing would end', async () => {
+    const { session } = await opened();
+    const kept = await session.runScoped({}, async (turn) => turn);
+    expect(() =>
+      kept.addHooks('agent:late', guard('./late.sh'), AGENT, { lifetime: 'turn' }),
+    ).toThrow('has ended');
+    expect(session.hasHooks('PreToolUse')).toBe(false);
+    kept.addHooks('agent:late', guard('./late.sh'), AGENT);
+    expect(session.hasHooks('PreToolUse')).toBe(true);
+  });
+
   test('session-lifetime hooks added in a scoped turn stay after it', async () => {
     const { session } = await opened();
     await session.runScoped({}, async (turn) => {
@@ -159,7 +171,8 @@ describe('the turn lifetime', () => {
       });
       await turn.dispatch('PreToolUse', bash, { signal: signal() });
     });
-    expect(JSON.parse(runner.calls[0]?.stdin ?? '{}')).toMatchObject({ permission_mode: 'plan' });
+    const input: unknown = JSON.parse(runner.calls[0]?.stdin ?? '{}');
+    expect(input).toMatchObject({ permission_mode: 'plan' });
     expect(session.hasHooks('PreToolUse')).toBe(false);
   });
 

@@ -769,6 +769,7 @@ The session:
 | `hasHooks(event)` | Whether a handler that passes this turn's gates would run for the event. |
 | `fileChangedWatchList()` | The literal names of the `FileChanged` matchers, then the dynamic `watchPaths` of the last SessionStart, CwdChanged or FileChanged output that returned the field. |
 | `takeBackground()` | The background deliveries that settled since the last call, as `{ additionalContext[], systemMessages[], wake? }` (see "Background hooks"). |
+| `onBackground(listener)` | Calls `listener` with each background delivery as it settles (a `wake` included) and returns the function that stops it; it takes nothing from the queue. |
 
 `SessionOptions.promptId`, `scratchpadDir`, `agent` and `folderTrustAccepted` are the common fields
 `prompt_id`, `scratchpad_dir`, `agent_id` and `agent_type` of every hook input, and the workspace trust
@@ -863,6 +864,14 @@ opens a turn with it, which is why it is apart from the context; several wakes j
 `takeBackground()` returns what settled since its last call, in the order it settled, and forgets
 it; it never waits, and a hook that has not ended appears in a later call. A background process the
 runner lost delivers nothing.
+
+`session.onBackground(listener)` is the push side, for a host that is idle: it calls `listener` with
+the `SettledDeliveries` of each hook that delivered something, as it settles (an `asyncRewake` exit 2
+arrives with its `wake`), and returns the function that stops it. It takes nothing: `takeBackground()`
+still returns the delivery, and a listener that throws hides nothing. Two things stay the host's: the
+queue holds every delivery until `takeBackground()` drains it, and it hands over repeats, so the
+check Claude Code makes for an async `SessionStart` hook (skip text equal to what Claude last
+received, deliver again after a compaction or `/clear`) is made by the host.
 
 `Resolved<T>` is `{ resolved: readonly T[]; issues: readonly PluginIssue[] }`. The saved options
 of a plugin are the `pluginConfigs` of the settings with the host's `userConfig` over them.

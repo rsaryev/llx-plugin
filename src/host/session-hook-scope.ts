@@ -12,6 +12,7 @@ import {
 } from '../hooks/index.ts';
 import type { HooksSettings } from '../protocol/hook-config.ts';
 import type { HookEvent } from '../protocol/official.ts';
+import type { BackgroundListener } from './background-queue.ts';
 import type { SessionCore } from './session-core.ts';
 
 /** Removes one registration; it does nothing once the prefix was registered again or removed. */
@@ -37,12 +38,24 @@ export interface AddHooksOptions {
 /** The turn-lifetime registrations of one `runScoped`, dropped together when it ends. */
 export interface TurnScope {
   readonly handles: HookHandle[];
+  /** True once `end` ran: a view kept past the callback registers nothing more with it. */
+  readonly ended: boolean;
   end(): void;
 }
 
 export function createTurnScope(): TurnScope {
   const handles: HookHandle[] = [];
-  return { handles, end: () => handles.splice(0).forEach((handle) => handle.remove()) };
+  let ended = false;
+  return {
+    handles,
+    get ended() {
+      return ended;
+    },
+    end() {
+      ended = true;
+      handles.splice(0).forEach((handle) => handle.remove());
+    },
+  };
 }
 
 /** The registry is the session's: ids of what each prefix registered, so removal never matches by text. */
@@ -97,6 +110,9 @@ const ATTACH: {
     if (scope === undefined) {
       throw new Error('addHooks with lifetime "turn" needs the view of session.runScoped');
     }
+    if (scope.ended) {
+      throw new Error('addHooks with lifetime "turn" on a view whose session.runScoped has ended');
+    }
     return (handle) => {
       scope.handles.push(handle);
     };
@@ -123,6 +139,12 @@ export interface HookScope {
   fileChangedWatchList(): readonly string[];
   /** The background deliveries that settled since the last call (docs/API.md, "Background hooks"). */
   takeBackground(): SettledDeliveries;
+  /**
+   * Calls `listener` with what each background hook delivers as it settles (its `wake`, when it woke
+   * Claude), so an idle host learns of a wake without polling. It does not take the delivery:
+   * `takeBackground` still returns it. Returns the function that stops the listening.
+   */
+  onBackground(listener: BackgroundListener): () => void;
 }
 
 /** The scoped-hook part of one turn's view over the session's core. */
@@ -152,5 +174,6 @@ export function createHookScope(
       ]),
     ],
     takeBackground: () => core.background.take(),
+    onBackground: (listener) => core.background.listen(listener),
   };
 }

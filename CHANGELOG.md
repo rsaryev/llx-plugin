@@ -16,6 +16,11 @@
 
 ### Fixed
 
+- Host: review fixes of scoped hooks. `session.onBackground(listener)` tells an idle host of each
+  background delivery, an `asyncRewake` exit 2 wake included, without polling. A view kept past
+  `runScoped` now refuses `lifetime: 'turn'` registrations instead of leaking them for the session.
+  The judgments say the host drains the background queue and owns the async `SessionStart` repeat
+  check; tests cover the stdout wake fallback and a typed hooks literal replaces `JSON.parse`.
 - Host: review fixes of `withTurn`. The session core no longer carries an unused watch-list slot
   (it returns with `fileChangedWatchList` support, with a test). Tests now prove that a turn cannot
   change `trusted` (settings hooks stay held back or released as the session says), that a turn's
