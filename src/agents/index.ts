@@ -64,15 +64,35 @@ export {
 } from './launch-model.ts';
 export {
   planAgentMemory,
-  planPreloadedSkills,
-  resolveAgentMcpServers,
   truncateMemoryIndex,
-  type AgentMcpResolution,
-  type McpPolicy,
-  type McpSkipReason,
   type MemoryContext,
   type MemoryPlan,
+} from './memory.ts';
+export {
+  agentFolderTrust,
+  inlineServerLifecycle,
+  resolveAgentMcpServers,
+  trustKeyOf,
+  type AgentFolderTrust,
+  type AgentFolderTrustInput,
+  type AgentMcpResolution,
+  type InlineServerLifecycle,
+  type McpPolicy,
+  type McpSkipReason,
+  type ProjectTrustEntry,
+} from './mcp-scope.ts';
+export {
+  checkAgainstAllowlist,
+  modelValueAccepted,
+  modelValueKind,
+  type CheckedModel,
+  type ModelAllowlist,
+  type ModelCheckInput,
+  type ModelValueKind,
+} from './model-choice.ts';
+export {
+  planPreloadedSkills,
   type PreloadPlan,
   type SkillCatalog,
   type SkillSkipReason,
-} from './context.ts';
+} from './preload-skills.ts';

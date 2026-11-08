@@ -1117,3 +1117,7 @@
   PowerShell, the path and option variables the process receives) and `substituteContent` (path
   variables and non-sensitive options in a skill, command or agent body, a placeholder for a
   sensitive one), with the `HOOK_GUARD` message.
+
+### Fixed (content completion)
+
+- Split subagent context by responsibility: persistent memory, preloaded skills and scoped MCP servers; add folder trust diagnostics and model allowlist substitution. The host still owns provider resolution, connections and prompt assembly.

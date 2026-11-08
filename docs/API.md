@@ -1424,3 +1424,7 @@ follow wherever they lead; the record is read again at each `open`). `memoryFile
 `runAgent`, `fakeMcp({ connected, tools })` an `McpCaller`, `fixedClock(start)` a `Clock` that moves
 only on `advance(ms)`, `locations(options)` fixed POSIX paths (`<plugins>/<id>`), `fakeEnvironment(record)`
 an `Environment`, `memoryScratch()` the `ScratchFiles`. The mods test kit stays `modsTesting`.
+
+## Agent runtime policy
+
+Split subagent context by responsibility: persistent memory, preloaded skills and scoped MCP servers; add folder trust diagnostics and model allowlist substitution. The host still owns provider resolution, connections and prompt assembly.

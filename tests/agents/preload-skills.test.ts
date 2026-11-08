@@ -7,7 +7,7 @@
  * `Skill` here". The example is the docs' api-developer agent.
  */
 import { describe, expect, test } from 'bun:test';
-import { planPreloadedSkills } from '../../src/agents/context.ts';
+import { planPreloadedSkills } from '../../src/agents/preload-skills.ts';
 import { readAgent } from '../../src/format/agent.ts';
 import { file, loaded, plugin } from '../support/agent-files.ts';
 import { catalog } from '../support/agent-context.ts';

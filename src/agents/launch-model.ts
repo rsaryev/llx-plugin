@@ -22,6 +22,13 @@ export type ModelSource = 'invocation' | 'definition' | 'env' | 'builtin' | 'mai
 export interface SubagentModelInput {
   /** The `model` parameter of this Agent tool call: an alias ("Claude can't pass a full model ID or `inherit`"). */
   readonly invocation?: string | undefined;
+  /**
+   * The model an installed mod set in its `agent.spawn` hook: "Claude Code uses that model in place of
+   * the per-invocation parameter". Any model the mod names counts (it is no Claude call, so the alias
+   * limit of the parameter does not bind it); judgment: ignored while the model is forced, because the
+   * docs say only Claude's own call is withdrawn there.
+   */
+  readonly modModel?: string | undefined;
   /** The definition's `model`: an alias, a full model ID or `inherit`. */
   readonly definition?: string | undefined;
   /** `CLAUDE_CODE_SUBAGENT_MODEL`. */
@@ -75,6 +82,8 @@ type Pick = (input: SubagentModelInput) => string | undefined;
 const PICKS: { readonly [S in ModelSource]: Pick } = {
   // Judgment: a value that is no alias is not something Claude can pass, so it counts as unset.
   invocation: (input) => {
+    const mod = written(input.modModel);
+    if (mod !== undefined) return aliasOrMain(mod, input);
     const value = written(input.invocation);
     return isAlias(value) ? aliasOrMain(value, input) : undefined;
   },

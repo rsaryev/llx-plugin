@@ -118,3 +118,5 @@ The foundation's names win; a design that says otherwise means this:
 | `scripts/`      | the other gates (`check-*.ts`)                                              |
 | `config/lint/`  | the quality lint (`quality.json`) and the kit's own rules (`kit-rules.js`)  |
 | `.cache/`       | pulled docs, the corpus, test reports: local only                           |
+
+Split subagent context by responsibility: persistent memory, preloaded skills and scoped MCP servers; add folder trust diagnostics and model allowlist substitution. The host still owns provider resolution, connections and prompt assembly.
