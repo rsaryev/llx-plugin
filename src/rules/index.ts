@@ -77,3 +77,50 @@ export {
 export { effectiveExitPlanModeInput } from './tools/inputs/exit-plan-mode.ts';
 export { effectiveSearchMode, type WebSearchMode } from './tools/inputs/web-search.ts';
 export { expandToolInputPath, expandToolPath } from './tools/inputs/tool-path.ts';
+export { applyEdit, type EditRequest, type EditResult } from './tools/semantics/edit.ts';
+export {
+  editEncodingIssue,
+  NOT_UTF8_MESSAGE,
+  writeEncodingIssue,
+  type InPlaceEditTool,
+} from './tools/semantics/encoding.ts';
+export {
+  backgroundTimeLimit,
+  effectiveBashTimeout,
+  type BackgroundRequest,
+  type BackgroundSession,
+} from './tools/semantics/bash-limits.ts';
+export {
+  bashOutputLimits,
+  windowBashOutput,
+  type BashOutputLimits,
+  type BashOutputRequest,
+  type BashOutputWindow,
+} from './tools/semantics/bash-output.ts';
+export { classifyBashExit } from './tools/semantics/bash-exit.ts';
+export {
+  readWindow,
+  type NumberedLine,
+  type ReadRequest,
+  type ReadSlice,
+} from './tools/semantics/read-window.ts';
+export {
+  checkWebFetchUrl,
+  FETCH_WINDOW_CHARACTERS,
+  LOCAL_HOST_MESSAGE,
+  sliceFetched,
+  type CheckedUrl,
+  type FetchedPart,
+} from './tools/semantics/web-fetch.ts';
+export { validateWebSearchDomains } from './tools/semantics/web-search.ts';
+export {
+  effectiveGrepOutputMode,
+  GREP_OUTPUT_MODES,
+  type GrepOutputMode,
+} from './tools/semantics/grep-defaults.ts';
+export {
+  capGlobMatches,
+  GLOB_RESULT_CAP,
+  type CappedGlob,
+  type GlobMatch,
+} from './tools/semantics/glob-cap.ts';

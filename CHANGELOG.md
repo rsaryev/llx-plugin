@@ -75,6 +75,18 @@
   `effectiveSearchMode` (an absent `mode` is the full search); `expandToolPath` and
   `expandToolInputPath` give `Write`, `Edit` and `Read` the absolute `file_path` a hook receives
   (backslashes on Windows).
+- Tool semantics (`rules/tools/semantics`): pure functions for the behaviour tools-reference.md
+  states exactly. `applyEdit` (exact replacement, one occurrence unless `replace_all`, `$&` kept
+  literal, refusals as issues), `editEncodingIssue` and `writeEncodingIssue` (the non-UTF-8 and
+  `U+FFFD` guards, the documented message verbatim), `effectiveBashTimeout` (120000 default, 600000
+  ceiling, the larger of the two variables), `backgroundTimeLimit`, `bashOutputLimits` and
+  `windowBashOutput` (30,000 inline, 10,000 for a failure, `bashOutputMaxChars`), `classifyBashExit`
+  (exit 1 is valid only for `grep`, `rg`, `egrep`, `fgrep`, `find`, `diff`, `test`, `[`, `git diff`,
+  `git grep`), `readWindow` (offset, limit, the empty-file and past-the-end notices),
+  `checkWebFetchUrl` (localhost and dotless hosts refused with the documented message, `http`
+  upgraded) and `sliceFetched` (100,000-character window, unread count, next offset),
+  `validateWebSearchDomains` (the two lists cannot be combined), `effectiveGrepOutputMode` and
+  `capGlobMatches` (100 files and a truncation flag).
 
 ### Fixed
 
