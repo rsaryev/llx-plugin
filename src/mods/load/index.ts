@@ -6,7 +6,8 @@ export {
   type ModsHost,
   type ModsHostOptions,
 } from './host.ts';
-export { type LoadedMod, type ModPlugin } from './loader.ts';
+export type { ModNotice } from './mod-set.ts';
+export { type LoadedMod, type ModPlugin, type ReloadOutcome } from './loader.ts';
 export {
   decideModLoad,
   countsAsOrganizations,
@@ -58,3 +59,31 @@ export {
   type ScanOutput,
 } from './compile-output.ts';
 export { engineStackIssue, type StackPhase } from './engine-faults.ts';
+export {
+  MODS_APPS,
+  MODS_MINIMUM_VERSION,
+  modsVersionProblem,
+  versionAtLeast,
+  whereModsRun,
+  type ModsApp,
+  type ModsWhere,
+  type WhereModsRun,
+} from './where-mods-run.ts';
+export {
+  modLineChannel,
+  type ModLineChannel,
+  type ModLineKind,
+  type ModLineSession,
+} from './line-channel.ts';
+export { changeNotice } from './change-notice.ts';
+export {
+  createHotReloadGate,
+  UNANSWERED_LIMIT,
+  writtenModRefusal,
+  type HotReloadAnswer,
+  type HotReloadGate,
+  type HotReloadState,
+  type WrittenModGate,
+  type WrittenModRefusal,
+  type WrittenModSession,
+} from './written-mods.ts';

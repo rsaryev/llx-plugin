@@ -12,7 +12,7 @@ import { createEventRules } from '../events/index.ts';
 import type { DenyRuleChecker, MatcherEngine, ModCompiler, ModRuntime } from '../ports.ts';
 import type { HookReport, ModChain, RegisteredHook, RegisterTier } from '../types.ts';
 import { createModsUi, withUiRules, type ModInterface, type ModsUi } from '../ui/index.ts';
-import { guardHooks, type ApprovalLedger } from './guard.ts';
+import { forgetMod, guardHooks, once, type ApprovalLedger } from './guard.ts';
 import type { LoaderEnv, LoadedMod } from './loader.ts';
 import { pluginOptions, type ModsPolicyInput } from './policy-input.ts';
 import { tagRefusals, withRegisterRules, type RefusalBook } from './register-call.ts';
@@ -134,11 +134,12 @@ export function wire(given: Wires): Wired {
       isBuiltin: true,
       hooks: [],
       uses: { events: [], calls: [], envReads: [], envWrites: [], stateReads: [], stateWrites: [] },
-      unload: () => {
+      unload: once(() => {
         chain.unregister(name);
         handle.dispose();
+        forgetMod(env, name);
         return Promise.resolve();
-      },
+      }),
     };
   }
   return {

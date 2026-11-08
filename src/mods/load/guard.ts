@@ -1,6 +1,7 @@
 import type { DenyRuleChecker } from '../ports.ts';
 import type { ModNext, ModsApi, RegisteredHook } from '../types.ts';
 import { guardOption, type ModsPolicyInput } from './policy-input.ts';
+import type { RefusalBook } from './register-call.ts';
 
 /**
  * The built-in guard `sec-default@builtin` (plugins/mods/admin.md, "Know what happens by default",
@@ -121,4 +122,21 @@ export function withApproval(
       return Promise.resolve(out).then(note);
     },
   };
+}
+
+/** `run` the first time it is called; a later call waits for nothing and does nothing (an unload that is asked twice). */
+export function once(run: () => Promise<void>): () => Promise<void> {
+  let started: Promise<void> | undefined;
+  return () => (started ??= run());
+}
+
+/** Takes a mod that unloaded out of the approval ledger and the refusal book, so neither names it again. */
+export function forgetMod(
+  env: { readonly ledger: ApprovalLedger; readonly book: RefusalBook },
+  name: string,
+): void {
+  env.ledger.approvers = env.ledger.approvers.filter((approver) => approver !== name);
+  for (const [reason, refuser] of env.book.refusers) {
+    if (refuser === name) env.book.refusers.delete(reason);
+  }
 }

@@ -1,4 +1,3 @@
-import type { PluginFiles } from '../../ports/index.ts';
 import { type AnyModEventName, type StreamEventName } from '../../protocol/mods-events.ts';
 import type { ModHostPorts } from '../api/index.ts';
 import type { DenyRuleChecker, MatcherEngine, ModCompiler, ModRuntime } from '../ports.ts';
@@ -13,15 +12,9 @@ import type {
 } from '../types.ts';
 import type { ModInterface, ModsUi } from '../ui/index.ts';
 import type { LoadedMod, ModPlugin, ReloadOutcome } from './loader.ts';
-import {
-  announceSessionStart,
-  loadOne,
-  dispatchOptionsFor,
-  reloadOne,
-  type FireSettings,
-} from './host-support.ts';
-import { orderMods } from './order.ts';
-import { pluginDirsOf, sideloadRefusal, watchesPluginDirs } from './plugin-dirs.ts';
+import { announceSessionStart, dispatchOptionsFor, type FireSettings } from './host-support.ts';
+import { createModSet, type ModLoadReport } from './mod-set.ts';
+import { pluginDirsOf, watchesPluginDirs } from './plugin-dirs.ts';
 import type { ModsPolicyInput } from './policy-input.ts';
 import { wire } from './wiring.ts';
 
@@ -62,24 +55,36 @@ export interface ModsHostOptions {
    * kit turns it off, as "`session.start` doesn't run by itself" there (test.md).
    */
   readonly firesSessionStart?: boolean;
-  /** Whether the session is interactive, for the input of `session.start` (default true). */
+  /** Whether the session is interactive, for the input of `session.start` and for where a line about a mod is read (default true). */
   readonly isInteractive?: boolean;
+  /** Hot reloading is on for the mods Claude wrote in this session: lines about a mod reach the transcript. */
+  readonly hotReload?: boolean;
+  /** `claude -p --output-format`, for where a line about a mod is read (default text). */
+  readonly outputFormat?: 'text' | 'json' | 'stream-json';
 }
 
-export interface ModLoadReport {
-  readonly loaded: readonly LoadedMod[];
-  /** Why a hooks module is not loaded, one line each: `hooks module <id> not loaded: <reason>`, `<mod>: refused by <mod>: <reason>`. */
-  readonly lines: readonly string[];
-  /** The message startup exits with when managed settings reject `--plugin-dir` (`disableSideloadFlags`). */
-  readonly startupRefusal?: string;
-}
+export type { ModLoadReport } from './mod-set.ts';
 
 /** What a caller of `fire` may give: its own signal, the core behaviour at the end of the chain, and the narrowing options the chain has. */
 export type FireOptions = FireSettings;
 
 export interface ModsHost {
-  /** Loads hooks modules in the order policy gives; every failure is a line, never a throw. */
+  /**
+   * Loads hooks modules in the order policy gives; every failure is a line, never a throw. A mod is
+   * keyed by its name: a plugin loaded again replaces its earlier copy, it is never added twice.
+   */
   load(plugins: readonly ModPlugin[]): Promise<ModLoadReport>;
+  /**
+   * Loads one plugin among the mods already loaded ("One mod": turning a mod on again). Its tier
+   * comes from policy; it runs last in its tier, and a line says when the policy would have put it
+   * earlier. A copy of the plugin that is loaded is replaced. The built-in guard loads first when policy needs it.
+   */
+  loadMod(plugin: ModPlugin): Promise<ModLoadReport>;
+  /**
+   * Turns one mod off: its hooks stop, what it added goes, and `reload` does not bring it back.
+   * Answers whether a mod was unloaded, so asking twice is harmless. The built-in guard stays.
+   */
+  unloadMod(name: string): Promise<boolean>;
   /** `/reload-plugins`: unloads every mod and loads the same plugins again. */
   reload(): Promise<ModLoadReport>;
   /**
@@ -121,15 +126,6 @@ export interface ModsHost {
 }
 
 const noop = (): void => undefined;
-/** troubleshoot.md ties the suffix to `hooks module did not load`, not to a refusal by another mod. */
-const UNLOADED = '; the version loaded before is unloaded';
-const DID_NOT_LOAD = 'hooks module did not load';
-
-/** What ordering says before any module loads: its notes, and a line for each module policy keeps out. */
-const skippedLines = (order: ReturnType<typeof orderMods>): string[] => [
-  ...order.notes,
-  ...order.skipped.map((skip) => `hooks module ${skip.candidate.id} not loaded: ${skip.reason}`),
-];
 
 /** The mods runtime for one session. */
 export function createModsHost(options: ModsHostOptions): ModsHost {
@@ -139,63 +135,31 @@ export function createModsHost(options: ModsHostOptions): ModsHost {
   const wired = wire({ ...options, debug, report: options.report ?? noop, signal });
   const { chain, env } = wired;
   const { policy } = options;
-  let loaded: LoadedMod[] = [];
   /** What the host registered itself: a reload does not touch it. */
   const builtIns: LoadedMod[] = [];
-  let plugins: readonly ModPlugin[] = [];
-
-  async function loadAll(
-    given: readonly ModPlugin[],
-    before: ReadonlySet<string>,
-  ): Promise<ModLoadReport> {
-    plugins = given;
-    const refusal = sideloadRefusal(policy);
-    if (refusal !== undefined) return { loaded: [], lines: [], startupRefusal: refusal };
-    const order = orderMods(
-      policy,
-      given.map((plugin) => plugin.candidate),
-    );
-    const filesOf = new Map<string, PluginFiles>(
-      given.map((plugin) => [plugin.candidate.id, plugin.files]),
-    );
-    const lines = skippedLines(order);
-    for (const mod of order.ordered) {
-      const outcome = await loadOne(wired, mod, filesOf.get(mod.candidate.id));
-      if (outcome.mod) loaded.push(outcome.mod);
-      if (outcome.line !== undefined) {
-        const unloaded = before.has(mod.candidate.name) && outcome.line.includes(DID_NOT_LOAD);
-        lines.push(unloaded ? `${outcome.line}${UNLOADED}` : outcome.line);
-      }
-    }
-    for (const line of lines) debug(line);
-    if (options.firesSessionStart !== false) await announceStart(loaded);
-    return { loaded: [...loaded], lines };
-  }
-
-  const announceStart = (mods: readonly LoadedMod[]): Promise<void> =>
-    announceSessionStart({ options, chain, dispatchOptions }, mods);
-
-  async function unloadAll(): Promise<ReadonlySet<string>> {
-    const names = new Set(loaded.map((mod) => mod.name));
-    for (const mod of loaded.toReversed()) await mod.unload();
-    loaded = [];
-    return names;
-  }
-
   const dispatchOptions = dispatchOptionsFor({ env, debug, signal });
+  const mods = createModSet({
+    wired,
+    policy,
+    debug,
+    announce: (started) =>
+      options.firesSessionStart === false
+        ? Promise.resolve()
+        : announceSessionStart({ options, chain, dispatchOptions }, started),
+    session: {
+      isInteractive: options.isInteractive ?? true,
+      pluginDir: pluginDirsOf(policy).length > 0,
+      ...(options.hotReload === undefined ? {} : { hotReload: options.hotReload }),
+      ...(options.outputFormat === undefined ? {} : { outputFormat: options.outputFormat }),
+    },
+  });
 
   return {
-    load: (given) => loadAll(given, new Set()),
-    reload: async () => loadAll(plugins, await unloadAll()),
-    reloadMod: async (name) => {
-      const done = await reloadOne(env, plugins, loaded, name);
-      if (!done) return undefined;
-      loaded = done.loaded;
-      debug(done.outcome.line);
-      if (done.replaced && options.firesSessionStart !== false)
-        await announceStart([done.replaced]);
-      return done.outcome;
-    },
+    load: (given) => mods.load(given),
+    loadMod: (plugin) => mods.loadMod(plugin),
+    unloadMod: (name) => mods.unloadMod(name),
+    reload: () => mods.reload(),
+    reloadMod: (name) => mods.reloadMod(name),
     fire: (name, input, opts = {}) => chain.dispatch(name, input, dispatchOptions(opts)),
     fireStream: (name, input, opts = {}) =>
       chain.dispatchStream(name, input, dispatchOptions(opts)),
@@ -208,9 +172,9 @@ export function createModsHost(options: ModsHostOptions): ModsHost {
     watchesPluginDirs: (isInteractive) => watchesPluginDirs(policy, isInteractive),
     ui: wired.ui,
     chain,
-    active: () => [...builtIns, ...loaded],
+    active: () => [...builtIns, ...mods.loaded()],
     async dispose() {
-      await unloadAll();
+      await mods.unloadAll();
       for (const mod of builtIns.toReversed()) await mod.unload();
       builtIns.length = 0;
       background.abort(new Error('the mods host was disposed'));

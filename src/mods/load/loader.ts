@@ -6,8 +6,8 @@ import type { JsonObject } from '../../foundation/index.ts';
 import type { PluginFiles } from '../../ports/index.ts';
 import type { ModsApiHandle, ModPluginRef } from '../api/index.ts';
 import type { ModCompiler, ModRuntime } from '../ports.ts';
-import { noRunOutput, scanSourceOf, type CompileResult, type RunOutput } from './compile-output.ts';
-import { thrownByCompiler, thrownByEngine } from './engine-faults.ts';
+import { noRunOutput, scanSourceOf, type RunOutput } from './compile-output.ts';
+import { compileModule, evaluate, readJson } from './loader-io.ts';
 import type { HookReport, ModChain, RegisterTier } from '../types.ts';
 import { registeredFrom } from './guest.ts';
 import { modOptions } from './options.ts';
@@ -15,7 +15,7 @@ import type { OrderedMod } from './order.ts';
 import { askToLoad, tagRefusals, type RefusalBook } from './register-call.ts';
 import { combineScans, scanHooksModule, type ModScan } from './scan/index.ts';
 import { declaredState, missingTypes } from './types-decl.ts';
-import { withApproval, type ApprovalLedger } from './guard.ts';
+import { forgetMod, once, withApproval, type ApprovalLedger } from './guard.ts';
 import type { ModUses, ScannedHook } from './scan/uses.ts';
 
 /**
@@ -61,9 +61,13 @@ export interface LoaderEnv {
 }
 
 /** What loading a plugin came to: the mod, or the line that says why not; neither for a plugin with no hooks module. */
+export type LoadLineKind = 'did-not-load' | 'refused-by-mod';
+
 export interface LoadOutcome {
   readonly mod?: LoadedMod;
   readonly line?: string;
+  /** Which of the two lines of troubleshoot.md `line` is: the module did not load, or another mod refused it. */
+  readonly kind?: LoadLineKind;
 }
 
 interface Prepared {
@@ -83,18 +87,8 @@ const firstError = (issues: readonly PluginIssue[]): PluginIssue[] =>
 
 const didNotLoad = (name: string, reason: string): LoadOutcome => ({
   line: `${name}: hooks module did not load: ${reason}`,
+  kind: 'did-not-load',
 });
-
-async function readJson(files: PluginFiles, path: string, signal: AbortSignal): Promise<unknown> {
-  const text = await files.readText(path, signal);
-  if (text === undefined) return undefined;
-  try {
-    const parsed: unknown = JSON.parse(text);
-    return parsed;
-  } catch {
-    return undefined;
-  }
-}
 
 /**
  * The static scan of the compiled module, with the types file it needs. The rules are the ones
@@ -117,31 +111,6 @@ async function scanned(
   if (errors.length > 0) return { problem: messages(errors) };
   const needed = types === undefined ? missingTypes(scan, module.entry, typesPath) : undefined;
   return needed === undefined ? { scan } : { problem: needed };
-}
-
-/** The compiler's outputs; a compiler that throws is an issue, not a throw out of the loader. */
-async function compileModule(
-  env: LoaderEnv,
-  files: PluginFiles,
-  entry: string,
-): Promise<CompileResult> {
-  try {
-    return await env.compiler.compile({ files, entry }, env.signal);
-  } catch (thrown) {
-    return { issues: [thrownByCompiler(entry, thrown)] };
-  }
-}
-
-/** The runtime's answer; a runtime that throws (it ran out of stack, or the module's top-level code threw) is an issue, not a throw. */
-async function evaluate(
-  env: LoaderEnv,
-  input: Parameters<ModRuntime['load']>[0],
-): ReturnType<ModRuntime['load']> {
-  try {
-    return await env.runtime.load(input, env.signal);
-  } catch (thrown) {
-    return { issues: [thrownByEngine(input.entry, thrown)] };
-  }
 }
 
 /** The manifest, the module the plugin names, its compiled code, its scan and its options; or why not. */
@@ -193,7 +162,7 @@ async function start(env: LoaderEnv, mod: OrderedMod, prepared: Prepared): Promi
   const uses = combineScans([prepared.scan]);
   const refusal = await askToLoad(env, { plugin: name, tier: mod.tier, uses });
   if (refusal) {
-    return { line: `${name}: refused by ${refusal.by}: ${refusal.reason}` };
+    return { line: `${name}: refused by ${refusal.by}: ${refusal.reason}`, kind: 'refused-by-mod' };
   }
   const handle = await env.createApi({ name, tier: mod.tier });
   const loaded = await evaluate(env, {
@@ -222,11 +191,12 @@ async function start(env: LoaderEnv, mod: OrderedMod, prepared: Prepared): Promi
   // troubleshoot.md: `hooks module first-mod@inline loaded (worker, environment 2, tier user); events: ...`.
   // The worker and its environment belong to the host's runtime, so the line gives the tier and the events (judgment).
   env.debug(`hooks module ${id} loaded (tier ${mod.tier}); events: ${uses.events.join(',')}`);
-  const unload = async (): Promise<void> => {
+  const unload = once(async (): Promise<void> => {
     env.chain.unregister(name);
     handle.dispose();
+    forgetMod(env, name);
     await guest.dispose();
-  };
+  });
   await env.onLoaded?.(name);
   const loadedMod: LoadedMod = {
     id,
@@ -258,6 +228,8 @@ export interface ReloadOutcome {
   readonly mod?: LoadedMod;
   /** The transcript line: the mod and its hooks, or `reload failed, the previous version stays loaded:` and the reason. */
   readonly line: string;
+  /** Why the reload failed, and whether a version of the mod still runs: what `changeNotice` reads. */
+  readonly failure?: { readonly reason: string; readonly earlierRuns: boolean };
 }
 
 /** The reason of a load outcome without the `<mod>: ` that starts its line. */
@@ -279,7 +251,10 @@ export async function reloadMod(
   const failed = (reason: string): string =>
     `${name}: reload failed, the previous version stays loaded: ${reason}`;
   const next = await prepare(env, { candidate: mod.candidate, files });
-  if (!isPrepared(next)) return { mod: current, line: failed(reasonOf(name, next)) };
+  if (!isPrepared(next)) {
+    const reason = reasonOf(name, next);
+    return { mod: current, line: failed(reason), failure: { reason, earlierRuns: true } };
+  }
   const previous = preparedOf.get(current);
   await current.unload();
   const started = await start(env, mod, next);
@@ -290,5 +265,10 @@ export async function reloadMod(
     };
   }
   const restored = previous ? await start(env, mod, previous) : {};
-  return { ...(restored.mod ? { mod: restored.mod } : {}), line: failed(reasonOf(name, started)) };
+  const reason = reasonOf(name, started);
+  return {
+    ...(restored.mod ? { mod: restored.mod } : {}),
+    line: failed(reason),
+    failure: { reason, earlierRuns: restored.mod !== undefined },
+  };
 }

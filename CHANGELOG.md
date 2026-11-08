@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Added
+
+- Mods, per-mod load and unload, and where mods run. `createModsHost` keys a mod by its name: `load`
+  of a plugin already loaded replaces it and no longer adds a second copy. New `loadMod(plugin)` loads
+  one plugin among the loaded ones (tier from policy, last in its tier, a note when the policy would
+  have put it earlier, the built-in guard first when policy needs it) and `unloadMod(name)` turns one
+  off (idempotent, drops the mod from the approval ledger and the refusal book, and `reload` does not
+  bring it back). `ModLoadReport.notices` carries the lines a person reads with where each is read
+  (`modLineChannel`: transcript, stderr of `claude -p --plugin-dir`, debug log; a refusal by another
+  mod only in the debug log). `whereModsRun` gives overview.md's table (hooks and drawing per place,
+  the VS Code versions) and `decideModLoad` refuses an installed plugin in a WSL session of the Desktop
+  app and, in the cloud, one that does not reach the session; `modsVersionProblem` names the first
+  versions that load mods. `writtenModRefusal` says why a mod Claude wrote cannot load,
+  `createHotReloadGate` is the hot-reloading question (off after three unanswered), and `changeNotice`
+  words the transcript line of a change that did not load. Tests for the 29 requirements of the
+  overview, create and troubleshoot pages on loading, enabling, refusals and where mods run.
+
 ### Fixed
 
 - Mods, review fixes of the load seams. `createModsHost(...).fire` and `fireStream` take `before` (where
