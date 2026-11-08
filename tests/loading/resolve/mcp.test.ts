@@ -13,7 +13,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { mcpServerKey, resolveMcpServer, type ResolvedUserConfig } from '../../../src/index.ts';
-import { locations } from '../../support/ports.ts';
+import { fakeEnvironment, locations } from '../../support/ports.ts';
 import { PATHS, scopeOf, userConfig } from '../../support/mcp-scope.ts';
 import { spec } from '../../support/spec.ts';
 
@@ -25,13 +25,21 @@ spec('environment.component.stdio', () => {
   };
 
   test('resolves in command, args and env, and in no other field', async () => {
+    // A string field outside the table (and loose keys) stays literal, even with a variable in it.
+    const literal = {
+      type: 'stdio',
+      description: '${CLAUDE_PLUGIN_ROOT}',
+      oauth: { clientId: '${CLAUDE_PLUGIN_ROOT}' },
+      alwaysLoad: true,
+    } as const;
     const { resolved, issues } = await resolveMcpServer(
       'database-tools',
-      { ...server, alwaysLoad: true },
+      { ...server, ...literal },
       scopeOf(),
     );
     expect(issues).toEqual([]);
     expect(resolved?.server).toEqual({
+      ...literal,
       command: '/plugins/my-plugin@acme-tools/servers/db-server',
       args: [
         '--config',
@@ -39,7 +47,6 @@ spec('environment.component.stdio', () => {
         '--data=/data/my-plugin-acme-tools',
       ],
       env: { DB_URL: 'postgres://db', PROJECT: '/work/app', REGION: 'eu' },
-      alwaysLoad: true,
     });
   });
 
@@ -71,11 +78,21 @@ const remoteServer = (type: 'http' | 'sse' | 'ws') => ({
 });
 
 spec('environment.component.http', () => {
-  test('http, sse and ws resolve url, headers and headersHelper', async () => {
+  test('http, sse and ws resolve url, headers and headersHelper, and no other field', async () => {
+    const literal = {
+      description: '${CLAUDE_PLUGIN_ROOT}',
+      oauth: { clientId: '${CLAUDE_PLUGIN_ROOT}' },
+      timeout: 1000,
+    };
     for (const type of ['http', 'sse', 'ws'] as const) {
-      const { resolved, issues } = await resolveMcpServer('api', remoteServer(type), scopeOf());
+      const { resolved, issues } = await resolveMcpServer(
+        'api',
+        { ...remoteServer(type), ...literal },
+        scopeOf(),
+      );
       expect(issues).toEqual([]);
       expect(resolved?.server).toEqual({
+        ...literal,
         type,
         url: 'https://eu.example.com/mcp',
         headers: { Authorization: 'Bearer s3cret', 'X-Root': '/plugins/my-plugin@acme-tools' },
@@ -149,6 +166,32 @@ describe('a url that does not resolve (troubleshooting.md, "URL is unset or inva
       path: 'mcpServers.api.url',
       message: 'Invalid MCP server config for "api": URL is unset or invalid',
     });
+  });
+
+  test('an unset ${VAR} in the url stays as text, which is no URL: the server does not start', async () => {
+    const { resolved, issues } = await resolveMcpServer(
+      'api',
+      { type: 'http', url: '${NOPE}/mcp' },
+      scopeOf(),
+    );
+    expect(resolved).toBeUndefined();
+    expect(issues.map((found) => [found.severity, found.message])).toEqual([
+      ['warning', expect.stringContaining('NOPE')],
+      ['error', 'Invalid MCP server config for "api": URL is unset or invalid'],
+    ]);
+  });
+
+  test('a covered credential variable alone, set or not, with or without a default, leaves no URL', async () => {
+    const unset = scopeOf({ environment: fakeEnvironment({}) });
+    for (const scope of [scopeOf(), unset]) {
+      for (const url of ['${ANTHROPIC_AUTH_TOKEN}', '${ANTHROPIC_AUTH_TOKEN:-https://a.test}']) {
+        const { resolved, issues } = await resolveMcpServer('api', { type: 'http', url }, scope);
+        expect(resolved).toBeUndefined();
+        expect(issues.map((found) => [found.severity, found.message])).toEqual([
+          ['error', 'Invalid MCP server config for "api": URL is unset or invalid'],
+        ]);
+      }
+    }
   });
 
   test('a url that parses is fine, wss and http included', async () => {

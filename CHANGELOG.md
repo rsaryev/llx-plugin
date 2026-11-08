@@ -70,6 +70,11 @@
 
 ### Fixed
 
+- MCP servers: an entry with `type: "streamable-http"` now reads as `http` (mcp.md, "Option 2");
+  an entry with a `url` and no `type` is dropped with the message mcp.md quotes instead of an
+  unrelated stdio error (and no longer reads as stdio when it also has a `command`, so a stray `url`
+  can no longer reach the resolver and throw); a `type: "sdk"` entry is skipped with the quoted
+  message; `isRemoteMcpServer` follows the transport and not the presence of a `url`.
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
   parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
   (and `skill`) read `name:value` as a parameter.

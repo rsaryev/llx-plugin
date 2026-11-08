@@ -72,9 +72,36 @@ const isTransport = (value: unknown): value is McpTransport =>
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** True for a server reached over a URL: `url`, `headers` and `headersHelper` apply to it. */
+/** Which transports are reached over a URL (`url`, `headers` and `headersHelper` apply to them). */
+const REMOTE: { readonly [T in McpTransport]: boolean } = {
+  stdio: false,
+  sse: true,
+  http: true,
+  ws: true,
+};
+
+/**
+ * True for a server whose transport is `sse`, `http` or `ws`. The transport decides, not the
+ * presence of a `url`: a stdio entry may carry a `url` key (its `type` is then `stdio`) and stays stdio.
+ */
 export const isRemoteMcpServer = (server: PluginMcpServer): server is RemoteMcpServer =>
-  'url' in server;
+  REMOTE[server.type ?? 'stdio'];
+
+/**
+ * Another name of a transport (mcp.md, "Option 2": "the `type` field accepts `streamable-http` as an
+ * alias for `http`"). Judgment: the entry is read as the transport it names, so the server the kit
+ * returns carries `type: "http"`, the type the SDK knows.
+ */
+const ALIASES: Readonly<Record<string, McpTransport>> = { 'streamable-http': 'http' };
+
+/** Types only an SDK host application can register (mcp.md, "Option 2"): the entry is skipped. */
+const HOST_ONLY: Readonly<Record<string, true>> = { sdk: true };
+
+const aliasOf = (value: unknown): McpTransport | undefined =>
+  typeof value === 'string' && Object.hasOwn(ALIASES, value) ? ALIASES[value] : undefined;
+
+const isHostOnly = (value: unknown): boolean =>
+  typeof value === 'string' && Object.hasOwn(HOST_ONLY, value);
 
 const reason = (failure: z.ZodError): string =>
   failure.issues
@@ -93,6 +120,19 @@ export interface McpServerRead {
 }
 
 /**
+ * The two entries mcp.md ("Option 2") says Claude Code skips with a quoted message: a `url` with no
+ * `type` (read as stdio, so it fails) and a `type: "sdk"` entry.
+ */
+function refusalOf(name: string, raw: Record<string, unknown>): string | undefined {
+  if (isHostOnly(raw.type)) {
+    return `Skipped — MCP server "${name}" declares type "sdk", which only an SDK host application can register`;
+  }
+  return raw.type === undefined && 'url' in raw
+    ? `MCP server "${name}" has a "url" but no "type"; add "type": "http" (or "sse" / "ws") to this entry`
+    : undefined;
+}
+
+/**
  * Reads one entry. An entry Claude Code would drop is an error naming the server, in the form
  * plugins/troubleshooting.md quotes: `Invalid MCP server config for "<server>": <error>`. The text
  * after the colon is the kit's (the docs give no text for a malformed entry).
@@ -101,12 +141,16 @@ export function readMcpServer(name: string, raw: unknown, origin: string): McpSe
   if (!isRecord(raw)) {
     return { server: undefined, issues: [dropped(name, origin, 'expected an object')] };
   }
-  const transport = raw.type ?? 'stdio';
+  const refusal = refusalOf(name, raw);
+  if (refusal) return { server: undefined, issues: [error(origin, refusal)] };
+  const alias = aliasOf(raw.type);
+  const transport = alias ?? raw.type ?? 'stdio';
   if (!isTransport(transport)) {
-    const why = `"type" must be one of ${MCP_TRANSPORTS.map((each) => `"${each}"`).join(', ')}`;
+    const names = [...MCP_TRANSPORTS, ...Object.keys(ALIASES)];
+    const why = `"type" must be one of ${names.map((each) => `"${each}"`).join(', ')}`;
     return { server: undefined, issues: [dropped(name, origin, why)] };
   }
-  const parsed = SCHEMAS[transport].safeParse(raw);
+  const parsed = SCHEMAS[transport].safeParse(alias ? { ...raw, type: alias } : raw);
   return parsed.success
     ? { server: parsed.data, issues: [] }
     : { server: undefined, issues: [dropped(name, origin, reason(parsed.error))] };

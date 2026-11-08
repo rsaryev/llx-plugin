@@ -13,12 +13,7 @@
  * wording the docs do not quote is a judgment and is asserted outside `spec(...)`.
  */
 import { describe, expect, test } from 'bun:test';
-import {
-  classifyMcpSource,
-  collectMcpServers,
-  MCPB_CACHE_DIR,
-  type PluginIssue,
-} from '../../src/index.ts';
+import { classifyMcpSource, collectMcpServers, type PluginIssue } from '../../src/index.ts';
 import { memoryFiles } from '../support/ports.ts';
 import { bundle, fakeBundles, node } from '../support/mcp-bundle.ts';
 import { spec } from '../support/spec.ts';
@@ -44,7 +39,12 @@ spec('mcp.source..json', () => {
       wrapped: node('w.js'),
     });
     const bare = await collectMcpServers(files, './mcp/bare.json');
-    expect(Object.keys(bare.servers).toSorted()).toEqual(['bare', 'root', 'shared']);
+    expect(bare.issues).toEqual([]);
+    expect(bare.servers).toEqual({
+      root: node('root.js'),
+      shared: node('old.js'),
+      bare: node('b.js'),
+    });
   });
 
   test('a file that is missing does not load, the rest of the plugin does', async () => {
@@ -152,7 +152,6 @@ spec('mcp.source.MCP bundle path', () => {
       },
     );
     expect(issues).toEqual([]);
-    expect(MCPB_CACHE_DIR).toBe('.mcpb-cache');
     expect(bundles.opens).toEqual([
       { source: { kind: 'path', path: 'servers/db.mcpb' }, cacheDir: '.mcpb-cache' },
       { source: { kind: 'path', path: 'old.dxt' }, cacheDir: '.mcpb-cache' },
@@ -176,6 +175,32 @@ spec('mcp.source.MCP bundle path', () => {
     expect(issues).toHaveLength(1);
     expect(issues[0]?.severity).toBe('error');
     expect(bundles.opens).toEqual([]);
+  });
+
+  test('a path that leaves the plugin is not read and the host is not asked', async () => {
+    const bundles = fakeBundles({ 'x.mcpb': bundle('x') });
+    const { servers, issues } = await collectMcpServers(memoryFiles({}), './../x.mcpb', {
+      bundles,
+    });
+    expect(servers).toEqual({});
+    expect(issues).toEqual([
+      {
+        severity: 'error',
+        path: 'mcpServers',
+        message: 'mcpServers path escapes plugin directory: ./../x.mcpb',
+      },
+    ]);
+    expect(bundles.opens).toEqual([]);
+  });
+
+  test('a bundle path the host does not find is a path that is not found', async () => {
+    const { servers, issues } = await collectMcpServers(memoryFiles({}), './gone.mcpb', {
+      bundles: fakeBundles({}),
+    });
+    expect(servers).toEqual({});
+    expect(issues).toEqual([
+      { severity: 'error', path: 'mcpServers', message: 'mcpServers path not found: ./gone.mcpb' },
+    ]);
   });
 
   test('a required setting with no saved value keeps the server from starting', async () => {

@@ -131,7 +131,7 @@ const { resolved, issues: more } = await resolveMcpServer('db', servers.db, scop
 
 | API | What it does |
 | --- | --- |
-| `PluginMcpServer` | the SDK's stdio, SSE and HTTP configs plus the two things the SDK does not type: the `ws` transport and `headersHelper` on every remote server (mcp.md, "Option 4") |
+| `PluginMcpServer` | the SDK's stdio, SSE and HTTP configs plus the two things the SDK does not type: the `ws` transport and `headersHelper` on every remote server (mcp.md, "Option 4"); `type: "streamable-http"` reads as `http`; a `url` with no `type` and a `type: "sdk"` entry are dropped with the messages mcp.md quotes |
 | `collectMcpServers(files, manifestValue, { bundles?, bundleSettings?, signal? })` | root `.mcp.json` first, then each declared source in array order; sources load concurrently, merge in order |
 | `McpBundleReader` (port, optional) | the host opens a `.mcpb` or `.dxt` (extract into `.mcpb-cache`, or download) and returns `{ name, server, userConfig? }`; the kit never unzips or downloads, and never maps the MCPB manifest |
 | `resolveMcpServer(name, server, scope)` | stdio: `command`, `args`, `env` substituted, the three path variables in `environment`; http, sse and ws: `url`, `headers`, `headersHelper` substituted, credential variables read as empty in `url` and `headers`; a `headersHelper` that references `${user_config.*}` keeps the server from starting |
@@ -146,7 +146,8 @@ relative to the plugin root, like every `PluginFiles` path. The server's tool pr
 ## Ports (done)
 
 Interfaces the host implements, in `src/ports/` (type-only, one file per port, all exported from the
-package). Each is small, takes an `AbortSignal` where it does I/O, and is optional when the host
+package; a stream's own port, such as `McpBundleReader`, is exported through its module barrel and not
+`src/ports/index.ts`, docs/ARCHITECTURE.md). Each is small, takes an `AbortSignal` where it does I/O, and is optional when the host
 supports no plugin that needs it (a missing port is reported per component, never a crash). An
 absent file is `undefined`; an effect that did not happen is a `PortFailure` value, never a throw.
 

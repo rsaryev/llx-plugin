@@ -129,20 +129,3 @@ describe('a server without a headersHelper has no helper environment', () => {
     });
   });
 });
-
-describe('a server without a headersHelper has no helper environment', () => {
-  test('stdio and a remote server with only headers', async () => {
-    const stdio = await resolveMcpServer('db', { command: 'node' }, scopeOf());
-    expect(stdio.resolved?.headersHelperEnvironment).toBeUndefined();
-    const plain = await resolveMcpServer('api', { type: 'http', url: 'https://x.test' }, scopeOf());
-    expect(plain.resolved?.headersHelperEnvironment).toBeUndefined();
-  });
-
-  test('headersHelperEnvironment alone', () => {
-    expect(headersHelperEnvironment('api', 'https://x.test', scopeOf())).toEqual({
-      CLAUDE_PLUGIN_ROOT: '/plugins/my-plugin@acme-tools',
-      CLAUDE_CODE_MCP_SERVER_NAME: 'plugin:my-plugin:api',
-      CLAUDE_CODE_MCP_SERVER_URL: 'https://x.test',
-    });
-  });
-});

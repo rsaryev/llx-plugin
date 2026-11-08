@@ -3,7 +3,8 @@
  * `mcpServers` wrapper is optional), mcp.md § Plugin-provided MCP servers (stdio, SSE, HTTP and
  * WebSocket servers; `url`, `headers` and `headersHelper` on the remote ones), § Option 4 (the `ws`
  * entry accepts `url`, `headers`, `headersHelper`, `timeout` and `alwaysLoad`), plugins/troubleshooting.md
- * § Invalid MCP server config (`Invalid MCP server config for "<server>": <error>`).
+ * § Invalid MCP server config (`Invalid MCP server config for "<server>": <error>`), and mcp.md
+ * § Option 2 (the `streamable-http` alias of `http`, a `url` with no `type`, a `type: "sdk"` entry).
  *
  * The docs give the transports and fields, not every way an entry is wrong, so these tests are
  * outside `spec(...)`: the requirement ids that own them (`mcp.source.*`) are proven in
@@ -50,6 +51,55 @@ describe('transports and fields', () => {
       oauth: { clientId: 'abc' },
     } as const;
     expect(readMcpServer('api', entry, '.mcp.json').server).toEqual(entry);
+  });
+
+  test('streamable-http is the http transport: it reads as http and keeps its other fields', () => {
+    const entry = { type: 'streamable-http', url: 'https://mcp.example.com', alwaysLoad: true };
+    const { server, issues } = readMcpServer('api', entry, '.mcp.json');
+    expect(issues).toEqual([]);
+    expect(server).toEqual({ ...entry, type: 'http' });
+    expect(server !== undefined && isRemoteMcpServer(server)).toBe(true);
+    expect(readMcpServer('api', { type: 'streamable-http' }, '.mcp.json').server).toBeUndefined();
+  });
+
+  test('a url with no type is skipped with the quoted message, whatever else the entry holds', () => {
+    for (const entry of [
+      { url: 'https://mcp.example.com' },
+      { command: 'node', url: 'https://x.test' },
+      { command: 'node', url: 5 },
+    ]) {
+      const { server, issues } = readMcpServer('db', entry, '.mcp.json');
+      expect(server).toBeUndefined();
+      expect(issues).toEqual([
+        {
+          severity: 'error',
+          path: '.mcp.json',
+          message:
+            'MCP server "db" has a "url" but no "type"; add "type": "http" (or "sse" / "ws") to this entry',
+        },
+      ]);
+    }
+  });
+
+  test('a stdio entry that names its type may carry a url key and stays stdio', () => {
+    const entry = { type: 'stdio', command: 'node', url: 5 } as const;
+    const { server, issues } = readMcpServer('db', entry, '.mcp.json');
+    expect(issues).toEqual([]);
+    expect(server).toEqual(entry);
+    expect(server !== undefined && isRemoteMcpServer(server)).toBe(false);
+  });
+
+  test('a type: "sdk" entry is skipped with the quoted message', () => {
+    const { server, issues } = readMcpServer('live', { type: 'sdk', name: 'live' }, '.mcp.json');
+    expect(server).toBeUndefined();
+    expect(issues).toEqual([
+      {
+        severity: 'error',
+        path: '.mcp.json',
+        message:
+          'Skipped — MCP server "live" declares type "sdk", which only an SDK host application can register',
+      },
+    ]);
   });
 
   test('a stdio server is not remote', () => {

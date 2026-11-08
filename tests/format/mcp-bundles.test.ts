@@ -54,14 +54,26 @@ describe('bundles and the host (judgments)', () => {
   });
 
   test('the extension is matched exactly, an http URL is refused, and a path leaving the plugin is not read', async () => {
-    const bundles = fakeBundles({});
-    for (const value of [
-      './Bundle.MCPB',
-      'http://example.com/s.mcpb',
-      'https://x.test/s.mcpb?v=1',
-    ]) {
-      expect((await collectMcpServers(memoryFiles({}), value, { bundles })).issues).toHaveLength(1);
+    const refused: [string, string][] = [
+      ['./Bundle.MCPB', 'mcpServers bundle must end in .mcpb or .dxt: ./Bundle.MCPB'],
+      [
+        'http://example.com/s.mcpb',
+        'mcpServers bundle URL must use https://: http://example.com/s.mcpb',
+      ],
+      [
+        'https://x.test/s.mcpb?v=1',
+        'mcpServers bundle must end in .mcpb or .dxt: https://x.test/s.mcpb?v=1',
+      ],
+    ];
+    for (const [value, expected] of refused) {
+      const bundles = fakeBundles({});
+      const { servers, issues } = await collectMcpServers(memoryFiles({}), value, { bundles });
+      expect(servers).toEqual({});
+      expect(issues.map((found) => found.severity)).toEqual(['error']);
+      expect(messages(issues)).toEqual([expected]);
+      expect(bundles.opens).toEqual([]);
     }
+    const bundles = fakeBundles({});
     const escaped = await collectMcpServers(memoryFiles({}), './../outside.json');
     expect(messages(escaped.issues)).toEqual([
       'mcpServers path escapes plugin directory: ./../outside.json',
