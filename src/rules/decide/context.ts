@@ -43,6 +43,12 @@ export interface DecideContext {
   readonly interactive: boolean;
   /** `useAutoModeDuringPlan` (permission-modes.md): "on ... by default". */
   readonly useAutoModeDuringPlan?: boolean;
+  /**
+   * `autoMode.classifyAllShell` (settings-reference.md): while auto mode is active every Bash and
+   * PowerShell allow rule is suspended, so the classifier sees every shell command; "outside auto
+   * mode the rules still apply". Default `false`.
+   */
+  readonly classifyAllShell?: boolean;
   readonly hook?: PreToolUseHookOutcome;
   readonly mod?: ModOutcome;
   /**

@@ -34,6 +34,7 @@ export {
   AUTO_MODE_LISTS,
   BYPASS_AS_ROOT,
   BYPASS_IGNORED_NOTICE,
+  HIPAA_AUTO_NOTICE,
   SURFACES,
   bypassAcceptance,
   createPermissionsPolicy,

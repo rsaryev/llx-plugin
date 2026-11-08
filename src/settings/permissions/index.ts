@@ -12,3 +12,4 @@ export {
 } from './default-mode.ts';
 export type { SettingsDirectory, SettingsRule } from './managed-only.ts';
 export { createPermissionsPolicy, type PermissionsPolicy } from './policy.ts';
+export { HIPAA_AUTO_NOTICE } from './start-notices.ts';

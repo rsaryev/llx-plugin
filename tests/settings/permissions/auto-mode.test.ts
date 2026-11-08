@@ -20,6 +20,9 @@ import { permissionsOf, terminal } from '../../support/permissions-policy.ts';
 import { spec } from '../../support/spec.ts';
 
 const auto = (block: unknown) => ({ autoMode: block });
+const plan = (value: unknown) => ({ useAutoModeDuringPlan: value });
+const skipAuto = (value: unknown) => ({ skipAutoPermissionPrompt: value });
+const skipDangerous = (value: unknown) => ({ skipDangerousModePermissionPrompt: value });
 
 spec('permissions.setting.autoMode', () => {
   test('the docs example keeps the built-in soft_deny rules through "$defaults" and adds one', () => {
@@ -127,11 +130,58 @@ spec('permissions.setting.autoMode.classifyAllShell', () => {
     );
     expect(plain(layerOf('user', auto({ classifyAllShell: 'yes' })).settings.autoMode)).toEqual({});
   });
+
+  test('in auto mode a narrow rule such as Bash(npm test) is suspended and the command is classified', () => {
+    const rules = { permissions: { allow: ['Bash(npm test)', 'PowerShell(npm test)'] } };
+    const policy = permissionsOf([['user', { ...rules, ...auto({ classifyAllShell: true }) }]]);
+    const context = sessionOf(policy, terminal({ permissionMode: 'auto' })).context;
+    expect(context.classifyAllShell).toBe(true);
+    for (const tool of ['Bash', 'PowerShell']) {
+      expect(decide(call(tool, { command: 'npm test' }), context)).toEqual({
+        outcome: 'classify',
+        reason: 'mode-auto',
+      });
+    }
+  });
+
+  test('outside auto mode the same rule still applies', () => {
+    const policy = permissionsOf([
+      ['user', { permissions: { allow: ['Bash(npm test)'] }, ...auto({ classifyAllShell: true }) }],
+    ]);
+    const context = sessionOf(policy, terminal({ permissionMode: 'default' })).context;
+    expect(decide(call('Bash', { command: 'npm test' }), context)).toEqual({
+      outcome: 'allow',
+      reason: 'allow-rule',
+    });
+  });
+
+  test('false and unset leave a narrow rule in force in auto mode', () => {
+    for (const block of [auto({ classifyAllShell: false }), {}]) {
+      const policy = permissionsOf([
+        ['user', { permissions: { allow: ['Bash(npm test)'] }, ...block }],
+      ]);
+      const context = sessionOf(policy, terminal({ permissionMode: 'auto' })).context;
+      expect(context.classifyAllShell).toBe(false);
+      expect(decide(call('Bash', { command: 'npm test' }), context)).toEqual({
+        outcome: 'allow',
+        reason: 'allow-rule',
+      });
+    }
+  });
+
+  test('a rule of another tool stays in force while the shell rules are suspended', () => {
+    const policy = permissionsOf([
+      ['user', { permissions: { allow: ['WebSearch'] }, ...auto({ classifyAllShell: true }) }],
+    ]);
+    const context = sessionOf(policy, terminal({ permissionMode: 'auto' })).context;
+    expect(decide(call('WebSearch', { query: 'x' }), context)).toEqual({
+      outcome: 'allow',
+      reason: 'allow-rule',
+    });
+  });
 });
 
 spec('permissions.setting.useAutoModeDuringPlan', () => {
-  const plan = (value: unknown) => ({ useAutoModeDuringPlan: value });
-
   test('is on by default and when set true', () => {
     expect(permissionsOf([]).autoMode.useAutoModeDuringPlan).toBe(true);
     expect(permissionsOf([['user', plan(true)]]).autoMode.useAutoModeDuringPlan).toBe(true);
@@ -176,58 +226,66 @@ spec('permissions.setting.useAutoModeDuringPlan', () => {
 });
 
 spec('permissions.setting.skipAutoPermissionPrompt', () => {
-  const skip = (value: unknown) => ({ skipAutoPermissionPrompt: value });
-
   test('true skips the one-time notice; false is the same as unset', () => {
-    expect(permissionsOf([['user', skip(true)]]).autoMode.skipAutoPermissionPrompt).toBe(true);
-    expect(permissionsOf([['user', skip(false)]]).autoMode.skipAutoPermissionPrompt).toBe(false);
+    expect(permissionsOf([['user', skipAuto(true)]]).autoMode.skipAutoPermissionPrompt).toBe(true);
+    expect(permissionsOf([['user', skipAuto(false)]]).autoMode.skipAutoPermissionPrompt).toBe(
+      false,
+    );
     expect(permissionsOf([]).autoMode.skipAutoPermissionPrompt).toBe(false);
   });
 
   test('is read from user or managed settings; a repository cannot set it for you', () => {
     for (const scope of ['project', 'local', 'flag'] as const) {
-      expect(plain(layerOf(scope, skip(true)).settings)).toEqual({});
+      expect(plain(layerOf(scope, skipAuto(true)).settings)).toEqual({});
     }
-    expect(permissionsOf([['managed', skip(true)]]).autoMode.skipAutoPermissionPrompt).toBe(true);
+    expect(permissionsOf([['managed', skipAuto(true)]]).autoMode.skipAutoPermissionPrompt).toBe(
+      true,
+    );
   });
 
   test('another of these files that sets true wins over a false', () => {
     const policy = permissionsOf([
-      ['managed', skip(false)],
-      ['user', skip(true)],
+      ['managed', skipAuto(false)],
+      ['user', skipAuto(true)],
     ]);
     expect(policy.autoMode.skipAutoPermissionPrompt).toBe(true);
   });
 });
 
 spec('permissions.setting.skipDangerousModePermissionPrompt', () => {
-  const skip = (value: unknown) => ({ skipDangerousModePermissionPrompt: value });
-
   test('true skips the confirmation dialog before bypassPermissions; false is the same as unset', () => {
-    expect(permissionsOf([['user', skip(true)]]).skipDangerousModePermissionPrompt).toBe(true);
-    expect(permissionsOf([['user', skip(false)]]).skipDangerousModePermissionPrompt).toBe(false);
+    expect(permissionsOf([['user', skipDangerous(true)]]).skipDangerousModePermissionPrompt).toBe(
+      true,
+    );
+    expect(permissionsOf([['user', skipDangerous(false)]]).skipDangerousModePermissionPrompt).toBe(
+      false,
+    );
     expect(permissionsOf([]).skipDangerousModePermissionPrompt).toBe(false);
   });
 
   test('is read from user, local, managed and --settings; an untrusted repository cannot skip the dialog', () => {
     for (const scope of ['user', 'local', 'managed', 'flag'] as const) {
-      expect(permissionsOf([[scope, skip(true)]]).skipDangerousModePermissionPrompt).toBe(true);
+      expect(permissionsOf([[scope, skipDangerous(true)]]).skipDangerousModePermissionPrompt).toBe(
+        true,
+      );
     }
-    expect(plain(layerOf('project', skip(true)).settings)).toEqual({});
-    expect(permissionsOf([['project', skip(true)]]).skipDangerousModePermissionPrompt).toBe(false);
+    expect(plain(layerOf('project', skipDangerous(true)).settings)).toEqual({});
+    expect(
+      permissionsOf([['project', skipDangerous(true)]]).skipDangerousModePermissionPrompt,
+    ).toBe(false);
   });
 
   test('another of these files that sets true wins over a false', () => {
     const policy = permissionsOf([
-      ['local', skip(false)],
-      ['user', skip(true)],
+      ['local', skipDangerous(false)],
+      ['user', skipDangerous(true)],
     ]);
     expect(policy.skipDangerousModePermissionPrompt).toBe(true);
   });
 
   test('applies to a start from the flag and from defaultMode "bypassPermissions" alike', () => {
     const policy = permissionsOf([
-      ['user', { ...skip(true), permissions: { defaultMode: 'bypassPermissions' } }],
+      ['user', { ...skipDangerous(true), permissions: { defaultMode: 'bypassPermissions' } }],
     ]);
     for (const input of [{ dangerouslySkipPermissions: true }, {}]) {
       const start = policy.startingMode({ surface: 'terminal', autoAvailable: true, ...input });

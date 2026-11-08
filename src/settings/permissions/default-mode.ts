@@ -3,6 +3,7 @@ import type { PermissionMode } from '../../protocol/official.ts';
 import { normalizePermissionMode } from '../../protocol/permission-modes.ts';
 import type { PolicyScope } from '../layers.ts';
 import type { PolicyView } from '../view.ts';
+import { startNotices } from './start-notices.ts';
 
 /**
  * Which permission mode a session starts in (permission-modes.md, "Which mode a session starts in",
@@ -54,6 +55,8 @@ export type StartingMode =
       readonly autoAvailable: boolean;
       /** An interactive session entering `bypassPermissions` shows the warning dialog first. */
       readonly bypassWarning: boolean;
+      /** Notices the session shows at its start, verbatim (`startNotices`). */
+      readonly notices: readonly string[];
       /** What the session shows and the settings said, as warnings. */
       readonly issues: readonly PluginIssue[];
     }
@@ -255,6 +258,11 @@ function launch(view: PolicyView, plan: Launch): StartingMode {
     mode,
     source: chosen.mode === undefined ? 'built-in' : chosen.source,
     ...cycleOf(mode, ignored, plan),
+    notices: startNotices({
+      hipaa: input.hipaa === true,
+      terminal: input.surface === 'terminal',
+      builtIn: chosen.mode === undefined,
+    }),
     issues: [...chosen.issues, ...(ignored ? [warning('permissions', BYPASS_IGNORED_NOTICE)] : [])],
   };
 }

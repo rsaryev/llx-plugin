@@ -1225,8 +1225,18 @@ callback (an `ask` is then denied with the reason `prompt-unavailable`) and `rep
 
 `decide` also takes `connectorToolsSetToAsk` (never approved by a mode, rule, hook or mod; reason
 `organization-ask`) and `preapprovedFetchDomain` (WebFetch's built-in set of documentation domains, which
-the host knows), and `approvalMemory(tool)` says what "Yes, and don't ask again" remembers per tool type.
+the host knows), and `approvalMemory(tool, { rulesLocked })` says what "Yes, and don't ask again" remembers per tool type.
 The cross-session messaging safeguards of the bypass section are not modelled: the kit sends no message.
+The read of another organization's public `Artifact`, which `bypassPermissions` does not approve ("Claude can't
+read one"), is not modelled either: the artifact's organization is not in the call, so `decide` allows it in that mode.
+
+`startPermissions` also takes `interactive` (default: a `terminal` surface) for a host with its own approval
+interface, which is not a terminal and must not claim to be one; it fills `classifyAllShell` (in auto mode every
+Bash and PowerShell allow rule is suspended, `Bash(npm test)` included, and a `false` leaves the narrow rules in
+force) and returns `notices`, the text a session shows at its start (the HIPAA terminal notice, verbatim; the
+first-time `auto` notice is the host's). `savedApproval(tool, policy, locations)` says what "Yes, and don't ask
+again" does for a tool and, for an approval that lasts, the file it saves the rule to (`settingsLocations().local`);
+under `allowManagedPermissionRulesOnly` nothing is offered or saved.
 
 ### The `env` block (done: `settings/env`)
 

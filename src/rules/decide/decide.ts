@@ -25,10 +25,14 @@ type Gate = (step: Step) => Pending | undefined;
 
 const pending = (decision: Decision, reach: ModReach): Pending => ({ decision, reach });
 
-/** A baseline outcome from the mode is lifted by a mod, except a classification the host cannot skip. */
+/**
+ * A baseline outcome from the mode is lifted by a mod, except what is put to the host's callback: a
+ * prompt (`--permission-prompt-tool` or `canUseTool` "would be asked about") and a classification
+ * (permissions.md, "Precedence among rules, hooks, and mods"), which an enforced mod cannot skip.
+ */
 const BASELINE_REACH: { readonly [O in Decision['outcome']]: ModReach } = {
   allow: 'any',
-  ask: 'any',
+  ask: 'unbypassable',
   deny: 'any',
   classify: 'unbypassable',
 };
@@ -135,7 +139,7 @@ const GATES: readonly Gate[] = [
 export function decide(call: PreparedCall, ctx: DecideContext): Decision {
   const strategy = MODES[ctx.mode];
   const facts = factsOf(call, ctx);
-  const verdict = ruleBehavior(call, strategy.rules(ctx.rules), facts, ctx);
+  const verdict = ruleBehavior(call, strategy.rules(ctx.rules, ctx), facts, ctx);
   const step: Step = { call, ctx, facts, strategy, verdict };
   for (const gate of GATES) {
     const answer = gate(step);

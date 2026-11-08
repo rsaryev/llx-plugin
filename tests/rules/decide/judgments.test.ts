@@ -35,11 +35,11 @@ describe('connector tools the organization set to ask', () => {
   });
 });
 
-describe("WebFetch's preapproved domains", () => {
-  const docs = (hostname: string): boolean => hostname === 'docs.example.dev';
-  const fetch = (url: unknown, overrides = {}) =>
-    decision('default', 'WebFetch', { url, prompt: 'p' }, overrides);
+const docs = (hostname: string): boolean => hostname === 'docs.example.dev';
+const fetch = (url: unknown, overrides = {}) =>
+  decision('default', 'WebFetch', { url, prompt: 'p' }, overrides);
 
+describe("WebFetch's preapproved domains", () => {
   test('the host name is matched whole and in lower case; a URL that does not parse is not preapproved', () => {
     expect(fetch('https://DOCS.example.dev/a', { preapprovedFetchDomain: docs })).toEqual(
       allow('preapproved-domain'),

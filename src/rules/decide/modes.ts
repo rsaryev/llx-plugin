@@ -31,7 +31,7 @@ export interface ModeStrategy {
   /** Whether a PreToolUse hook's allow can skip the prompt for this call. */
   hookMayAllow(facts: CallFacts, ctx: DecideContext): boolean;
   /** The rules in force in this mode. */
-  rules(rules: readonly PermissionRule[]): readonly PermissionRule[];
+  rules(rules: readonly PermissionRule[], ctx: DecideContext): readonly PermissionRule[];
 }
 
 /** Manual mode: reads in scope only; everything else asks. The other modes change what they must. */
@@ -105,7 +105,8 @@ export const MODES: { readonly [M in PermissionMode]: ModeStrategy } = {
       if (facts.readsFiles || facts.editsInScope) return allow('mode-auto');
       return facts.escapesViaLink ? ask('default-prompt') : classify('mode-auto');
     },
-    rules: (rules) => rules.filter((rule) => !isDroppedInAuto(rule)),
+    rules: (rules, ctx) =>
+      rules.filter((rule) => !isDroppedInAuto(rule, ctx.classifyAllShell === true)),
   },
   dontAsk: {
     ...PROMPTING,

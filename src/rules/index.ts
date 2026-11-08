@@ -52,6 +52,7 @@ export {
   toolTypeOf,
   type ApprovalLifetime,
   type ApprovalMemory,
+  type ApprovalOptions,
   type ToolType,
 } from './decide/approval-memory.ts';
 export { decide } from './decide/decide.ts';

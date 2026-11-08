@@ -45,6 +45,17 @@
 
 ### Fixed
 
+- Permissions (review of the settings keys and the session): `autoMode.classifyAllShell` now acts, as
+  `DecideContext.classifyAllShell` (filled by `startPermissions`) that suspends every Bash and PowerShell
+  allow rule in auto mode; an enforced mod can no longer lift a default-mode prompt that a permission
+  callback would be asked about; `approvalMemory(tool, { rulesLocked })` and the new `savedApproval` hide
+  the always-allow choices under `allowManagedPermissionRulesOnly` and name the file a rule is saved to;
+  `startPermissions` takes `interactive` for hosts with their own approval interface and returns `notices`
+  (the HIPAA terminal notice, verbatim); judgments recorded for the fail-closed block flags, the
+  unmodelled `Artifact` read in bypass mode and the first-time `auto` notice; `mergePermissionBlocks`
+  builds its blocks without a type assertion; weak or echoing tests were rewritten and lint warnings in
+  the new tests fixed.
+
 - Hooks (review of the per-event contracts): `effects.deferCondition` is removed, `resolveDefer` is the
   one way to know whether a `defer` applies; `effects.stopCondition` of a `TaskCompleted` now comes from
   its own merger and the teammate-stop rule of an `ok: false` hook from `EXIT2_RULES`, not from an event

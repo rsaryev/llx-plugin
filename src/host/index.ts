@@ -23,3 +23,4 @@ export {
   type PermissionSessionInput,
   type StartedPermissions,
 } from './permission-session.ts';
+export { savedApproval, type SavedApproval } from './saved-approval.ts';

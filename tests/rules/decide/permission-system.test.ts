@@ -25,6 +25,10 @@ import { spec } from '../../support/spec.ts';
 const docs = (hostname: string): boolean => hostname === 'docs.example.dev';
 const fetch = (url: string, overrides = {}) =>
   decision('default', 'WebFetch', { url, prompt: 'summarize' }, overrides);
+const behaviorOverrides = (behavior: 'deny' | 'ask' | 'allow') => ({
+  preapprovedFetchDomain: docs,
+  rules: rulesOf([behavior, 'WebFetch(domain:docs.example.dev)']),
+});
 
 spec('permissions.behavior.Permission system.Read-only', () => {
   test('file reads and Grep need no approval within the working directory and additional directories', () => {
@@ -97,13 +101,13 @@ spec('permissions.behavior.Permission system.Web fetch', () => {
   });
 
   test('an explicit WebFetch(domain:...) rule takes precedence over the preapproved set: deny, ask or allow', () => {
-    const overrides = (behavior: 'deny' | 'ask' | 'allow') => ({
-      preapprovedFetchDomain: docs,
-      rules: rulesOf([behavior, 'WebFetch(domain:docs.example.dev)']),
-    });
-    expect(fetch('https://docs.example.dev/x', overrides('deny'))).toEqual(deny('deny-rule'));
-    expect(fetch('https://docs.example.dev/x', overrides('ask'))).toEqual(ask('ask-rule'));
-    expect(fetch('https://docs.example.dev/x', overrides('allow'))).toEqual(allow('allow-rule'));
+    expect(fetch('https://docs.example.dev/x', behaviorOverrides('deny'))).toEqual(
+      deny('deny-rule'),
+    );
+    expect(fetch('https://docs.example.dev/x', behaviorOverrides('ask'))).toEqual(ask('ask-rule'));
+    expect(fetch('https://docs.example.dev/x', behaviorOverrides('allow'))).toEqual(
+      allow('allow-rule'),
+    );
   });
 
   test('an allow rule for a domain approves a fetch there', () => {

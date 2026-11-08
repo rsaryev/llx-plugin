@@ -15,8 +15,9 @@ import { decide } from '../../../src/rules/index.ts';
 import { deny } from '../../support/decide.ts';
 import { spec } from '../../support/spec.ts';
 
+const block = (name: string, value: unknown) => ({ permissions: { [name]: value } });
+
 describe('the read and write blocks', () => {
-  const block = (name: string, value: unknown) => ({ permissions: { [name]: value } });
   const blocked = block('blockReadsOutsideWorkingDirectories', true);
   const paths = { ...matchContext.paths, additionalDirectories: ['/work/cli'] };
 

@@ -47,12 +47,20 @@ export interface PermissionSessionInput {
   readonly commandLine?: CommandLineRules;
   /** A `--permission-prompt-tool` or an SDK `canUseTool` callback answers what would prompt. */
   readonly permissionCallback?: boolean;
+  /**
+   * Someone can answer a prompt in this session. Defaults to a `terminal` surface; a host with its
+   * own approval interface (a web or desktop chat) says `true` without claiming to be a terminal,
+   * which would also give it the built-in `auto` default (spec/judgments.md).
+   */
+  readonly interactive?: boolean;
 }
 
 export interface PermissionSession {
   readonly mode: PermissionMode;
   /** What `decide` takes besides the call: the mode, the rules and the facts the settings decide. */
   readonly context: DecideContext;
+  /** The notices the session shows at its start, verbatim from the docs (`StartingMode.notices`). */
+  readonly notices: readonly string[];
   readonly issues: readonly PluginIssue[];
 }
 
@@ -104,23 +112,32 @@ export function startPermissions(input: PermissionSessionInput): StartedPermissi
       ...policy.additionalDirectories.map((each) => each.path),
     ]),
   ];
+  const interactive = input.interactive ?? input.start.surface === 'terminal';
   const context: DecideContext = {
     mode: start.mode,
     rules,
     match: { ...input.match, paths: { ...paths, additionalDirectories: additional } },
     autoAvailable: start.autoAvailable,
     bypassAvailable: start.bypassAvailable,
-    interactive: input.start.surface === 'terminal',
+    interactive,
     ...(input.permissionCallback === true ? { permissionCallback: true } : {}),
     // "`claude -p` and Agent SDK runs ... Calls needing approval are denied unless you approve them
     // with an allow rule, hook, `canUseTool` callback, or `--permission-prompt-tool`."
-    cannotPrompt: input.start.surface === 'headless' && input.permissionCallback !== true,
+    cannotPrompt:
+      input.start.surface === 'headless' && input.permissionCallback !== true && !interactive,
     useAutoModeDuringPlan: policy.autoMode.useAutoModeDuringPlan,
+    classifyAllShell: policy.autoMode.classifyAllShell,
     repositoryDirectories: policy.additionalDirectories
       .filter((each) => each.repositoryOnly)
       .map((each) => each.path),
     blockReadsOutsideWorkingDirectories: policy.blockReadsOutsideWorkingDirectories,
     blockWritesOutsideWorkingDirectories: policy.blockWritesOutsideWorkingDirectories,
   };
-  return { outcome: 'started', mode: start.mode, context, issues: [...start.issues, ...issues] };
+  return {
+    outcome: 'started',
+    mode: start.mode,
+    context,
+    notices: start.notices,
+    issues: [...start.issues, ...issues],
+  };
 }

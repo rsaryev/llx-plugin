@@ -56,8 +56,25 @@ const TYPE_OF: ReadonlyMap<string, ToolType> = new Map<string, ToolType>([
 
 export const toolTypeOf = (toolName: string): ToolType | undefined => TYPE_OF.get(toolName);
 
+const NOTHING_SAVED: ApprovalMemory = { lifetime: 'none', keyedBy: 'none' };
+
+/** What a session can change about "Yes, and don't ask again". */
+export interface ApprovalOptions {
+  /**
+   * `allowManagedPermissionRulesOnly` is on: it "hides the always-allow choices in permission
+   * prompts, and stops saving new rules" (settings-reference.md), so an approval that would be saved
+   * as a rule is not offered (spec/judgments.md).
+   */
+  readonly rulesLocked?: boolean;
+}
+
 /** What choosing "Yes, and don't ask again" does for a tool; `undefined` for a tool the table does not list. */
-export function approvalMemory(toolName: string): ApprovalMemory | undefined {
+export function approvalMemory(
+  toolName: string,
+  options: ApprovalOptions = {},
+): ApprovalMemory | undefined {
   const type = TYPE_OF.get(toolName);
-  return type === undefined ? undefined : APPROVAL_MEMORY[type];
+  if (type === undefined) return undefined;
+  const memory = APPROVAL_MEMORY[type];
+  return options.rulesLocked === true && memory.lifetime === 'repository' ? NOTHING_SAVED : memory;
 }

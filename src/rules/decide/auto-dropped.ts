@@ -26,10 +26,14 @@ function wildcardedInterpreter(pattern: string): boolean {
   return pattern.includes('*') && INTERPRETERS.has(program);
 }
 
-/** Whether `rule` is an allow rule auto mode drops. */
-export function isDroppedInAuto(rule: PermissionRule): boolean {
+/**
+ * Whether `rule` is an allow rule auto mode drops. With `autoMode.classifyAllShell` "auto mode suspends
+ * every shell allow rule" as well (settings-reference.md), `Bash(npm test)` included.
+ */
+export function isDroppedInAuto(rule: PermissionRule, classifyAllShell = false): boolean {
   if (!isAllowRule(rule)) return false;
   const tool = rule.value.toolName;
+  if (classifyAllShell && SHELL_TOOLS.has(tool)) return true;
   if (rule.specifier === undefined) return BARE_TOOLS.has(tool);
   const pattern = textPatternOf(rule);
   return (

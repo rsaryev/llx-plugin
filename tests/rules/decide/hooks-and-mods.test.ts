@@ -8,11 +8,19 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { allow, ask, bash, decision, deny, onPath, rulesOf } from '../../support/decide.ts';
+import { parsed } from '../../support/rule-context.ts';
 import { spec } from '../../support/spec.ts';
+import type { RuleSource } from '../../../src/rules/index.ts';
 
 const hook = (name: 'allow' | 'ask' | 'deny') => ({ hook: { decision: name } });
 const enforced = { approved: true, policyEnforced: true };
 const unenforced = { approved: true, policyEnforced: false };
+const SOURCES: readonly RuleSource[] = [
+  { kind: 'user' },
+  { kind: 'project' },
+  { kind: 'managed' },
+  { kind: 'cli' },
+];
 
 spec('permissions.behavior.Precedence among rules, hooks, and mods', () => {
   test('a PreToolUse hook "allow" does not lift a deny rule: the matching deny rule blocks the call', () => {
@@ -78,6 +86,12 @@ spec('permissions.behavior.Precedence among rules, hooks, and mods', () => {
     test('cannot lift a call a PreToolUse hook blocked', () => {
       expect(bash('default', 'npm test', { hook: { blocked: true }, mod: enforced })).toEqual(
         deny('hook'),
+      );
+    });
+
+    test('is not asked in place of a permission callback in the default mode: the callback is still asked', () => {
+      expect(bash('default', 'npm test', { permissionCallback: true, mod: enforced })).toEqual(
+        ask('default-prompt'),
       );
     });
 
@@ -186,7 +200,17 @@ spec('permissions.behavior.Precedence among rules, hooks, and mods', () => {
   });
 
   test('a deny rule from any scope is final: no allow of another scope, a hook or --allowedTools lifts it', () => {
-    const rules = rulesOf(['allow', 'Bash(aws s3 ls)'], ['deny', 'Bash(aws *)']);
-    expect(bash('default', 'aws s3 ls', { rules, ...hook('allow') })).toEqual(deny('deny-rule'));
+    for (const denying of SOURCES) {
+      for (const allowing of SOURCES.filter((source) => source.kind !== denying.kind)) {
+        const rules = [
+          parsed('Bash(aws s3 ls)', 'allow', allowing),
+          parsed('Bash(aws *)', 'deny', denying),
+        ];
+        expect(bash('default', 'aws s3 ls', { rules })).toEqual(deny('deny-rule'));
+        expect(bash('default', 'aws s3 ls', { rules, ...hook('allow') })).toEqual(
+          deny('deny-rule'),
+        );
+      }
+    }
   });
 });

@@ -174,8 +174,13 @@ describe('Hook approvals in plan mode', () => {
       expect(bash('plan', 'npm install', { ...allowing, ...AUTO })).toEqual(classify('mode-plan'));
     });
 
-    test('updatedInput returned with the hook is still applied: the hook does answer, its approval is what is void', () => {
+    // `decide` returns an outcome, not an input: applying the `updatedInput` the hook returned is the
+    // hooks layer's (`effects.updatedInput`, tests/hooks/output/dispatch.test.ts), whatever the mode.
+    test('the hook that carries updatedInput does not approve either: only its approval is void, and the outcome is the one with no hook', () => {
       const withInput = { hook: { decision: 'allow' as const, hasUpdatedInput: true } };
+      expect(onPath('plan', 'Edit', '/work/app/a.ts', withInput)).toEqual(
+        onPath('plan', 'Edit', '/work/app/a.ts'),
+      );
       expect(onPath('plan', 'Edit', '/work/app/a.ts', withInput)).toEqual(ask('mode-plan'));
     });
 

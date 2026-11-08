@@ -60,6 +60,35 @@ describe('startPermissions', () => {
     expect([withCallback.cannotPrompt, withCallback.permissionCallback]).toEqual([false, true]);
   });
 
+  test('a host with its own approval interface says interactive without claiming to be a terminal', () => {
+    const policy = permissionsOf([]);
+    const app = sessionOf(policy, headless({ permissionMode: 'default' }), { interactive: true });
+    expect([app.mode, app.context.interactive, app.context.cannotPrompt]).toEqual([
+      'default',
+      true,
+      false,
+    ]);
+    // No terminal surface: the built-in default stays the headless one, not `auto`.
+    expect(sessionOf(policy, headless(), { interactive: true }).mode).toBe('default');
+    // A terminal can say it has nobody to answer.
+    expect(sessionOf(policy, terminal(), { interactive: false }).context.interactive).toBe(false);
+    // Plan mode's bypass behaviour follows the same fact (`bypassAvailable` with `interactive`).
+    const edit = call('Edit', { file_path: '/work/app/a.ts' });
+    const planned = (interactive: boolean) =>
+      sessionOf(policy, headless({ permissionMode: 'plan' }), { interactive }).context;
+    expect(decide(edit, { ...planned(true), bypassAvailable: true }).outcome).toBe('allow');
+    // Not interactive, nobody to answer and no callback: the would-be prompt is a denial.
+    expect(decide(edit, { ...planned(false), bypassAvailable: true }).outcome).toBe('deny');
+  });
+
+  test('carries the notices of the start and autoMode.classifyAllShell into the context', () => {
+    const hipaa = sessionOf(permissionsOf([]), terminal({ hipaa: true }));
+    expect(hipaa.notices).toHaveLength(1);
+    expect(sessionOf(permissionsOf([]), terminal()).notices).toEqual([]);
+    const policy = permissionsOf([['user', { autoMode: { classifyAllShell: true } }]]);
+    expect(sessionOf(policy).context.classifyAllShell).toBe(true);
+  });
+
   test('a refused start comes back as the refusal', () => {
     const policy = permissionsOf([
       ['managed', { permissions: { disableBypassPermissionsMode: 'disable' } }],

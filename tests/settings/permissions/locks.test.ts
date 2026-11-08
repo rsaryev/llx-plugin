@@ -129,15 +129,22 @@ spec('permissions.setting.allowManagedPermissionRulesOnly', () => {
     expect(layerOf('managed', quoted).settings.allowManagedPermissionRulesOnly).toBe(false);
   });
 
-  test('--disallowedTools still applies when the session was started under the key', () => {
-    const policy = permissionsOf([['managed', { allowManagedPermissionRulesOnly: true }]]);
+  test('--disallowedTools still applies when the session was started under the key: its deny rule is in force beside the managed ones', () => {
+    const policy = permissionsOf([
+      ['managed', { allowManagedPermissionRulesOnly: true, ...rules('Bash(m)', 'Bash(md)') }],
+    ]);
     const started = startPermissions({
       policy,
       start: terminal(),
       paths: matchContext.paths,
-      commandLine: { disallowed: ['Bash(rm *)'] },
+      commandLine: { disallowed: ['Bash(rm *)'], allowed: ['Bash(npm test)'] },
     });
-    expect(started.outcome).toBe('started');
+    if (started.outcome !== 'started') throw new Error('refused');
+    expect(started.context.rules.map((rule) => `${rule.behavior}:${rule.text}`)).toEqual([
+      'allow:Bash(m)',
+      'deny:Bash(md)',
+      'deny:Bash(rm *)',
+    ]);
   });
 });
 

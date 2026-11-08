@@ -58,12 +58,63 @@ function otherFields(blocks: readonly PermissionsBlock[]): Record<string, unknow
   return Object.fromEntries(entries);
 }
 
-/**
- * A field that is present only when some file sets it. TypeScript types a computed key as a string
- * index, so the one-field object is asserted to the mapped type it is by construction.
- */
-const present = <K extends string, V>(name: K, value: V | undefined): { [P in K]?: V } =>
-  value === undefined ? {} : ({ [name]: value } as { [P in K]?: V });
+const fieldOf = <K extends keyof PermissionsBlock>(
+  blocks: readonly PermissionsBlock[],
+  name: K,
+): (PermissionsBlock[K] | undefined)[] => blocks.map((block) => block[name]);
+
+/** The four lists of the block: the union of every file's entries, left out when no file sets one. */
+function listFields(
+  blocks: readonly PermissionsBlock[],
+): Pick<PermissionsBlock, 'allow' | 'ask' | 'deny' | 'additionalDirectories'> {
+  const allow = unionOf(fieldOf(blocks, 'allow'));
+  const ask = unionOf(fieldOf(blocks, 'ask'));
+  const deny = unionOf(fieldOf(blocks, 'deny'));
+  const additionalDirectories = unionOf(fieldOf(blocks, 'additionalDirectories'));
+  return {
+    ...(allow === undefined ? {} : { allow }),
+    ...(ask === undefined ? {} : { ask }),
+    ...(deny === undefined ? {} : { deny }),
+    ...(additionalDirectories === undefined ? {} : { additionalDirectories }),
+  };
+}
+
+/** The modes and locks: the highest file that sets each. */
+function modeFields(
+  blocks: readonly PermissionsBlock[],
+): Pick<PermissionsBlock, 'defaultMode' | 'disableBypassPermissionsMode' | 'disableAutoMode'> {
+  const defaultMode = first(fieldOf(blocks, 'defaultMode'));
+  const disableBypassPermissionsMode = first(fieldOf(blocks, 'disableBypassPermissionsMode'));
+  const disableAutoMode = first(fieldOf(blocks, 'disableAutoMode'));
+  return {
+    ...(defaultMode === undefined ? {} : { defaultMode }),
+    ...(disableBypassPermissionsMode === undefined ? {} : { disableBypassPermissionsMode }),
+    ...(disableAutoMode === undefined ? {} : { disableAutoMode }),
+  };
+}
+
+/** The block flags: `true` when any file sets `true`. */
+function flagFields(
+  blocks: readonly PermissionsBlock[],
+): Pick<
+  PermissionsBlock,
+  'blockReadsOutsideWorkingDirectories' | 'blockWritesOutsideWorkingDirectories'
+> {
+  const blockReadsOutsideWorkingDirectories = anyTrue(
+    fieldOf(blocks, 'blockReadsOutsideWorkingDirectories'),
+  );
+  const blockWritesOutsideWorkingDirectories = anyTrue(
+    fieldOf(blocks, 'blockWritesOutsideWorkingDirectories'),
+  );
+  return {
+    ...(blockReadsOutsideWorkingDirectories === undefined
+      ? {}
+      : { blockReadsOutsideWorkingDirectories }),
+    ...(blockWritesOutsideWorkingDirectories === undefined
+      ? {}
+      : { blockWritesOutsideWorkingDirectories }),
+  };
+}
 
 /**
  * The `permissions` blocks of the files as one: `allow`, `ask`, `deny` and `additionalDirectories`
@@ -73,24 +124,27 @@ const present = <K extends string, V>(name: K, value: V | undefined): { [P in K]
  * `startingMode`, which needs the scope this function does not see.
  */
 export function mergePermissionBlocks(blocks: readonly PermissionsBlock[]): PermissionsBlock {
-  const field = <K extends keyof PermissionsBlock>(name: K) => blocks.map((block) => block[name]);
   return {
     ...otherFields(blocks),
-    ...present('allow', unionOf(field('allow'))),
-    ...present('ask', unionOf(field('ask'))),
-    ...present('deny', unionOf(field('deny'))),
-    ...present('additionalDirectories', unionOf(field('additionalDirectories'))),
-    ...present('defaultMode', first(field('defaultMode'))),
-    ...present('disableBypassPermissionsMode', first(field('disableBypassPermissionsMode'))),
-    ...present('disableAutoMode', first(field('disableAutoMode'))),
-    ...present(
-      'blockReadsOutsideWorkingDirectories',
-      anyTrue(field('blockReadsOutsideWorkingDirectories')),
-    ),
-    ...present(
-      'blockWritesOutsideWorkingDirectories',
-      anyTrue(field('blockWritesOutsideWorkingDirectories')),
-    ),
+    ...listFields(blocks),
+    ...modeFields(blocks),
+    ...flagFields(blocks),
+  };
+}
+
+/** The `autoMode` lists: each is the union of every file's entries, left out when no file sets it. */
+function autoModeLists(
+  blocks: readonly AutoModeBlock[],
+): Pick<AutoModeBlock, 'environment' | 'allow' | 'soft_deny' | 'hard_deny'> {
+  const environment = unionOf(blocks.map((block) => block.environment));
+  const allow = unionOf(blocks.map((block) => block.allow));
+  const softDeny = unionOf(blocks.map((block) => block.soft_deny));
+  const hardDeny = unionOf(blocks.map((block) => block.hard_deny));
+  return {
+    ...(environment === undefined ? {} : { environment }),
+    ...(allow === undefined ? {} : { allow }),
+    ...(softDeny === undefined ? {} : { soft_deny: softDeny }),
+    ...(hardDeny === undefined ? {} : { hard_deny: hardDeny }),
   };
 }
 
@@ -100,13 +154,9 @@ export function mergePermissionBlocks(blocks: readonly PermissionsBlock[]): Perm
  * (settings.md, "Exceptions to managed settings precedence").
  */
 export function mergeAutoModeBlocks(blocks: readonly AutoModeBlock[]): AutoModeBlock {
-  const list = (name: 'environment' | 'allow' | 'soft_deny' | 'hard_deny') =>
-    unionOf(blocks.map((block) => block[name]));
+  const classifyAllShell = anyTrue(blocks.map((block) => block.classifyAllShell));
   return {
-    ...present('environment', list('environment')),
-    ...present('allow', list('allow')),
-    ...present('soft_deny', list('soft_deny')),
-    ...present('hard_deny', list('hard_deny')),
-    ...present('classifyAllShell', anyTrue(blocks.map((block) => block.classifyAllShell))),
+    ...autoModeLists(blocks),
+    ...(classifyAllShell === undefined ? {} : { classifyAllShell }),
   };
 }
