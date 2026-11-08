@@ -82,6 +82,14 @@
   with the errors.md message, nothing exported) and `monitorsToStart`, the pure engine that says which
   monitors an event starts: `always` on session start and plugin reload, a skill monitor the first
   time its skill runs, none in non-interactive mode.
+- `loadPlugin`: a plugin folder through `PluginFiles` to a typed `Plugin`, with the optional
+  manifest, every component found by the standard layout registry (`STANDARD_LAYOUT`), the
+  `replace`, `add` and `merge` rule of each manifest key (`COMBINE`), the `Default <folder>/ folder
+  is ignored` warning, containment and existence checks (`<component> path escapes plugin
+  directory`, `<component> path not found`), `settings.json` over the manifest `settings`
+  (`readPluginSettings`), the `bin/` decisions (`binPathEntries`, `pathWithPluginBins`,
+  `distribution`), the `COMPONENT_READERS` seam, and `resolveProcesses` for MCP servers, language
+  servers and monitors.
 
 ### Fixed
 

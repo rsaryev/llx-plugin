@@ -84,3 +84,20 @@ export {
   type SdkOnlyTool,
 } from './protocol/tool-names.ts';
 export type * from './protocol/official-tools.ts';
+export {
+  COMBINE_MODES,
+  COMPONENT_KINDS,
+  STANDARD_LAYOUT,
+  declaredKey,
+  type CombineMode,
+  type ComponentKind,
+  type LayoutEntry,
+  type ManifestKey,
+} from './format/layout.ts';
+export { defaultFolderIgnored, pathEscapes, pathNotFound } from './format/messages.ts';
+export {
+  hasAppliedSettings,
+  readPluginSettings,
+  type PluginSettings,
+  type PluginSettingsRead,
+} from './format/plugin-settings.ts';

@@ -49,7 +49,7 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `readMonitors(raw, origin)`, `readMonitor(raw, origin, index)`, `parseMonitorTrigger(when)` | done | `monitors/monitors.json` or the inline `experimental.monitors` array → `Monitor[]` (strict entry; unique names; `when` as `{ kind: 'always' }` or `{ kind: 'on-skill-invoke', skill }`); every problem is an error issue |
 | `readOutputStyle(...)` | planned | the remaining component file |
 
-## Loading (planned)
+## Loading (done: `loading`, `format/layout`)
 
 ```ts
 import { loadPlugin } from '@rsaryev/claude-plugin-kit';
@@ -60,25 +60,46 @@ const { plugin, issues } = await loadPlugin({ files, fallbackName: 'formatter' }
 `files` is the `PluginFiles` port: read access to one plugin folder, wherever it is (a disk, an
 object store, a sandbox, an archive in memory). `loadPlugin` finds every component in the
 standard layout and the manifest's paths (plugins/manifest-reference.md, "Standard layout", "How
-each key combines with its default location") and returns a `Plugin`:
+each key combines with its default location") and returns a `Plugin`. It never throws: `plugin` is
+`undefined` only when the plugin does not load at all (a `plugin.json` that is not JSON or fails
+validation, or no manifest and no `fallbackName`); any other problem is an issue and skips that
+component while the rest loads.
 
 ```ts
 interface Plugin {
-  readonly name: string;
-  readonly manifest: PluginManifest | undefined;
-  readonly skills: readonly Skill[]; // namespaced `<plugin>:<skill>`
-  readonly commands: readonly Command[];
-  readonly agents: readonly PluginAgent[]; // official AgentDefinition + name and source
-  readonly hooks: HooksSettings; // official
+  readonly name: string; // the manifest's `name`, else `fallbackName`
+  readonly manifest: PluginManifest | undefined; // the manifest is optional
+  readonly skills: readonly PluginTextFile[]; // path, name, `<plugin>:<name>`, text
+  readonly commands: readonly PluginTextFile[]; // files, and the manifest's object map
+  readonly agents: readonly PluginTextFile[]; // `review:security` for agents/review/security.md
+  readonly hooks: HooksSettings; // official; hooks/hooks.json first, then the manifest's, per event
   readonly mcpServers: Readonly<Record<string, PluginMcpServer>>; // official types plus `ws` and `headersHelper`
   readonly lspServers: Readonly<Record<string, LspServer>>;
   readonly monitors: readonly Monitor[];
-  readonly outputStyles: readonly OutputStyle[];
-  readonly settings: Pick<Settings, 'agent' | 'subagentStatusLine'>; // official
+  readonly outputStyles: readonly PluginTextFile[];
+  readonly workflows: readonly PluginPath[];
+  readonly themes: readonly PluginPath[];
+  readonly settings: PluginSettings; // official `Pick<Settings, 'agent' | 'subagentStatusLine'>`
   readonly userConfig: Readonly<Record<string, UserConfigOption>>;
-  readonly hasBin: boolean;
+  readonly bin: readonly string[]; // the files directly in bin/
+  readonly hasBin: boolean; // bin/ exists, empty or not
 }
 ```
+
+| API | What it does |
+| --- | --- |
+| `loadPlugin({ files, fallbackName?, bundles?, bundleSettings?, signal? })` | the optional manifest, discovery, every reader; all issues collected |
+| `discoverComponents(files, manifest, pluginName, signal?)` | paths and names only (no file parsed): the default location and the manifest's paths per kind, containment (`..`, a symlink that leaves the plugin) and existence (`<component> path escapes plugin directory: <path>`, `<component> path not found: <path>`) checked |
+| `STANDARD_LAYOUT`, `COMPONENT_KINDS`, `declaredKey(manifest, kind)` | the registry typed over the component kinds: default location, manifest keys, combine rule, extension; the first manifest key set wins (`experimental.themes` over `themes`) |
+| `COMBINE` | `replace` (`commands`, `agents`, `outputStyles`, `workflows`, `experimental.themes`, `experimental.monitors`: the default is not scanned, with the warning `Default <folder>/ folder is ignored because the manifest sets "<key>"` unless a declared path is inside the folder), `add` (`skills`), `merge` (`hooks`, `mcpServers`, `lspServers`: the default first) |
+| `COMPONENT_READERS` | the seam: one reader per kind over what discovery found. Skills, commands, agents and output styles keep path, name and text until the streams that own those formats plug in a parser |
+| `mergeHooks(sources)` | the hooks of several sources joined per event, in loading order |
+| `readPluginSettings(raw, origin)`, `hasAppliedSettings(read)` | `settings.json` or the inline `settings`: only `agent` and `subagentStatusLine` take effect, the rest is dropped with a warning; `settings.json` wins when it sets one |
+| `binPathEntries(plugin, pluginId, locations)`, `pathWithPluginBins(userEntries, bins)` | the absolute `bin/` directory when the plugin has one, and its place after the user's own `PATH` entries; the host changes the `PATH` |
+| `distribution(plugin, target)`, `DISTRIBUTION_TARGETS` | `claude.ai` and Cowork do not install a plugin that has `bin/`; the host refuses the install |
+| `resolveProcesses(plugin, scope)` | every MCP server, language server and monitor of a plugin resolved for this host; an entry that must not start is left out with its issue |
+
+Loading never calls the resolvers: the host loads, then resolves with its scope.
 
 ### Variable substitution (done: `loading/resolve`)
 
