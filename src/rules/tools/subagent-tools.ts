@@ -173,7 +173,7 @@ function zeroToolsIssue(request: SubagentRequest, entries: readonly string[]): P
  * refused with an issue (errors.md, "Agent would be spawned with zero tools"); an empty list, or a
  * list `disallowedTools` empties, launches the subagent without tools.
  */
-export function resolveSubagentTools(request: SubagentRequest): SubagentTools {
+export function resolveCatalogSubagentTools(request: SubagentRequest): SubagentTools {
   const inherited = [...new Set([...request.sessionTools, ...restoredSearchTools(request)])];
   const usable = inherited.filter(
     (tool) => passesFirstFilter(tool, request) && passesSecondFilter(tool, request),

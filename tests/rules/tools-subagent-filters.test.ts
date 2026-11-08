@@ -5,7 +5,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import {
-  resolveSubagentTools,
+  resolveCatalogSubagentTools,
   type SubagentRequest,
 } from '../../src/rules/tools/subagent-tools.ts';
 import { spec } from '../support/spec.ts';
@@ -22,7 +22,7 @@ const SESSION = [
 ];
 
 const resolve = (rest: Partial<SubagentRequest> = {}) =>
-  resolveSubagentTools({ sessionTools: SESSION, background: false, ...rest });
+  resolveCatalogSubagentTools({ sessionTools: SESSION, background: false, ...rest });
 
 spec(
   [
@@ -157,7 +157,7 @@ describe('sub-agents.md § Available tools: the second filter for background sub
       });
 
       test('background is the default: a request that does not say runs in the background', () => {
-        const { tools } = resolveSubagentTools({ sessionTools });
+        const { tools } = resolveCatalogSubagentTools({ sessionTools });
         expect(tools).toEqual([...BACKGROUND_KEEPS, 'mcp__github__get_issue']);
       });
 

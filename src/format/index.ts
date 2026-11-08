@@ -32,3 +32,40 @@ export {
   resolveTypesPath,
   type HooksModules,
 } from './mod-files.ts';
+export { readAgent } from './agent.ts';
+export {
+  agentFileName,
+  agentNameProblem,
+  hookAgentType,
+  scopedAgentName,
+  validAgentName,
+} from './agent-name.ts';
+export {
+  AGENT_SOURCES,
+  type AgentExtras,
+  type AgentOrigin,
+  type AgentReadResult,
+  type AgentRecord,
+  type AgentSource,
+  type UnrecognizedField,
+} from './agent-record.ts';
+export {
+  AGENT_COLORS,
+  AGENT_FIELDS,
+  AGENT_FIELD_NAMES,
+  AGENT_ISOLATIONS,
+  AGENT_MEMORY_SCOPES,
+  PLUGIN_IGNORED_FIELDS,
+  type AgentColor,
+  type AgentFieldName,
+  type AgentFieldSpec,
+  type AgentFieldValue,
+  type AgentIsolation,
+  type AgentMemoryScope,
+} from './agent-fields.ts';
+export {
+  AUTO_COMPACT_RANGE,
+  type AgentCoercer,
+  type AgentFieldRead,
+  type CacheTtl,
+} from './agent-scalars.ts';

@@ -6,7 +6,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import {
-  resolveSubagentTools,
+  resolveCatalogSubagentTools,
   type SubagentRequest,
 } from '../../src/rules/tools/subagent-tools.ts';
 import { spec } from '../support/spec.ts';
@@ -23,7 +23,7 @@ const SESSION = [
 ];
 
 const resolve = (rest: Partial<SubagentRequest> = {}) =>
-  resolveSubagentTools({ sessionTools: SESSION, background: false, ...rest });
+  resolveCatalogSubagentTools({ sessionTools: SESSION, background: false, ...rest });
 
 spec('tools.tool.Agent', () => {
   describe('tools-reference.md § Agent tool behavior: the two fields', () => {

@@ -41,7 +41,9 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `resolveSkillName(layout, declared)` | done    | the command name of a skill: directory or `name`, the plugin prefix (not doubled), the plugin-root fallback, `anthropic-skills:` for a synced skill; a name with a zero-width, control, private-use, unassigned, bidi or blank character or `<` `>` is refused outside a plugin and hyphenated in a plugin skill folder |
 | `readCommand(path, text, layout)`   | done    | a flat command file (the older skill format) into a `Command`: the skill frontmatter except `name` and `paths`; the name is the path below `commands/` without the extension, folders joined by `:`, after the plugin prefix; a refused character or (outside a plugin) `anthropic-skills` refuses the file |
 | `readCommandEntry(key, entry, sourceText, ctx)` | done | one entry of the manifest `commands` map: `source` text or inline `content` (the body as written), `description`, `argumentHint`, `model` and `allowedTools` replace the same fields of the file; both or neither of `source` and `content`, and a missing source file, are errors for that entry |
-| `readAgent(path, text)`             | planned | an agent file → official `AgentDefinition`                            |
+| `readAgent(text, origin)`           | done (name, description, tools, disallowedTools, model, effort, maxTurns, autoCompactWindow, background, omitClaudeMd, isolation, color, initialPrompt, experimental, hooks) | an agent file → `AgentRecord` (official `AgentDefinition` + scoped name, source, `extras` for `color`, `isolation` and `cacheTtl`; `hooks` in the settings' hook format, never for a plugin agent): a project, user or managed file without a name is documentation and a bad name, no description or unparseable YAML skips it; a plugin agent always loads (file-name fallback, `Agent from <plugin> plugin`) and lists the fields it ignores in `ignored`; a bad value is dropped with a warning; `unrecognized` names up to five unknown fields; the other fields follow |
+| `AGENT_FIELDS`, `AGENT_FIELD_NAMES`, `PLUGIN_IGNORED_FIELDS`, `AGENT_COLORS`, `AGENT_ISOLATIONS`, `AGENT_MEMORY_SCOPES`, `AUTO_COMPACT_RANGE` | done | the registry of the 19 documented frontmatter fields (plugin `supported` or `ignored`, and a coercer each) and the closed lists behind them |
+| `scopedAgentName`, `hookAgentType`, `validAgentName` | done | `my-plugin:review:security` (frontmatter `name` replaces the file segment, a manifest-listed file drops subfolders); the `agent_type` hooks receive; the name rules |
 | `readHooksFile(raw)`                | done    | `hooks/hooks.json` → official `HooksSettings`: events, matcher groups, every handler field; an error leaves no hooks, as Claude Code does |
 | `readHooksSettings(raw)`            | done    | the bare event map (inline `hooks`, skill frontmatter, `settings.json`) |
 | `matchesMatcher(matcher, value, mode?)` | done | a hook `matcher` against the field its event filters on: match-all, exact list, unanchored regex; `'narrow'` for FileChanged and StopFailure |
@@ -592,7 +594,7 @@ const verdict = evaluateRules(rules, { toolName: 'Agent', input: { model: 'opus'
 | `settleClassification(decision, { call, mode, classifier })`, `PermissionClassifier` | done | the host's auto-mode reviewer as a port; a `classify` decision is settled by its answer, and with no reviewer by a denial |
 | `TOOL_CATALOG`, `catalogEntry`, `isKnownTool`, `KNOWN_TOOLS`, `toolRequiresPermission` | done | the 46 tools of the tools table: the "Permission required" column and the rule format of each (`command`, `powershell-command`, `read-path`, `edit-path`, `skill-name`, `subagent-type`, `domain`, `bare`); `KNOWN_TOOLS` feeds `ruleIssues`, `toolRequiresPermission` feeds `DecideContext.requiresPermission` |
 | `availableTools(candidates, session)` | done | the tools Claude sees: a bare deny rule or glob removes a tool, a scoped rule does not, `EndConversation` stays while another tool remains, Glob and Grep are absent by default on posix |
-| `resolveSubagentTools(request)`   | done    | the tools of a non-fork subagent from `tools` and `disallowedTools`, the two filters of the tools available to subagents, and the zero-tools refusal as an issue |
+| `resolveCatalogSubagentTools(request)`   | done    | the tools of a non-fork subagent from `tools` and `disallowedTools`, the two filters of the tools available to subagents, and the zero-tools refusal as an issue |
 | `parseToolInput(tool, raw)`       | done    | a hook's `tool_input` read against its tool's table (hooks.md, "PreToolUse input"): `{ input, issues }`, issues at `tool_input.<field>`; unlisted fields and tools without a table pass through |
 | `TOOL_INPUT_FIELDS`               | done    | per tool and field: `type`, `optional`, `role` (`primary`, `subject`, `param`, `structured`), `source` (`sdk` or `docs`) and the zod `schema`; the roles drive which parameter rules are ignored |
 | `answerQuestions(input, selections)` | done | AskUserQuestion answered for a hook's `updatedInput`: `answers` maps question text to the label, multi-select joined with commas; `{ input, issues }` |
@@ -661,7 +663,7 @@ The tool catalog (`src/rules/tools`) is the one place that says which rule forma
 (`ruleFormatOf` reads it) and whether it prompts in Manual mode. What the host's model, provider and
 surface offer (the task tools by model, `EndConversation`'s surface and provider conditions, the
 `SubagentHandback` conditions) is not modelled: the host passes the candidate tools, and
-`availableTools` and `resolveSubagentTools` narrow them by the documented rules.
+`availableTools` and `resolveCatalogSubagentTools` narrow them by the documented rules.
 
 What the kit does not decide is the classifier's judgement of an action in auto mode: `decide`
 returns `classify` and the host's `PermissionClassifier` answers. Also not modelled: the PowerShell
@@ -841,6 +843,143 @@ Scopes, highest first: `managed`, `parent` (the SDK `managedSettings`), `flag` (
 an empty one, an unreadable lock reads as `true`, and `strictPluginOnlyCustomization` as `true`;
 elsewhere the value or entry is dropped. The aliases `allowedMarketplaces` and
 `additionalMarketplaces` are rewritten to their canonical keys, so a resolver sees only those.
+
+## Sub-agents (done: the tools a subagent gets)
+
+```ts
+import { resolveSubagentTools } from '@rsaryev/claude-plugin-kit';
+
+const outcome = resolveSubagentTools(
+  { name: agent.name, tools: agent.definition.tools, disallowedTools: agent.definition.disallowedTools },
+  { builtin: mainConversationTools, mcp: mcpTools }, // the pool the host offers
+  { kind: 'subagent', background: true, atDepthLimit: false, permissionMode: 'default', asMainThread: false },
+);
+if (!outcome.ok) return outcome.refusal.message; // "Agent 'x' would be spawned with zero tools — refusing. ..."
+```
+
+| Function                          | Status  | Does                                                                                   |
+| --------------------------------- | ------- | -------------------------------------------------------------------------------------- |
+| `resolveSubagentTools(agent, pool, run)` | done | `tools` and `disallowedTools` against the host's pool: the first filter (`AskUserQuestion`, `EndConversation`, `EnterPlanMode`, `ScheduleWakeup`, `WaitForMcpServers`, `Workflow`, `Agent` at the depth limit, `ExitPlanMode` unless `plan`), the background built-in set, `disallowedTools` first (a tool in both is removed, a specifier removes the whole tool, `mcp__github`, `mcp__github__*`, `mcp__*`, `mcp__reports__v2__*`), forks unfiltered, `Agent(worker, researcher)` as an allowlist only for the main thread (`Task(...)` is an alias), and the zero-tools refusal with its three groups (an omitted, empty or fully disallowed list never refuses) |
+| `parseToolEntry(entry)`, `toolEntryMatches(entry, tool, behavior)` | done | one entry of the field and whether it names a tool (`tools` reads as an allow rule, `disallowedTools` as a deny rule) |
+| `removedFromSubagent(tool, run)`, `BACKGROUND_BUILTIN_TOOLS` | done | the two filters as a predicate and the background list |
+
+The host owns the pool (the main conversation's built-in and MCP tools); the kit never lists the
+session's tools itself. `SubagentRun.handback` says the host gives the subagent `SubagentHandback`
+(auto mode, a local subagent that is not a fork), which then beats `disallowedTools`.
+Teammates' task and cron tools, and the Glob and Grep a subagent gets back without Bash, are the
+host's to put in the pool.
+
+### Sub-agents: the permission mode
+
+```ts
+import { baselineDecision, resolveSubagentPermissionMode } from '@rsaryev/claude-plugin-kit';
+
+const { mode, denyInsteadOfAsk } = resolveSubagentPermissionMode({
+  main: 'default',                              // the main conversation's mode
+  set: agent.definition.permissionMode,         // the subagent's own, or undefined
+  autoAvailable: true,                          // the host knows: disableAutoMode, the model
+});
+baselineDecision(mode, { category: 'edit', inScope: true }); // 'ask' | 'allow' | 'deny' | 'classify'
+```
+
+| Function                                   | Status | Does                                                                                   |
+| ------------------------------------------ | ------ | -------------------------------------------------------------------------------------- |
+| `resolveSubagentPermissionMode(input)`     | done   | the full "Permission modes" matrix of sub-agents.md: main `bypassPermissions`, `acceptEdits` or `auto` forces its mode; `plan` is held and a set `dontAsk` denies instead of asking; under `default` or `dontAsk` the set mode applies, except `bypassPermissions` (only when the main conversation does) and `auto` while auto mode is unavailable; `manual` is `default`; unset inherits. `basis` says `inherited`, `set` or `main` |
+| `baselineDecision(mode, action)`           | done   | the "Available modes" table cell by cell for a category (`read`, `edit`, `filesystem-command`, `other`) and `inScope` (working directory or `additionalDirectories`, the host decides) |
+| `PERMISSION_MODE_TRAITS`, `PERMISSION_MODE_INPUTS` | done | the registry over the official union (classifier, denies instead of asking, stance toward a subagent) and the accepted `permissionMode` values (six modes and `manual`) |
+
+The classifier behind `auto` is a model call and the host's; the kit says only that the mode
+routes an action to it. Rules, hooks, protected paths and critical-path removals layer on the
+baseline and are not part of it. An agent team teammate follows the agent teams rules, not this
+function.
+
+### Sub-agents: frontmatter hooks
+
+```ts
+import { selectAgentHooks } from '@rsaryev/claude-plugin-kit';
+
+const { groups, skipped } = selectAgentHooks(agent, {
+  run: 'subagent',            // or 'main-session' for `--agent` and the `agent` setting
+  event: 'PreToolUse',
+  matcherValue: 'Bash',       // the event's matcher input; the tool name here
+  active: true,               // only while this agent is running
+  folderTrusted,              // the host's answer for the folder holding the agent file
+});
+// groups: the agent's own matcher groups to run; merge with the settings' groups for the event
+```
+
+| Function                                | Status | Does                                                                                   |
+| --------------------------------------- | ------ | -------------------------------------------------------------------------------------- |
+| `selectAgentHooks(agent, ctx)`          | done   | the agent's matcher groups that fire for one occurrence of an event: none while the agent is inactive (`skipped: 'inactive'`) or its project folder is untrusted (`'untrusted'`), none for a plugin agent, the matcher read with the hooks grammar (`Bash`, `Edit\|Write` exact; events without matcher support always fire) |
+| `agentHookGroups(agent, run)`           | done   | the agent's hooks for a run: a subagent's `Stop` becomes `SubagentStop` (after the file's own `SubagentStop` groups; a `matcher` on `Stop` is dropped), a main-session run keeps `Stop`; a plugin agent has none |
+| `hooksTrustGate(source, folderTrusted)` | done   | `skip-untrusted` for a project-level (and `--add-dir`) agent until its folder is trusted; user, `--agents`, managed and plugin agents need no trust |
+
+The kit selects and the hooks engine runs. `folderTrusted` is one boolean the host computes: trust of
+a parent folder or a `-p` session does not make it true. A main-session agent's groups run next to the
+settings' hooks, so the host merges the two lists.
+
+### Sub-agents: how it is launched
+
+```ts
+import {
+  resolveSubagentModel, resolveSubagentEffort, effectiveAutoCompactWindow, turnLimitOutcome,
+  runsInBackground, claudeMdScopes, worktreeDisposition,
+} from '@rsaryev/claude-plugin-kit';
+
+const { model } = resolveSubagentModel({
+  invocation: toolCall.model, definition: agent.definition.model, // the file's `model`
+  envModel: env.CLAUDE_CODE_SUBAGENT_MODEL, mainModel: 'claude-opus-5-5[1m]', mainFamily: 'opus',
+});
+const effort = resolveSubagentEffort({ field: agent.definition.effort, session, sameModelAsMain: true });
+const window = effectiveAutoCompactWindow({ field: agent.definition.autoCompactWindow, inherited: 967_000, asMainSession: false });
+```
+
+| Function                                   | Status | Does                                                                                   |
+| ------------------------------------------ | ------ | -------------------------------------------------------------------------------------- |
+| `resolveSubagentModel(input)`              | done   | the "subagent model order": the invocation alias, the definition (`inherit` selects the main model), `CLAUDE_CODE_SUBAGENT_MODEL` (`inherit` is unset), the main model; a family alias of the main model's family becomes the main model's exact model (`[1m]` included), only `opus` when the family cannot be told (unless `ANTHROPIC_DEFAULT_OPUS_MODEL`); `force` skips the invocation and the definition. `from` says where it came from |
+| `resolveSubagentEffort(input)`             | done   | `CLAUDE_CODE_EFFORT_LEVEL` (`auto`/`unset` send none), the invocation parameter, the `effort` field, then the session level only on the main conversation's model |
+| `effectiveAutoCompactWindow(input)`        | done   | the variable (clamped to 100000..1000000) wins, the field only lowers the inherited window, none for a session run as the agent |
+| `turnLimitOutcome(maxTurns, turns)`        | done   | `{ stop, partial }` once `maxTurns` is reached |
+| `effectiveCacheTtl({ cacheTtl, usingUsageCredits })` | done | the frontmatter's step of the cache lifetime precedence; `1h` is ignored on usage credits |
+| `runsInBackground(input)`                  | done   | background unless Claude waits, `background: true` keeps it there, none when background tasks are disabled |
+| `claudeMdScopes(input)`                    | done   | `omitClaudeMd` drops the user, project and local files; managed policy stays except for a managed subagent; a subdirectory's CLAUDE.md and path-scoped rules (`nested`) always load; no effect for a main-session agent |
+| `worktreeDisposition({ isolation, hasChanges })` | done | `none` without `isolation: worktree`; with it `cleanup` without changes, `keep` with (it stays until the periodic sweep) |
+| `mainSessionFirstTurn(input)`              | done   | `initialPrompt` as the first turn of a main-session agent, prepended to the user's prompt; nothing for a subagent |
+
+The kit reads no environment variable: the host passes each as a plain value. Turning an alias into
+a version, the `availableModels` allowlist, the effort levels a model supports, a mod's `agent.spawn`
+hook `model` (it replaces the per-invocation parameter, so pass it as `invocation`), the built-in
+Explore and Plan subagents (`CLAUDE_CODE_SUBAGENT_MODEL` alone does not move them), parsing
+`CLAUDE_CODE_AUTO_COMPACT_WINDOW` with its `k` and `M` suffixes, compaction, the turn loop, cache
+requests and creating the worktree are the host's.
+
+### Sub-agents: skills, MCP servers and memory
+
+```ts
+import { planPreloadedSkills, resolveAgentMcpServers, planAgentMemory } from '@rsaryev/claude-plugin-kit';
+
+const skills = planPreloadedSkills(agent.definition.skills, { has, isModelInvocable });
+// { load: ['api-conventions'], skipped: [{ name: 'verify', reason: 'not-model-invocable' }] }
+const mcp = resolveAgentMcpServers(agent.definition.mcpServers, {
+  source: agent.source, folderTrusted, policy: { allows, managedAllows },
+});
+const memory = await planAgentMemory(agent.definition.memory, agent.scopedName, {
+  autoMemoryEnabled, locations, files,
+});
+```
+
+| Function                                | Status | Does                                                                                   |
+| --------------------------------------- | ------ | -------------------------------------------------------------------------------------- |
+| `planPreloadedSkills(names, catalog)`   | done   | the first 32 distinct names of `skills` are preloaded; a missing or disabled skill, one with `disable-model-invocation: true` and a name past the 32 are `skipped` with a reason |
+| `resolveAgentMcpServers(specs, ctx)`    | done   | strings are `references`, keyed entries `inline` definitions; none for a plugin agent; an inline server of a `project` agent (also `--add-dir`) waits for `folderTrusted`; `policy` blocks (`allows` for everything, `managedAllows` for the managed-only restrictions that also bind an `--agents` definition) become `skipped` |
+| `planAgentMemory(scope, agentType, ctx)`| done   | the directory of `user`, `project` or `local`, the part of `MEMORY.md` for the prompt, `addTools` Read, Write and Edit; `undefined` without a scope or with auto memory off |
+| `truncateMemoryIndex(text)`             | done   | the first 200 lines or 25KB (25600 bytes) of the index, whichever comes first; frontmatter and block comments do not load |
+
+`SkillCatalog` and `McpPolicy` are narrow interfaces the host fills, so this module needs neither the
+skills package nor a process: the host knows `--strict-mcp-config`, `--bare` and the managed lists, and
+whether the folder is trusted (a parent folder's trust and a `-p` session do not count). Loading the
+skill content, connecting servers, creating the memory directory, the memory instructions for the
+system prompt and merging `addTools` into the tool pool are the host's.
 
 ## Testing kit (planned)
 

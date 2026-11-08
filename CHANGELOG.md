@@ -94,6 +94,53 @@
   `force-for-plugin`, `<plugin>:<name>` ids, a YAML error loads the style under its file name),
   `resolveOutputStyle` (case-sensitive setting, case-insensitive `/output-style`, a forced plugin
   style overrides both), `includeCodingInstructions` (full prompt only) and `listOutputStyles`.
+- `planPreloadedSkills`, `resolveAgentMcpServers` and `planAgentMemory`: what a subagent starts
+  with beyond its prompt. The `skills` field preloads the first 32 distinct names, skipping a
+  missing or disabled skill and one with `disable-model-invocation: true`; `mcpServers` splits
+  references from inline definitions, ignores the field for a plugin agent, skips the inline
+  servers of a project or `--add-dir` agent file until its folder is trusted and any server the
+  host's `McpPolicy` blocks (`--strict-mcp-config` does not filter an `--agents` definition,
+  managed restrictions always apply); `memory` plans the directory of its scope, none when auto
+  memory is off, the first 200 lines or 25KB of `MEMORY.md` (`truncateMemoryIndex`) and the Read,
+  Write and Edit tools to add.
+- `resolveSubagentModel` and `resolveSubagentEffort`: the model a subagent runs on (invocation
+  parameter, then the definition with `inherit`, then `CLAUDE_CODE_SUBAGENT_MODEL`, then the main
+  model; a family alias of the main model's family resolves to its exact model; the FORCE variable)
+  and its effort (`CLAUDE_CODE_EFFORT_LEVEL`, then the invocation, then the field, then the session
+  level only on the main model). `effectiveAutoCompactWindow` (the variable wins, the field only
+  lowers, none for a main-session agent), `turnLimitOutcome` (`maxTurns` marks the output partial),
+  `effectiveCacheTtl` (`experimental.cacheTtl`, `1h` ignored while on usage credits),
+  `runsInBackground`, `claudeMdScopes` (`omitClaudeMd`), `worktreeDisposition` (`isolation`) and
+  `mainSessionFirstTurn` (`initialPrompt`).
+- `selectAgentHooks`, `agentHookGroups` and `hooksTrustGate`: the frontmatter hooks of an agent that
+  fire for an event (only while the agent is active, the `PreToolUse` and `PostToolUse` matcher
+  over the tool name, a subagent's `Stop` converted to `SubagentStop`, none for a plugin agent,
+  project-level and `--add-dir` agents skipped until their folder is trusted); `readAgent` reads the
+  `hooks` field with every hook event accepted.
+- `resolveSubagentPermissionMode`: the mode a subagent runs in from its `permissionMode` and the
+  main conversation's (a main `bypassPermissions`, `acceptEdits` or `auto` forces its mode, `plan`
+  is held and `dontAsk` then denies instead of asking, under `default` or `dontAsk` the set mode
+  applies except `bypassPermissions` and an unavailable `auto`, `manual` is `default`, unset
+  inherits); `PERMISSION_MODE_TRAITS` and `baselineDecision` for what each mode runs without asking
+  (`allow`, `ask`, `deny` or `classify`), typed over the official `PermissionMode` union.
+- `resolveSubagentTools`: the tools a subagent gets from `tools` and `disallowedTools` (inherit
+  when omitted, `disallowedTools` first, a specifier removes the whole tool, `mcp__server`
+  entries including servers whose name holds `__`, the always-removed list with `ExitPlanMode` kept
+  for `plan`, the background built-in set, forks unfiltered, the `Agent(worker, researcher)`
+  allowlist for the main thread with `Task(...)` as an alias) and the documented zero-tools
+  refusal (`ToolRefusal`); `parseToolEntry` and `toolEntryMatches` for single entries.
+- Agent frontmatter fields in `readAgent`: `model`, `effort`, `maxTurns`, `autoCompactWindow` (a
+  string such as `200k` reads as 200 and is dropped with `invalid autoCompactWindow`),
+  `background`, `omitClaudeMd`, `isolation`, `color`, `initialPrompt` and `experimental.cacheTtl`,
+  through a field registry typed over the 19 documented names (`AGENT_FIELDS`,
+  `AGENT_FIELD_NAMES`) with the plugin supported and ignored lists (`PLUGIN_IGNORED_FIELDS`); a
+  plugin agent reports the fields it ignores in `ignored`; fields Claude Code does not recognize
+  are named with a likely intended name in `unrecognized`.
+- `readAgent` for agent files (`name` and `description`): the files Claude Code skips (no name is
+  documentation, a bad name, no description or YAML that does not parse), the plugin fallbacks
+  (file name, `Agent from <plugin> plugin`), `<plugin>:<subfolder>:<name>` scoped names
+  (`scopedAgentName`), the name rules (`validAgentName`) and the `agent_type` hooks receive
+  (`hookAgentType`).
 - The evidence pipeline: `docs:pull` mirrors the official Claude Code docs, `spec:extract` turns
   them into `spec/requirements.json`, and `compat` reports the share each test run proves.
 - Official types re-exported from `@anthropic-ai/claude-agent-sdk`, with `HOOK_EVENTS` and
@@ -643,6 +690,44 @@
   `arguments` and the skill folder of a Windows path.
 - `listOutputStyles` marks one row current: a custom style that reuses a built-in id or an earlier
   style's id is no longer listed, matching what `resolveOutputStyle` selects.
+- Memory index: `truncateMemoryIndex` strips a block-level HTML comment only when it opens a line
+  and ends on the line of its own first `-->`, and not inside fenced code, so text between two
+  comments is no longer dropped and `truncated` stays honest; the `skills` tests prove `Skill` in
+  `tools` is no preload, and the comma-separated `skills` string is a recorded judgment.
+- Agent launch: `worktreeDisposition` takes `{ isolation, hasChanges }` and returns `none` for an
+  agent without `isolation: worktree`; `ClaudeMdScopes` gains `nested` (a subdirectory's CLAUDE.md
+  and path-scoped rules still load with `omitClaudeMd`); the model, effort, background and
+  auto-compact tests now prove what the docs say (resolved model per value, documented-only
+  cases), the judgments sit in their own blocks, and `spec/judgments.md` records the
+  `CLAUDE_CODE_EFFORT_LEVEL=auto` effect on subagents, the host-side `k`/`M` suffixes of
+  `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, the `agent.spawn` model and the Explore and Plan subagents.
+- Agent hooks: a Monitor command (matcher input `Monitor`) is also matched as `Bash` on
+  `PreToolUse` and `PermissionRequest`, never on `PostToolUse` (hooks.md, "Match Monitor
+  commands"); the `--agents` (flag) trust exemption, the `FileChanged` and `StopFailure` narrow
+  grammar and the ignored matcher of events without matcher support are now proven under their
+  `hooks.matcher.*` ids, and `spec/judgments.md` keeps only the managed-agent exemption there.
+- Permission modes: the dead `classifier` trait is dropped from `PERMISSION_MODE_TRAITS` and its
+  tautology test with it; `BaselineDecision` derives from the SDK's `PermissionBehavior`;
+  `SubagentPermissionInput.set` takes `string` (raw host text that is no mode counts as unset);
+  `spec/judgments.md` records the host-owned subagent classifier review, read-only Bash as a
+  `read` and the `dontAsk` always-deny cases.
+- `resolveSubagentTools`: a `tools` list naming `SubagentHandback` is no longer refused when the
+  host grants it (`handback`), in the foreground or the background; `SubagentRun.teammate` keeps
+  the task and cron tools in a background run; `AgentToolFields` derives from the SDK's
+  `AgentDefinition`; the tests state their expected lists, cover `Task` and `Agent(type)` in
+  `disallowedTools`, and the Glob/Grep grant is recorded as the host's.
+
+- Agent fields: a quoted fraction such as `autoCompactWindow: "200000.5"` is dropped with
+  `invalid autoCompactWindow` instead of truncating to 200000; `background` and `omitClaudeMd`
+  accept a YAML boolean or the text `true` or `false` only (not `yes`, `on`, `1`); an empty
+  inline `mcpServers` definition (`- {}`) is dropped; a plugin agent now has a test for each of
+  `tools`, `disallowedTools`, `skills` and `memory`; the judgments say why plugin-ignored fields
+  are not "unrecognized".
+
+- Agent files: a project, user or managed file with a name that breaks a rule now has each rule's
+  own wording tested; a plugin agent in a file named `.md` is named `.md`, not an empty string; a
+  `--add-dir` directory reads as `project`, and `flag` is no source of a file read (`readAgent`).
+
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
   parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
   (and `skill`) read `name:value` as a parameter.

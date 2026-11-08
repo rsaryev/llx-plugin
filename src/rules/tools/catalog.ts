@@ -8,23 +8,23 @@ import type { RuleFormatId } from './rule-formats.ts';
  * "Applies to" column names the tools each format covers; "Tools not listed here ... accept only
  * the bare tool name with no specifier".
  */
-export interface ToolEntry {
+export interface CatalogToolEntry {
   /** The tool prompts in Manual mode for paths inside the working directory. */
   readonly permissionRequired: boolean;
   readonly ruleFormat: RuleFormatId;
 }
 
-const yes = (ruleFormat: RuleFormatId = 'bare'): ToolEntry => ({
+const yes = (ruleFormat: RuleFormatId = 'bare'): CatalogToolEntry => ({
   permissionRequired: true,
   ruleFormat,
 });
-const no = (ruleFormat: RuleFormatId = 'bare'): ToolEntry => ({
+const no = (ruleFormat: RuleFormatId = 'bare'): CatalogToolEntry => ({
   permissionRequired: false,
   ruleFormat,
 });
 
 /** One entry per documented tool: a tool the table adds fails the typecheck until it is described here. */
-export const TOOL_CATALOG: { readonly [T in DocumentedTool]: ToolEntry } = {
+export const TOOL_CATALOG: { readonly [T in DocumentedTool]: CatalogToolEntry } = {
   Agent: no('subagent-type'),
   Artifact: yes(),
   AskUserQuestion: no(),
@@ -73,12 +73,13 @@ export const TOOL_CATALOG: { readonly [T in DocumentedTool]: ToolEntry } = {
   Write: yes('edit-path'),
 };
 
-const ENTRY_OF: ReadonlyMap<string, ToolEntry> = new Map(
+const ENTRY_OF: ReadonlyMap<string, CatalogToolEntry> = new Map(
   DOCUMENTED_TOOLS.map((tool) => [tool, TOOL_CATALOG[tool]]),
 );
 
 /** The entry of a documented tool, or `undefined` for any other name (an MCP tool, a typo). */
-export const catalogEntry = (toolName: string): ToolEntry | undefined => ENTRY_OF.get(toolName);
+export const catalogEntry = (toolName: string): CatalogToolEntry | undefined =>
+  ENTRY_OF.get(toolName);
 
 const REMOVED: ReadonlySet<string> = new Set(REMOVED_TOOLS);
 

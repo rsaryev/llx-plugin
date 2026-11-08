@@ -52,11 +52,11 @@ export {
   KNOWN_TOOLS,
   TOOL_CATALOG,
   toolRequiresPermission,
-  type ToolEntry,
+  type CatalogToolEntry,
 } from './tools/catalog.ts';
 export { availableTools, type ToolSession } from './tools/availability.ts';
 export {
-  resolveSubagentTools,
+  resolveCatalogSubagentTools,
   type SubagentRequest,
   type SubagentTools,
 } from './tools/subagent-tools.ts';
