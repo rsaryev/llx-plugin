@@ -232,6 +232,7 @@ spec('mods.event.settings.read', () => {
       );
       expect(value).toEqual({ spinnerTipsEnabled: true, model: 'opus', disableAllHooks: false });
       expect(debug).toEqual([
+        'mod (user) answered settings.read without next()',
         "settings.read: the answer for spinnerTipsEnabled is no value the key can hold; the settings' own value stands",
       ]);
     });
@@ -240,6 +241,7 @@ spec('mods.event.settings.read', () => {
       const { value, debug } = await readEngine(() => ({ deny: 'not now' }));
       expect(value).toEqual({ spinnerTipsEnabled: true, model: 'sonnet', disableAllHooks: false });
       expect(debug).toEqual([
+        'mod (user) answered settings.read without next()',
         "settings.read: refused to the engine (engine: $.settings.read: not now); the settings' own values stand",
       ]);
     });

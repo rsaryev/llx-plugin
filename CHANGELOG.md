@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Added
+
+- Mods, the events prose, the reference fields and the settings hook. `toolReadOnlyReport` gives
+  `e.isReadOnly` of `tool.check` (`true` or absent, never `false`); `inputChangedDenial` denies a call
+  whose input a hook changed after auto mode's review (`a hook changed this call's input after the model
+  wrote it`); `withheldResultText` and `promptDroppedText` word what Claude and the user read of a
+  withheld result and a dropped prompt; `settingsLayersForMods` builds `e.layers` (`plugin`, `user`,
+  `project`, `local`, `flag`, `policy`, lowest first) and `readEngineSettings` forwards the chain's debug
+  lines (`answered settings.read without next()`); a `settings.read` hook must answer `{ value }` or
+  `{ deny }`; `ModsHost.runCommand` answers a registered command no `command.run` hook answered
+  (`<mod> registered /tally but no command.run hook answered it`); a call a stopped session refuses
+  raises the toast `Stopped: type a message to continue; a mod cannot resume work after Stop`; the
+  built-in guard names a mod that tried to lift a deny rule once, in the debug log and the transcript;
+  `turn.step` carries `turnId`; the test kit fires `settings.read` with empty `layers`. 48 requirements
+  of events.md, reference.md and troubleshoot.md are proven, each with the docs' own example.
+
 ### Fixed
 
 - Mods, review of `describeApi`, state reset and the mods API guide tests. `RunGate.userInput()` and

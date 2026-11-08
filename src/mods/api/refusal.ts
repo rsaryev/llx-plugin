@@ -56,7 +56,8 @@ export function refusing(deps: Deps, kind: RefusableCall, core: Core): Core {
     const reason = await deps.gate.refusal();
     const request = isRecord(event) ? event : {};
     const refused = reason === undefined ? undefined : REFUSALS[kind](reason, request);
-    if (refused === undefined) return core(event);
+    if (refused === undefined || reason === undefined) return core(event);
+    deps.gate.refused(reason);
     if ('error' in refused) throw new Error(`${deps.plugin}: $.${kind}: ${refused.error}`);
     return refused.answer;
   };

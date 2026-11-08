@@ -928,6 +928,7 @@ const result = await chain.dispatch('tool.call', event, {
 | `createEventRules()`, `EVENT_SPECS`   | done    | what the chain knows of the tool, prompt, command, `/config`, turn, session and subagent events: documented input fields, the shapes a hook can answer with, refused changes, what Claude Code receives, the cut reason (`createModChain({ clock, rules })`) |
 | `eventResultProblem`, `eventInputProblem` | done | why a result or an input does not fit an event, or `undefined`; unknown events are not checked |
 | `clampReason`, `mergeToolCheck`, `skillPromptEvent`, `autocompleteRows` | done | the 4,096-character reason cut; the `tool.check` decision with plan mode (a mod can tighten a call that is not read-only, not approve it) and the organization's `ceiling: 'ask'` (an `allow` still asks); the `skill.prompt` event from a skill and its parsed frontmatter; Claude Code's autocomplete rows then the mods' |
+| `toolReadOnlyReport(call, checks)`, `inputChangedDenial(call)`, `withheldResultText(call)`, `promptDroppedText(reason)`, `unansweredCommandReply(plugin, command)` | done | `e.isReadOnly` of `tool.check` as `true` or `undefined` (never `false`: Read, Grep, Glob, WebSearch, WebFetch and Agent report it, Bash through the host's read-only command check, an MCP tool by its `readOnlyHint`); the auto-mode denial of a call whose input a hook changed after the review (`a hook changed this call's input after the model wrote it`, or `after auto mode reviewed it`); what Claude reads when a hook withholds the result of a call that ran (`Bash ran, and a plugin withheld its result: <reason>`); the line the user sees of a dropped prompt (`Prompt dropped by a hook: <reason>`); the reply for a command a mod registered that no `command.run` hook answered |
 | `createModsApi(options, plugin)`      | done    | the `$` of one mod: every namespace of the reference, each call an event through the chain and then a port; `engine.create` fires once and may add or withhold a namespace; `dispose()` stops its timers and forgets its registrations |
 | `createRegistries()`, `createStateStore()`, `readEngineSettings(options)`, `withApiRules(rules)`, `isValidModName`, `atom`, `read`, `update` | done | what mods registered (commands, tools as `mcp__<plugin>__<name>`, subagent types), `$.state`, Claude Code's own `settings.read`, the shape rule for API calls, the 64-character name rule, the state helpers |
 | `createModsUi(options)`, `withUiRules(rules)`, `uiApi(deps, parts)` | done | the interface part: the `$.ui` of a mod (`ModsApiOptions.ui = ui.api`), `draw` a render site (fires `ui.render`, folds the answer), `loadMod` (fires `ui.resolve`), `fault(plugin, report)` and `message(plugin, data)` (each reaches only that mod's hooks), `change` (focus and scroll), the panes, the toast board and the redraw throttle; the chain takes `withUiRules(withApiRules(createEventRules()))` |
@@ -963,6 +964,18 @@ hooks share (default 1.5 s, counted from the first hook that has the floor; pass
 time excludes `next` and mods API calls except `$.clock.sleep`; the chain wraps the mod's `$` to
 meter that and to reject an argument nested past 28000 levels. The ports for mods that name
 `PluginIssue` live in `src/mods/ports.ts`, not `src/ports`.
+
+`settings.read` is answered like a call: a hook returns `next(e)`, `{ value }` or `{ deny }`, any other
+result fails it. `settingsLayersForMods(layers, pluginSettings)` builds `e.layers` from the settings
+stream's layers (`plugin` first, then `user`, `project`, `local`, `flag`, `policy`; a source with no
+settings is left out); `readEngineSettings` fires Claude Code's own read and forwards the debug lines of
+the chain (`<mod> (<tier>) answered settings.read without next()`). `ModsHost.runCommand(command, args,
+{ core })` fires `command.run` for a command the user types: one a mod registered that no hook answers
+gets `<mod> registered /<command> but no command.run hook answered it...`, any other ends in `core`. A call
+a stopped session refuses (`$.prompt.submit`, `$.command.run`, `$.agent.spawn`, a background `$.tool.call`)
+raises the toast `Stopped: type a message to continue; a mod cannot resume work after Stop`
+(`STOPPED_TOAST`). The built-in guard says `<mod> tried to lift a deny rule in your settings` once for each
+mod to the debug log and, in an interactive session, the transcript (`ModNotice` through `onNotice`).
 
 The events part gives the chain what is specific to an event: `createModChain({ clock, rules:
 createEventRules() })`. A hook's result must fit the "A hook can return" column of the reference

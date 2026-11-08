@@ -63,6 +63,7 @@ export async function readEngineSettings(options: EngineReadOptions): Promise<Js
       origin: ENGINE_ORIGIN,
       signal: options.signal,
       report: options.report,
+      debug: options.debug,
       core: () => Promise.resolve({ value: merged }),
     },
   );

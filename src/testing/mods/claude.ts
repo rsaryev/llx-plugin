@@ -20,6 +20,21 @@ const NOT_FIRED: ReadonlySet<string> = new Set(['plugin.register', 'engine.creat
 const isFired = (name: string): boolean => !name.startsWith('ui.') && !NOT_FIRED.has(name);
 const STREAMS: ReadonlySet<string> = new Set(STREAM_EVENTS);
 
+/**
+ * What a test's `$` adds to an event it fires: `e.layers` of `settings.read` is "Empty in `claude
+ * plugin test`" (events.md, "What a `settings.read` hook receives"), a field a test can still set itself.
+ */
+const DEFAULT_INPUT: Readonly<Partial<Record<AnyModEventName, Readonly<Record<string, unknown>>>>> =
+  {
+    'settings.read': { layers: [] },
+  };
+
+const withDefaults = (name: AnyModEventName, input: unknown): unknown => {
+  const defaults = DEFAULT_INPUT[name];
+  const isTable = typeof input === 'object' && input !== null && !Array.isArray(input);
+  return defaults !== undefined && isTable ? { ...defaults, ...input } : input;
+};
+
 type Fire = (input: unknown) => Promise<unknown> | AsyncGenerator<unknown, unknown>;
 
 /** One method of `$`: a call for most events, a stream the test reads to its end for `turn.step`. */
@@ -29,13 +44,15 @@ function fireOf(world: World, name: AnyModEventName): Fire {
     return async function* (input) {
       await world.ensure();
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `name` is one of the stream events, checked above
-      return yield* world.host().fireStream(name as StreamEventName, input as never, { core });
+      return yield* world
+        .host()
+        .fireStream(name as StreamEventName, withDefaults(name, input) as never, { core });
     };
   }
   return async (input) => {
     await world.ensure();
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the test writes the event's input; the chain checks it
-    return world.host().fire(name, input as never, { core });
+    return world.host().fire(name, withDefaults(name, input) as never, { core });
   };
 }
 

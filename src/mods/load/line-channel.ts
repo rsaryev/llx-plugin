@@ -16,7 +16,8 @@ export type ModLineKind =
   | 'hook-skipped'
   | 'refused-by-mod'
   | 'worker-crash'
-  | 'fresh-copy';
+  | 'fresh-copy'
+  | 'guard-lift';
 export type ModLineChannel = 'transcript' | 'stderr' | 'debug-log';
 
 export interface ModLineSession {
@@ -52,6 +53,14 @@ const hooksModuleChannel = (session: ModLineSession): ModLineChannel => {
 const workerCrashChannel = (session: ModLineSession): ModLineChannel =>
   session.isInteractive ? 'transcript' : hooksModuleChannel(session);
 
+/**
+ * "`tried to lift a deny rule in your settings`: The transcript and the debug log, once for each mod
+ * in a session. In a `claude -p` run, the debug log only" (troubleshoot.md, "Messages from the
+ * built-in guard").
+ */
+const guardLiftChannel = (session: ModLineSession): ModLineChannel =>
+  session.isInteractive ? 'transcript' : 'debug-log';
+
 /** What differs per kind: where the line goes in a session. */
 const CHANNELS: { readonly [K in ModLineKind]: (session: ModLineSession) => ModLineChannel } = {
   'not-loaded': hooksModuleChannel,
@@ -61,6 +70,7 @@ const CHANNELS: { readonly [K in ModLineKind]: (session: ModLineSession) => ModL
   'worker-crash': workerCrashChannel,
   // Judgment: the page names no place for it; it is one line per mod, like a skipped hook.
   'fresh-copy': hooksModuleChannel,
+  'guard-lift': guardLiftChannel,
 };
 
 /** Where `kind` of line is read in `session`; a session with neither a plugin directory nor hot reloading has the debug log only (judgment for a non-interactive run in another format). */

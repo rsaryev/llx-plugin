@@ -15,13 +15,18 @@ const usage = z.looseObject({
 });
 
 export const TURN_SPECS: { readonly [N in TurnEvent]: EventSpec } = {
-  // `e.turnId` identifies the turn in the other two events.
+  // `e.turnId` identifies the turn in the other two events (events.md, "Follow a turn").
   'turn.start': { input: fields({ turnId: text }), result: passThrough },
   // `e.agentId` is set for a subagent's request. A hook passes `{ ...e, model }` or `{ ...e, effort }`
   // to `next`, or answers without calling the model. Judgment: `model` and `effort` are strings,
   // the docs name an alias such as `haiku` and give no list for `effort`.
   'turn.step': {
-    input: fields({ agentId: text.optional(), model: text.optional(), effort: text.optional() }),
+    input: fields({
+      turnId: text.optional(),
+      agentId: text.optional(),
+      model: text.optional(),
+      effort: text.optional(),
+    }),
     result: answer({
       usage: usage.optional(),
       serverToolUses: z.array(z.unknown()).optional(),

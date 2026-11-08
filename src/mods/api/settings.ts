@@ -31,9 +31,15 @@ function valueOfRead(deps: Deps, e: unknown): JsonObject {
   return layers.find((layer) => layer.source === source)?.settings ?? {};
 }
 
-/** A hook's `{ value }` or `{ deny }` on a mod's read: the call resolves to the value, or to the `key` taken from it. */
-const keyOf = (value: unknown, key: string | undefined): unknown =>
-  key === undefined || !isRecord(value) ? value : value[key];
+/**
+ * A hook's `{ value }` on a mod's read: the call resolves to the value, or to the `key` taken from it
+ * ("so return a whole object and not an array": a key cannot be taken from anything else, so a
+ * value that is not an object gives the key no value, judgment).
+ */
+const keyOf = (value: unknown, key: string | undefined): unknown => {
+  if (key === undefined) return value;
+  return isRecord(value) ? value[key] : undefined;
+};
 
 export function settingsApi(deps: Deps): ModsNamespaceApi<'settings'> {
   return {

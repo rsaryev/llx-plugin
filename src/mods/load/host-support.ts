@@ -14,6 +14,7 @@ import {
 import type { OrderedMod } from './order.ts';
 import type { ReplayLedger, ReplayMode } from '../api/replay.ts';
 import type { Wired } from './wiring.ts';
+import { unansweredCommandReply } from '../events/index.ts';
 
 /** What the host passes the chain when it fires an event itself. */
 export interface FireSettings {
@@ -120,4 +121,34 @@ export async function loadOne(
     return { mod: await wired.registerGuard() };
   }
   return files ? loadMod(wired.env, mod, files) : {};
+}
+
+/**
+ * `command.run` for a command the user typed: a command a mod registered that reaches the end of the
+ * chain with no answer gets the reply of troubleshoot.md ("`no command.run hook answered it`"), any
+ * other ends in the host's own behaviour.
+ */
+export function runCommandThrough(
+  host: {
+    readonly registries: Wired['registries'];
+    readonly chain: ModChain;
+    readonly dispatchOptions: (opts: FireSettings) => DispatchOptions;
+  },
+  request: { readonly command: string; readonly args: string },
+  opts: FireSettings,
+): Promise<unknown> {
+  return host.chain.dispatch(
+    'command.run',
+    request,
+    host.dispatchOptions({
+      ...opts,
+      core: (e) => {
+        const registered = host.registries.commands.get(request.command);
+        if (registered === undefined) return opts.core?.(e) ?? Promise.resolve({});
+        return Promise.resolve({
+          text: unansweredCommandReply(registered.plugin, request.command),
+        });
+      },
+    }),
+  );
 }

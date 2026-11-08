@@ -5,6 +5,7 @@ import {
   createStateStore,
   withApiRules,
   type ModHostPorts,
+  type ModRegistries,
   type ModsApiOptions,
   type RunGate,
   type RunLimits,
@@ -24,6 +25,10 @@ import { tagRefusals, withRegisterRules, type RefusalBook } from './register-cal
 import { forgettingChain, skipReports, type SkipReports } from './skip-reports.ts';
 import { withUnanswered } from './unanswered.ts';
 import { GUARD_ID, GUARD_NAME } from '../../protocol/mods-settings.ts';
+import { MOD_LIMITS } from '../../protocol/mods-limits.ts';
+
+/** Who owns a toast Claude Code raises itself (judgment: the docs name no owner; no mod's name fits). */
+const ENGINE_TOAST_OWNER = 'claude-code';
 
 /** What the host is given (see `ModsHostOptions`, which adds nothing to it). */
 export interface Wires {
@@ -42,6 +47,8 @@ export interface Wires {
   readonly matcherMs?: number;
   /** The calls a fresh copy of a mod does not make again (`ReplayLedger`). */
   readonly replay?: ReplayLedger;
+  /** A line about a deny rule a mod tried to lift, for the transcript or the debug log (`guardHooks`). */
+  readonly guardNotice?: (line: string) => void;
   /** The run's limits: `--max-turns` and `--max-budget-usd`, or the Agent SDK's turn and spend limits. */
   readonly limits?: RunLimits;
 }
@@ -53,6 +60,8 @@ export interface Wired {
   readonly state: StateStore;
   readonly chain: ModChain;
   readonly ui: ModsUi;
+  /** What mods registered: a command a user runs is looked up here. */
+  readonly registries: ModRegistries;
   /** What the loader needs to load one module. */
   readonly env: LoaderEnv;
   /** A mod the host itself provides, built in: its hooks are registered as given, and `$` is built for it. */
@@ -90,18 +99,37 @@ function chainOf(given: Wires, reports: SkipReports): ModChain {
 /** What every mod's API shares: the chain it calls through, the state, the registries and the session's gate. */
 function sharedOptions(
   given: Wires,
-  own: Pick<ModsApiOptions, 'chain' | 'state' | 'gate' | 'report' | 'ui'>,
+  own: Pick<ModsApiOptions, 'chain' | 'state' | 'gate' | 'report' | 'ui' | 'registries'>,
 ): Omit<ModsApiOptions, 'canWithhold'> {
   const scopes: ScopeBook = new Map();
   return {
     ...own,
     ports: given.ports,
-    registries: createRegistries(),
     scopes,
     ...(given.replay ? { replay: given.replay } : {}),
     debug: given.debug,
   };
 }
+
+/**
+ * The session's gate. The toast of a stop is Claude Code's own, so it carries no mod's name (judgment);
+ * `ui` exists by the time a call is refused.
+ */
+const runGateOf = (given: Wires, ui: ModsUi): RunGate =>
+  createRunGate(given.ports.session, given.limits, {
+    toast: (text) => ui.toasts.show(ENGINE_TOAST_OWNER, { text, timeoutMs: MOD_LIMITS.toastMs }),
+  });
+
+/** The hooks of the built-in guard, each tagged so a refusal names it. */
+const guardHooksOf = (given: Wires, ledger: ApprovalLedger, book: RefusalBook) =>
+  guardHooks({
+    policy: given.policy,
+    deny: given.deny,
+    ledger,
+    debug: given.debug,
+    told: new Set(),
+    ...(given.guardNotice ? { notice: given.guardNotice } : {}),
+  }).map((hook) => tagRefusals(hook, GUARD_NAME, book));
 
 /** The chain, the interface and the API of the mods runtime, wired over the ports the host gave. */
 export function wire(given: Wires): Wired {
@@ -111,7 +139,6 @@ export function wire(given: Wires): Wired {
   const chain = chainOf(given, reports);
   const calls = given.unanswered ? withUnanswered(chain, given.unanswered) : chain;
   const state = createStateStore();
-  const gate = createRunGate(ports.session, given.limits);
   const ui = createModsUi({
     chain: calls,
     clock: ports.clock,
@@ -121,7 +148,16 @@ export function wire(given: Wires): Wired {
     report,
     debug,
   });
-  const shared = sharedOptions(given, { chain: calls, state, gate, report, ui: ui.api });
+  const gate = runGateOf(given, ui);
+  const registries = createRegistries();
+  const shared = sharedOptions(given, {
+    chain: calls,
+    state,
+    gate,
+    report,
+    ui: ui.api,
+    registries,
+  });
   const book: RefusalBook = { refusers: new Map() };
   const ledger: ApprovalLedger = { approvers: [] };
   const createApi: LoaderEnv['createApi'] = (ref) =>
@@ -167,12 +203,11 @@ export function wire(given: Wires): Wired {
     state,
     chain,
     ui,
+    registries,
     env,
     registerNative,
     registerGuard: async () => {
-      const hooks = guardHooks({ policy, deny: given.deny, ledger, debug }).map((hook) =>
-        tagRefusals(hook, GUARD_NAME, book),
-      );
+      const hooks = guardHooksOf(given, ledger, book);
       return { ...(await registerNative(GUARD_NAME, 'prepend', hooks)), id: GUARD_ID };
     },
   };

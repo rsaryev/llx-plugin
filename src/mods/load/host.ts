@@ -12,7 +12,12 @@ import type {
 } from '../types.ts';
 import type { ModInterface, ModsUi } from '../ui/index.ts';
 import type { LoadedMod, ModPlugin, ReloadOutcome } from './loader.ts';
-import { announceSessionStart, dispatchOptionsFor, type FireSettings } from './host-support.ts';
+import {
+  announceSessionStart,
+  dispatchOptionsFor,
+  runCommandThrough,
+  type FireSettings,
+} from './host-support.ts';
 import { createModSet, type ModLoadReport, type ModNotice } from './mod-set.ts';
 import { modLineChannel } from './line-channel.ts';
 import { createReplayLedger, replayedLine } from '../api/replay.ts';
@@ -109,6 +114,16 @@ export interface ModsHost {
     input: EventOf<N>,
     options?: FireOptions,
   ): Promise<ResultOf<N>>;
+  /**
+   * The user runs `/<command>`: fires `command.run`. A command a mod registered that reaches the end of
+   * the chain with no answer gets `<mod> registered /<command> but no command.run hook answered it`
+   * (troubleshoot.md); any other command ends in `options.core`, the host's own behaviour.
+   */
+  runCommand(
+    command: string,
+    args: string,
+    options?: FireOptions,
+  ): Promise<ResultOf<'command.run'>>;
   fireStream<N extends StreamEventName>(
     name: N,
     input: EventOf<N>,
@@ -171,7 +186,14 @@ export function createModsHost(options: ModsHostOptions): ModsHost {
     debug(line);
     notify({ line, channel: modLineChannel(sessionNow(), 'fresh-copy') });
   });
-  const wired = wire({ ...options, debug, report: options.report ?? noop, signal, replay });
+  const wired = wire({
+    ...options,
+    debug,
+    report: options.report ?? noop,
+    signal,
+    replay,
+    guardNotice: (line) => notify({ line, channel: modLineChannel(sessionNow(), 'guard-lift') }),
+  });
   const { chain, env } = wired;
   /** What the host registered itself: a reload does not touch it. */
   const builtIns: LoadedMod[] = [];
@@ -198,6 +220,12 @@ export function createModsHost(options: ModsHostOptions): ModsHost {
     reload: () => mods.reload(),
     reloadMod: (name) => mods.reloadMod(name),
     fire: (name, input, opts = {}) => chain.dispatch(name, input, dispatchOptions(opts)),
+    runCommand: (command, args, opts = {}) =>
+      runCommandThrough(
+        { registries: wired.registries, chain, dispatchOptions },
+        { command, args },
+        opts,
+      ),
     fireStream: (name, input, opts = {}) =>
       chain.dispatchStream(name, input, dispatchOptions(opts)),
     registerBuiltIn: async (name, tier, hooks) => {

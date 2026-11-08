@@ -42,6 +42,10 @@ export interface GuardOptions {
   readonly deny: DenyRuleChecker;
   readonly ledger: ApprovalLedger;
   readonly debug: (line: string) => void;
+  /** The line for the transcript (or only the debug log, in a `claude -p` run): the host decides where it is read. */
+  readonly notice?: (line: string) => void;
+  /** The mods the guard already said it refused a lift for: "once for each mod in a session". */
+  readonly told?: Set<string>;
 }
 
 const decisionOf = (result: unknown): unknown => (isRecord(result) ? result.decision : undefined);
@@ -52,6 +56,15 @@ const decisionOf = (result: unknown): unknown => (isRecord(result) ? result.deci
  * `allowModsToOverrideDenyRules` a `deny` rule yields, an `ask` rule does not). "If it can't check
  * the deny rules for a call that a user's mod approved, it refuses the call."
  */
+/** The line of a lift the guard refused: to the debug log and the transcript, once for each mod in a session. */
+function tell(options: GuardOptions, line: string, mod: string): void {
+  const told = options.told;
+  if (told?.has(mod)) return;
+  told?.add(mod);
+  options.debug(line);
+  options.notice?.(line);
+}
+
 async function checkApproval(options: GuardOptions, e: unknown, result: unknown): Promise<unknown> {
   const approvers = options.ledger.approvers;
   if (approvers.length === 0 || !isRecord(e)) return result;
@@ -61,7 +74,7 @@ async function checkApproval(options: GuardOptions, e: unknown, result: unknown)
     (verdict === 'deny' && !guardOption(options.policy, 'allowModsToOverrideDenyRules'));
   if (verdict === 'unknown') return { decision: 'deny', reason: CHECK_FAILED };
   if (!lifts) return result;
-  for (const mod of approvers) options.debug(`${mod} ${LIFT_ATTEMPT}`);
+  for (const mod of approvers) tell(options, `${mod} ${LIFT_ATTEMPT}`, mod);
   return { decision: 'deny', reason: `${approvers.join(', ')} ${LIFT_ATTEMPT}` };
 }
 

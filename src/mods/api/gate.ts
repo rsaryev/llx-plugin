@@ -23,6 +23,14 @@ export const unsentReason = {
     `Teammate "${name}" was not messaged: ${reason}.`,
 };
 
+/**
+ * The toast Claude Code shows when the user stopped a turn and a mod then tried to start work on its
+ * own and was refused (troubleshoot.md, "`Stopped: type a message to continue; a mod cannot resume work
+ * after Stop`"). Nothing needs fixing: after the next message, mods can start work again.
+ */
+export const STOPPED_TOAST =
+  'Stopped: type a message to continue; a mod cannot resume work after Stop';
+
 /** What a call that waited in the queue gives when the user stops the turn before it ran. */
 export const QUEUE_DROPS = {
   prompt: 'the prompt was removed from the queue before it ran',
@@ -82,6 +90,8 @@ export interface RunGate {
   endInput(): void;
   /** Aborts at the next interruption: for a call that waits in the queue, which the interruption drops. */
   interrupted(): AbortSignal;
+  /** A call that starts new work was refused for `reason`: a stop is shown to the user as a toast. */
+  refused(reason: string): void;
   /** Replaces the run's limits, for a host that lives longer than one run: the next call is judged by them. */
   setLimits(limits: RunLimits): void;
   /**
@@ -99,6 +109,7 @@ export const openGate: RunGate = {
   userInput: () => Promise.resolve(),
   endInput: () => undefined,
   interrupted: () => new AbortController().signal,
+  refused: () => undefined,
   setLimits: () => undefined,
   notice: (_kind, deliver) => (deliver(), 'delivered'),
 };
@@ -116,6 +127,7 @@ const costOf = (usage: unknown): number | undefined => {
 export function createRunGate(
   session: Pick<ModSession, 'turns' | 'usage'>,
   initial: RunLimits = {},
+  options: { readonly toast?: (text: string) => void } = {},
 ): RunGate {
   let limits = initial;
   let stopped = false;
@@ -153,6 +165,9 @@ export function createRunGate(
     },
     endInput: () => void (ended = true),
     interrupted: () => epoch.signal,
+    refused(reason) {
+      if (reason === REFUSAL_REASONS.stopped) options.toast?.(STOPPED_TOAST);
+    },
     setLimits: (next) => void (limits = next),
     notice(kind, deliver) {
       if (!stopped) {
