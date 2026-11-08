@@ -6,6 +6,9 @@ import { CATEGORIES } from './sources.ts';
 /** The committed list of requirements (docs/SPEC.md). */
 export const REQUIREMENTS_FILE = join(ROOT, 'spec', 'requirements.json');
 
+/** The sections the audit leaves out, each with its reason (docs/SPEC.md, "Sections and scope"). */
+export const OUT_OF_SCOPE_FILE = join(ROOT, 'spec', 'out-of-scope.json');
+
 const requirementSchema = z.strictObject({
   /** `<category path>.<key>`, such as `hooks.handler.common.timeout`. */
   id: z.string().min(1),

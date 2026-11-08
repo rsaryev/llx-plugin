@@ -1,0 +1,4017 @@
+[
+  {
+    "page": "plugins/loading.md",
+    "section": "Find where a plugin came from",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/loading.md",
+    "section": "Plugins shared through a repository",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/loading.md",
+    "section": "Plugins synced from claude.ai",
+    "reason": "service"
+  },
+  {
+    "page": "plugins/loading.md",
+    "section": "Sync timing in cloud Cowork sessions",
+    "reason": "service"
+  },
+  {
+    "page": "plugins/loading.md",
+    "section": "Sync timing in terminal sessions",
+    "reason": "service"
+  },
+  {
+    "page": "plugins/loading.md",
+    "section": "Sign-in requirements for terminal sync",
+    "reason": "service"
+  },
+  {
+    "page": "plugins/loading.md",
+    "section": "Control which synced plugins load",
+    "reason": "service"
+  },
+  {
+    "page": "plugins/loading.md",
+    "section": "Find where a plugin is enabled",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/loading.md",
+    "section": "Find plugins on disk",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/loading.md",
+    "section": "Node.js package dependencies",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/loading.md",
+    "section": "Versions and updates",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/loading.md",
+    "section": "When auto-update runs",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/loading.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/dependencies.md",
+    "section": "Declare dependencies",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/dependencies.md",
+    "section": "Release a plugin that others depend on",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/dependencies.md",
+    "section": "How dependencies behave for your users",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/dependencies.md",
+    "section": "Dependencies when your plugin loads from claude.ai",
+    "reason": "service"
+  },
+  {
+    "page": "plugins/dependencies.md",
+    "section": "See also",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/host-marketplace.md",
+    "section": "Host your marketplace",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/host-marketplace.md",
+    "section": "Keep users up to date",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/host-marketplace.md",
+    "section": "Rename or remove a plugin",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/host-marketplace.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/manifest-reference.md",
+    "section": "Manifest file",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/manifest-reference.md",
+    "section": "Component path forms",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/manifest-reference.md",
+    "section": "Path rules",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/manifest-reference.md",
+    "section": "Marketplace entries and the manifest",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/manifest-reference.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/marketplace-reference.md",
+    "section": "Marketplace file",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/marketplace-reference.md",
+    "section": "How an entry combines with plugin.json",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/marketplace-reference.md",
+    "section": "Validation messages",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/marketplace-reference.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/cli-reference.md",
+    "section": "claude plugin commands",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/cli-reference.md",
+    "section": "plugin update",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/cli-reference.md",
+    "section": "plugin eval",
+    "reason": "tooling"
+  },
+  {
+    "page": "plugins/cli-reference.md",
+    "section": "plugin eval init",
+    "reason": "tooling"
+  },
+  {
+    "page": "plugins/cli-reference.md",
+    "section": "plugin validate",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/cli-reference.md",
+    "section": "claude plugin marketplace commands",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/cli-reference.md",
+    "section": "/plugin in a session",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/cli-reference.md",
+    "section": "/reload-plugins",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/cli-reference.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/install.md",
+    "section": "Plugins from your claude.ai account",
+    "reason": "service"
+  },
+  {
+    "page": "plugins/install.md",
+    "section": "Add a marketplace and install in one command",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/install.md",
+    "section": "Add a marketplace from claude.ai",
+    "reason": "service"
+  },
+  {
+    "page": "plugins/install.md",
+    "section": "Manage plugins synced from claude.ai",
+    "reason": "service"
+  },
+  {
+    "page": "plugins/install.md",
+    "section": "See what an installed plugin adds to your sessions",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/install.md",
+    "section": "Find plugins you no longer use",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/install.md",
+    "section": "Keep plugins updated",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/install.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/create.md",
+    "section": "Decide when to use a plugin",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/create.md",
+    "section": "Create your first plugin",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/create.md",
+    "section": "Share your plugin",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/create.md",
+    "section": "Develop without a marketplace",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/create.md",
+    "section": "Load a plugin for one session",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/create.md",
+    "section": "Make a plugin load in every session",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/create.md",
+    "section": "A component path isn't found",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/create.md",
+    "section": "--plugin-dir at a marketplace root doesn't load the plugins under plugins/",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/create.md",
+    "section": "The plugin loads but its skills are missing",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/create.md",
+    "section": "The userConfig dialog never appears",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/create.md",
+    "section": "Check that the plugin changes Claude's behavior",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/create.md",
+    "section": "Convert an existing .claude/ setup",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/create.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/create-marketplace.md",
+    "section": "Create a marketplace",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/create-marketplace.md",
+    "section": "Add plugin entries",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/create-marketplace.md",
+    "section": "Rules for plugin entries",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/create-marketplace.md",
+    "section": "Validate and test",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/create-marketplace.md",
+    "section": "Host your marketplace",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/create-marketplace.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/components.md",
+    "section": "Add each kind of component",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/components.md",
+    "section": "Commands",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/components.md",
+    "section": "Agents",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/components.md",
+    "section": "Reach users on claude.ai and Cowork",
+    "reason": "service"
+  },
+  {
+    "page": "plugins/components.md",
+    "section": "Ask the user for configuration values",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/components.md",
+    "section": "Reference plugin paths and store data",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/components.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/security.md",
+    "section": "Understand what a plugin can do",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/security.md",
+    "section": "Identify Anthropic's marketplaces by name",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/security.md",
+    "section": "Review a plugin before you install",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/security.md",
+    "section": "Remove a plugin you no longer trust",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/security.md",
+    "section": "Recognize when Claude Code refuses or warns",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/security.md",
+    "section": "Find plugins in telemetry",
+    "reason": "telemetry"
+  },
+  {
+    "page": "plugins/security.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/org.md",
+    "section": "Pre-install and require plugins",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/org.md",
+    "section": "Choose a delivery mechanism",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/org.md",
+    "section": "Confirm the rollout",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/org.md",
+    "section": "Set update policy",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/org.md",
+    "section": "Audit and review",
+    "reason": "telemetry"
+  },
+  {
+    "page": "plugins/org.md",
+    "section": "OpenTelemetry events",
+    "reason": "telemetry"
+  },
+  {
+    "page": "plugins/org.md",
+    "section": "Analytics API",
+    "reason": "telemetry"
+  },
+  {
+    "page": "plugins/org.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/publish.md",
+    "section": "Choose how to distribute",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/publish.md",
+    "section": "Share a plugin without a marketplace",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/publish.md",
+    "section": "Publish through your own marketplace",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/publish.md",
+    "section": "Tell users how to install",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/publish.md",
+    "section": "Submit to Anthropic's directory",
+    "reason": "service"
+  },
+  {
+    "page": "plugins/publish.md",
+    "section": "How a listed plugin reaches Claude Code users",
+    "reason": "service"
+  },
+  {
+    "page": "plugins/publish.md",
+    "section": "Ship updates, renames, and removals",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/publish.md",
+    "section": "Declare dependencies",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/publish.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "Find where /plugin runs",
+    "reason": "machine"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "/plugin isn't available in this environment",
+    "reason": "machine"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "zsh: no such file or directory: /plugin",
+    "reason": "machine"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "The term '/plugin' is not recognized as the name of a cmdlet",
+    "reason": "machine"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "claude: command not found after claude plugin ...",
+    "reason": "machine"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "Unknown command and command spellings that don't exist",
+    "reason": "machine"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "Add a marketplace",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "SSH authentication failed or HTTPS authentication failed",
+    "reason": "machine"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "SSH host key is not in your known_hosts file",
+    "reason": "machine"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "Command 'git' not found or is in an unsafe location",
+    "reason": "machine"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "Install a plugin",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "Plugin \"<name>\" not found in marketplace \"<marketplace>\"",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "Plugin installed but not working",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "Failed to load hooks from <path> and hooks that don't fire",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "Invalid MCP server config for \"<server>\" and MCP servers that don't start",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "Language server doesn't start, uses too much memory, or reports wrong diagnostics",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "Language server uses too much memory",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "False positive diagnostics in a monorepo",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "Build a plugin",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "<directory> is not a plugin or skill folder from claude plugin eval init",
+    "reason": "tooling"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "Host a marketplace",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "Blocked by your organization",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/troubleshooting.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/code-intelligence.md",
+    "section": "Install a code intelligence plugin",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/code-intelligence.md",
+    "section": "See what Claude gains",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/code-intelligence.md",
+    "section": "Read the diagnostics yourself",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/code-intelligence.md",
+    "section": "Accept or dismiss the recommendation dialog",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/code-intelligence.md",
+    "section": "When the recommendation dialog appears",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/code-intelligence.md",
+    "section": "Respond to the recommendation dialog",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/code-intelligence.md",
+    "section": "Turn recommendations back on",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/code-intelligence.md",
+    "section": "Troubleshoot code intelligence",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/code-intelligence.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/overview.md",
+    "section": "Understand what a plugin is",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/overview.md",
+    "section": "Decide whether you need a plugin",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/overview.md",
+    "section": "Get plugins from a marketplace",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/overview.md",
+    "section": "Tell Anthropic's marketplaces from third-party ones",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/overview.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/cli-hints.md",
+    "section": "Preview what the user sees",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/cli-hints.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/anthropic-marketplaces.md",
+    "section": "Anthropic's marketplaces",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/anthropic-marketplaces.md",
+    "section": "Find plugins in the official marketplace",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/anthropic-marketplaces.md",
+    "section": "Browse and install from Anthropic's marketplaces",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/anthropic-marketplaces.md",
+    "section": "Add the community marketplace",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/anthropic-marketplaces.md",
+    "section": "Third-party marketplaces",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/anthropic-marketplaces.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/relevance.md",
+    "section": "Field reference",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/relevance.md",
+    "section": "relevance.signals",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/relevance.md",
+    "section": "Preview what the user sees",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/relevance.md",
+    "section": "See also",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/measure.md",
+    "section": "Measure what a plugin costs",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/measure.md",
+    "section": "Lower the always-on figure",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/measure.md",
+    "section": "Cost shown to users before install",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/measure.md",
+    "section": "Check whether a plugin is used",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/measure.md",
+    "section": "Not used recently in /plugin",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/measure.md",
+    "section": "Find skills that never run",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/measure.md",
+    "section": "Unused plugins in /doctor",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/measure.md",
+    "section": "Usage share in /usage",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/measure.md",
+    "section": "Measure across a fleet",
+    "reason": "telemetry"
+  },
+  {
+    "page": "plugins/measure.md",
+    "section": "OpenTelemetry events for plugin installs and use",
+    "reason": "telemetry"
+  },
+  {
+    "page": "plugins/measure.md",
+    "section": "Redacted plugin names in your backend",
+    "reason": "telemetry"
+  },
+  {
+    "page": "plugins/measure.md",
+    "section": "Query the Analytics API",
+    "reason": "telemetry"
+  },
+  {
+    "page": "plugins/measure.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/mods/overview.md",
+    "section": "What a mod can do",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/mods/overview.md",
+    "section": "Get a mod",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/mods/overview.md",
+    "section": "Install or update a mod",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/mods/overview.md",
+    "section": "Try a sample mod",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/mods/overview.md",
+    "section": "Decide whether to trust a mod",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/overview.md",
+    "section": "List what a mod does before you install one",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/mods/overview.md",
+    "section": "See which mods a session loaded",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/mods/overview.md",
+    "section": "Compare mods, settings hooks, skills, and MCP servers",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/mods/overview.md",
+    "section": "Mods built into Claude Code",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/overview.md",
+    "section": "Read the source of built-in mods",
+    "reason": "builtin"
+  },
+  {
+    "page": "plugins/mods/overview.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/mods/admin.md",
+    "section": "Decide whether to leave mods on",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/mods/admin.md",
+    "section": "Review what a mod can do",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/mods/admin.md",
+    "section": "Run your organization's own mods",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/admin.md",
+    "section": "Refuse mods when your check fails",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/mods/admin.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/mods/api.md",
+    "section": "Add a command or a tool",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/api.md",
+    "section": "Call a model",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/api.md",
+    "section": "Run work in the background",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/api.md",
+    "section": "Calls and background work after the user interrupts a turn",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/api.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/mods/create.md",
+    "section": "Ask Claude for a mod",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/mods/create.md",
+    "section": "Use the mod in other sessions",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/mods/create.md",
+    "section": "Write a mod yourself",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/mods/create.md",
+    "section": "How the example mod works",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/mods/create.md",
+    "section": "Keep working on a mod",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/create.md",
+    "section": "Change a mod with Claude",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/mods/create.md",
+    "section": "Get type definitions for your version",
+    "reason": "tooling"
+  },
+  {
+    "page": "plugins/mods/create.md",
+    "section": "Test the mod",
+    "reason": "tooling"
+  },
+  {
+    "page": "plugins/mods/create.md",
+    "section": "Share your mod",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/mods/create.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/mods/events.md",
+    "section": "How a hook handles an event",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/events.md",
+    "section": "Hook what Claude is doing",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/events.md",
+    "section": "Change or refuse a settings read",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/events.md",
+    "section": "Run alongside other mods",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/events.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Try a sample",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Pick an element",
+    "reason": "advice"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Show text",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Text",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Markdown",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Link",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Show code and changes",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Code",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Code as a diff",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Arrange elements",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Box",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Take input",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Button",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Input",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Select",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Draw pictures",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Raster",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Svg",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Image and Client",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Draw an Image inside tmux",
+    "reason": "duplicate"
+  },
+  {
+    "page": "plugins/mods/gallery.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/mods/interface.md",
+    "section": "Build a pane with tabs",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/mods/interface.md",
+    "section": "Respond to presses and typing",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/interface.md",
+    "section": "Keyboard focus and hotkeys",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/interface.md",
+    "section": "Take typed input and draw a row for each item",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/mods/interface.md",
+    "section": "Redraw a site",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/interface.md",
+    "section": "Keep state",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/interface.md",
+    "section": "Keep a value in $.state",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/interface.md",
+    "section": "Change hello-tabs to use $.state",
+    "reason": "tutorial"
+  },
+  {
+    "page": "plugins/mods/interface.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/mods/test.md",
+    "section": "Write a test",
+    "reason": "tooling"
+  },
+  {
+    "page": "plugins/mods/test.md",
+    "section": "Stub what Claude Code would answer",
+    "reason": "tooling"
+  },
+  {
+    "page": "plugins/mods/test.md",
+    "section": "Follow the test kit's rules",
+    "reason": "tooling"
+  },
+  {
+    "page": "plugins/mods/test.md",
+    "section": "Look up what a stub returns",
+    "reason": "tooling"
+  },
+  {
+    "page": "plugins/mods/test.md",
+    "section": "Test a timer",
+    "reason": "tooling"
+  },
+  {
+    "page": "plugins/mods/test.md",
+    "section": "Test a drawing",
+    "reason": "tooling"
+  },
+  {
+    "page": "plugins/mods/test.md",
+    "section": "Test a drawing after /clear",
+    "reason": "tooling"
+  },
+  {
+    "page": "plugins/mods/test.md",
+    "section": "Test a policy mod",
+    "reason": "tooling"
+  },
+  {
+    "page": "plugins/mods/test.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/mods/troubleshoot.md",
+    "section": "Find out why a mod does nothing",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/mods/troubleshoot.md",
+    "section": "The mod doesn't load",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/troubleshoot.md",
+    "section": "A hook is skipped or a mod is unloaded",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/troubleshoot.md",
+    "section": "A tool call is denied",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/troubleshoot.md",
+    "section": "A toast appears after a turn is stopped",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/troubleshoot.md",
+    "section": "A drawing doesn't appear or respond",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/troubleshoot.md",
+    "section": "An edit or a value is lost",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/troubleshoot.md",
+    "section": "Read the debug log",
+    "reason": "ui"
+  },
+  {
+    "page": "plugins/mods/troubleshoot.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "plugins/mods/reference.md",
+    "section": "Events",
+    "reason": "container"
+  },
+  {
+    "page": "plugins/mods/reference.md",
+    "section": "Text typography props",
+    "reason": "container"
+  },
+  {
+    "page": "skills.md",
+    "section": "Bundled skills",
+    "reason": "builtin"
+  },
+  {
+    "page": "skills.md",
+    "section": "Check your setup with /doctor",
+    "reason": "builtin"
+  },
+  {
+    "page": "skills.md",
+    "section": "Run and verify your app",
+    "reason": "builtin"
+  },
+  {
+    "page": "skills.md",
+    "section": "Run your checks before each commit",
+    "reason": "builtin"
+  },
+  {
+    "page": "skills.md",
+    "section": "Work on Claude API projects",
+    "reason": "builtin"
+  },
+  {
+    "page": "skills.md",
+    "section": "Getting started",
+    "reason": "tutorial"
+  },
+  {
+    "page": "skills.md",
+    "section": "Create your first skill",
+    "reason": "tutorial"
+  },
+  {
+    "page": "skills.md",
+    "section": "Load skills from a directory outside the project",
+    "reason": "container"
+  },
+  {
+    "page": "skills.md",
+    "section": "Use skills in Cowork and cloud sessions",
+    "reason": "service"
+  },
+  {
+    "page": "skills.md",
+    "section": "Skills synced from claude.ai",
+    "reason": "service"
+  },
+  {
+    "page": "skills.md",
+    "section": "Where synced skills load",
+    "reason": "service"
+  },
+  {
+    "page": "skills.md",
+    "section": "When a synced skill name matches another command",
+    "reason": "service"
+  },
+  {
+    "page": "skills.md",
+    "section": "Names reserved for synced skills",
+    "reason": "service"
+  },
+  {
+    "page": "skills.md",
+    "section": "How Claude Code handles the frontmatter of a synced skill",
+    "reason": "service"
+  },
+  {
+    "page": "skills.md",
+    "section": "How Claude Code handles the body of a synced skill",
+    "reason": "service"
+  },
+  {
+    "page": "skills.md",
+    "section": "Configure skills",
+    "reason": "container"
+  },
+  {
+    "page": "skills.md",
+    "section": "Types of skill content",
+    "reason": "advice"
+  },
+  {
+    "page": "skills.md",
+    "section": "Pre-approve tools for a skill",
+    "reason": "container"
+  },
+  {
+    "page": "skills.md",
+    "section": "Advanced patterns",
+    "reason": "container"
+  },
+  {
+    "page": "skills.md",
+    "section": "Find unused skills",
+    "reason": "ui"
+  },
+  {
+    "page": "skills.md",
+    "section": "Evaluate and iterate on a skill",
+    "reason": "tooling"
+  },
+  {
+    "page": "skills.md",
+    "section": "Run evals with skill-creator",
+    "reason": "tooling"
+  },
+  {
+    "page": "skills.md",
+    "section": "Share skills",
+    "reason": "advice"
+  },
+  {
+    "page": "skills.md",
+    "section": "Generate visual output",
+    "reason": "tutorial"
+  },
+  {
+    "page": "skills.md",
+    "section": "Troubleshooting",
+    "reason": "container"
+  },
+  {
+    "page": "skills.md",
+    "section": "Skill not triggering",
+    "reason": "advice"
+  },
+  {
+    "page": "skills.md",
+    "section": "Skill triggers too often",
+    "reason": "advice"
+  },
+  {
+    "page": "skills.md",
+    "section": "Claude stops following a skill",
+    "reason": "advice"
+  },
+  {
+    "page": "skills.md",
+    "section": "Related resources",
+    "reason": "navigation"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Quickstart: create your first subagent",
+    "reason": "tutorial"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Configure subagents",
+    "reason": "container"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Choose an effort level",
+    "reason": "container"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Control subagent capabilities",
+    "reason": "container"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Define hooks for subagents",
+    "reason": "container"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Work with subagents",
+    "reason": "container"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Understand automatic delegation",
+    "reason": "advice"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Run subagents in foreground or background",
+    "reason": "container"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Finished subagents in the panel and task list",
+    "reason": "ui"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Common patterns",
+    "reason": "container"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Isolate high-volume operations",
+    "reason": "tutorial"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Run parallel research",
+    "reason": "tutorial"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Chain subagents",
+    "reason": "tutorial"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Choose between subagents and main conversation",
+    "reason": "advice"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Manage subagent context",
+    "reason": "container"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Auto-compaction",
+    "reason": "container"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Observe and steer running forks",
+    "reason": "ui"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Example subagents",
+    "reason": "tutorial"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Code reviewer",
+    "reason": "tutorial"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Debugger",
+    "reason": "tutorial"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Data scientist",
+    "reason": "tutorial"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Database query validator",
+    "reason": "tutorial"
+  },
+  {
+    "page": "sub-agents.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "hooks.md",
+    "section": "The /hooks menu",
+    "reason": "ui"
+  },
+  {
+    "page": "hooks.md",
+    "section": "Hook input and output",
+    "reason": "container"
+  },
+  {
+    "page": "hooks.md",
+    "section": "Hook events",
+    "reason": "container"
+  },
+  {
+    "page": "hooks.md",
+    "section": "Persist environment variables",
+    "reason": "container"
+  },
+  {
+    "page": "hooks.md",
+    "section": "Check multiple conditions before stopping",
+    "reason": "tutorial"
+  },
+  {
+    "page": "hooks.md",
+    "section": "Agent-based hooks",
+    "reason": "container"
+  },
+  {
+    "page": "hooks.md",
+    "section": "Run hooks in the background",
+    "reason": "container"
+  },
+  {
+    "page": "hooks.md",
+    "section": "Run tests after file changes",
+    "reason": "tutorial"
+  },
+  {
+    "page": "hooks.md",
+    "section": "Security considerations",
+    "reason": "container"
+  },
+  {
+    "page": "hooks.md",
+    "section": "Disclaimer",
+    "reason": "advice"
+  },
+  {
+    "page": "hooks.md",
+    "section": "Security best practices",
+    "reason": "advice"
+  },
+  {
+    "page": "hooks.md",
+    "section": "Windows PowerShell tool",
+    "reason": "container"
+  },
+  {
+    "page": "hooks.md",
+    "section": "Debug hooks",
+    "reason": "advice"
+  },
+  {
+    "page": "mcp.md",
+    "section": "What you can do with MCP",
+    "reason": "advice"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Find and build MCP servers",
+    "reason": "advice"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Installing MCP servers",
+    "reason": "container"
+  },
+  {
+    "page": "mcp.md",
+    "section": "How Claude Code stops a stdio server",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Add a server from setup instructions written for another client",
+    "reason": "tutorial"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Add a server from a URL",
+    "reason": "tutorial"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Add a server from an npx, uvx, or binary command",
+    "reason": "tutorial"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Add a server from an mcpServers JSON block",
+    "reason": "tutorial"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Managing your servers",
+    "reason": "ui"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Server status",
+    "reason": "ui"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Server status detail",
+    "reason": "ui"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Configuration warnings",
+    "reason": "ui"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Tool availability",
+    "reason": "ui"
+  },
+  {
+    "page": "mcp.md",
+    "section": "MCP client runtimes",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Dynamic tool updates",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Notification streams on the v2 runtime",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Automatic reconnection",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Mid-session drops of a remote server",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Failed first connections",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Stdio servers that exit or fail to start",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Failed discovery requests",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Retry failed servers yourself",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "How Claude learns that a server failed",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Push messages with channels",
+    "reason": "duplicate"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Time limits on MCP tool calls",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Automatic backgrounding of long tool calls",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "MCP tasks that run on the server",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Stop an MCP task or get its result",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Answer a question from an MCP task",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Exit, clear, or resume while an MCP task runs",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "What a call needs to become an MCP task",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Status messages on an MCP task",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Time limits on MCP tasks",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Make Claude wait for the result of an MCP task",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "MCP tasks for server authors",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Answer the call with a task",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Report status, results, and questions",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "MCP installation scopes",
+    "reason": "container"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Environment variable expansion in .mcp.json",
+    "reason": "container"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Practical examples",
+    "reason": "tutorial"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Example: Connect to GitHub for code reviews",
+    "reason": "tutorial"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Example: Query your PostgreSQL database",
+    "reason": "tutorial"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Authenticate from the command line",
+    "reason": "ui"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Sign in to an MCP server behind a gateway that requires a header",
+    "reason": "ui"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Import MCP servers from Claude Desktop",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Use MCP servers from claude.ai",
+    "reason": "service"
+  },
+  {
+    "page": "mcp.md",
+    "section": "How connectors reach Claude Code",
+    "reason": "service"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Organization controls on connector tools",
+    "reason": "service"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Disable claude.ai connectors",
+    "reason": "service"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Use Claude Code as an MCP server",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Read a background command's output as an MCP client",
+    "reason": "runtime"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Answer an elicitation request in a cloud session",
+    "reason": "service"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Use MCP resources",
+    "reason": "ui"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Reference MCP resources",
+    "reason": "ui"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Scale with MCP tool search",
+    "reason": "model"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Tool search for MCP server authors",
+    "reason": "model"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Change the description length limits",
+    "reason": "model"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Mark a tool to load upfront or stay deferred",
+    "reason": "model"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Configure tool search",
+    "reason": "model"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Tool search through an LLM gateway",
+    "reason": "model"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Tools that stay deferred below the ENABLE_TOOL_SEARCH=auto threshold",
+    "reason": "model"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Exempt a server from deferral",
+    "reason": "model"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Defer a server's tools",
+    "reason": "model"
+  },
+  {
+    "page": "mcp.md",
+    "section": "Use MCP prompts as commands",
+    "reason": "container"
+  },
+  {
+    "page": "managed-mcp.md",
+    "section": "Choose a pattern",
+    "reason": "advice"
+  },
+  {
+    "page": "managed-mcp.md",
+    "section": "Exclusive control with managed-mcp.json",
+    "reason": "container"
+  },
+  {
+    "page": "managed-mcp.md",
+    "section": "Validate the configuration",
+    "reason": "machine"
+  },
+  {
+    "page": "managed-mcp.md",
+    "section": "Provide servers through managed settings",
+    "reason": "container"
+  },
+  {
+    "page": "managed-mcp.md",
+    "section": "Match servers by URL, command, or name",
+    "reason": "container"
+  },
+  {
+    "page": "managed-mcp.md",
+    "section": "How a server is evaluated",
+    "reason": "container"
+  },
+  {
+    "page": "managed-mcp.md",
+    "section": "Example configuration",
+    "reason": "tutorial"
+  },
+  {
+    "page": "managed-mcp.md",
+    "section": "How restrictions appear to users",
+    "reason": "ui"
+  },
+  {
+    "page": "managed-mcp.md",
+    "section": "Monitor MCP usage",
+    "reason": "telemetry"
+  },
+  {
+    "page": "managed-mcp.md",
+    "section": "Configuration summary",
+    "reason": "duplicate"
+  },
+  {
+    "page": "managed-mcp.md",
+    "section": "Related resources",
+    "reason": "navigation"
+  },
+  {
+    "page": "settings.md",
+    "section": "Settings files and who they affect",
+    "reason": "container"
+  },
+  {
+    "page": "settings.md",
+    "section": "Share settings with your team",
+    "reason": "advice"
+  },
+  {
+    "page": "settings.md",
+    "section": "Keep personal settings out of a repository",
+    "reason": "container"
+  },
+  {
+    "page": "settings.md",
+    "section": "Check what your organization enforces",
+    "reason": "ui"
+  },
+  {
+    "page": "settings.md",
+    "section": "Change a setting",
+    "reason": "container"
+  },
+  {
+    "page": "settings.md",
+    "section": "Use the /config menu",
+    "reason": "ui"
+  },
+  {
+    "page": "settings.md",
+    "section": "Confirm what loaded",
+    "reason": "ui"
+  },
+  {
+    "page": "settings.md",
+    "section": "Precedence examples",
+    "reason": "container"
+  },
+  {
+    "page": "settings.md",
+    "section": "Team settings override personal settings",
+    "reason": "tutorial"
+  },
+  {
+    "page": "settings.md",
+    "section": "Organization settings override everything",
+    "reason": "tutorial"
+  },
+  {
+    "page": "settings.md",
+    "section": "The command line overrides your files for one session",
+    "reason": "tutorial"
+  },
+  {
+    "page": "settings.md",
+    "section": "A flag or environment variable sets the same thing",
+    "reason": "tutorial"
+  },
+  {
+    "page": "settings.md",
+    "section": "Troubleshoot a setting that doesn't apply",
+    "reason": "container"
+  },
+  {
+    "page": "settings.md",
+    "section": "A change you made in Claude Code is lost in new sessions",
+    "reason": "ui"
+  },
+  {
+    "page": "settings.md",
+    "section": "Settings in cloud sessions",
+    "reason": "service"
+  },
+  {
+    "page": "settings.md",
+    "section": "What's next",
+    "reason": "navigation"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Model and responses",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "advisorModel",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "alwaysThinkingEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "availableModels",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "availableModelsMatch",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "deniedModels",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "effortLevel",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "enforceAvailableModels",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "fallbackModel",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "fastMode",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "fastModePerSessionOptIn",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "language",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "maxEffortLevel",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "model",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "modelOverrides",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "modelPicker",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Fields for modelPicker",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "modelPricing",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Fields for modelPricing",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Which models a modelPricing row applies to",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "modelSettings",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "outputStyle",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "promptCacheTtl",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "showThinkingSummaries",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "subagentPromptCacheTtl",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "switchModelsOnFlag",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "ultracode",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Permission settings",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "allowManagedPermissionRulesOnly",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "autoMode",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "autoMode.classifyAllShell",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "disableAutoMode",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "permissions",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "useAutoModeDuringPlan",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "permissions.allow",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "permissions.ask",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "permissions.deny",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "permissions.additionalDirectories",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "permissions.blockReadsOutsideWorkingDirectories",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "permissions.blockWritesOutsideWorkingDirectories",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "permissions.defaultMode",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "permissions.disableBypassPermissionsMode",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "skipAutoPermissionPrompt",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "skipDangerousModePermissionPrompt",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Sandbox settings",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.enabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.failIfUnavailable",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.autoAllowBashIfSandboxed",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.excludedCommands",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.allowUnsandboxedCommands",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.filesystem",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Sandbox path prefixes",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.filesystem.allowWrite",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.filesystem.denyWrite",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.filesystem.denyRead",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.filesystem.allowRead",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.filesystem.allowManagedReadPathsOnly",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.filesystem.disabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.ignoreViolations",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.enableWeakerNestedSandbox",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.enableWeakerNetworkIsolation",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.allowAppleEvents",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.allowNestedUserNamespaces",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.ripgrep",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.bwrapPath",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.socatPath",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.credentials",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Invalid credential entries in managed settings",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.credentials.files",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Mask fields for files",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.credentials.envVars",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Mask fields for environment variables",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.credentials.allowPlaintextInject",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.credentials.awsPairs",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.credentials.sigv4",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.network",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.network.allowUnixSockets",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.network.allowAllUnixSockets",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.network.allowLocalBinding",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.network.allowMachLookup",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.network.allowedDomains",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.network.deniedDomains",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.network.strictAllowlist",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.network.allowManagedDomainsOnly",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.network.httpProxyPort",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.network.socksProxyPort",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sandbox.network.tlsTerminate",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Memory and context",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "autoCompactEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "autoCompactWindow",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "autoMemoryDirectory",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "autoMemoryEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "bashOutputMaxChars",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "claudeMd",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "claudeMdExcludes",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "env",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "fileCheckpointingEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "idleCompaction",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Change the idle compaction threshold",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Idle compaction in VS Code and the desktop app",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "plansDirectory",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "skillListingBudgetFraction",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "skillListingMaxDescChars",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "taskOutputMaxChars",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Interface and terminal",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "askUserQuestionTimeout",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "autoContinueAtUsageLimit",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "autoScrollEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "axScreenReader",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "bashEditDiffEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "companyAnnouncements",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "defaultShell",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "dialogExpiry",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "editorMode",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "emojiCompletionEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "fileSuggestion",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Command input and output",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "footerLinksRegexes",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Badge constraints",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "keybindingFlavor",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "maxProseWidth",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "prefersReducedMotion",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "promptSuggestionEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "respectGitignore",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "respondToBashCommands",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "showClearContextOnPlanAccept",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "showTurnDuration",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "spellcheck",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "spinnerTipsEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "spinnerTipsOverride",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "spinnerVerbs",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "statusLine",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "subagentStatusLine",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "syntaxHighlightingDisabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "terminalProgressBarEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "terminalTitleFromRename",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "theme",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "timeFormat",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "timeZone",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "tui",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "verbose",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "viewMode",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "vimInsertModeRemaps",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "voice",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "voiceEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "wheelScrollAccelerationEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Git and attribution",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "attribution",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "includeCoAuthoredBy",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "includeGitInstructions",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "prUrlTemplate",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "attribution.commit",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "attribution.pr",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "attribution.sessionUrl",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Hooks and automation",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "allowedHttpHookUrls",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "allowManagedHooksOnly",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "disableAllHooks",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "disableWorkflows",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "enableWorkflows",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "hooks",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "httpHookAllowedEnvVars",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "workflowKeywordTriggerEnabled",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "workflowSizeGuideline",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Plugins and skills",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "disableBundledSkills",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "disableSkillShellExecution",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "skillOverrides",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "syncClaudeAiSkills",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "syncClaudeAiPlugins",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "allowedChannelPlugins",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "blockedMarketplaces",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "channelsEnabled",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "disableCommandPluginSources",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "pluginSuggestionMarketplaces",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "pluginTrustMessage",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "strictKnownMarketplaces",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "strictPluginOnlyCustomization",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "strictPluginOnlyCustomization.skills",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "strictPluginOnlyCustomization.agents",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "strictPluginOnlyCustomization.hooks",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "strictPluginOnlyCustomization.mcp",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "enabledPlugins",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "extraKnownMarketplaces",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "pluginConfigs",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "prependPlugins",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "appendPlugins",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "MCP",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "allowAllClaudeAiMcps",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "allowClaudeInChromeWithManagedMcp",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "allowedMcpServers",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "allowManagedMcpServersOnly",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "deniedMcpServers",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "disableClaudeAiConnectors",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "disabledMcpjsonServers",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "enableAllProjectMcpServers",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "enabledMcpjsonServers",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "managedMcpServers",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Agents, sessions, and worktrees",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "agent",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "crossSessionInbound",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "disableAgentView",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "isolatePeerMachines",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "processWrapper",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "teammateMode",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "worktree",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "worktree.baseRef",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "worktree.symlinkDirectories",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "worktree.sparsePaths",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "worktree.bgIsolation",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "worktree.location",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Remote, desktop, and notifications",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "agentPushNotifEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "awaySummaryEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "disableArtifact",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "disableDeepLinkRegistration",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "disableDesktopLocalSessions",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "disableRemoteControl",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "enableArtifact",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "inputNeededNotifEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "preferredNotifChannel",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "remote.defaultEnvironmentId",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "remoteControlAtStartup",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sshConfigs",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sshHostAllowlist",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "sshHostCommands",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Authentication and providers",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "allowedProviders",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Endpoints that need a pin in managed env",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "apiKeyHelper",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "awsAuthRefresh",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "awsCredentialExport",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "forceLoginMethod",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "forceLoginGatewayUrl",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "forceLoginOrgUUID",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "gatewayInternalNetworks",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "gcpAuthRefresh",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "otelHeadersHelper",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Updates and versioning",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "autoUpdatesChannel",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "minimumVersion",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "requiredMaximumVersion",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "requiredMinimumVersion",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Tools",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "browserExternalPageTools",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "disableBrowserExternalNavigation",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "disableMobileSimulatorTools",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Privacy and telemetry",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "cleanupPeriodDays",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "desktopSessionCleanupPeriodDays",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "feedbackDrafts",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "feedbackSurveyRate",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "skipWebFetchPreflight",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Enterprise and managed settings",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "disableSideloadFlags",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "forceRemoteSettingsRefresh",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "managedSourcesBehavior",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "parentSettingsBehavior",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "policyHelper",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "policyHelper.path",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "policyHelper.timeoutMs",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "policyHelper.refreshIntervalMs",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "wslInheritsWindowsSettings",
+    "reason": "duplicate"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "Global config settings",
+    "reason": "container"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "autoConnectIde",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "autoInstallIdeExtension",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "claudeInChromeDefaultEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "copyFullResponse",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "copyOnSelect",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "defaultToAgentsView",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "diffTool",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "externalEditorContext",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "leftArrowOpensAgents",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "permissionExplainerEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "prStatusFooterEnabled",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "teammateDefaultModel",
+    "reason": "runtime"
+  },
+  {
+    "page": "settings-reference.md",
+    "section": "See also",
+    "reason": "navigation"
+  },
+  {
+    "page": "managed-settings.md",
+    "section": "Check that a policy is in force",
+    "reason": "container"
+  },
+  {
+    "page": "managed-settings.md",
+    "section": "Read the source in /status",
+    "reason": "ui"
+  },
+  {
+    "page": "managed-settings.md",
+    "section": "Turn telemetry off for your organization",
+    "reason": "telemetry"
+  },
+  {
+    "page": "managed-settings.md",
+    "section": "See also",
+    "reason": "navigation"
+  },
+  {
+    "page": "permissions.md",
+    "section": "Add a comment when you answer a permission prompt",
+    "reason": "ui"
+  },
+  {
+    "page": "permissions.md",
+    "section": "Manage permissions",
+    "reason": "ui"
+  },
+  {
+    "page": "permissions.md",
+    "section": "Permission rule syntax",
+    "reason": "container"
+  },
+  {
+    "page": "permissions.md",
+    "section": "Tool-specific permission rules",
+    "reason": "container"
+  },
+  {
+    "page": "permissions.md",
+    "section": "Bash",
+    "reason": "container"
+  },
+  {
+    "page": "permissions.md",
+    "section": "Read and Edit",
+    "reason": "container"
+  },
+  {
+    "page": "permissions.md",
+    "section": "Symlinks",
+    "reason": "container"
+  },
+  {
+    "page": "permissions.md",
+    "section": "WebFetch",
+    "reason": "container"
+  },
+  {
+    "page": "permissions.md",
+    "section": "Extend permissions with hooks",
+    "reason": "container"
+  },
+  {
+    "page": "permissions.md",
+    "section": "Additional directories grant file access, not configuration",
+    "reason": "container"
+  },
+  {
+    "page": "permissions.md",
+    "section": "How permissions interact with sandboxing",
+    "reason": "runtime"
+  },
+  {
+    "page": "permissions.md",
+    "section": "Managed settings",
+    "reason": "duplicate"
+  },
+  {
+    "page": "permissions.md",
+    "section": "Example configurations",
+    "reason": "tutorial"
+  },
+  {
+    "page": "permissions.md",
+    "section": "See also",
+    "reason": "navigation"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Available modes",
+    "reason": "container"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Common setups",
+    "reason": "advice"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Permission modes with the HIPAA configuration",
+    "reason": "service"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Switch permission modes",
+    "reason": "ui"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Review and approve a plan",
+    "reason": "ui"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Eliminate permission prompts with auto mode",
+    "reason": "model"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Auto mode on Bedrock, Agent Platform, or Foundry",
+    "reason": "model"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Server-side classifier review",
+    "reason": "model"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Default classifier model",
+    "reason": "model"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Choose the classifier model",
+    "reason": "model"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "When your model doesn't review",
+    "reason": "model"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Check which model the classifier used",
+    "reason": "model"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "What the classifier blocks by default",
+    "reason": "model"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "The first read outside the working directories",
+    "reason": "model"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Boundaries you state in conversation",
+    "reason": "model"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Approvals you state in conversation",
+    "reason": "model"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "When auto mode falls back",
+    "reason": "model"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Repeated-block thresholds",
+    "reason": "model"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "How auto mode evaluates actions",
+    "reason": "model"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "claude agents shows the bypass permissions warning that interactive sessions skip",
+    "reason": "ui"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Critical paths",
+    "reason": "runtime"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Which paths are critical",
+    "reason": "runtime"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Other targets that count as critical paths",
+    "reason": "runtime"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Removals inside nested commands and inline scripts",
+    "reason": "runtime"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Rewrite a flagged command",
+    "reason": "runtime"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "The Dangerous rm operation not ruled out prompt",
+    "reason": "runtime"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "The mounted drive prompt",
+    "reason": "runtime"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Paths that get the mounted drive prompt",
+    "reason": "runtime"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Turn off the mounted drive prompt",
+    "reason": "runtime"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Removals that still prompt with the mounted drive prompt off",
+    "reason": "runtime"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Critical-path removals in each permission mode",
+    "reason": "runtime"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Time limits and denials in auto and bypassPermissions modes",
+    "reason": "runtime"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Turn off the critical-path removal prompt in bypassPermissions mode",
+    "reason": "runtime"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Startup notices about the critical-path removal prompt",
+    "reason": "runtime"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Why the critical-path removal prompt stays on",
+    "reason": "runtime"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "Remove-Item in PowerShell",
+    "reason": "runtime"
+  },
+  {
+    "page": "permission-modes.md",
+    "section": "See also",
+    "reason": "navigation"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Set environment variables",
+    "reason": "container"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Set variables in your shell",
+    "reason": "machine"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "Features that need feature-flag fetching",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "First session after an install or upgrade",
+    "reason": "runtime"
+  },
+  {
+    "page": "env-vars.md",
+    "section": "See also",
+    "reason": "navigation"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "System prompt flags",
+    "reason": "model"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "System prompt flags in resumed conversations",
+    "reason": "model"
+  },
+  {
+    "page": "cli-reference.md",
+    "section": "See also",
+    "reason": "navigation"
+  },
+  {
+    "page": "workflows.md",
+    "section": "When to use a workflow",
+    "reason": "advice"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Run a bundled workflow",
+    "reason": "ui"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Bundled workflows",
+    "reason": "builtin"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Watch the run",
+    "reason": "ui"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Have Claude write a workflow",
+    "reason": "container"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Ask for a workflow in your prompt",
+    "reason": "ui"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Dismiss or turn off the keyword",
+    "reason": "ui"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Where the keyword works",
+    "reason": "ui"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Let Claude decide with ultracode",
+    "reason": "model"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Approve the plan before it runs",
+    "reason": "ui"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Example workflow prompts",
+    "reason": "tutorial"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Audit many files for the same issue",
+    "reason": "tutorial"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Keep fixing until a check passes",
+    "reason": "tutorial"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Migrate many files in parallel",
+    "reason": "tutorial"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Review every changed file and write one summary",
+    "reason": "tutorial"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Research a topic across many sources",
+    "reason": "tutorial"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Find issues until the list stops growing",
+    "reason": "tutorial"
+  },
+  {
+    "page": "workflows.md",
+    "section": "How a workflow runs",
+    "reason": "container"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Prompt caching in a fan-out",
+    "reason": "model"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Manage runs",
+    "reason": "container"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Resume after a pause",
+    "reason": "container"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Cost",
+    "reason": "advice"
+  },
+  {
+    "page": "workflows.md",
+    "section": "Related resources",
+    "reason": "navigation"
+  },
+  {
+    "page": "terminal-config.md",
+    "section": "Enter multiline prompts",
+    "reason": "machine"
+  },
+  {
+    "page": "terminal-config.md",
+    "section": "Enable Option key shortcuts on macOS",
+    "reason": "machine"
+  },
+  {
+    "page": "terminal-config.md",
+    "section": "Get a terminal bell or notification",
+    "reason": "ui"
+  },
+  {
+    "page": "terminal-config.md",
+    "section": "Play a sound with a Notification hook",
+    "reason": "tutorial"
+  },
+  {
+    "page": "terminal-config.md",
+    "section": "See session status in your terminal",
+    "reason": "ui"
+  },
+  {
+    "page": "terminal-config.md",
+    "section": "Configure tmux",
+    "reason": "machine"
+  },
+  {
+    "page": "terminal-config.md",
+    "section": "Fix Backspace deleting a whole word on Windows",
+    "reason": "machine"
+  },
+  {
+    "page": "terminal-config.md",
+    "section": "Match the color theme",
+    "reason": "container"
+  },
+  {
+    "page": "terminal-config.md",
+    "section": "Switch to fullscreen rendering",
+    "reason": "ui"
+  },
+  {
+    "page": "terminal-config.md",
+    "section": "Cap response width in wide terminals",
+    "reason": "ui"
+  },
+  {
+    "page": "terminal-config.md",
+    "section": "Paste large content",
+    "reason": "ui"
+  },
+  {
+    "page": "terminal-config.md",
+    "section": "How Claude treats pasted text",
+    "reason": "ui"
+  },
+  {
+    "page": "terminal-config.md",
+    "section": "Delete and restore a collapsed paste",
+    "reason": "ui"
+  },
+  {
+    "page": "terminal-config.md",
+    "section": "Recall a prompt that had pasted text",
+    "reason": "ui"
+  },
+  {
+    "page": "terminal-config.md",
+    "section": "Edit prompts with Vim keybindings",
+    "reason": "ui"
+  },
+  {
+    "page": "terminal-config.md",
+    "section": "Related resources",
+    "reason": "navigation"
+  },
+  {
+    "page": "output-styles.md",
+    "section": "Built-in output styles",
+    "reason": "builtin"
+  },
+  {
+    "page": "output-styles.md",
+    "section": "Default",
+    "reason": "builtin"
+  },
+  {
+    "page": "output-styles.md",
+    "section": "Proactive",
+    "reason": "builtin"
+  },
+  {
+    "page": "output-styles.md",
+    "section": "Concise",
+    "reason": "builtin"
+  },
+  {
+    "page": "output-styles.md",
+    "section": "Explanatory",
+    "reason": "builtin"
+  },
+  {
+    "page": "output-styles.md",
+    "section": "Learning",
+    "reason": "builtin"
+  },
+  {
+    "page": "output-styles.md",
+    "section": "Choose between an output style and other features",
+    "reason": "advice"
+  },
+  {
+    "page": "output-styles.md",
+    "section": "Related resources",
+    "reason": "navigation"
+  },
+  {
+    "page": "channels.md",
+    "section": "Supported channels",
+    "reason": "builtin"
+  },
+  {
+    "page": "channels.md",
+    "section": "Quickstart",
+    "reason": "tutorial"
+  },
+  {
+    "page": "channels.md",
+    "section": "Enterprise controls",
+    "reason": "container"
+  },
+  {
+    "page": "channels.md",
+    "section": "Research preview",
+    "reason": "advice"
+  },
+  {
+    "page": "channels.md",
+    "section": "How channels compare",
+    "reason": "advice"
+  },
+  {
+    "page": "channels.md",
+    "section": "Next steps",
+    "reason": "navigation"
+  },
+  {
+    "page": "channels-reference.md",
+    "section": "Overview",
+    "reason": "advice"
+  },
+  {
+    "page": "channels-reference.md",
+    "section": "Example: build a webhook receiver",
+    "reason": "tutorial"
+  },
+  {
+    "page": "channels-reference.md",
+    "section": "Test during the research preview",
+    "reason": "tooling"
+  },
+  {
+    "page": "channels-reference.md",
+    "section": "Relay permission prompts",
+    "reason": "container"
+  },
+  {
+    "page": "channels-reference.md",
+    "section": "Add relay to a chat bridge",
+    "reason": "tutorial"
+  },
+  {
+    "page": "channels-reference.md",
+    "section": "Full example",
+    "reason": "tutorial"
+  },
+  {
+    "page": "channels-reference.md",
+    "section": "See also",
+    "reason": "navigation"
+  }
+]

@@ -26,6 +26,15 @@ export const CATEGORIES = [
   'channels',
   'tools',
   'mods',
+  'install',
+  'updates',
+  'trust',
+  'policy',
+  'settings-merge',
+  'mcp-settings',
+  'themes',
+  'workflows',
+  'cli',
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
 

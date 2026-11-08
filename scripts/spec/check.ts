@@ -6,6 +6,8 @@
  * - SP3 the installed `@anthropic-ai/claude-agent-sdk` describes the same Claude Code release as
  *   the requirements (SDK `0.3.N` ↔ Claude Code `2.1.N`): the types and the docs never disagree.
  * - SP4 docs pulled locally that are newer than the requirements must be extracted first.
+ * - SP6 `spec/out-of-scope.json` names a known reason for every section it leaves out, and
+ *   docs/SPEC.md explains each reason.
  * - SP5 when the docs are pulled, the committed tables the tests read (`spec/docs-tables.json`,
  *   `tests/support/tool-table.ts`) are what the pulled pages say: tests never read the docs.
  */
@@ -13,7 +15,8 @@ import { join, relative } from 'node:path';
 import { z } from 'zod';
 import { DOCS_DIR, ROOT } from '../docs/location.ts';
 import { pulledDocsTables, readCommittedDocsTables } from './mods-reference.ts';
-import { readRequirements } from './requirements.ts';
+import { OUT_OF_SCOPE_FILE, readRequirements } from './requirements.ts';
+import { REASONS } from './scope.ts';
 import { toolTableDrift } from './tool-table.ts';
 
 const problems: string[] = [];
@@ -72,6 +75,21 @@ if (pulledTables) {
   }
 }
 for (const drift of await toolTableDrift()) problems.push(`SP5 ${drift}`);
+
+const reasons = new Set<string>([...Object.keys(REASONS), 'container']);
+const outOfScope = z
+  .array(z.strictObject({ page: z.string(), section: z.string(), reason: z.string() }))
+  .parse(await Bun.file(OUT_OF_SCOPE_FILE).json());
+for (const entry of outOfScope) {
+  if (!reasons.has(entry.reason)) {
+    problems.push(`SP6 ${entry.page} § ${entry.section}: unknown reason "${entry.reason}"`);
+  }
+}
+const specDoc = await Bun.file(join(ROOT, 'docs', 'SPEC.md')).text();
+for (const reason of reasons) {
+  if (!specDoc.includes(`| \`${reason}\` |`))
+    problems.push(`SP6 docs/SPEC.md has no row for "${reason}"`);
+}
 
 for (const problem of problems) console.error(problem);
 process.exit(problems.length > 0 ? 1 : 0);

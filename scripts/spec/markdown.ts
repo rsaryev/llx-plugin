@@ -17,12 +17,23 @@ export interface Table {
   readonly rows: readonly (readonly string[])[];
 }
 
+/** A top-level bullet or numbered item and the heading it sits under. */
+export interface Item {
+  readonly heading: Heading;
+  /** The item's first line, as written. */
+  readonly text: string;
+}
+
 export interface Page {
   readonly headings: readonly Heading[];
   readonly tables: readonly Table[];
+  readonly items: readonly Item[];
+  /** Non-blank lines under each heading before the next heading, tables and lists included. */
+  readonly bodyLines: ReadonlyMap<Heading, number>;
 }
 
 const HEADING = /^(#{1,6})\s+(.*?)\s*$/;
+const ITEM = /^(?:[-*]|\d+[.)])\s+(.*\S)\s*$/;
 const SEPARATOR = /^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
 
 /** Splits a table line into cells, keeping `|` inside code spans. */
@@ -53,6 +64,8 @@ export function parsePage(markdown: string): Page {
   const lines = markdown.split('\n');
   const headings: Heading[] = [];
   const tables: Table[] = [];
+  const items: Item[] = [];
+  const bodyLines = new Map<Heading, number>();
   const stack: Heading[] = [];
   let fenced = false;
   let current: Heading = { level: 0, text: '', parents: [] };
@@ -67,8 +80,12 @@ export function parsePage(markdown: string): Page {
       current = { level, text: plain(heading[2]), parents: stack.map((h) => h.text) };
       stack.push(current);
       headings.push(current);
+      bodyLines.set(current, 0);
       continue;
     }
+    if (line.trim() !== '') bodyLines.set(current, (bodyLines.get(current) ?? 0) + 1);
+    const item = ITEM.exec(line);
+    if (item?.[1] && current.level > 0) items.push({ heading: current, text: item[1] });
     if (line.trim().startsWith('|') && SEPARATOR.test(lines[index + 1] ?? '')) {
       const rows: string[][] = [];
       let next = index + 2;
@@ -77,7 +94,7 @@ export function parsePage(markdown: string): Page {
       index = next - 1;
     }
   }
-  return { headings, tables };
+  return { headings, tables, items, bodyLines };
 }
 
 const LIST_OF_CODE = /^(?:\[?`[^`]+`\]?(?:\([^)]*\))?\s*(?:\/|,|or|and)?\s*)+$/;

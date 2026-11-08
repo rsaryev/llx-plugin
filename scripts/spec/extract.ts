@@ -10,8 +10,16 @@ import { join } from 'node:path';
 import { DOCS_DIR } from '../docs/location.ts';
 import { keysOf, parsePage, type Page } from './markdown.ts';
 import { DOCS_TABLES_FILE, pulledDocsTables } from './mods-reference.ts';
-import { readRequirements, REQUIREMENTS_FILE, type Requirement } from './requirements.ts';
+import {
+  OUT_OF_SCOPE_FILE,
+  readRequirements,
+  REQUIREMENTS_FILE,
+  type Requirement,
+} from './requirements.ts';
+import { auditPage } from './sections.ts';
+import { SCOPES } from './scopes.ts';
 import { HEADING_RULES, TABLE_RULES, type HeadingRule, type TableRule } from './sources.ts';
+import { EXTRA_TABLE_RULES } from './tables-extra.ts';
 
 const pages = new Map<string, Page>();
 async function page(path: string): Promise<Page> {
@@ -58,7 +66,11 @@ function fromHeadings(rule: HeadingRule, source: Page): Requirement[] {
 
 const found = new Map<string, Requirement>();
 const empty: string[] = [];
-const rules: readonly (TableRule | HeadingRule)[] = [...TABLE_RULES, ...HEADING_RULES];
+const rules: readonly (TableRule | HeadingRule)[] = [
+  ...TABLE_RULES,
+  ...EXTRA_TABLE_RULES,
+  ...HEADING_RULES,
+];
 for (const rule of rules) {
   const source = await page(rule.page);
   const extracted = 'section' in rule ? fromTables(rule, source) : fromHeadings(rule, source);
@@ -74,6 +86,25 @@ if (empty.length > 0) {
   process.exit(1);
 }
 
+// The prose of the audited pages (scripts/spec/scope.ts): sections not already read as tables.
+const covered = (path: string): Set<string> =>
+  new Set([...found.values()].filter((r) => r.page === path).map((r) => r.section));
+const excluded: { page: string; section: string; reason: string }[] = [];
+const stale: string[] = [];
+for (const scope of SCOPES) {
+  const audit = auditPage(scope, await page(scope.page), covered(scope.page));
+  stale.push(...audit.stale);
+  excluded.push(...audit.excluded);
+  for (const requirement of audit.requirements) {
+    if (!found.has(requirement.id)) found.set(requirement.id, requirement);
+  }
+}
+if (stale.length > 0) {
+  console.error('These skips matched no heading; the docs moved. Fix scripts/spec/scope-*.ts:');
+  for (const entry of stale) console.error(`  ${entry}`);
+  process.exit(1);
+}
+
 const version = (await Bun.file(join(DOCS_DIR, 'VERSION')).text()).trim();
 const requirements = [...found.values()].toSorted((a, b) => a.id.localeCompare(b.id));
 const before = await readRequirements().catch(() => undefined);
@@ -84,6 +115,7 @@ await Bun.write(
   REQUIREMENTS_FILE,
   `${JSON.stringify({ claudeCode: version, requirements }, null, 2)}\n`,
 );
+await Bun.write(OUT_OF_SCOPE_FILE, `${JSON.stringify(excluded, null, 2)}\n`);
 const tables = await pulledDocsTables();
 if (tables) await Bun.write(DOCS_TABLES_FILE, `${JSON.stringify(tables, null, 2)}\n`);
 const added = requirements.filter((r) => !old.has(r.id));

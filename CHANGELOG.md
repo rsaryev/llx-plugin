@@ -60,6 +60,14 @@
 
 ### Added
 
+- Spec: the requirement set now counts the docs' prose, not only their tables. Every heading of
+  the plugin, mods, skills, subagents, hooks, MCP, managed MCP, settings, managed settings,
+  permissions, environment, CLI, workflows, themes, output styles and channels pages is either
+  read as requirements (one per section, one per listed rule) or listed in
+  `spec/out-of-scope.json` with a reason (docs/SPEC.md, "Sections and scope"). New categories:
+  `install`, `updates`, `trust`, `policy`, `settings-merge`, `mcp-settings`, `themes`,
+  `workflows`, `cli`. The compatibility percentage drops accordingly: the new requirements are
+  unproven until a test names them.
 - Validating: `validatePlugin({ files, label?, signal? })` reproduces `claude plugin validate <dir>`
   of the tracked Claude Code release over a `PluginFiles` folder: it picks the marketplace, the
   plugin or a bare components folder as the CLI does and returns `{ target, issues }` with each
