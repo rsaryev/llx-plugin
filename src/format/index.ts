@@ -3,6 +3,7 @@ export { SEVERITIES, blocksLoading, type PluginIssue, type Severity } from './is
 export { readManifest, validateManifest, type ManifestResult } from './manifest.ts';
 export type {
   CommandEntry,
+  PluginChannel,
   PluginDependency,
   PluginManifest,
   UserConfigOption,

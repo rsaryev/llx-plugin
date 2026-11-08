@@ -3,7 +3,7 @@
  * strict object, and an unknown key in one fails validation (§ Unrecognized fields: the plugin
  * does not load).
  */
-import { expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { readManifest } from '../../src/format/index.ts';
 import { spec } from '../support/spec.ts';
 
@@ -43,7 +43,6 @@ spec('userConfig.field.type', () => {
 const OPTIONAL: readonly [field: string, value: unknown][] = [
   ['required', true],
   ['default', 'neutral'],
-  ['options', ['neutral', 'warm', 'formal']],
   ['multiple', true],
   ['sensitive', true],
 ];
@@ -74,10 +73,62 @@ spec('userConfig.field.default', () => {
   });
 });
 
+const tone: Record<string, unknown> = {
+  ...base,
+  options: ['neutral', 'warm', 'formal'],
+  default: 'neutral',
+};
+
 spec('userConfig.field.options', () => {
+  test('the tone example (a string field with options and a default from them) loads and is kept', () => {
+    expect(withOption(tone).manifest?.userConfig?.api_token).toMatchObject(tone);
+  });
+
   test('each option is a plain label of 1 to 64 characters', () => {
-    expect(withOption({ ...base, options: [''] }).manifest).toBeUndefined();
-    expect(withOption({ ...base, options: ['x'.repeat(65)] }).manifest).toBeUndefined();
+    expect(
+      withOption({ ...tone, options: ['x'.repeat(64)], default: 'x'.repeat(64) }).manifest,
+    ).toBeDefined();
+    expect(withOption({ ...tone, options: [''] }).manifest).toBeUndefined();
+    expect(withOption({ ...tone, options: ['x'.repeat(65)] }).manifest).toBeUndefined();
+  });
+
+  test('applies only to a string field: a number, boolean, directory or file field with options fails to load', () => {
+    for (const type of ['number', 'boolean', 'directory', 'file']) {
+      const result = withOption({ ...tone, type });
+      expect(result.manifest, type).toBeUndefined();
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({ severity: 'error', path: 'userConfig.api_token' }),
+      );
+    }
+  });
+
+  test('applies to a string that is not multiple: options with multiple fails to load, and multiple false is fine', () => {
+    expect(
+      withOption({ ...tone, multiple: true, default: undefined, required: true }).manifest,
+    ).toBeUndefined();
+    expect(withOption({ ...tone, multiple: false }).manifest).toBeDefined();
+  });
+
+  test('applies to a string that is not sensitive: options with sensitive fails to load, and sensitive false is fine', () => {
+    expect(withOption({ ...tone, sensitive: true }).manifest).toBeUndefined();
+    expect(withOption({ ...tone, sensitive: false }).manifest).toBeDefined();
+  });
+
+  test('the default is one of the listed values: a default outside the list fails to load', () => {
+    const result = withOption({ ...tone, default: 'loud' });
+    expect(result.manifest).toBeUndefined();
+    expect(result.issues[0]?.message).toContain('"default" must be one of the listed "options"');
+    expect(withOption({ ...tone, default: ['neutral'] }).manifest).toBeUndefined();
+  });
+
+  test('without a default, required true makes the user pick one', () => {
+    const { default: _, ...noDefault } = tone;
+    expect(withOption({ ...noDefault, required: true }).manifest).toBeDefined();
+  });
+
+  test('the rules apply to the options of a channel too', () => {
+    const channels = [{ server: 'chat', userConfig: { tone: { ...tone, type: 'number' } } }];
+    expect(readManifest({ name: 'demo', channels }).manifest).toBeUndefined();
   });
 });
 
@@ -87,4 +138,12 @@ test('an unknown key in an option fails, and the plugin does not load', () => {
   expect(result.issues).toContainEqual(
     expect.objectContaining({ severity: 'error', path: 'userConfig.api_token' }),
   );
+});
+
+describe('judgments (spec/judgments.md)', () => {
+  test('options with neither a default from the list nor required true fail to load', () => {
+    const { default: _, ...noDefault } = tone;
+    expect(withOption({ ...noDefault, required: false }).manifest).toBeUndefined();
+    expect(withOption(noDefault).manifest).toBeUndefined();
+  });
 });

@@ -34,7 +34,7 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 
 | Function                            | Status  | Does                                                                  |
 | ----------------------------------- | ------- | --------------------------------------------------------------------- |
-| `readManifest(raw)`                 | done    | `plugin.json` as loaded: unknown keys stripped, any error blocks load |
+| `readManifest(raw)`                 | done    | `plugin.json` as loaded: unknown keys stripped, any error blocks load; a `userConfig` option's `options` must sit on a non-`multiple`, non-`sensitive` `string` field with a `default` from the list or `required: true`; `types` is a `./` path to a `.d.ts` file inside the plugin |
 | `validateManifest(raw)`             | done    | plus the validator: reserved names, kebab-case, missing metadata      |
 | `readMarketplace(raw)`              | done    | `marketplace.json`: top level, names, entries, plugin sources (see Marketplace) |
 | `readSkill(path, text, layout)`     | done    | `SKILL.md` into a `Skill`: the 19 documented fields (defaults applied, a bad value dropped with a warning), the body, the folder; a YAML error loads the skill with no fields; the name and command come from `resolveSkillName`; a refused name is an error issue |
@@ -412,6 +412,8 @@ const { resolved, issues: more } = await resolveMcpServer('db', servers.db, scop
 | `collectMcpServers(files, manifestValue, { bundles?, bundleSettings?, signal? })` | root `.mcp.json` first, then each declared source in array order; sources load concurrently, merge in order |
 | `McpBundleReader` (port, optional) | the host opens a `.mcpb` or `.dxt` (extract into `.mcpb-cache`, or download) and returns `{ name, server, userConfig? }`; the kit never unzips or downloads, and never maps the MCPB manifest |
 | `resolveMcpServer(name, server, scope)` | stdio: `command`, `args`, `env` substituted, the three path variables in `environment`; http, sse and ws: `url`, `headers`, `headersHelper` substituted, credential variables read as empty in `url` and `headers`; a `headersHelper` that references `${user_config.*}` keeps the server from starting |
+| `resolveChannel(channel, servers, scope)` | a `channels` entry against the plugin's servers: `server` must be a key of `mcpServers` (else an issue and no `resolved`), `displayName` defaults to the server name, and the channel's `userConfig` options join the plugin's so `${user_config.KEY}` in that server's `env` takes the saved value; `loadPlugin` reports a `channels[i].server` that names no server as an error issue (the plugin still loads) |
+| `validateUserConfigValues(config)` | one error per declared option whose value (saved, else `default`) would not be accepted: `required` and empty, a value of the wrong `type`, `multiple` not an array of strings, outside `options`, below `min` or above `max`; the dialog is the host's |
 | `rejectUserConfigInShell(guard, template, context, path)`, `HEADERS_HELPER_GUARD` | the shell-field check on the template, with the message errors.md quotes; monitors and shell-form hooks pass a guard of their own |
 
 A bundle whose own `user_config` has a required setting with no saved value is not started and

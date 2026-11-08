@@ -9,7 +9,7 @@
  * and pane names: Letters, digits, `_`, and `-`, up to 64 characters"); plugins/mods/test.md §
  * Look up what a stub returns (`$.command.run({ command, args })`, `$.tool.call({ tool, ...args })`).
  */
-import { describe, expect, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { isValidModName, toolFullName } from '../../../src/mods/api/index.ts';
 import { AGENT_STATUSES, MODS_API } from '../../../src/protocol/mods-api-names.ts';
 import { MOD_LIMITS } from '../../../src/protocol/mods-limits.ts';
@@ -212,8 +212,8 @@ spec('mods.api.$.agent', () => {
   });
 });
 
-// Judgment territory until `$.ui.open` lands: the requirement also names pane names, which this stream cannot test, so the id is not credited.
-describe('command, tool and subagent type names (pane names wait for $.ui)', () => {
+// The pane names of the same requirement are proven in tests/mods/ui/panes.test.ts.
+spec('mods.limit.Command, tool, subagent type, and pane names', () => {
   const longest = 'a'.repeat(MOD_LIMITS.nameChars);
 
   test('letters, digits, _ and -, up to 64 characters, are valid', () => {

@@ -5,6 +5,7 @@ import type { PluginManifest } from '../format/manifest-schema.ts';
 import type { CollectOptions } from '../format/mcp-sources.ts';
 import { nameLoadIssues } from '../format/names.ts';
 import type { PluginFiles } from '../ports/index.ts';
+import { channelIssues } from './channels.ts';
 import { COMPONENT_READERS } from './component-readers.ts';
 import { discoverComponents } from './discover.ts';
 import type { LoadedPlugin, Plugin } from './plugin-model.ts';
@@ -156,5 +157,6 @@ export async function loadPlugin(input: LoadPluginInput): Promise<LoadedPlugin> 
     hasBin: read.values.bin.present,
     bin: read.values.bin.files,
   };
-  return { plugin, issues: [...issues, ...discovered.issues, ...read.issues] };
+  const channels = channelIssues(step.manifest, read.values.mcpServers);
+  return { plugin, issues: [...issues, ...discovered.issues, ...read.issues, ...channels] };
 }

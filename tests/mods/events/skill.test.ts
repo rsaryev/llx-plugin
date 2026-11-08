@@ -97,6 +97,25 @@ describe('the fields of a skill.prompt event', () => {
         expect(skillPromptEvent({ name: 's', source }, 't').source).toBe(source);
       }
     });
+
+    test('a plugin skill also names its plugin, and a skill from any other source never does', () => {
+      const plugin = skillPromptEvent(
+        { name: 's', source: 'plugin', pluginName: 'deploy-tools' },
+        't',
+      );
+      expect(plugin).toMatchObject({ source: 'plugin', pluginName: 'deploy-tools' });
+      for (const source of [
+        'userSettings',
+        'projectSettings',
+        'policySettings',
+        'mcp',
+        'built-in',
+      ]) {
+        const event = skillPromptEvent({ name: 's', source, pluginName: 'deploy-tools' }, 't');
+        expect(event.source).toBe(source);
+        expect('pluginName' in event).toBe(false);
+      }
+    });
   });
 
   spec('mods.skillPrompt.e.pluginName', () => {

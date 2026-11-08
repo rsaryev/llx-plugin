@@ -3,7 +3,7 @@
  * top-level key with its documented type. A key of the wrong type fails validation ("Validation
  * failed: the manifest has a type mismatch"), and the plugin does not load.
  */
-import { expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { readManifest } from '../../src/format/index.ts';
 import { spec } from '../support/spec.ts';
 
@@ -100,10 +100,64 @@ spec('manifest.field.experimental', () => {
     const experimental = { themes: './themes/', monitors: './config/monitors.json', evals: 'qa' };
     expect(loads({ experimental }).manifest?.experimental).toEqual(experimental);
   });
+
+  test('is an object: any other type fails, and the plugin does not load', () => {
+    for (const experimental of ['themes', 1, ['themes'], null]) {
+      const result = loads({ experimental });
+      expect(result.manifest, JSON.stringify(experimental)).toBeUndefined();
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({ severity: 'error', path: 'experimental' }),
+      );
+    }
+  });
+
+  test('a theme or monitors path inside it follows the path rules', () => {
+    expect(errorsOf({ experimental: { themes: 'themes/' } })).toEqual([
+      expect.objectContaining({ path: 'experimental.themes' }),
+    ]);
+    expect(errorsOf({ experimental: { monitors: '../m.json' } })).toEqual([
+      expect.objectContaining({ path: 'experimental.monitors' }),
+    ]);
+    expect(errorsOf({ experimental: { monitors: [{ name: 'x' }] } })).toEqual([]);
+  });
+
+  test('a value of another type inside it fails', () => {
+    expect(errorsOf({ experimental: { themes: 1 } })).not.toEqual([]);
+    expect(errorsOf({ experimental: { monitors: 'x', themes: 3 } })).not.toEqual([]);
+  });
+});
+
+spec('manifest.field.types', () => {
+  test('is a path to a .d.ts file inside the plugin, starting with ./', () => {
+    expect(errorsOf({ types: './types/index.d.ts' })).toEqual([]);
+    expect(errorsOf({ types: './mod.d.ts' })).toEqual([]);
+  });
+
+  test('a file that is not a .d.ts one fails to load', () => {
+    const result = loads({ types: './types/index.ts' });
+    expect(result.manifest).toBeUndefined();
+    expect(result.issues).toContainEqual({
+      severity: 'error',
+      path: 'types',
+      message: 'types entries must be .d.ts files: ./types/index.ts',
+    });
+  });
 });
 
 test('an unrecognized top-level key is stripped with a warning, and the plugin loads', () => {
   const result = loads({ colour: 'blue' });
   expect(result.manifest).toEqual({ name: 'demo' });
   expect(result.issues).toEqual([expect.objectContaining({ severity: 'warning', path: 'colour' })]);
+});
+
+describe('judgments (spec/judgments.md)', () => {
+  test('`types` follows the ./ and containment rules of the component paths: no ./ prefix, an absolute path and .. fail to load', () => {
+    for (const types of ['types/t.d.ts', '/abs/t.d.ts', '../t.d.ts', './a/../../t.d.ts']) {
+      const result = loads({ types });
+      expect(result.manifest, types).toBeUndefined();
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({ severity: 'error', path: 'types' }),
+      );
+    }
+  });
 });

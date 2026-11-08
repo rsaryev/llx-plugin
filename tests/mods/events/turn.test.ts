@@ -4,7 +4,10 @@
  * to the model, is the host's; the tests fire the events through the chain, `turn.step` as a stream.
  */
 import { describe, expect, test } from 'bun:test';
+import { eventInputProblem } from '../../../src/mods/events/index.ts';
+import { MOD_EVENT_GROUPS } from '../../../src/protocol/mods-events.ts';
 import { consume, fn, gen, record } from '../../support/mods-chain.ts';
+import { inline, modPlugin, registerOf, session } from '../../support/mods-load.ts';
 import { eventHarness, reasonsOf } from '../../support/mods-events.ts';
 import { spec } from '../../support/spec.ts';
 
@@ -30,6 +33,34 @@ describe('turn.start', () => {
       h.mod('my-mod', 'user', [fn('turn.start', (_$, e, next) => (seen.push(e.turnId), next(e)))]);
       expect(await h.fire('turn.start', { turnId: 't-1' })).toEqual({ core: { turnId: 't-1' } });
       expect(seen).toEqual(['t-1']);
+    });
+
+    test('e.turnId is a string that names the turn: a start with no id, or a number, does not fit', () => {
+      expect(eventInputProblem('turn.start', { turnId: 't-1' })).toBeUndefined();
+      expect(eventInputProblem('turn.start', {})).toContain('turn.start input: turnId');
+      expect(eventInputProblem('turn.start', { turnId: 1 })).toContain('turn.start input: turnId');
+    });
+
+    test('it is an event of the Turns table that the loader accepts, unlike a name the reference does not list', async () => {
+      expect(MOD_EVENT_GROUPS.turns.map(String)).toContain('turn.start');
+      const seen: unknown[] = [];
+      const starts = registerOf((on) => {
+        on('turn.start', (_$: unknown, e: unknown, next: (e: unknown) => unknown) => {
+          seen.push(e);
+          return next(e);
+        });
+      });
+      const bogus = registerOf((on) => {
+        on('turn.begin', () => ({}));
+      });
+      const loaded = session({ 'watcher-mod': starts });
+      await loaded.host.load([modPlugin(inline('watcher-mod'), starts)]);
+      expect(loaded.debug.join('\n')).toContain('events: turn.start');
+      await loaded.host.fire('turn.start', { turnId: 't-9' });
+      expect(seen).toEqual([{ turnId: 't-9' }]);
+      const refused = session({ 'watcher-mod': bogus });
+      await refused.host.load([modPlugin(inline('watcher-mod'), bogus)]);
+      expect(refused.debug.join('\n')).toContain('"turn.begin" is not an event');
     });
   });
 });

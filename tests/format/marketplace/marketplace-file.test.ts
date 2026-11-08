@@ -192,6 +192,24 @@ describe('top-level keys Claude Code does not read', () => {
   });
 });
 
+spec('marketplace.field.forceRemoveDeletedPlugins', () => {
+  test('is a boolean that defaults to false and is carried when set', () => {
+    expect(read(docMarketplace()).marketplace?.forceRemoveDeletedPlugins).toBe(false);
+    for (const value of [true, false]) {
+      const set = read(withFields({ forceRemoveDeletedPlugins: value })).marketplace;
+      expect(set?.forceRemoveDeletedPlugins).toBe(value);
+    }
+  });
+
+  test('a value of another type is an issue about this field and does not turn removal on', () => {
+    const result = read(withFields({ forceRemoveDeletedPlugins: 'true' }));
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({ path: 'forceRemoveDeletedPlugins' }),
+    );
+    expect(result.marketplace?.forceRemoveDeletedPlugins ?? false).toBe(false);
+  });
+});
+
 describe('the other top-level keys (read as typed values; their rules belong to renames and removal)', () => {
   test('forceRemoveDeletedPlugins, allowCrossMarketplaceDependenciesOn and renames default and are carried', () => {
     const bare = read(docMarketplace()).marketplace;

@@ -16,8 +16,12 @@ const monitors = z.union([path, z.array(z.unknown())]);
 /** `userConfig` keys: letters, digits and underscores, not starting with a digit. */
 export const USER_CONFIG_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
-export const userConfigOptionSchema = z.strictObject({
-  type: z.enum(['string', 'number', 'boolean', 'directory', 'file']),
+const OPTION_TYPES = ['string', 'number', 'boolean', 'directory', 'file'] as const;
+/** The types `options` applies to: "For `string`, the values the field accepts". */
+const TYPES_WITH_OPTIONS: ReadonlySet<(typeof OPTION_TYPES)[number]> = new Set(['string']);
+
+const userConfigFields = z.strictObject({
+  type: z.enum(OPTION_TYPES),
   title: z.string(),
   description: z.string(),
   required: z.boolean().optional(),
@@ -27,6 +31,34 @@ export const userConfigOptionSchema = z.strictObject({
   sensitive: z.boolean().optional(),
   min: z.number().optional(),
   max: z.number().optional(),
+});
+type UserConfigFields = z.infer<typeof userConfigFields>;
+
+/**
+ * The `options` rules (manifest-reference.md, "Limit a field to fixed options"): "`options` applies to
+ * a `string` field that isn't `multiple` or `sensitive`. Set `default` to one of the listed values,
+ * or set `required: true` so the user must pick one." A plugin that breaks them "fails to load".
+ * Judgment: "or set `required: true`" is read as a rule, so options with neither fail too
+ * (spec/judgments.md).
+ */
+function optionsProblem(option: UserConfigFields): string | undefined {
+  const { options, default: fallback } = option;
+  if (options === undefined) return undefined;
+  if (!TYPES_WITH_OPTIONS.has(option.type)) return '"options" applies only to a "string" field';
+  if (option.multiple === true) return '"options" cannot be combined with "multiple"';
+  if (option.sensitive === true) return '"options" cannot be combined with "sensitive"';
+  if (fallback !== undefined && !(typeof fallback === 'string' && options.includes(fallback))) {
+    return '"default" must be one of the listed "options"';
+  }
+  if (fallback === undefined && option.required !== true) {
+    return '"options" needs a "default" from the list, or "required": true';
+  }
+  return undefined;
+}
+
+export const userConfigOptionSchema = userConfigFields.superRefine((option, context) => {
+  const problem = optionsProblem(option);
+  if (problem !== undefined) context.addIssue({ code: 'custom', message: problem });
 });
 export type UserConfigOption = z.infer<typeof userConfigOptionSchema>;
 
@@ -64,6 +96,8 @@ const channel = z.strictObject({
   displayName: z.string().optional(),
   userConfig: userConfig.optional(),
 });
+/** A `channels` entry: a channel bound to one of the plugin's MCP servers. */
+export type PluginChannel = z.infer<typeof channel>;
 
 const url = z.string().refine((value) => URL.canParse(value), { message: 'Must parse as a URL' });
 

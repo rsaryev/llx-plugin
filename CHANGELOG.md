@@ -39,6 +39,15 @@
 
 ### Added
 
+- Manifest rules the docs state and the kit did not apply: a `userConfig` option's `options` must sit
+  on a `string` field that is not `multiple` or `sensitive`, with a `default` from the list or
+  `required: true` (else the plugin fails to load); `types` is a `./` path to a `.d.ts` file inside the
+  plugin; a `channels` entry bound to a server that is not among the plugin's `mcpServers` is an
+  error issue. `resolveChannel` gives a channel its `displayName` (default: the server name) and
+  substitutes its `userConfig` into that server's `env`; `validateUserConfigValues` tells whether a
+  saved value meets `type`, `required`, `multiple`, `options`, `min` and `max`. The mods reference
+  tables the tests compare the kit with are a committed snapshot (`spec/docs-tables.json`), and
+  `check:spec` (SP5) compares it and the tools table with the pulled docs.
 - The corpus: `corpus:fetch` fetches every plugin of the official and community marketplaces
   through the kit's own marketplace reader and fetch plans; `corpus` compares the kit with
   `claude plugin validate --json` plugin by plugin.

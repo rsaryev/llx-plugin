@@ -20,6 +20,27 @@ spec('mods.api.$.plugin', () => {
     expectMethods(h.api.plugin, MODS_API.plugin);
   });
 
+  test('the root is the directory the host reports for that plugin, asked once for each mod by its own name', async () => {
+    const asked: string[] = [];
+    const h = await apiHarness({
+      plugin: 'first',
+      ports: {
+        locations: {
+          homeDir: () => '/home/user',
+          projectDir: () => '/work',
+          pluginRoot: (id) => (asked.push(id), `/cache/${id}/1.2.0`),
+          pluginData: (id) => Promise.resolve(`/data/${id}`),
+          joinPath: (root, relative) => `${root}/${relative}`,
+          existingDirectory: () => Promise.resolve(undefined),
+        },
+      },
+    });
+    const second = await h.mod('second', 'user', []);
+    expect(h.api.plugin).toEqual({ name: 'first', root: '/cache/first/1.2.0' });
+    expect(second.api.plugin).toEqual({ name: 'second', root: '/cache/second/1.2.0' });
+    expect(asked).toEqual(['first', 'second']);
+  });
+
   test('each mod gets its own name and root', async () => {
     const h = await apiHarness();
     const other = await h.mod('other-mod', 'user', []);

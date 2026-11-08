@@ -22,6 +22,7 @@ export {
   type LanguageRoute,
   type RestartDecision,
 } from './lsp-runtime.ts';
+export { resolveChannel, type ChannelResolution, type ResolvedChannel } from './channel.ts';
 export { substituteContent } from './content.ts';
 export { exportedEnvironment } from './exported-environment.ts';
 export {
@@ -75,6 +76,7 @@ export {
   substituteSurface,
   type Surface,
 } from './surfaces.ts';
+export { validateUserConfigValues } from './user-config-values.ts';
 export {
   optionEnvironment,
   optionEnvName,
