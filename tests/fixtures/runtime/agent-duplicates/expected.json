@@ -1,0 +1,8 @@
+{
+  "loaded": true,
+  "agents": ["agent-duplicates:c", "agent-duplicates:same", "agent-duplicates:sub:c"],
+  "slashCommands": [],
+  "skills": [],
+  "mcpServers": [],
+  "outputStyle": "default"
+}

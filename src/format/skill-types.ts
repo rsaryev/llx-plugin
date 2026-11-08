@@ -159,4 +159,12 @@ export interface Command extends InvocableFrontmatter {
 export interface SkillLayout {
   readonly origin: SkillOrigin;
   readonly dirName: string;
+  /**
+   * `dirName` is already the skill's name, as the plugin loader chose it, and a frontmatter `name`
+   * renames nothing. Claude Code 2.1.319 names a plugin skill that a scan finds (`skills/<folder>/`,
+   * or a folder of skills a manifest path lists) after its folder, and uses the frontmatter `name`
+   * only for a folder a path names itself and for the plugin-root `SKILL.md`; the loader makes that
+   * choice (spec/judgments.md, "oracle 2.1.319 overrides docs").
+   */
+  readonly fixedName?: true;
 }

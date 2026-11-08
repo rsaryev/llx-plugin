@@ -1,0 +1,8 @@
+{
+  "loaded": true,
+  "agents": ["default-disabled-enabled:woken"],
+  "slashCommands": ["default-disabled-enabled:woken"],
+  "skills": ["default-disabled-enabled:woken"],
+  "mcpServers": ["plugin:default-disabled-enabled:riser"],
+  "outputStyle": "default"
+}

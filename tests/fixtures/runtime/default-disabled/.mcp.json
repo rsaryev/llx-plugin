@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "sleeper": {
+      "command": "no-such-binary"
+    }
+  }
+}

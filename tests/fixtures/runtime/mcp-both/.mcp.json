@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "eta": {
+      "command": "no-such-binary-eta"
+    }
+  }
+}

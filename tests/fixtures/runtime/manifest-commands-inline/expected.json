@@ -1,0 +1,8 @@
+{
+  "loaded": true,
+  "agents": [],
+  "slashCommands": ["manifest-commands-inline:from-source", "manifest-commands-inline:inline-one"],
+  "skills": [],
+  "mcpServers": [],
+  "outputStyle": "default"
+}

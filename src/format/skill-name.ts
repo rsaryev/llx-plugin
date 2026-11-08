@@ -180,7 +180,7 @@ const RULES: { readonly [K in SkillOriginKind]: NameRule } = {
  */
 export function resolveSkillName(layout: SkillLayout, declared: string | undefined): SkillName {
   const rule = RULES[layout.origin.kind];
-  const { name, issues } = rule.choose(layout.dirName, declared);
+  const { name, issues } = rule.choose(layout.dirName, layout.fixedName ? undefined : declared);
   const prefix = rule.prefix(layout.origin);
   return { name, command: name.startsWith(prefix) ? name : `${prefix}${name}`, issues };
 }

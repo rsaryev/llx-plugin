@@ -121,3 +121,33 @@ path to a file or a `commands` object map (its debug log reports `ENOTDIR`); the
 opposite (plugins/components.md, "Commands" and "Agents"), and the kit keeps the docs until a
 session shows otherwise. `bun run corpus:load` prints the agreement per field; that residual is
 all of the remaining `skills` and `agents` differences.
+
+## Runtime oracle
+
+`bun run oracle:runtime` compares what the kit's SESSION registers with what a Claude Code session
+registers, plugin by plugin, for the fixtures of `tests/fixtures/runtime/<case>/` (each folder is a
+tiny plugin of its own, named after the case). Claude Code's side is the `init` event of
+`claude -p --plugin-dir <fixture> --output-format stream-json --verbose --max-turns 1 hi`, run as a
+black box (`scripts/oracle/runtime.ts`) in a private config folder and a private working folder, with
+an invalid API key so the model call fails and nothing is spent. It runs the fixture's hooks and MCP
+servers (a stdio server that does not exist is enough: its name is registered, its status `failed`),
+so point it only at fixtures written for it, never at a third-party or corpus plugin. The event is
+cached per Claude Code version and content hash of the fixture in `.cache/oracle-runtime/<version>/`;
+`oracle-settings.json` in a fixture is copied to the config folder as `settings.json`.
+
+Per case it compares, filtered to the plugin's own names: `loaded` (the plugin is among the session's
+plugins), `agents`, `slashCommands` (`slash_commands`), `skills` (`init.skills`; its rule is in
+`spec/judgments.md`), `mcpServers` (`mcp_servers`, named `plugin:<plugin>:<server>`) and `outputStyle`
+(the setting, echoed). The kit's side is `scripts/oracle/kit-registry.ts`: `loadPlugin` over the
+folder, `createPluginHost`, then `session.agents()`, `skills()` (the menu), `mcpServers()` and
+`outputStyles()`.
+
+`expected.json` beside each fixture is the oracle's result, ids only, and is committed:
+`bun test` (`tests/host/runtime-oracle.test.ts`) checks the kit against it without running `claude`.
+`oracle:runtime` rewrites a stale `expected.json` when `claude` is installed (`--check` fails
+instead) and exits non-zero on a difference not recorded in `tests/fixtures/runtime/judgments.json`
+(the value the kit gives and the reason). `.cache` stays uncommitted.
+
+Where the oracle cannot see: the winner of two agents with one name (names only), the model's skill
+listing, output styles (`init.output_style` echoes the setting; a forced plugin style is not
+reflected), and statuses of servers that need a network.

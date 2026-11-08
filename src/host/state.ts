@@ -36,7 +36,7 @@ const NO_SETTINGS = createPolicyView([]);
  * managed settings that turn it off win over both (settings-reference.md, `enabledPlugins`).
  */
 function runs(view: PolicyView, entry: HostPlugin): boolean {
-  const decision = enabledPlugin(view, entry.id);
+  const decision = enabledPlugin(view, entry.id, entry.plugin.manifest?.defaultEnabled);
   return decision.blockedByManaged ? false : (entry.enabled ?? decision.on);
 }
 

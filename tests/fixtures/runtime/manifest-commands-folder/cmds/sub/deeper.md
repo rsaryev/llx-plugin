@@ -1,0 +1,5 @@
+---
+description: A command.
+---
+
+Body.

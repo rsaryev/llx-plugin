@@ -1,0 +1,8 @@
+{
+  "loaded": true,
+  "agents": [],
+  "slashCommands": [],
+  "skills": [],
+  "mcpServers": ["plugin:mcp-both:eta", "plugin:mcp-both:zeta"],
+  "outputStyle": "default"
+}

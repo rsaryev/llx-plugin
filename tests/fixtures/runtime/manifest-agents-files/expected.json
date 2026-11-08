@@ -1,0 +1,8 @@
+{
+  "loaded": true,
+  "agents": ["manifest-agents-files:first", "manifest-agents-files:two"],
+  "slashCommands": [],
+  "skills": [],
+  "mcpServers": [],
+  "outputStyle": "default"
+}

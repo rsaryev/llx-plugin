@@ -1,0 +1,20 @@
+{
+  "output-style-forced": {
+    "outputStyle": {
+      "kit": "output-style-forced:forced-name",
+      "row": "init.output_style is the outputStyle setting, not the style in force"
+    }
+  },
+  "output-style-forced-unnamed": {
+    "outputStyle": {
+      "kit": "output-style-forced-unnamed:forced-file",
+      "row": "init.output_style is the outputStyle setting, not the style in force"
+    }
+  },
+  "output-style-unknown": {
+    "outputStyle": {
+      "kit": "default",
+      "row": "init.output_style is the outputStyle setting, not the style in force"
+    }
+  }
+}
