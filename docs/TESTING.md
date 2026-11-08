@@ -88,3 +88,12 @@ corpus:fetch` first), with effects stubbed so the numbers are the kit's own cost
 
 It prints a table and writes `.cache/bench.json`. Timings depend on the machine, so they are not a
 gate; compare runs on one machine before and after a change that touches loading, the host or hooks.
+
+## Mutation testing
+
+`bun run mutation <module>` mutates `src/<module>` with StrykerJS and runs only `tests/<module>`
+against each mutant (command runner, `bun test --bail`). A surviving mutant is a change of behaviour
+the module's own tests do not notice: a weak or missing assertion. The report goes to
+`.cache/mutation/<module>.json`; the score is printed. It is heavy (minutes to an hour per module),
+so it runs by hand, never in hooks or CI. Run it on a module after changing its tests or code, and
+kill survivors by asserting the documented behaviour they change, never by testing the mutation.

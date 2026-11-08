@@ -7,3 +7,6 @@ coverage/
 
 # The Localix app caches its plugin scan in any folder it opens.
 .localix/
+
+# Mutation testing sandboxes (bun run mutation).
+.stryker-tmp*/

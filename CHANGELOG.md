@@ -4,6 +4,8 @@
 
 ### Added
 
+- `bun run mutation <module>`: StrykerJS mutation testing of one module against its own tests,
+  with a JSON report in `.cache/mutation/`.
 - `bun run bench`: times `loadPlugin` (from disk and from memory), host assembly, the skill
   listing and `PreToolUse` dispatch over the real plugins of the corpus.
 
