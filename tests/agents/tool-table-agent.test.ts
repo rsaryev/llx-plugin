@@ -5,10 +5,7 @@
  * subagents, with the docs' own examples.
  */
 import { describe, expect, test } from 'bun:test';
-import {
-  resolveCatalogSubagentTools,
-  type SubagentRequest,
-} from '../../src/rules/tools/subagent-tools.ts';
+import { resolveRequest, type SubagentRequest } from '../support/subagent-request.ts';
 import { spec } from '../support/spec.ts';
 
 const SESSION = [
@@ -23,7 +20,7 @@ const SESSION = [
 ];
 
 const resolve = (rest: Partial<SubagentRequest> = {}) =>
-  resolveCatalogSubagentTools({ sessionTools: SESSION, background: false, ...rest });
+  resolveRequest({ sessionTools: SESSION, background: false, ...rest });
 
 spec('tools.tool.Agent', () => {
   describe('tools-reference.md § Agent tool behavior: the two fields', () => {
@@ -46,8 +43,8 @@ spec('tools.tool.Agent', () => {
       expect(tools).toEqual(['Read', 'Bash']);
     });
 
-    test('the result keeps the order of the parent pool, whatever the order of the list', () => {
-      expect(resolve({ tools: ['Bash', 'Read'] }).tools).toEqual(['Read', 'Bash']);
+    test('the result lists each tool of tools once, in the order of the list (spec/judgments.md)', () => {
+      expect(resolve({ tools: ['Bash', 'Read', 'Bash'] }).tools).toEqual(['Bash', 'Read']);
     });
 
     test('a tool the parent does not have is never granted, even when listed', () => {

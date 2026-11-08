@@ -102,10 +102,30 @@ function spawnTypesOf(
 const HANDBACK = 'SubagentHandback';
 const dedupe = (names: readonly string[]): string[] => [...new Set(names)];
 
-function resolveSubagent(agent: AgentToolFields, pool: ToolPool, run: SubagentRun): ToolsOutcome {
-  const available = availableTo(pool, run);
+const SEARCH_TOOLS = ['Glob', 'Grep'];
+
+/**
+ * tools-reference.md, "Glob tool behavior": "A subagent lists `Glob` or `Grep` in its `tools` field
+ * and leaves out `Bash`. The listed tools come back for that subagent", whether or not the session
+ * has them. A glob that covers `Bash` counts as listing it.
+ */
+function restoredSearchTools(entries: readonly ToolEntry[] | undefined): string[] {
+  if (entries === undefined) return [];
+  const lists = (tool: string): boolean =>
+    entries.some((entry) => toolEntryMatches(entry, tool, 'allow'));
+  return lists('Bash') ? [] : SEARCH_TOOLS.filter(lists);
+}
+
+/** The tools a subagent could be given: the pool with the restored search tools, filtered; `matchable` adds the handback the host grants. */
+function candidatesOf(agent: AgentToolFields, pool: ToolPool, run: SubagentRun) {
+  const restored = restoredSearchTools(agent.tools?.map(parseToolEntry));
+  const available = availableTo({ ...pool, builtin: dedupe([...pool.builtin, ...restored]) }, run);
   // The host grants `SubagentHandback` (`SubagentRun.handback`), so an entry naming it matches.
-  const matchable = run.handback === true ? [...available, HANDBACK] : available;
+  return { available, matchable: run.handback === true ? [...available, HANDBACK] : available };
+}
+
+function resolveSubagent(agent: AgentToolFields, pool: ToolPool, run: SubagentRun): ToolsOutcome {
+  const { available, matchable } = candidatesOf(agent, pool, run);
   const denied = (agent.disallowedTools ?? []).map(parseToolEntry);
   const isDenied = (tool: string): boolean =>
     denied.some((entry) => toolEntryMatches(entry, tool, 'deny'));
@@ -115,8 +135,8 @@ function resolveSubagent(agent: AgentToolFields, pool: ToolPool, run: SubagentRu
   const matched = (entries ?? []).map((entry) =>
     matchable.filter((tool) => toolEntryMatches(entry, tool, 'allow')),
   );
-  if (agent.tools !== undefined && agent.tools.length > 0 && matched.every((m) => m.length === 0)) {
-    return refuse(agent, agent.tools, pool, run);
+  if (matched.length > 0 && matched.every((m) => m.length === 0)) {
+    return refuse(agent, agent.tools ?? [], pool, run);
   }
   const listed = entries === undefined ? available : matched.flat();
   const tools = dedupe(listed).filter((tool) => !isDenied(tool));

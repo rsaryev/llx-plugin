@@ -11,9 +11,13 @@ import type { SessionOptions } from './types.ts';
 export type PluginSession = SkillPart & HookPart & ComponentPart;
 
 export function openSession(state: HostState, options: SessionOptions): PluginSession {
+  const hooks = createHookPart(state, options);
+  const hookPart: HookPart = {
+    dispatch: (event, facts, run) => hooks.dispatch(event, facts, run),
+  };
   return {
-    ...createSkillPart(state, options),
-    ...createHookPart(state, options),
+    ...createSkillPart(state, options, hooks),
+    ...hookPart,
     ...createComponentPart(state),
   };
 }

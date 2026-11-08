@@ -23,6 +23,11 @@ export interface SubagentRun {
    * it also keeps the task tools and cron tools.
    */
   readonly teammate?: boolean;
+  /**
+   * The subagent already runs in its own working directory (`isolation: worktree`): tools-reference.md
+   * says `ExitWorktree` is "Not available to subagents that already run in their own working directory".
+   */
+  readonly ownWorkingDirectory?: boolean;
 }
 
 /** The first filter, sub-agents.md "Available tools": removed "even when listed in the `tools` field". */
@@ -67,6 +72,7 @@ const FIRST_FILTER: ReadonlyMap<string, (run: SubagentRun) => boolean> = new Map
   ...REMOVED_FROM_EVERY_SUBAGENT.map((tool): [string, () => boolean] => [tool, () => true]),
   ['Agent', (run) => run.atDepthLimit],
   ['ExitPlanMode', (run) => run.permissionMode !== 'plan'],
+  ['ExitWorktree', (run) => run.ownWorkingDirectory === true],
   // Never inherited: the host grants it (`SubagentRun.handback`), which also beats `disallowedTools`.
   ['SubagentHandback', () => true],
 ]);

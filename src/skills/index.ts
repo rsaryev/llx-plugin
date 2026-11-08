@@ -25,7 +25,11 @@ export {
   type OverrideState,
   type SkillOverrides,
 } from './invocation.ts';
-export { loadCommandEntries, type CommandEntriesLoaded } from './command-entries.ts';
+export {
+  commandEntryGrants,
+  loadCommandEntries,
+  type CommandEntriesLoaded,
+} from './command-entries.ts';
 export { readSkillMentions, type SkillMention } from './mention.ts';
 export {
   listingLine,

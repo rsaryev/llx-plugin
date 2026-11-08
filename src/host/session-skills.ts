@@ -1,11 +1,16 @@
-import { error } from '../format/issues.ts';
+import { error, warning, type PluginIssue } from '../format/issues.ts';
 import type { Command, Skill } from '../format/skill-types.ts';
 import type { SlashCommand } from '../protocol/official.ts';
 import { hookSessionGates } from '../settings/hooks/index.ts';
 import { createSkillSettingsPolicy } from '../settings/skills/index.ts';
+import { registerHooks, type RegisteredHandler } from '../hooks/index.ts';
 import {
+  admitSkillHooks,
   checkInvocation,
   expandSkill,
+  hookSourceOf,
+  NO_HOOKS_YET,
+  type HookUsage,
   menuEntries,
   modelListing,
   type ExpandPorts,
@@ -16,6 +21,7 @@ import {
   type ModelListingResult,
   type ShellPermission,
 } from '../skills/index.ts';
+import type { SkillHooksRegistrar } from './session-hooks.ts';
 import type { ActivePlugin, HostState } from './state.ts';
 import type { SessionOptions } from './types.ts';
 
@@ -63,6 +69,17 @@ function failed(name: string, message: string): Expansion {
   return { ok: false, issues: [error(`/${name}`, message)] };
 }
 
+/**
+ * `allowManagedPermissionRulesOnly` (settings-reference.md; Scope: Managed, Boolean): when managed
+ * settings set it, a skill's `allowed-tools` from a project, personal, synced or skills-directory
+ * source is ignored (skills.md, "When only managed permission rules apply"). Judgment: only a managed
+ * layer counts, the parent settings of an embedding host do not (spec/judgments.md).
+ */
+const managedPermissionRulesOnly = (state: HostState): boolean =>
+  state.view.layers.some(
+    (layer) => layer.scope === 'managed' && layer.settings.allowManagedPermissionRulesOnly === true,
+  );
+
 function shellDisabled(state: HostState): boolean {
   const policy = createSkillSettingsPolicy(state.view, {
     ...state.parent,
@@ -71,7 +88,69 @@ function shellDisabled(state: HostState): boolean {
   return !policy.shell('plugin').run;
 }
 
-export function createSkillPart(state: HostState, options: SessionOptions): SkillPart {
+/**
+ * hooks.md, "Hooks in skills and agents": a skill's hooks are registered when it is invoked and
+ * keep running for the rest of the session; "Limits on skill hooks": each source of skills registers
+ * at most 1,024 hooks and 16,384 matcher characters per session, and a skill past the limit
+ * "registers none of its hooks". Judgment: invoking a skill again replaces its own hooks and counts
+ * them once (spec/judgments.md).
+ */
+function skillHookRegistration(registrar: SkillHooksRegistrar) {
+  const used = new Map<string, HookUsage>();
+  const counted = new Map<string, HookUsage>();
+  return (entry: Entry, hooks: NonNullable<Extract<Expansion, { ok: true }>['hooks']>) => {
+    const source = hookSourceOf(entry.invocable.origin);
+    const prefix = `skill:${entry.plugin.id}:${entry.invocable.command}`;
+    const others = used.get(source) ?? NO_HOOKS_YET;
+    const own = counted.get(prefix) ?? NO_HOOKS_YET;
+    const base = {
+      hooks: others.hooks - own.hooks,
+      matcherChars: others.matcherChars - own.matcherChars,
+    };
+    const admission = admitSkillHooks(base, hooks);
+    if (!admission.admitted) {
+      return [
+        warning(
+          `/${entry.invocable.command}`,
+          `Skill "${entry.invocable.command}" registers none of its hooks: ${source} is past its limit of 1,024 hooks or 16,384 matcher characters`,
+        ),
+      ];
+    }
+    used.set(source, admission.used);
+    counted.set(prefix, {
+      hooks: admission.used.hooks - base.hooks,
+      matcherChars: admission.used.matcherChars - base.matcherChars,
+    });
+    const entries: readonly RegisteredHandler[] = registerHooks(hooks, {
+      idPrefix: prefix,
+      source: { kind: 'skill', label: '[skill]' },
+      pluginId: entry.plugin.id,
+    });
+    registrar.registerSkillHooks(prefix, entries);
+    return [] as readonly PluginIssue[];
+  };
+}
+
+/** The expansion with the warnings of registering its hooks, when it has hooks to register. */
+function withHooks(
+  expansion: Expansion,
+  register: (
+    hooks: NonNullable<Extract<Expansion, { ok: true }>['hooks']>,
+  ) => readonly PluginIssue[],
+): Expansion {
+  if (!expansion.ok || expansion.hooks === undefined) return expansion;
+  const issues = register(expansion.hooks);
+  return issues.length === 0
+    ? expansion
+    : { ...expansion, issues: [...expansion.issues, ...issues] };
+}
+
+export function createSkillPart(
+  state: HostState,
+  options: SessionOptions,
+  registrar: SkillHooksRegistrar,
+): SkillPart {
+  const addHooks = skillHookRegistration(registrar);
   const { ports } = state.options;
   const windows = state.options.windows ?? false;
   const entries = entriesOf(state);
@@ -95,7 +174,7 @@ export function createSkillPart(state: HostState, options: SessionOptions): Skil
       const invoker = request.invoker ?? 'user';
       const verdict = checkInvocation(entry.invocable, invoker, overrides);
       if (!verdict.allowed) return failed(name, verdict.message);
-      return expandSkill(
+      const expansion = await expandSkill(
         entry.invocable,
         {
           arguments: request.arguments ?? '',
@@ -111,12 +190,16 @@ export function createSkillPart(state: HostState, options: SessionOptions): Skil
             windows,
             ...(entry.plugin.source === undefined ? {} : { pluginSource: entry.plugin.source }),
           },
-          policy: { hooksLockedToPlugins: hooksLocked },
+          policy: {
+            hooksLockedToPlugins: hooksLocked,
+            managedPermissionRulesOnly: managedPermissionRulesOnly(state),
+          },
           cwd: options.cwd,
           signal: request.signal,
         },
         expandPorts,
       );
+      return withHooks(expansion, (hooks) => addHooks(entry, hooks));
     },
   };
 }

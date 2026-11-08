@@ -9,7 +9,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { createPolicyView } from '../../src/settings/index.ts';
-import { hostOf, SESSION, signal } from '../support/host.ts';
+import { hostOf, loaded, SESSION, signal } from '../support/host.ts';
 import { layerOf } from '../support/settings-layers.ts';
 
 describe('session.skills()', () => {
@@ -168,5 +168,69 @@ describe('session.expandSkill()', () => {
       expect(result.ok).toBe(false);
       expect(result.issues[0]?.message).toContain(name);
     }
+  });
+});
+
+describe('a manifest command with an allowedTools rule that does not parse (spec/judgments.md)', () => {
+  const entry = { content: 'Go.', allowedTools: ['Bash(git status', 'Read', 'Bash(git diff *)'] };
+
+  test('the host reports it as `loadCommandEntries` does, and keeps the command and the valid rules', async () => {
+    const plugin = await loaded({
+      '.claude-plugin/plugin.json': JSON.stringify({
+        name: 'status-tools',
+        commands: { status: entry },
+      }),
+    });
+    const { host } = await hostOf({ plugins: [{ id: 'status-tools@acme', plugin }] });
+    expect(host.issues).toEqual([
+      expect.objectContaining({ severity: 'warning', path: 'commands.status.allowedTools' }),
+    ]);
+    expect(host.issues[0]?.message).toContain('Bash(git status');
+    const run = await host
+      .openSession(SESSION)
+      .expandSkill('status-tools:status', { signal: signal() });
+    expect(run).toMatchObject({ ok: true, grants: ['Read', 'Bash(git diff *)'] });
+  });
+});
+
+describe('allowManagedPermissionRulesOnly (settings-reference.md; skills.md, "When only managed permission rules apply")', () => {
+  const files = {
+    '.claude-plugin/plugin.json': JSON.stringify({ name: 'grants' }),
+    'skills/commit/SKILL.md':
+      '---\ndescription: Commit\nallowed-tools: Read\ndisallowed-tools: Edit\n---\nCommit.',
+  };
+  const run = async (
+    settings: Parameters<typeof createPolicyView>[0],
+    source?: 'skills-directory',
+  ) => {
+    const plugin = await loaded(files);
+    const { host } = await hostOf({
+      plugins: [{ id: 'grants@acme', plugin, ...(source && { source }) }],
+      settings: createPolicyView(settings),
+    });
+    return host.openSession(SESSION).expandSkill('grants:commit', { signal: signal() });
+  };
+
+  test('without the key a plugin skill keeps its allowed-tools grant', async () => {
+    expect(await run([])).toMatchObject({ ok: true, grants: ['Read'], disallowed: ['Edit'] });
+  });
+
+  test('a plugin installed from a marketplace keeps its grant even when managed settings set the key', async () => {
+    const managed = layerOf('managed', { allowManagedPermissionRulesOnly: true });
+    expect(await run([managed])).toMatchObject({ ok: true, grants: ['Read'] });
+  });
+
+  test('a plugin declared inside the skills folders loses the grant, and its disallowed-tools still applies', async () => {
+    const managed = layerOf('managed', { allowManagedPermissionRulesOnly: true });
+    expect(await run([managed], 'skills-directory')).toMatchObject({
+      ok: true,
+      grants: [],
+      disallowed: ['Edit'],
+    });
+  });
+
+  test('the key counts only in managed settings: a user file cannot lock its own skills', async () => {
+    const user = layerOf('user', { allowManagedPermissionRulesOnly: true });
+    expect(await run([user], 'skills-directory')).toMatchObject({ ok: true, grants: ['Read'] });
   });
 });

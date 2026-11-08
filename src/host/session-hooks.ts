@@ -65,6 +65,15 @@ function sessionOf(
   };
 }
 
+/**
+ * What the skills of the session use to add their hooks: the session keeps the registry, so the
+ * skill part never holds hooks of its own. `prefix` names one skill; its hooks replace the ones that
+ * skill registered before, so invoking it again does not stack them.
+ */
+export interface SkillHooksRegistrar {
+  registerSkillHooks(prefix: string, entries: readonly RegisteredHandler[]): void;
+}
+
 export interface HookPart {
   dispatch<E extends HookEvent>(
     event: E,
@@ -75,9 +84,13 @@ export interface HookPart {
 
 /**
  * The hooks of a session: every enabled plugin's, then the settings files', through the engine
- * with the policy of the settings. A skill's `once` hook that ran is dropped after the dispatch.
+ * with the policy of the settings. A skill's hooks join them when the skill is expanded
+ * (`registerSkillHooks`), and a skill's `once` hook that ran is dropped after the dispatch.
  */
-export function createHookPart(state: HostState, options: SessionOptions): HookPart {
+export function createHookPart(
+  state: HostState,
+  options: SessionOptions,
+): HookPart & SkillHooksRegistrar {
   const { ports } = state.options;
   const gates = hookSessionGates(state.view, state.parent);
   const session = sessionOf(state, gates, options);
@@ -102,6 +115,10 @@ export function createHookPart(state: HostState, options: SessionOptions): HookP
     ...settingsEntries(gates),
   ]);
   return {
+    registerSkillHooks(prefix, entries) {
+      const previous = registry.entries.filter((entry) => entry.id.startsWith(`${prefix}:`));
+      registry = registry.without(previous.map((entry) => entry.id)).with(entries);
+    },
     async dispatch(event, facts, { signal }) {
       const outcome = await engine.dispatch(registry, { event, facts, session, signal });
       registry = registry.without(outcome.consumedOnce);

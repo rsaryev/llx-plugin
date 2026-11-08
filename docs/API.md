@@ -731,8 +731,17 @@ The host maps its own tools to Claude Code's names and inputs before dispatching
 `Write`, `Edit`…, typed by the official `ToolInputSchemas`), so a plugin's `"matcher": "Write|Edit"`
 and `"if": "Bash(git *)"` mean what they mean in Claude Code.
 
-Not in the host: starting servers and monitors, registering the frontmatter hooks of a skill (the
-`Expansion` carries them), the permission decision of a tool call (`decide` in the rules module),
+`expandSkill` also registers the frontmatter hooks of the skill into the session when it expands
+(hooks.md, "Hooks in skills and agents"): they keep running for the rest of the session, `once` removes
+one after its first successful run, invoking the skill again replaces its hooks, and each source of
+skills (the project, the personal folder, one plugin) registers at most 1,024 hooks and 16,384 matcher
+characters per session: a skill past the limit "registers none of its hooks" and the `Expansion`
+carries a warning saying so. The plugin-only lock and `allowManagedPermissionRulesOnly` (read from
+a managed layer only) decide whether a skill keeps its hooks and its `allowed-tools` grant. A manifest
+command whose `allowedTools` holds a rule that does not parse is reported in `host.issues` as
+`loadCommandEntries` reports it, and loads without that rule.
+
+Not in the host: starting servers and monitors, the permission decision of a tool call (`decide` in the rules module),
 and mods, which stay their own entry (`MODS_API`, `modsTesting`).
 
 ## Permission rules (done: syntax, bare, parameter and glob rules, precedence, Bash and PowerShell commands, hook `if`, path rules, domain, MCP, Agent and Skill rules, the six permission modes)
@@ -770,7 +779,6 @@ const verdict = evaluateRules(rules, { toolName: 'Agent', input: { model: 'opus'
 | `settleClassification(decision, { call, mode, classifier })`, `PermissionClassifier` | done | the host's auto-mode reviewer as a port; a `classify` decision is settled by its answer, and with no reviewer by a denial |
 | `TOOL_CATALOG`, `catalogEntry`, `isKnownTool`, `KNOWN_TOOLS`, `toolRequiresPermission` | done | the 46 tools of the tools table: the "Permission required" column and the rule format of each (`command`, `powershell-command`, `read-path`, `edit-path`, `skill-name`, `subagent-type`, `domain`, `bare`); `KNOWN_TOOLS` feeds `ruleIssues`, `toolRequiresPermission` feeds `DecideContext.requiresPermission` |
 | `availableTools(candidates, session)` | done | the tools Claude sees: a bare deny rule or glob removes a tool, a scoped rule does not, `EndConversation` stays while another tool remains, Glob and Grep are absent by default on posix |
-| `resolveCatalogSubagentTools(request)`   | done    | the tools of a non-fork subagent from `tools` and `disallowedTools`, the two filters of the tools available to subagents, and the zero-tools refusal as an issue |
 | `parseToolInput(tool, raw)`       | done    | a hook's `tool_input` read against its tool's table (hooks.md, "PreToolUse input"): `{ input, issues }`, issues at `tool_input.<field>`; unlisted fields and tools without a table pass through |
 | `TOOL_INPUT_FIELDS`               | done    | per tool and field: `type`, `optional`, `role` (`primary`, `subject`, `param`, `structured`), `source` (`sdk` or `docs`) and the zod `schema`; the roles drive which parameter rules are ignored |
 | `answerQuestions(input, selections)` | done | AskUserQuestion answered for a hook's `updatedInput`: `answers` maps question text to the label, multi-select joined with commas; `{ input, issues }` |
@@ -839,7 +847,7 @@ The tool catalog (`src/rules/tools`) is the one place that says which rule forma
 (`ruleFormatOf` reads it) and whether it prompts in Manual mode. What the host's model, provider and
 surface offer (the task tools by model, `EndConversation`'s surface and provider conditions, the
 `SubagentHandback` conditions) is not modelled: the host passes the candidate tools, and
-`availableTools` and `resolveCatalogSubagentTools` narrow them by the documented rules.
+`availableTools` and `resolveSubagentTools` narrow them by the documented rules.
 
 What the kit does not decide is the classifier's judgement of an action in auto mode: `decide`
 returns `classify` and the host's `PermissionClassifier` answers. Also not modelled: the PowerShell
@@ -1035,7 +1043,7 @@ if (!outcome.ok) return outcome.refusal.message; // "Agent 'x' would be spawned 
 
 | Function                          | Status  | Does                                                                                   |
 | --------------------------------- | ------- | -------------------------------------------------------------------------------------- |
-| `resolveSubagentTools(agent, pool, run)` | done | `tools` and `disallowedTools` against the host's pool: the first filter (`AskUserQuestion`, `EndConversation`, `EnterPlanMode`, `ScheduleWakeup`, `WaitForMcpServers`, `Workflow`, `Agent` at the depth limit, `ExitPlanMode` unless `plan`), the background built-in set, `disallowedTools` first (a tool in both is removed, a specifier removes the whole tool, `mcp__github`, `mcp__github__*`, `mcp__*`, `mcp__reports__v2__*`), forks unfiltered, `Agent(worker, researcher)` as an allowlist only for the main thread (`Task(...)` is an alias), and the zero-tools refusal with its three groups (an omitted, empty or fully disallowed list never refuses) |
+| `resolveSubagentTools(agent, pool, run)` | done | `tools` and `disallowedTools` against the host's pool: the first filter (`AskUserQuestion`, `EndConversation`, `EnterPlanMode`, `ScheduleWakeup`, `WaitForMcpServers`, `Workflow`, `Agent` at the depth limit, `ExitPlanMode` unless `plan`, `ExitWorktree` when `ownWorkingDirectory`), the background built-in set, the `Glob` and `Grep` a `tools` list names without `Bash` (they come back though the pool lacks them), `disallowedTools` first (a tool in both is removed, a specifier removes the whole tool, `mcp__github`, `mcp__github__*`, `mcp__*`, `mcp__reports__v2__*`), forks unfiltered, `Agent(worker, researcher)` as an allowlist only for the main thread (`Task(...)` is an alias), and the zero-tools refusal with its three groups (an omitted, empty or fully disallowed list never refuses) |
 | `parseToolEntry(entry)`, `toolEntryMatches(entry, tool, behavior)` | done | one entry of the field and whether it names a tool (`tools` reads as an allow rule, `disallowedTools` as a deny rule) |
 | `removedFromSubagent(tool, run)`, `BACKGROUND_BUILTIN_TOOLS` | done | the two filters as a predicate and the background list |
 

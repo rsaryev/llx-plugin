@@ -56,11 +56,6 @@ export {
 } from './tools/catalog.ts';
 export { availableTools, type ToolSession } from './tools/availability.ts';
 export {
-  resolveCatalogSubagentTools,
-  type SubagentRequest,
-  type SubagentTools,
-} from './tools/subagent-tools.ts';
-export {
   TOOL_INPUT_FIELDS,
   type FieldRole,
   type FieldSource,

@@ -20,7 +20,7 @@ export interface CommandEntriesLoaded {
   readonly issues: readonly PluginIssue[];
 }
 
-interface Grants {
+export interface Grants {
   readonly rules: readonly string[];
   readonly issues: readonly PluginIssue[];
 }
@@ -30,7 +30,7 @@ interface Grants {
  * syntax"), as written. Judgment (spec/judgments.md): a rule that does not parse is dropped with a
  * warning and grants nothing, and the command still loads; a grant is read like a session rule.
  */
-function parsedGrants(key: string, rules: readonly string[]): Grants {
+export function commandEntryGrants(key: string, rules: readonly string[]): Grants {
   const kept: string[] = [];
   const issues: PluginIssue[] = [];
   for (const rule of rules) {
@@ -76,7 +76,7 @@ async function readSource(key: string, entry: CommandEntry, reader: Reader): Pro
 
 async function loadEntry(key: string, entry: CommandEntry, reader: Reader): Promise<Loaded> {
   const grants =
-    entry.allowedTools === undefined ? undefined : parsedGrants(key, entry.allowedTools);
+    entry.allowedTools === undefined ? undefined : commandEntryGrants(key, entry.allowedTools);
   const checked: CommandEntry =
     grants === undefined ? entry : { ...entry, allowedTools: [...grants.rules] };
   const source = await readSource(key, entry, reader);

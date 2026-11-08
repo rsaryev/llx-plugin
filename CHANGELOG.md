@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- Agents: one subagent tool resolution. `resolveCatalogSubagentTools` is gone; `resolveSubagentTools`
+  keeps what it did that the other did not (`ExitWorktree` withheld from a subagent in its own working
+  directory, the `Glob` and `Grep` a `tools` list names without `Bash`), and the `tools.tool.*` tests
+  that proved the tools table through it now run on `resolveSubagentTools`.
 - Commands: review fixes. The judgments the kit makes about commands (blank entry fields, a source
   that is never read, `${CLAUDE_PLUGIN_ROOT}` in an entry's `allowedTools`, `name` and `paths`
   dropped silently, trimming, only a `.md` extension stripped from a file name, no extension rule
@@ -39,6 +43,12 @@
 
 ### Added
 
+- Host: `expandSkill` registers a skill's frontmatter hooks into the session (they keep running for
+  the rest of it, `once` removes one after its first successful run, a skill past 1,024 hooks or
+  16,384 matcher characters for its source "registers none of its hooks"); a manifest command's
+  invalid `allowedTools` rule is reported as `loadCommandEntries` reports it; `allowManagedPermissionRulesOnly`
+  in a managed layer takes away the `allowed-tools` grant of project, personal, synced and
+  skills-directory skills.
 - Manifest rules the docs state and the kit did not apply: a `userConfig` option's `options` must sit
   on a `string` field that is not `multiple` or `sensitive`, with a `default` from the list or
   `required: true` (else the plugin fails to load); `types` is a `./` path to a `.d.ts` file inside the

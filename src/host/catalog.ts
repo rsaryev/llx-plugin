@@ -1,4 +1,5 @@
 import { readAgent } from '../format/agent.ts';
+import type { CommandEntry } from '../format/manifest-schema.ts';
 import type { AgentRecord } from '../format/agent-record.ts';
 import { readCommand, readCommandEntry } from '../format/command.ts';
 import type { PluginIssue } from '../format/issues.ts';
@@ -6,6 +7,7 @@ import { readOutputStyle, type OutputStyle } from '../format/output-style.ts';
 import { readSkill } from '../format/skill.ts';
 import type { Command, Skill, SkillOrigin } from '../format/skill-types.ts';
 import type { Plugin, PluginTextFile } from '../loading/index.ts';
+import { commandEntryGrants } from '../skills/index.ts';
 
 /** What one plugin's Markdown components read to: the formats' own readers, once, at load. */
 export interface PluginCatalog {
@@ -38,6 +40,25 @@ function readSkills(plugin: Plugin) {
   return { skills: reads.map((read) => read.skill), issues: reads.flatMap((read) => read.issues) };
 }
 
+/**
+ * A manifest command entry, read as `loadCommandEntries` reads it: the rules of `allowedTools` that
+ * do not parse are dropped with a warning and grant nothing, and the command still loads.
+ */
+function readEntry(plugin: Plugin, file: PluginTextFile, entry: CommandEntry) {
+  const grants =
+    entry.allowedTools === undefined
+      ? undefined
+      : commandEntryGrants(file.name, entry.allowedTools);
+  const checked = grants === undefined ? entry : { ...entry, allowedTools: [...grants.rules] };
+  const read = readCommandEntry(
+    file.name,
+    checked,
+    entry.source === undefined ? undefined : file.text,
+    { origin: originOf(plugin) },
+  );
+  return { ...read, issues: [...(grants?.issues ?? []), ...read.issues] };
+}
+
 function readCommands(plugin: Plugin) {
   const reads = plugin.commands.map((file) =>
     file.entry === undefined
@@ -45,12 +66,7 @@ function readCommands(plugin: Plugin) {
           origin: originOf(plugin),
           relativePath: relativePath(file),
         })
-      : readCommandEntry(
-          file.name,
-          file.entry,
-          file.entry.source === undefined ? undefined : file.text,
-          { origin: originOf(plugin) },
-        ),
+      : readEntry(plugin, file, file.entry),
   );
   return {
     commands: reads.flatMap((read) => read.command ?? []),

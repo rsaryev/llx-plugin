@@ -4,10 +4,7 @@
  * `SubagentHandback` and `ExitWorktree` entries of the tools table.
  */
 import { describe, expect, test } from 'bun:test';
-import {
-  resolveCatalogSubagentTools,
-  type SubagentRequest,
-} from '../../src/rules/tools/subagent-tools.ts';
+import { resolveRequest, type SubagentRequest } from '../support/subagent-request.ts';
 import { spec } from '../support/spec.ts';
 
 const SESSION = [
@@ -22,7 +19,7 @@ const SESSION = [
 ];
 
 const resolve = (rest: Partial<SubagentRequest> = {}) =>
-  resolveCatalogSubagentTools({ sessionTools: SESSION, background: false, ...rest });
+  resolveRequest({ sessionTools: SESSION, background: false, ...rest });
 
 spec(
   [
@@ -157,7 +154,7 @@ describe('sub-agents.md § Available tools: the second filter for background sub
       });
 
       test('background is the default: a request that does not say runs in the background', () => {
-        const { tools } = resolveCatalogSubagentTools({ sessionTools });
+        const { tools } = resolveRequest({ sessionTools });
         expect(tools).toEqual([...BACKGROUND_KEEPS, 'mcp__github__get_issue']);
       });
 
@@ -232,13 +229,10 @@ spec(['tools.tool.Glob', 'tools.tool.Grep'], () => {
       expect(resolve({ sessionTools, tools: ['Read'] }).tools).toEqual(['Read']);
     });
 
-    test('a glob in tools that covers Bash counts as listing it', () => {
-      expect(resolve({ sessionTools, tools: ['*'] }).tools).toEqual(['Read', 'Bash']);
-      expect(resolve({ sessionTools, tools: ['Glob', 'B*'] }).tools).toEqual(['Bash']);
-    });
-
-    test('a glob that does not cover Bash still restores the tools it covers', () => {
-      expect(resolve({ sessionTools, tools: ['G*'] }).tools).toEqual(['Glob', 'Grep']);
+    test('an unanchored glob in tools names no tool (permissions.md, "Tool name wildcards"), so it restores nothing', () => {
+      const { tools, issues } = resolve({ sessionTools, tools: ['G*'] });
+      expect(tools).toEqual([]);
+      expect(issues[0]?.message).toContain('matched no tools in this session [G*]');
     });
 
     test('a subagent with no tools field has what the session has', () => {
