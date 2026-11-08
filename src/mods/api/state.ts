@@ -14,23 +14,27 @@ export interface StateStore {
   onWrite(listener: (plugin: string, key: string) => void): () => void;
   /** Called after each read: a `ui.render` hook that reads a value subscribes to it. */
   onRead(listener: (plugin: string, key: string) => void): () => void;
-  /** Every value back to its default, as `/clear`, `/resume` and `/branch` do. */
+  /**
+   * Every value back to its default, as `/clear`, `/resume` and `/branch` do. Judgment: each value
+   * that was held counts as written, so a site that read it is drawn again and shows the default
+   * (interface.md: "Otherwise your drawing shows the default").
+   */
   reset(): void;
 }
 
 const id = (plugin: string, key: string): string => JSON.stringify([plugin, key]);
 
 export function createStateStore(): StateStore {
-  const values = new Map<string, unknown>();
+  const values = new Map<string, { plugin: string; key: string; value: unknown }>();
   const writes = new Set<(plugin: string, key: string) => void>();
   const reads = new Set<(plugin: string, key: string) => void>();
   return {
     get(plugin, key) {
       for (const listener of reads) listener(plugin, key);
-      return values.get(id(plugin, key));
+      return values.get(id(plugin, key))?.value;
     },
     set(plugin, key, value) {
-      values.set(id(plugin, key), value);
+      values.set(id(plugin, key), { plugin, key, value });
       for (const listener of writes) listener(plugin, key);
     },
     onWrite(listener) {
@@ -41,7 +45,11 @@ export function createStateStore(): StateStore {
       reads.add(listener);
       return () => reads.delete(listener);
     },
-    reset: () => values.clear(),
+    reset() {
+      const held = [...values.values()];
+      values.clear();
+      for (const { plugin, key } of held) for (const listener of writes) listener(plugin, key);
+    },
   };
 }
 

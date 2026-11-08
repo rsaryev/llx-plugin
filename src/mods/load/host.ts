@@ -136,7 +136,14 @@ export interface ModsHost {
    * `interrupt` the calls that start new work are refused until `userInput`; after `endInput` they are
    * refused for good. `setLimits` replaces `limits` for the next run of a host that outlives one.
    */
-  readonly input: Pick<RunGate, 'interrupt' | 'userInput' | 'endInput' | 'setLimits'>;
+  readonly input: Pick<RunGate, 'interrupt' | 'userInput' | 'endInput' | 'setLimits' | 'notice'>;
+  /**
+   * `/clear`, `/resume` and `/branch` reset every `$.state` value to its default, and `session.start`
+   * does not fire again (interface.md, "Load a saved value again after `/clear`"). The host calls this
+   * for each of them; it then fires `classic.SessionStart` with `source` set to `clear`, `resume` or
+   * `fork`, which is the hook a mod loads its saved values again in.
+   */
+  resetState(): void;
   readonly ui: ModsUi;
   readonly chain: ModChain;
   active(): readonly LoadedMod[];
@@ -201,6 +208,7 @@ export function createModsHost(options: ModsHostOptions): ModsHost {
     pluginDirs: () => pluginDirsOf(policy),
     watchesPluginDirs: (isInteractive) => watchesPluginDirs(policy, isInteractive),
     input: wired.gate,
+    resetState: () => wired.state.reset(),
     ui: wired.ui,
     chain,
     active: () => [...builtIns, ...mods.loaded()],

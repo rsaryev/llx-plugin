@@ -9,6 +9,7 @@ import {
   type RunGate,
   type RunLimits,
   type ScopeBook,
+  type StateStore,
 } from '../api/index.ts';
 import { createModChain } from '../chain/index.ts';
 import { createEventRules } from '../events/index.ts';
@@ -48,6 +49,8 @@ export interface Wires {
 export interface Wired {
   /** What the session says about new work: the host tells it of interruptions and the end of input. */
   readonly gate: RunGate;
+  /** `$.state`, shared by every mod: the host resets it as `/clear`, `/resume` and `/branch` do. */
+  readonly state: StateStore;
   readonly chain: ModChain;
   readonly ui: ModsUi;
   /** What the loader needs to load one module. */
@@ -161,6 +164,7 @@ export function wire(given: Wires): Wired {
   }
   return {
     gate,
+    state,
     chain,
     ui,
     env,

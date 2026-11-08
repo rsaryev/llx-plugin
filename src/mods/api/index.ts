@@ -7,6 +7,13 @@ export {
 } from './build.ts';
 export { type Deps } from './call.ts';
 export {
+  describeApi,
+  type ApiDescription,
+  type ApiMember,
+  type ApiMemberKind,
+  type ApiNamespace,
+} from './describe.ts';
+export {
   createRegistries,
   toolFullName,
   type AgentType,
@@ -29,7 +36,10 @@ export {
   openGate,
   QUEUE_DROPS,
   REFUSAL_REASONS,
+  STOPPED_NOTICES,
   unsentReason,
+  type NoticeKind,
+  type NoticeOutcome,
   type RunGate,
   type RunLimits,
 } from './gate.ts';

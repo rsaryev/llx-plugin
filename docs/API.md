@@ -996,6 +996,14 @@ caller can rewrite it, answer `{ value }` or refuse with `{ deny }`, which rejec
 call whose result is its event's own (`tool.call`, `command.run`, `prompt.submit`, `session.send`...)
 resolves to that result. A hook on a call runs only for the mods after it (the chain's `caller`
 option). `$.clock.after` and `$.clock.every` return their timer at once, not a promise. `$.ui` is built by `createModsUi(...).api` and passed as `options.ui`.
+`describeApi(api)` gives the shape of a mod's `$` as plain data, for a host that runs mods in another realm
+and rebuilds `$` there: each namespace in the order of the reference, each member as `{ name, kind, async, event? }`
+with `kind` one of `value`, `call`, `sync` (`$.ui.resolve`), `timer` (`$.clock.after`, `$.clock.every`) and
+`stream` (`$.process.spawn`), and `event` the `ApiEventName` a call fires; it reads the live `$`, so a namespace
+another mod added is described and one it withheld is not. `ModsHost.resetState()` is what the host calls for
+`/clear`, `/resume` and `/branch` (every `$.state` value back to its default; the host then fires
+`classic.SessionStart`), and `ModsHost.input.notice(kind, deliver)` raises a notice for the conversation that a
+stopped session holds or drops as api.md says. Changes to one plugin's `$.store` run one at a time.
 Judgments are in `spec/judgments.md`.
 
 ### The interface

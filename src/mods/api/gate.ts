@@ -36,6 +36,29 @@ export const QUEUE_DROPS = {
 export const HELD_AT_TIMEOUT =
   "Ended instead of moving to the background: plugins' input is held, by a Stop or by the host's limits.";
 
+/**
+ * What happens to a notice for the conversation that comes while the session is stopped (api.md,
+ * "Work your mod started before the interruption"): a subagent's finish notice and the notice that a
+ * monitor ended wait for the user's next input, and an event a monitor raises is dropped.
+ */
+export const STOPPED_NOTICES = {
+  'agent.finished': 'held',
+  'monitor.event': 'dropped',
+  'monitor.ended': 'held',
+} as const satisfies Readonly<Record<string, 'held' | 'dropped'>>;
+export type NoticeKind = keyof typeof STOPPED_NOTICES;
+/** `delivered` reached the conversation at once, `held` waits for the user's next input, `dropped` is gone. */
+export type NoticeOutcome = 'delivered' | 'held' | 'dropped';
+
+type Deliver = () => void;
+/** What a stopped session does with a notice, by the outcome its kind has. */
+const WHEN_STOPPED: Readonly<
+  Record<(typeof STOPPED_NOTICES)[NoticeKind], (queue: Deliver[], deliver: Deliver) => void>
+> = {
+  held: (queue, deliver) => void queue.push(deliver),
+  dropped: () => undefined,
+};
+
 /** `--max-turns` and `--max-budget-usd` of a `claude -p` run, or the Agent SDK's turn and spend limits. */
 export interface RunLimits {
   readonly maxTurns?: number;
@@ -60,6 +83,12 @@ export interface RunGate {
   interrupted(): AbortSignal;
   /** Replaces the run's limits, for a host that lives longer than one run: the next call is judged by them. */
   setLimits(limits: RunLimits): void;
+  /**
+   * A notice for the conversation, such as a subagent's finish notice or an event from a monitor a
+   * mod started. `deliver` puts it in the conversation: now, after the user's next input, or never,
+   * as `STOPPED_NOTICES` says for its kind while the session is stopped.
+   */
+  notice(kind: NoticeKind, deliver: () => void): NoticeOutcome;
 }
 
 /** A gate that never refuses and has no limits, for a mods API built without a host. */
@@ -70,6 +99,7 @@ export const openGate: RunGate = {
   endInput: () => undefined,
   interrupted: () => new AbortController().signal,
   setLimits: () => undefined,
+  notice: (_kind, deliver) => (deliver(), 'delivered'),
 };
 
 const costOf = (usage: unknown): number | undefined => {
@@ -91,6 +121,7 @@ export function createRunGate(
   let ended = false;
   let turnsBefore = 0;
   let epoch = new AbortController();
+  const waiting: Deliver[] = [];
   const overBudget = async (): Promise<boolean> => {
     const { maxBudgetUsd } = limits;
     if (maxBudgetUsd === undefined) return false;
@@ -116,9 +147,18 @@ export function createRunGate(
     async userInput() {
       stopped = false;
       turnsBefore = await session.turns();
+      for (const deliver of waiting.splice(0)) deliver();
     },
     endInput: () => void (ended = true),
     interrupted: () => epoch.signal,
     setLimits: (next) => void (limits = next),
+    notice(kind, deliver) {
+      if (!stopped) {
+        deliver();
+        return 'delivered';
+      }
+      WHEN_STOPPED[STOPPED_NOTICES[kind]](waiting, deliver);
+      return STOPPED_NOTICES[kind];
+    },
   };
 }

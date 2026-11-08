@@ -58,14 +58,14 @@ export interface ModTimer {
 export type ModsTimerMember = (...args: readonly unknown[]) => ModTimer;
 
 /** The calls that return a timer and not a promise. */
-type TimerEventName = 'clock.after' | 'clock.every';
+export type TimerEventName = 'clock.after' | 'clock.every';
 
 /**
  * `$.ui.resolve(e)` answers at once: the docs destructure its result without `await` (interface.md,
  * "Build a tree from elements"), because the element table was resolved when mods loaded.
  */
 export type ModsSyncMember = (...args: readonly unknown[]) => ElementTable;
-type SyncEventName = 'ui.resolve';
+export type SyncEventName = 'ui.resolve';
 
 /** `$.process.spawn` streams the command's output, so it returns the stream and not a promise (api.md, "Reach files, processes, and the network"). */
 export type ModsStreamMember = (...args: readonly unknown[]) => AsyncGenerator<unknown, unknown>;

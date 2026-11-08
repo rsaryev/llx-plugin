@@ -29,6 +29,17 @@
 
 ### Added
 
+- Mods, `describeApi` and the guide of the mods API (reference.md, overview.md, interface.md, api.md).
+  `describeApi(api)` describes a mod's `$` as plain data (namespace, member, kind, whether it answers
+  later, the event a call fires) so a host that runs mods in another realm can rebuild it.
+  `ModsHost.resetState()` resets every `$.state` value for `/clear`, `/resume` and `/branch` and redraws
+  what read them; `ModsHost.input.notice(kind, deliver)` holds a subagent's finish notice and the notice
+  that a monitor ended until the user's next input and drops a monitor's events while the session is
+  stopped. A `$.store.set` or `delete` no longer loses a write of another session that was in flight: the
+  changes of one plugin's store go one at a time. Tests prove the "Mods API calls" rule on the
+  reference's own examples, the six things a mod can reach, the `$.state` declaration, manifest `types`
+  field, atom rules, the load again after `/clear` of test.md, and the store sharing of interface.md.
+
 - Mods, crash behaviour and refused calls (troubleshoot.md, api.md). `ModRuntime.onCrash` lets a
   runtime that shares one worker tell the host the worker stopped: the mod it traced the stop to is
   unloaded (`<mod> was unloaded: it crashed the hooks worker`), the others get a fresh copy of their
