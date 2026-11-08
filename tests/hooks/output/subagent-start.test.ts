@@ -7,10 +7,16 @@
  * hook, capped like the other context strings, and that no decision of the hook holds creation back.
  */
 import { expect, test } from 'bun:test';
-import { createOutputStage, parseHookOutput, TEXT_CAP } from '../../../src/hooks/index.ts';
+import {
+  createOutputStage,
+  parseHookOutput,
+  PREVIEW_LENGTH,
+  TEXT_CAP,
+} from '../../../src/hooks/index.ts';
 import { memoryScratch } from '../../support/ports.ts';
-import { merged, specific, taggedFrom, viaEngine } from '../../support/hooks-output.ts';
-import { FACTS } from '../../support/hooks-select.ts';
+import { fire } from '../../support/hooks-fire.ts';
+import { merged, specific, stage, taggedFrom } from '../../support/hooks-output.ts';
+import { command, entry, FACTS } from '../../support/hooks-select.ts';
 import { spec } from '../../support/spec.ts';
 
 const inject = (additionalContext: unknown) => specific('SubagentStart', { additionalContext });
@@ -35,21 +41,40 @@ spec('hooks.input.SubagentStart.additionalContext', () => {
     expect(merged('SubagentStart', [{}]).additionalContext).toEqual([]);
   });
 
-  test('an Explore subagent: the field travels from a real command hook through the engine', async () => {
-    const outcome = await viaEngine('SubagentStart', [inject('Prefer rg over grep')], {
-      ...FACTS.SubagentStart,
-      agent_type: 'Explore',
+  test('a matcher on the agent type: the field travels from a real command hook through the engine for that type only', async () => {
+    const reply = {
+      exitCode: 0,
+      stdout: JSON.stringify(inject('Prefer rg over grep')),
+    };
+    const hooks = [
+      entry('SubagentStart', { matcher: 'Explore', handler: command('./explore.sh') }),
+    ];
+    const explore = await fire('SubagentStart', hooks, [reply], { output: stage });
+    expect(explore.outcome.additionalContext).toEqual(['Prefer rg over grep']);
+    const plan = await fire('SubagentStart', hooks, [reply], {
+      output: stage,
+      facts: { ...FACTS.SubagentStart, agent_type: 'Plan' },
     });
-    expect(outcome.additionalContext).toEqual(['Prefer rg over grep']);
+    expect(plan.outcome.additionalContext).toEqual([]);
   });
 
-  test('"can\'t block subagent creation": decision, continue and exit-style stops are dropped', () => {
+  test('"can\'t block subagent creation": a decision never blocks (block stays undefined, context still delivered)', () => {
     const outcome = merged('SubagentStart', [
       { decision: 'block', reason: 'no' },
+      inject('still delivered'),
+    ]);
+    expect(outcome.block).toBeUndefined();
+    expect(outcome.additionalContext).toEqual(['still delivered']);
+  });
+
+  test("the universal fields stay accepted: continue:false and stopReason are carried, creation is the host's to stop", () => {
+    const outcome = merged('SubagentStart', [
       { continue: false, stopReason: 'halt' },
       inject('still delivered'),
     ]);
     expect(outcome.block).toBeUndefined();
+    expect(outcome.continue).toBe(false);
+    expect(outcome.stopReason).toBe('halt');
     expect(outcome.additionalContext).toEqual(['still delivered']);
   });
 
@@ -61,7 +86,39 @@ spec('hooks.input.SubagentStart.additionalContext', () => {
     expect(
       parseHookOutput('SubagentStart', specific('SessionStart', { additionalContext: 'x' }))
         .failure,
-    ).toBeDefined();
+    ).toContain('hookEventName');
+  });
+
+  test('a <system-reminder> tag has its < replaced by &lt; in the context the subagent gets', () => {
+    const outcome = merged('SubagentStart', [
+      inject('a <system-reminder>b</system-reminder>'),
+      inject('</system-reminder> sneaky'),
+    ]);
+    expect(outcome.additionalContext).toEqual([
+      'a &lt;system-reminder>b&lt;/system-reminder>',
+      '&lt;/system-reminder> sneaky',
+    ]);
+  });
+
+  test('each string is measured on its own: two hooks of 6,000 characters pass although they exceed the cap together', async () => {
+    const scratch = memoryScratch('/session');
+    const half = 'b'.repeat(6_000);
+    const tagged = taggedFrom('SubagentStart', [inject(half), inject(half)]);
+    const { outputs } = await createOutputStage({ scratch }).limit('SubagentStart', tagged, signal);
+    expect(scratch.files.size).toBe(0);
+    expect(outputs.map((item) => JSON.stringify(item.output))).toEqual([
+      JSON.stringify(inject(half)),
+      JSON.stringify(inject(half)),
+    ]);
+  });
+
+  test('a string of exactly the cap passes untouched', async () => {
+    const scratch = memoryScratch('/session');
+    const text = 'a'.repeat(TEXT_CAP);
+    const tagged = taggedFrom('SubagentStart', [inject(text)]);
+    const { outputs } = await createOutputStage({ scratch }).limit('SubagentStart', tagged, signal);
+    expect(scratch.files.size).toBe(0);
+    expect(JSON.stringify(outputs[0]?.output)).toBe(JSON.stringify(inject(text)));
   });
 
   test('a string over the 10,000-character cap is saved to a file and the subagent gets a preview', async () => {
@@ -78,5 +135,7 @@ spec('hooks.input.SubagentStart.additionalContext', () => {
         : '';
     expect(given).not.toContain(text);
     expect(given).toContain('/session/');
+    expect(given).toContain('a'.repeat(PREVIEW_LENGTH));
+    expect(given).not.toContain('a'.repeat(PREVIEW_LENGTH + 1));
   });
 });

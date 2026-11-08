@@ -115,6 +115,10 @@
 
 ### Fixed
 
+- Hook output tests (`SubagentStart.additionalContext`): the title no longer claims `continue` is
+  dropped (it is carried); the matcher, the `<system-reminder>` escape, the cap boundary, the
+  2,000-character preview, the independence of hooks under the cap and the `hookEventName` failure
+  are now asserted.
 - Hook verdict and engine: a block now says who is shown its text (`BlockInfo.to`: `claude`, `user`,
   `user-and-claude` or `none`), and on the events whose docs show it to no one (`ConfigChange`,
   `Elicitation`, `ElicitationResult`, `WorktreeCreate`, `WorktreeRemove`) `reason` and `message` are
