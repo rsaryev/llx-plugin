@@ -5,7 +5,10 @@
  * says. Entries are read with the real entry reader.
  */
 import { expect, test } from 'bun:test';
-import { mergeEntryWithManifest } from '../../../src/format/marketplace/entry-merge.ts';
+import {
+  effectiveDisplayName,
+  mergeEntryWithManifest,
+} from '../../../src/format/marketplace/entry-merge.ts';
 import type { PluginManifest } from '../../../src/format/manifest-schema.ts';
 import { loaded, rawEntry } from '../../support/marketplace-entries.ts';
 import { spec } from '../../support/spec.ts';
@@ -80,7 +83,17 @@ spec(['marketplace.entry.displayName', 'marketplace.entry.description'], () => {
   });
 
   test("users see the plugin's name when neither sets a displayName", () => {
-    expect(merge({}, manifestOf()).manifest?.displayName).toBeUndefined();
+    expect(effectiveDisplayName(merge({}, manifestOf()))).toBe('my-plugin');
+    expect(effectiveDisplayName(merge({}))).toBe('my-plugin');
+  });
+
+  test('the entry displayName comes first, then the plugin.json one', () => {
+    expect(
+      effectiveDisplayName(merge({ displayName: 'Entry' }, manifestOf({ displayName: 'M' }))),
+    ).toBe('Entry');
+    expect(effectiveDisplayName(merge({}, manifestOf({ displayName: 'Manifest' })))).toBe(
+      'Manifest',
+    );
   });
 });
 
@@ -116,23 +129,18 @@ spec('marketplace.entry.name', () => {
 });
 
 spec('marketplace.entry.metadata', () => {
+  // "Claude Code doesn't read it": a field no host reads has no place in the merged manifest.
   test('metadata, category, tags, relevance and the header fields never reach the merged manifest', () => {
     const result = merge({
+      source: { source: 'archive', url: 'https://example.com/p.zip' },
       metadata: { team: 'infra' },
       category: 'devtools',
       tags: ['a'],
       relevance: { topic: 'T', signals: { cli: ['x'] } },
+      headers: { Authorization: 'Bearer x' },
+      headersHelper: './h.sh',
       strict: false,
     });
     expect(result.manifest).toEqual({ name: 'my-plugin' });
-    expect(JSON.stringify(result.manifest)).not.toContain('infra');
-  });
-
-  test("a plugin.json metadata object stays the manifest's own", () => {
-    const result = merge(
-      { metadata: { team: 'entry' } },
-      manifestOf({ metadata: { team: 'manifest' } }),
-    );
-    expect(result.manifest?.metadata).toEqual({ team: 'manifest' });
   });
 });

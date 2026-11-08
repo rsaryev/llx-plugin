@@ -95,3 +95,17 @@ export function readRelevance(value: unknown, base: string): RelevanceReading {
   });
   return { relevance, issues: [...issues, ...signals] };
 }
+
+/**
+ * The phrase of "Working with <topic>?": `relevance.topic`, which "defaults to the plugin name with
+ * each hyphen segment capitalized" (`terraform-helpers` gives `Terraform Helpers`).
+ */
+export const effectiveTopic = (entry: {
+  readonly name: string;
+  readonly relevance?: Relevance;
+}): string =>
+  entry.relevance?.topic ??
+  entry.name
+    .split('-')
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ');

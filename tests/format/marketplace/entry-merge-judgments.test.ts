@@ -146,3 +146,13 @@ describe('judgment: the conflict and the unsupported hooks are reported on the p
     expect(result.issues[0]?.message).toContain('has conflicting manifests');
   });
 });
+
+describe('judgment: a plugin.json metadata object', () => {
+  test("stays the manifest's own", () => {
+    const result = merge(
+      { metadata: { team: 'entry' } },
+      manifestOf({ metadata: { team: 'manifest' } }),
+    );
+    expect(result.manifest?.metadata).toEqual({ team: 'manifest' });
+  });
+});

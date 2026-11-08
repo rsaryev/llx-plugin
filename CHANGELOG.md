@@ -69,6 +69,13 @@
 
 ### Fixed
 
+- Marketplace entries: the `source` spec block proves only the entry-level behaviour (the parser's
+  messages belong to the plugin source parser); `headers` and `headersHelper` count under their own
+  ids, with a non-string helper dropping the entry; `effectiveTopic` gives the `relevance.topic`
+  default and `effectiveDisplayName` the name users see; `dependencies` has negative cases for a
+  non-string `version` and `marketplace`; the entry reserved-name check no longer filters the
+  manifest's advice by its wording (`nameReservedIssues` is separate from the kebab-case advice); the
+  version and no-effect headers warnings are recorded as reported when loading too.
 - Marketplace file and names: a name with a non-ASCII character impersonates an official
   marketplace even when it spells a reserved name (`claude–code–plugins` with en dashes);
   `renames` keeps a `"__proto__"` entry from parsed JSON instead of dropping it; the name tests

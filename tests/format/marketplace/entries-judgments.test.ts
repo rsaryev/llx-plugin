@@ -58,6 +58,15 @@ describe('judgment: the reserved-name check of an entry', () => {
   });
 });
 
+describe('judgment: the reports that `claude plugin validate` lists beside the field checks', () => {
+  test('the version warning and the no-effect headers warning are given when loading too', () => {
+    const entry = rawEntry({ version: '1.0.0', headers: { A: 'b' } });
+    const paths = readPlugins([entry], manifests('2.0.0')).issues.map((found) => found.path);
+    expect(paths).toEqual(['plugins[0].headers', 'plugins[0].version']);
+    expect(validatePlugins([entry], manifests('2.0.0')).map((found) => found.path)).toEqual(paths);
+  });
+});
+
 describe('judgment: the wording of a field of the wrong type', () => {
   test('is the validator\'s own "Invalid input: expected <type>, received <type>", at the field', () => {
     const { issues } = readOne(rawEntry({ tags: 'ci', category: 1, strict: 'no' }));

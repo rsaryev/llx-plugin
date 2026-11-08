@@ -41,22 +41,31 @@ export function nameLoadIssues(name: string): PluginIssue[] {
   ];
 }
 
-/** What `claude plugin validate` adds about a name that loads. */
-export function nameValidationIssues(name: string): PluginIssue[] {
+/** The reserved-name report of `claude plugin validate`: an error for a name that passes as Anthropic's own, a warning for one that reads as such. */
+export function nameReservedIssues(name: string): PluginIssue[] {
   const key = folded(name);
   const words = key.split('-');
-  const found: PluginIssue[] = [];
   const reserved =
     RESERVED.has(key) ||
     RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix)) ||
     besideOfficial(words);
   if (reserved) {
-    found.push(
+    return [
       error('name', `Plugin name "${name}" is reserved: it passes as one of Anthropic's own`),
-    );
-  } else if (words.some((word) => BRAND_WORDS.has(word))) {
-    found.push(warning('name', `Plugin name "${name}" reads as one of Anthropic's own`));
+    ];
   }
-  if (!KEBAB.test(name)) found.push(warning('name', `Plugin name "${name}" is not kebab-case`));
-  return found;
+  if (words.some((word) => BRAND_WORDS.has(word))) {
+    return [warning('name', `Plugin name "${name}" reads as one of Anthropic's own`)];
+  }
+  return [];
 }
+
+/** The kebab-case advice of `claude plugin validate`. */
+const nameKebabIssues = (name: string): PluginIssue[] =>
+  KEBAB.test(name) ? [] : [warning('name', `Plugin name "${name}" is not kebab-case`)];
+
+/** What `claude plugin validate` adds about a name that loads. */
+export const nameValidationIssues = (name: string): PluginIssue[] => [
+  ...nameReservedIssues(name),
+  ...nameKebabIssues(name),
+];

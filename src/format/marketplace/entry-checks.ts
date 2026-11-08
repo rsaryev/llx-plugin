@@ -1,5 +1,5 @@
 import { error, warning, type PluginIssue } from '../issues.ts';
-import { nameValidationIssues } from '../names.ts';
+import { nameReservedIssues } from '../names.ts';
 import { desktopNameIssues, pluginIdIssues } from './ids.ts';
 import { isRecord } from './marketplace-schema.ts';
 import type { MarketplaceEntry, PluginSource, PluginSourceKind, ReadMode } from './types.ts';
@@ -52,10 +52,7 @@ export function withoutDuplicates(read: readonly IndexedEntry[]): {
 const RESERVED: { readonly [M in ReadMode]: (name: string, path: string) => PluginIssue[] } = {
   load: () => [],
   // The kebab-case advice is the manifest's own; entries may use capitals (the id grammar allows them).
-  validate: (name, path) =>
-    nameValidationIssues(name)
-      .filter((found) => !found.message.endsWith('is not kebab-case'))
-      .map((found) => ({ ...found, path })),
+  validate: (name, path) => nameReservedIssues(name).map((found) => ({ ...found, path })),
 };
 
 /** The grammar of the install id, Claude Desktop's, and (when validating) the reserved names. */

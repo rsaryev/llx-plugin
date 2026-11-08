@@ -7,6 +7,7 @@
  * spinner tip, a Discover pin) is interface behaviour; no signal matching is claimed.
  */
 import { describe, expect, test } from 'bun:test';
+import { effectiveTopic } from '../../../src/format/marketplace/relevance.ts';
 import { loaded, rawEntry, readOne } from '../../support/marketplace-entries.ts';
 import { errorsOf } from '../../support/marketplace-fixtures.ts';
 import { spec } from '../../support/spec.ts';
@@ -191,9 +192,29 @@ spec('marketplace.entry.relevance', () => {
   });
 });
 
+spec('marketplace.entry.relevance', () => {
+  test('the topic defaults to the plugin name with each hyphen segment capitalized', () => {
+    const entry = loaded(rawEntry({ name: 'terraform-helpers' }));
+    expect(effectiveTopic(entry)).toBe('Terraform Helpers');
+    expect(effectiveTopic(loaded(rawEntry({ name: 'deploy' })))).toBe('Deploy');
+  });
+
+  test('a topic the entry sets is the one used', () => {
+    const entry = loaded(
+      rawEntry({ name: 'terraform-helpers', relevance: { topic: 'Terraform' } }),
+    );
+    expect(effectiveTopic(entry)).toBe('Terraform');
+  });
+
+  test('a relevance without a topic still gets the default', () => {
+    const entry = loaded(rawEntry({ name: 'my-sdk', relevance: { signals: { cli: ['x'] } } }));
+    expect(effectiveTopic(entry)).toBe('My Sdk');
+  });
+});
+
 describe('relevance limits count UTF-16 code units, like a JavaScript string length', () => {
   // The docs say "characters" without defining them; recorded in spec/judgments.md.
-  test('a topic of 64 emoji (128 code units) is over the limit', () => {
+  test('a topic of 32 emoji (64 code units) is accepted, 33 is over', () => {
     expect(withRelevance({ topic: '😀'.repeat(32) }).entry).toBeDefined();
     expect(withRelevance({ topic: '😀'.repeat(33) }).entry).toBeUndefined();
   });

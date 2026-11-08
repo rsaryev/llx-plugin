@@ -57,4 +57,5 @@ export {
 } from './marketplace.ts';
 export { createEntryReader, readEntry, type SourceParser, type SourceReading } from './entries.ts';
 export { DIRECTORY_LISTING_FIELDS, ENTRY_KEYS } from './entry-schema.ts';
-export { mergeEntryWithManifest, type EntryMerge } from './entry-merge.ts';
+export { effectiveDisplayName, mergeEntryWithManifest, type EntryMerge } from './entry-merge.ts';
+export { effectiveTopic } from './relevance.ts';

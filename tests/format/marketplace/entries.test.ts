@@ -3,8 +3,10 @@
  * category, tags, strict, defaultEnabled, displayName) and § Validation messages (the `plugins[i]`
  * rows). The name is `entries-name.test.ts`; the other fields are `entries-fields.test.ts`.
  *
- * The plugin source parser is a later piece of the stream: a stand-in (`stubSourceParser`) proves
- * that the entry reader delegates `source` to it; marketplaces are read with the real entry reader.
+ * The plugin source parser is a later piece of the stream, and every documented source message
+ * (`must start with "./"`, `Path contains ".."`, the invalid-input causes) is the parser's, proved
+ * there. A stand-in (`stubSourceParser`) only shows, outside `spec(...)`, that the entry reader
+ * delegates `source` to it; marketplaces are read with the real entry reader.
  */
 import { describe, expect, test } from 'bun:test';
 import {
@@ -62,6 +64,15 @@ spec('marketplace.entry.source', () => {
     ]);
   });
 
+  test('a string or an object is what a source is; anything else never reaches a source', () => {
+    for (const source of ['./plugins/x', { source: 'github', repo: 'a/b' }]) {
+      expect(readOne(rawEntry({ source })).entry).toBeDefined();
+    }
+    expect(readOne(rawEntry({ source: 5 })).entry).toBeUndefined();
+  });
+});
+
+describe('the entry reader delegates source to the plugin source parser', () => {
   test("the value is handed to the plugin source parser with the entry's slot, and its source is kept", () => {
     const seen: unknown[] = [];
     const slot = slotAt(4, { pluginRoot: './plugins' });
@@ -80,13 +91,6 @@ spec('marketplace.entry.source', () => {
     expect(issues).toEqual([
       { severity: 'error', path: 'plugins[2].source', message: 'Invalid input' },
     ]);
-  });
-
-  test('a string or an object is what a source is; anything else never reaches a source', () => {
-    for (const source of ['./plugins/x', { source: 'github', repo: 'a/b' }]) {
-      expect(readOne(rawEntry({ source })).entry).toBeDefined();
-    }
-    expect(readOne(rawEntry({ source: 5 })).entry).toBeUndefined();
   });
 });
 

@@ -33,6 +33,20 @@ spec('marketplace.entry.dependencies', () => {
       expect(errorsOf(issues)).not.toEqual([]);
     }
   });
+
+  test('the version and the marketplace of an object item must be strings', () => {
+    for (const item of [
+      { name: 'x', version: 2 },
+      { name: 'x', marketplace: 5 },
+    ]) {
+      const { entry, issues } = readOne(rawEntry({ dependencies: [item] }));
+      expect(entry).toBeUndefined();
+      expect(errorsOf(issues)).not.toEqual([]);
+      expect(
+        errorsOf(issues).every((found) => found.path.startsWith('plugins[0].dependencies')),
+      ).toBe(true);
+    }
+  });
 });
 
 spec('marketplace.entry.metadata', () => {
@@ -176,7 +190,7 @@ describe('fields an entry accepts beside its own', () => {
   });
 });
 
-describe('headers and headersHelper on an entry', () => {
+spec(['marketplace.entry.headers', 'marketplace.entry.headersHelper'], () => {
   const archive = { source: 'archive', url: 'https://example.com/p.zip' };
 
   test('headersHelper on an archive entry that is not "strict": false is the documented error', () => {
@@ -213,6 +227,16 @@ describe('headers and headersHelper on an entry', () => {
         path: `plugins[0].${Object.keys(extra)[0]}`,
         message,
       });
+    }
+  });
+
+  test('a headersHelper that is not a string drops the entry', () => {
+    for (const headersHelper of [5, true, ['./h.sh'], { run: './h.sh' }]) {
+      const { entry, issues } = readOne(
+        rawEntry({ source: archive, headersHelper, strict: false }),
+      );
+      expect(entry).toBeUndefined();
+      expect(errorsOf(issues).map((found) => found.path)).toEqual(['plugins[0].headersHelper']);
     }
   });
 

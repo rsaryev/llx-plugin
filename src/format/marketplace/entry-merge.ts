@@ -182,3 +182,11 @@ export function mergeEntryWithManifest(
     issues: [...hookIssues, ...merged.issues],
   };
 }
+
+/**
+ * The name users see: the display name the merge settled on (the entry's, then plugin.json's), "when
+ * neither ... sets one, users see the plugin's `name`" (marketplace-reference.md, `displayName`),
+ * read as the name of the merged manifest (spec/judgments.md), the entry name when it fails to load.
+ */
+export const effectiveDisplayName = (merge: EntryMerge): string =>
+  merge.manifest?.displayName ?? merge.manifest?.name ?? merge.installName;
