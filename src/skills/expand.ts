@@ -8,7 +8,7 @@ import {
   grantApplies,
   hooksRegister,
   type ExpandPolicy,
-  type PluginSource,
+  type SkillPluginSource,
 } from './expand-policy.ts';
 import {
   readExecutionEnvironment,
@@ -32,7 +32,7 @@ import {
   type SkillVariables,
 } from './variables.ts';
 
-export type { ExpandPolicy, PluginSource } from './expand-policy.ts';
+export type { ExpandPolicy, SkillPluginSource } from './expand-policy.ts';
 export type { ShellCall, ShellPermission } from './shell-run.ts';
 
 /**
@@ -50,7 +50,7 @@ export type ExpandSession = Pick<
   'pluginId' | 'userConfig' | 'windows' | 'isolatedSession' | 'skillRoot'
 > & {
   /** Where the skill's plugin was loaded from; default `installed`. Only a plugin skill reads it. */
-  readonly pluginSource?: PluginSource;
+  readonly pluginSource?: SkillPluginSource;
 };
 
 /** What the host knows about the session beyond the environment the kit reads itself. */

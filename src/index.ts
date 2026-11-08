@@ -24,8 +24,54 @@ export type {
 export type * from './protocol/official.ts';
 export type * from './ports/index.ts';
 export * from './loading/index.ts';
+export {
+  isRemoteMcpServer,
+  MCP_TRANSPORTS,
+  readMcpConfig,
+  readMcpServer,
+  type HttpMcpServer,
+  type McpConfigRead,
+  type McpServerRead,
+  type McpTransport,
+  type PluginMcpServer,
+  type RemoteMcpServer,
+  type SseMcpServer,
+  type WsMcpServer,
+} from './format/mcp-config.ts';
+export {
+  classifyMcpSource,
+  collectMcpServers,
+  MCP_SOURCE_KINDS,
+  MCPB_CACHE_DIR,
+  type CollectedMcpServers,
+  type CollectOptions,
+  type McpSource,
+  type McpSourceKind,
+} from './format/mcp-sources.ts';
+export type { McpLoadContext } from './format/mcp-bundles.ts';
+export {
+  LSP_FIELDS,
+  LSP_TRANSPORTS,
+  mergeLspSources,
+  readLspConfig,
+  readLspServer,
+  type LspConfigRead,
+  type LspServer,
+  type LspServerRead,
+  type LspTransport,
+} from './format/lsp-config.ts';
+export {
+  parseMonitorTrigger,
+  readMonitor,
+  readMonitors,
+  type Monitor,
+  type MonitorRead,
+  type MonitorsRead,
+  type MonitorTrigger,
+} from './format/monitors.ts';
 export * from './rules/index.ts';
 export * from './agents/index.ts';
+export * from './skills/index.ts';
 export {
   PERMISSION_BEHAVIORS,
   PERMISSION_MODES,
@@ -123,17 +169,6 @@ export {
   type OutputStyleContext,
   type OutputStyleRead,
 } from './format/output-style.ts';
-export {
-  BUILTIN_OUTPUT_STYLES,
-  DEFAULT_OUTPUT_STYLE_ID,
-  includeCodingInstructions,
-  listOutputStyles,
-  resolveOutputStyle,
-  type OutputStyleChoice,
-  type OutputStyleRequest,
-  type PromptKind,
-  type StyleSelection,
-} from './skills/output-style-select.ts';
 export { readSkill, type SkillRead } from './format/skill.ts';
 export { resolveSkillName, type SkillName } from './format/skill-name.ts';
 export {
@@ -167,88 +202,19 @@ export {
   type SkillShell,
 } from './format/skill-types.ts';
 export {
-  INVOKERS,
-  OVERRIDE_STATES,
-  checkInvocation,
-  invocationPolicy,
-  overrideState,
-  type DenialReason,
-  type InvocationPolicy,
-  type InvocationVerdict,
-  type Invocable,
-  type Invoker,
-  type ModelListing,
-  type OverrideState,
-  type SkillOverrides,
-} from './skills/invocation.ts';
-export { loadCommandEntries, type CommandEntriesLoaded } from './skills/command-entries.ts';
-export { readSkillMentions, type SkillMention } from './skills/mention.ts';
+  COMBINE_MODES,
+  COMPONENT_KINDS,
+  STANDARD_LAYOUT,
+  declaredKey,
+  type CombineMode,
+  type ComponentKind,
+  type LayoutEntry,
+  type ManifestKey,
+} from './format/layout.ts';
+export { defaultFolderIgnored, pathEscapes, pathNotFound } from './format/messages.ts';
 export {
-  listingLine,
-  menuEntries,
-  modelListing,
-  type ListingBudget,
-  type ListingEntry,
-  type ListingOptions,
-  type MenuOptions,
-  type ModelListingResult,
-} from './skills/listing.ts';
-export { skillActivatesFor, type PathGateOptions } from './skills/path-gate.ts';
-export {
-  readExecutionEnvironment,
-  resolveExecution,
-  resolveShell,
-  resolveTurnOverrides,
-  type EffortChoice,
-  type Execution,
-  type ExecutionContext,
-  type ExecutionEnvironment,
-  type ModelAvailability,
-  type ModelKept,
-  type ShellAvailability,
-  type ShellResolution,
-  type Trigger,
-  type TurnOverrides,
-  type TurnSession,
-  type WaitReason,
-} from './skills/execution.ts';
-export { parseArguments } from './skills/arguments.ts';
-export {
-  substitute,
-  substituteArguments,
-  type ArgumentInput,
-  type Substitution,
-  type SubstitutionInput,
-} from './skills/substitute.ts';
-export {
-  buildVariables,
-  substituteAllowedTools,
-  substituteVariables,
-  type AllowedToolsSubstituted,
-  type SkillSession,
-  type SkillVariablePorts,
-  type SkillVariables,
-  type VariableSource,
-  type VariablesSubstituted,
-} from './skills/variables.ts';
-export {
-  expandSkill,
-  type ExpandPolicy,
-  type ExpandPorts,
-  type ExpandRequest,
-  type ExpandSession,
-  type PluginSource,
-  type Expansion,
-  type SessionLimits,
-  type ShellCall,
-  type ShellPermission,
-} from './skills/expand.ts';
-export {
-  admitSkillHooks,
-  countSkillHooks,
-  hookSourceOf,
-  NO_HOOKS_YET,
-  SKILL_HOOK_LIMITS,
-  type HooksAdmission,
-  type HookUsage,
-} from './skills/hook-limits.ts';
+  hasAppliedSettings,
+  readPluginSettings,
+  type PluginSettings,
+  type PluginSettingsRead,
+} from './format/plugin-settings.ts';

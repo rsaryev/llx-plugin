@@ -162,6 +162,14 @@
   `${VAR}` and `${VAR:-default}` in one pass (`substituteTemplate`, `substituteDeep`), the
   per-component policies (`SURFACE_POLICY`, `VARIABLE_FIELDS`), the environment a process receives
   (`exportedEnvironment`, `CLAUDE_PLUGIN_OPTION_<KEY>`) and Windows path rendering.
+- MCP servers of a plugin: `readMcpConfig` and `readMcpServer` (wrapper or bare `.mcp.json`; `ws` and
+  `headersHelper` on the official stdio, SSE and HTTP configs as `PluginMcpServer`),
+  `collectMcpServers` and `classifyMcpSource` (root `.mcp.json` first, then each `mcpServers` source
+  in order: `.json` file, inline map, `.mcpb`/`.dxt` bundle path or URL through the new optional
+  `McpBundleReader` port, "needs configuration" for a bundle with an unsatisfied required setting),
+  and `resolveMcpServer` (variables substituted per transport, credential variables read as empty,
+  `headersHelper` rejecting `${user_config.*}` with the documented error, its environment) with
+  the reusable `rejectUserConfigInShell` guard.
 - Permission rules (`rules`): `parseRule` and `formatRule` for `Tool` and `Tool(specifier)` (literal
   parentheses, `Bash(*)` as bare, `domain:` and `Tool(param:value)` specifiers, the malformed-rule
   message), `matchRule` for bare rules, tool-name globs (with the allow-glob anchoring rule) and
@@ -728,6 +736,57 @@
   own wording tested; a plugin agent in a file named `.md` is named `.md`, not an empty string; a
   `--add-dir` directory reads as `project`, and `flag` is no source of a file read (`readAgent`).
 
+- LSP servers of a plugin: `readLspConfig` and `readLspServer` (the 14 fields of manifest-reference's
+  `lspServers` table as a strict object; `command` without spaces unless it starts with `/`,
+  `extensionToLanguage` with dot-prefixed keys, positive and zero-or-more integers; one invalid entry
+  skips the whole map with `Invalid LSP server config for ".lsp.json"`), `mergeLspSources` (a later
+  server replaces an earlier one), `resolveLspServer` (`command`, `args`, `env` and `workspaceFolder`
+  substituted, the three path variables exported, defaults `requestTimeout` 60000, `restartOnCrash`
+  and `diagnostics` true, `transport` always `stdio`), and the runtime decisions the host reads:
+  `lspRestartDecision`, `languageIdFor`, `lspExtensionConflicts`, `initializeOptionsOf` and
+  `didChangeConfigurationOf`.
+- Monitors of a plugin: `readMonitors` (the four fields of manifest-reference's `monitors` table as a
+  strict entry; unique names; `when` read as `always` or `on-skill-invoke:<skill>`, anything else an
+  error), `resolveMonitor` (path variables and `${ENV_VAR}` in `command`, `${user_config.*}` refused
+  with the errors.md message, nothing exported) and `monitorsToStart`, the pure engine that says which
+  monitors an event starts: `always` on session start and plugin reload, a skill monitor the first
+  time its skill runs, none in non-interactive mode.
+- `loadPlugin`: a plugin folder through `PluginFiles` to a typed `Plugin`, with the optional
+  manifest, every component found by the standard layout registry (`STANDARD_LAYOUT`), the
+  `replace`, `add` and `merge` rule of each manifest key (`COMBINE`), the `Default <folder>/ folder
+  is ignored` warning, containment and existence checks (`<component> path escapes plugin
+  directory`, `<component> path not found`), `settings.json` over the manifest `settings`
+  (`readPluginSettings`), the `bin/` decisions (`binPathEntries`, `pathWithPluginBins`,
+  `distribution`), the `COMPONENT_READERS` seam, and `resolveProcesses` for MCP servers, language
+  servers and monitors.
+
+### Fixed
+
+- Layout discovery: a `skills` entry that is a file and an `agents` entry that is a directory are
+  now errors instead of being dropped or scanned silently (manifest-reference, "Path-only fields");
+  a manifest `hooks` path that names `hooks/hooks.json` no longer loads the file twice, so its hooks
+  run once; the symlinked-folder, duplicate-file and path-shape decisions are recorded in
+  `spec/judgments.md`. New tests cover the `bin/` decisions, the depth cap with a really looping
+  folder, single-file `workflows` and `experimental.themes`, the symlink escape of default
+  `monitors/monitors.json`, `settings.json` and a root `SKILL.md`, and exact issues for invalid LSP,
+  monitor and settings files.
+- Skill, command and agent content: the `user_config` policy applied to a command body is now
+  recorded as the kit's reading (the page words it for skill and agent content and lists commands
+  only in the one table row) in `spec/judgments.md` and the `substituteContent` doc comment.
+- Monitors: the duplicate-name error and the first-wins rule, the error for any other `when` string,
+  and the host-owned `description` display and `command` process behaviour are recorded in
+  `spec/judgments.md` (the docs say only "Identifier unique within the plugin"); the `description`
+  test no longer claims the task panel, and the option-variable test now checks the
+  `CLAUDE_PLUGIN_OPTION_` prefix against a scope with configured options.
+- LSP: a refused `extensionToLanguage` now names the keys that lack a dot; `languageIdFor` and
+  `lspExtensionConflicts` document a plugin-qualified key (`plugin:server`) so two plugins with the
+  same server name stay apart; the integer-like-name ordering limit and the host-owned timeouts are
+  recorded in `spec/judgments.md`.
+- MCP servers: an entry with `type: "streamable-http"` now reads as `http` (mcp.md, "Option 2");
+  an entry with a `url` and no `type` is dropped with the message mcp.md quotes instead of an
+  unrelated stdio error (and no longer reads as stdio when it also has a `command`, so a stray `url`
+  can no longer reach the resolver and throw); a `type: "sdk"` entry is skipped with the quoted
+  message; `isRemoteMcpServer` follows the transport and not the presence of a `url`.
 - Permission rules: `Agent(acme:reviewer)` and `Skill(deploy:deploy)` deny rules are names, not
   parameter rules on a field called `acme` or `deploy`; only the fields of the SDK's `AgentInput`
   (and `skill`) read `name:value` as a parameter.
@@ -879,3 +938,9 @@
   state is recorded in `spec/judgments.md`, and the non-Boolean managed
   `disableSkillShellExecution` test sits with the judgments.
 
+- Command hooks and Markdown content of a plugin: `resolveHookCommand` (exec form substitutes
+  `command` and each `args` element including `${user_config.*}`; shell form through bash or
+  PowerShell refuses `${user_config.*}` with the documented error, `${env:NAME}` placeholders for
+  PowerShell, the path and option variables the process receives) and `substituteContent` (path
+  variables and non-sensitive options in a skill, command or agent body, a placeholder for a
+  sensitive one), with the `HOOK_GUARD` message.

@@ -47,9 +47,11 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `readHooksFile(raw)`                | done    | `hooks/hooks.json` → official `HooksSettings`: events, matcher groups, every handler field; an error leaves no hooks, as Claude Code does |
 | `readHooksSettings(raw)`            | done    | the bare event map (inline `hooks`, skill frontmatter, `settings.json`) |
 | `matchesMatcher(matcher, value, mode?)` | done | a hook `matcher` against the field its event filters on: match-all, exact list, unanchored regex; `'narrow'` for FileChanged and StopFailure |
-| `readMcpConfig(raw)`                | planned | `.mcp.json` → official `McpServerConfig` map                          |
+| `readMcpConfig(raw, origin)`, `readMcpServer(name, raw, origin)` | done | `.mcp.json` (wrapper or bare map) → `PluginMcpServer` map; an entry Claude Code would drop is an error issue |
+| `collectMcpServers(files, manifestValue, options)`, `classifyMcpSource(value)` | done | the root `.mcp.json`, then each `mcpServers` source in order (`.json` file, inline map, `.mcpb` or `.dxt` bundle path or URL); a later name replaces an earlier one |
+| `readLspConfig(raw, origin)`, `readLspServer(name, raw, origin)`, `mergeLspSources(reads)` | done | an LSP server map (`.lsp.json` or inline: no wrapper) → `LspServer` map; one invalid entry skips the whole map; a later source replaces an earlier server of the same name |
+| `readMonitors(raw, origin)`, `readMonitor(raw, origin, index)`, `parseMonitorTrigger(when)` | done | `monitors/monitors.json` or the inline `experimental.monitors` array → `Monitor[]` (strict entry; unique names; `when` as `{ kind: 'always' }` or `{ kind: 'on-skill-invoke', skill }`); every problem is an error issue |
 | `readOutputStyle(path, text, { plugin? })` | done | an output style file: `name` (default the file name; `<plugin>:<name>` for a plugin), `description`, `keep-coding-instructions`, `force-for-plugin` (plugin styles only); a YAML error loads the style with no fields and a warning |
-| `readLspConfig(raw)`, `readMonitors(raw)` | planned | the remaining component files |
 
 ### Skills (done: `format/skill*`, the field readers; planned: command name, commands, expansion)
 
@@ -277,7 +279,7 @@ const { plan } = planPluginFetch(entry.source, { platform: 'posix' }); // data: 
 it takes the git and npm plans and returns the fetched files or a `PluginIssue`. A missing port is
 a `PluginIssue` for that source only.
 
-## Loading (planned)
+## Loading (done: `loading`, `format/layout`)
 
 ```ts
 import { loadPlugin } from '@rsaryev/claude-plugin-kit';
@@ -288,25 +290,46 @@ const { plugin, issues } = await loadPlugin({ files, fallbackName: 'formatter' }
 `files` is the `PluginFiles` port: read access to one plugin folder, wherever it is (a disk, an
 object store, a sandbox, an archive in memory). `loadPlugin` finds every component in the
 standard layout and the manifest's paths (plugins/manifest-reference.md, "Standard layout", "How
-each key combines with its default location") and returns a `Plugin`:
+each key combines with its default location") and returns a `Plugin`. It never throws: `plugin` is
+`undefined` only when the plugin does not load at all (a `plugin.json` that is not JSON or fails
+validation, or no manifest and no `fallbackName`); any other problem is an issue and skips that
+component while the rest loads.
 
 ```ts
 interface Plugin {
-  readonly name: string;
-  readonly manifest: PluginManifest | undefined;
-  readonly skills: readonly Skill[]; // namespaced `<plugin>:<skill>`
-  readonly commands: readonly Command[];
-  readonly agents: readonly PluginAgent[]; // official AgentDefinition + name and source
-  readonly hooks: HooksSettings; // official
-  readonly mcpServers: Readonly<Record<string, McpServerConfig>>; // official
+  readonly name: string; // the manifest's `name`, else `fallbackName`
+  readonly manifest: PluginManifest | undefined; // the manifest is optional
+  readonly skills: readonly PluginTextFile[]; // path, name, `<plugin>:<name>`, text
+  readonly commands: readonly PluginTextFile[]; // files, and the manifest's object map
+  readonly agents: readonly PluginTextFile[]; // `review:security` for agents/review/security.md
+  readonly hooks: HooksSettings; // official; hooks/hooks.json first, then the manifest's, per event
+  readonly mcpServers: Readonly<Record<string, PluginMcpServer>>; // official types plus `ws` and `headersHelper`
   readonly lspServers: Readonly<Record<string, LspServer>>;
   readonly monitors: readonly Monitor[];
-  readonly outputStyles: readonly OutputStyle[];
-  readonly settings: Pick<Settings, 'agent' | 'subagentStatusLine'>; // official
+  readonly outputStyles: readonly PluginTextFile[];
+  readonly workflows: readonly PluginPath[];
+  readonly themes: readonly PluginPath[];
+  readonly settings: PluginSettings; // official `Pick<Settings, 'agent' | 'subagentStatusLine'>`
   readonly userConfig: Readonly<Record<string, UserConfigOption>>;
-  readonly hasBin: boolean;
+  readonly bin: readonly string[]; // the files directly in bin/
+  readonly hasBin: boolean; // bin/ exists, empty or not
 }
 ```
+
+| API | What it does |
+| --- | --- |
+| `loadPlugin({ files, fallbackName?, bundles?, bundleSettings?, signal? })` | the optional manifest, discovery, every reader; all issues collected |
+| `discoverComponents(files, manifest, pluginName, signal?)` | paths and names only (no file parsed): the default location and the manifest's paths per kind, containment (`..`, a symlink that leaves the plugin) and existence (`<component> path escapes plugin directory: <path>`, `<component> path not found: <path>`) checked |
+| `STANDARD_LAYOUT`, `COMPONENT_KINDS`, `declaredKey(manifest, kind)` | the registry typed over the component kinds: default location, manifest keys, combine rule, extension; the first manifest key set wins (`experimental.themes` over `themes`) |
+| `COMBINE` | `replace` (`commands`, `agents`, `outputStyles`, `workflows`, `experimental.themes`, `experimental.monitors`: the default is not scanned, with the warning `Default <folder>/ folder is ignored because the manifest sets "<key>"` unless a declared path is inside the folder), `add` (`skills`), `merge` (`hooks`, `mcpServers`, `lspServers`: the default first) |
+| `COMPONENT_READERS` | the seam: one reader per kind over what discovery found. Skills, commands, agents and output styles keep path, name and text until the streams that own those formats plug in a parser |
+| `mergeHooks(sources)` | the hooks of several sources joined per event, in loading order |
+| `readPluginSettings(raw, origin)`, `hasAppliedSettings(read)` | `settings.json` or the inline `settings`: only `agent` and `subagentStatusLine` take effect, the rest is dropped with a warning; `settings.json` wins when it sets one |
+| `binPathEntries(plugin, pluginId, locations)`, `pathWithPluginBins(userEntries, bins)` | the absolute `bin/` directory when the plugin has one, and its place after the user's own `PATH` entries; the host changes the `PATH` |
+| `distribution(plugin, target)`, `DISTRIBUTION_TARGETS` | `claude.ai` and Cowork do not install a plugin that has `bin/`; the host refuses the install |
+| `resolveProcesses(plugin, scope)` | every MCP server, language server and monitor of a plugin resolved for this host; an entry that must not start is left out with its issue |
+
+Loading never calls the resolvers: the host loads, then resolves with its scope.
 
 ### Variable substitution (done: `loading/resolve`)
 
@@ -346,12 +369,113 @@ every hook, stdio and LSP process, referenced or not.
 Choosing the hook surface is the caller's: a command hook with `args` is `hook-exec`; shell form is
 `hook-shell` (bash) or `hook-powershell`. A hook with no `shell` field runs in PowerShell on Windows
 without Git Bash (hooks.md, "Exec form and shell form"), and the kit cannot tell the host's shell, so
-the caller passes `hook-powershell` there.
+the caller passes `hook-powershell` there (`resolveHookCommand`, below, takes that as `defaultShell`).
+
+### Hook commands and Markdown content (done: `loading/resolve/hook-command`, `content`)
+
+```ts
+import { resolveHookCommand, substituteContent } from '@rsaryev/claude-plugin-kit';
+
+const { resolved, issues } = await resolveHookCommand(handler, scope, { defaultShell: 'bash' });
+// resolved.spec: { form: 'exec', command, args } | { form: 'shell', command, shell }: a CommandRunner `spec`
+// resolved.environment: CLAUDE_PLUGIN_ROOT/DATA, CLAUDE_PROJECT_DIR, CLAUDE_PLUGIN_OPTION_<KEY>
+const { text } = await substituteContent(skillBody, scope); // Markdown body of a skill, command or agent
+```
+
+| API | What it does |
+| --- | --- |
+| `resolveHookCommand(handler, scope, { path?, defaultShell? })` | with `args`: exec form, `command` and each element substituted as plain strings (`${user_config.*}` allowed, `shell` ignored); without: shell form through `shell` (default `defaultShell`, then `bash`), where `${user_config.*}` anywhere in `command` is the errors.md message and `resolved` is `undefined`, with no value needed; the environment holds the three path variables and an option variable per option with a value, sensitive included |
+| `HOOK_GUARD` | the shell-form hook message for `rejectUserConfigInShell` |
+| `substituteContent(body, scope, path?)` | the three path variables, `scope.extra` (a skill's `CLAUDE_SKILL_DIR`, `CLAUDE_SESSION_ID`), non-sensitive `${user_config.KEY}`; a sensitive one becomes `SENSITIVE_PLACEHOLDER`; `${VAR}` stays; nothing is exported |
+
+A PowerShell shell-form command gets `${env:NAME}` for the placeholders, and a bare `$CLAUDE_PROJECT_DIR`
+(or the other two) stays and is a warning; an exec-form `command` that is a bare name with whitespace
+beside `args` is a warning (the spawn would fail). `substituteContent` takes the body: splitting the
+frontmatter off, `$ARGUMENTS` and the `allowed-tools` rules are the skills'. The kit never spawns the
+hook: the host passes `spec` and `environment` to its `CommandRunner`, and says through `defaultShell`
+that a Windows host without Git Bash runs `powershell`.
+
+### MCP servers (done: `format/mcp-*`, `loading/resolve/mcp`)
+
+```ts
+import { collectMcpServers, resolveMcpServer } from '@rsaryev/claude-plugin-kit';
+
+const { servers, issues } = await collectMcpServers(files, manifest.mcpServers, { bundles, bundleSettings });
+const { resolved, issues: more } = await resolveMcpServer('db', servers.db, scope);
+// resolved.server (substituted), resolved.key 'plugin:<plugin>:db', resolved.environment,
+// resolved.headersHelperEnvironment (CLAUDE_PLUGIN_ROOT, CLAUDE_CODE_MCP_SERVER_NAME, _URL)
+```
+
+| API | What it does |
+| --- | --- |
+| `PluginMcpServer` | the SDK's stdio, SSE and HTTP configs plus the two things the SDK does not type: the `ws` transport and `headersHelper` on every remote server (mcp.md, "Option 4"); `type: "streamable-http"` reads as `http`; a `url` with no `type` and a `type: "sdk"` entry are dropped with the messages mcp.md quotes |
+| `collectMcpServers(files, manifestValue, { bundles?, bundleSettings?, signal? })` | root `.mcp.json` first, then each declared source in array order; sources load concurrently, merge in order |
+| `McpBundleReader` (port, optional) | the host opens a `.mcpb` or `.dxt` (extract into `.mcpb-cache`, or download) and returns `{ name, server, userConfig? }`; the kit never unzips or downloads, and never maps the MCPB manifest |
+| `resolveMcpServer(name, server, scope)` | stdio: `command`, `args`, `env` substituted, the three path variables in `environment`; http, sse and ws: `url`, `headers`, `headersHelper` substituted, credential variables read as empty in `url` and `headers`; a `headersHelper` that references `${user_config.*}` keeps the server from starting |
+| `rejectUserConfigInShell(guard, template, context, path)`, `HEADERS_HELPER_GUARD` | the shell-field check on the template, with the message errors.md quotes; monitors and shell-form hooks pass a guard of their own |
+
+A bundle whose own `user_config` has a required setting with no saved value is not started and
+reports `Bundled MCP server "<name>" was not started: it needs configuration`; the rest of the
+plugin loads. Without a `McpBundleReader` a bundle is a warning. Paths given to the reader are
+relative to the plugin root, like every `PluginFiles` path. The server's tool prefix is `rules`'
+`pluginMcpServerName`; `mcpServerKey` is the `plugin:<plugin>:<server>` name `/mcp` shows.
+
+### LSP servers (done: `format/lsp-config`, `loading/resolve/lsp*`)
+
+```ts
+import { readLspConfig, mergeLspSources, resolveLspServer, languageIdFor, lspRestartDecision } from '@rsaryev/claude-plugin-kit';
+
+const root = readLspConfig(JSON.parse(lspJson), '.lsp.json'); // { servers, issues }
+const { servers } = mergeLspSources([root, readLspConfig(manifest.lspServers, 'lspServers')]);
+const { resolved } = await resolveLspServer('go', servers.go, scope);
+// resolved.command/args/env/workspaceFolder substituted, resolved.environment = the three path variables
+languageIdFor(servers, 'src/main.go'); // { server: 'go', languageId: 'go' }
+lspRestartDecision(resolved, restartsSoFar); // 'restart' | 'stay-stopped'
+```
+
+| API | What it does |
+| --- | --- |
+| `LspServer`, `LSP_FIELDS` | kit-owned type (the SDK has no LSP config type): the fourteen documented fields, a strict object: an unknown key is an error |
+| `readLspConfig(raw, origin)` | one map, no wrapper object; an invalid entry skips the whole map, each reported as `Invalid LSP server config for "<origin>": <server>: <reason>` |
+| `mergeLspSources(reads)` | `.lsp.json` first, then each declared source in order; a later name replaces the earlier entry whole and keeps its first position |
+| `resolveLspServer(name, server, scope)` | `command`, `args`, `env`, `workspaceFolder` substituted (`${user_config.*}` allowed, `${VAR}` left to the process), `environment` = `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_PROJECT_DIR`; `transport` is always `stdio`; `requestTimeoutMs` 60000, `restartOnCrash` and `diagnostics` true by default; `shutdownTimeoutMs`, `startupTimeoutMs`, `maxRestarts` stay unset when unset |
+| `lspRestartDecision(server, restartsSoFar)` | `restartOnCrash: false` stays stopped; `restartsSoFar >= maxRestarts` stays stopped; unset `maxRestarts` is unbounded |
+| `languageIdFor(servers, filePath)`, `lspExtensionConflicts(servers)` | the server and language ID of a file (the first registered server keeps a shared extension; the longest extension wins); the record key must be unique across plugins, so qualify it as `plugin:server`; the `LSP server "<name>" is not used for <ext> files` warning |
+| `initializeOptionsOf(server)`, `didChangeConfigurationOf(server)` | the `initializationOptions` of the initialize request and the `workspace/didChangeConfiguration` notification for `settings` |
+
+The kit never starts a language server and never enforces a timeout: the host's LSP client starts the
+process, waits `startupTimeoutMs`, applies `requestTimeoutMs`, terminates after `shutdownTimeoutMs`,
+pushes diagnostics when `diagnostics` is on and speaks the protocol. The kit proves the values and
+decisions it hands over.
+
+### Monitors (done: `format/monitors`, `loading/resolve/monitor*`)
+
+```ts
+import { readMonitors, resolveMonitor, monitorsToStart } from '@rsaryev/claude-plugin-kit';
+
+const { monitors, issues } = readMonitors(JSON.parse(monitorsJson), 'monitors/monitors.json');
+const { resolved } = await resolveMonitor(monitors[0], scope); // undefined when it must not start
+const toStart = monitorsToStart(monitors, { kind: 'session-start' }, started, { interactive: true });
+for (const monitor of toStart) started.add(monitor.name); // the host spawns each and remembers the name
+```
+
+| API | What it does |
+| --- | --- |
+| `Monitor`, `MonitorTrigger` | kit-owned types (the SDK has no monitor config type): `name`, `command`, `description`, and `when` as a tagged trigger |
+| `readMonitors(raw, origin)` | the array of one source; a strict entry (an unknown key is an error), `when` absent is `always`, a malformed `when` is an error naming the two forms, a repeated `name` is an error and the first keeps it; valid entries are still returned |
+| `resolveMonitor(monitor, scope)` | `command` gets the three path variables and `${ENV_VAR}`; `${user_config.*}` in it is the errors.md message and `resolved` is `undefined`, with no value needed; `environment` is always empty (nothing exported, no `CLAUDE_PLUGIN_OPTION_<KEY>`) |
+| `monitorsToStart(monitors, event, started, mode)` | pure: `always` starts on `session-start` and `plugin-reload`; `on-skill-invoke:<skill>` starts on `skill-invoked` for that skill, the first time only; nothing starts when `mode.interactive` is false (`-p`) |
+| `MONITOR_GUARD` | the monitor message for `rejectUserConfigInShell` |
+
+The kit never spawns a monitor: the host runs `command` in a shell in the session's working
+directory, outside the sandbox, keeps the set of started names (a name in it is never returned
+again), and turns what the process prints into notifications.
 
 ## Ports (done)
 
 Interfaces the host implements, in `src/ports/` (type-only, one file per port, all exported from the
-package). Each is small, takes an `AbortSignal` where it does I/O, and is optional when the host
+package; a stream's own port, such as `McpBundleReader`, is exported through its module barrel and not
+`src/ports/index.ts`, docs/ARCHITECTURE.md). Each is small, takes an `AbortSignal` where it does I/O, and is optional when the host
 supports no plugin that needs it (a missing port is reported per component, never a crash). An
 absent file is `undefined`; an effect that did not happen is a `PortFailure` value, never a throw.
 
@@ -362,6 +486,7 @@ absent file is `undefined`; an effect that did not happen is a `PortFailure` val
 | `HttpClient`     | `http` hooks, archive and marketplace downloads (text or `bytes`) | `fetch`                 | `fetch` behind an egress policy |
 | `ModelRunner`    | `prompt` and `agent` hooks, a mod's `$.model`                     | the host's model        | the host's model                |
 | `McpCaller`      | `mcp_tool` hooks                                                  | the host's MCP client   | the host's MCP client           |
+| `McpBundleReader` | opening an `.mcpb` or `.dxt` bundle named by `mcpServers` (optional)  | unzip into `.mcpb-cache` | extract in the sandbox or a service |
 | `Locations`      | `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_PROJECT_DIR`  | paths on the disk       | paths inside the sandbox        |
 | `Environment`    | `${VAR}` in configs, `allowedEnvVars`, the inherited environment  | the process environment | the sandbox's environment       |
 | `Clock`          | timeouts and timers (no `Date`, no `setTimeout` in `src/`)        | the system clock        | the system clock                |
@@ -800,13 +925,13 @@ each source it has; the kit never knows a file path, an MDM profile or a server-
 choosing among managed sources (`managedSourcesBehavior`, `policyHelper`) stays the host's.
 
 ```ts
-import { createPolicyView, loadSettingsLayers, mergeHooks, readSettingsLayer } from '@rsaryev/claude-plugin-kit';
+import { createPolicyView, loadSettingsLayers, mergeSettingsHooks, readSettingsLayer } from '@rsaryev/claude-plugin-kit';
 
 const { layer, issues } = readSettingsLayer('managed', JSON.parse(text));
 const view = createPolicyView([layer, ...other]);
 view.get('allowedHttpHookUrls'); // the lists of every file combined
 view.winner('enableWorkflows'); // { scope, position, value } of the highest file that sets it
-mergeHooks(view.layers); // every file's hooks, managed ones never removable
+mergeSettingsHooks(view.layers); // every file's hooks, managed ones never removable
 ```
 
 | Name                                    | Status  | Does                                                                                      |
@@ -815,14 +940,14 @@ mergeHooks(view.layers); // every file's hooks, managed ones never removable
 | `SettingsSources`, `loadSettingsLayers` | done    | the host's optional port for its sources (an object or JSON text per scope) and the helper that reads them all |
 | `createPolicyView(layers)`              | done    | `get`, `winner`, `eachFromHighest` over the layers, one merge rule per key               |
 | `KEY_SPECS`, `admits`                   | done    | per key: its scope rule, merge kind and repair kind, from the key's entry in settings-reference.md |
-| `mergeHooks(layers)`                    | done    | the `hooks` key: groups concatenated per event, the same handler under the same matcher in two files once |
+| `mergeSettingsHooks(layers)`                    | done    | the `hooks` key: groups concatenated per event, the same handler under the same matcher in two files once |
 | `enabledPlugin(view, id, default?)`, `forceEnabledByManaged(view, id)` | done | `enabledPlugins`: the highest file with an entry for the id decides (managed beats local beats project beats user); a managed `false` blocks and hides, a managed `true` cannot be turned off; no entry follows `defaultEnabled` |
 | `pluginConfig(view, id)`                | done    | `pluginConfigs`: the options and per-server values of one plugin, from user or managed settings only, a built-in plugin read under either id; a value of another shape is dropped with a warning |
 | `modOrder(view, context, orgMods)`      | done    | `prependPlugins` and `appendPlugins`: the ids that take effect in the listed order, the organization's mods no list names (`unlisted`), the skipped ones with the debug-log line, and where the built-in guard loads |
 | `syncDecision(view)`                    | done    | `syncClaudeAiPlugins`: only `false` counts, from user, local, managed and `--settings`, also over a managed `true`; the move to the trash for user and managed |
 | `trustWarning(view, standard)`          | done    | `pluginTrustMessage`: the managed text appended to the host's standard warning, which stays whole |
 | `createPluginSettingsPolicy(view, context)` | done | the five above as one object (`PluginSettingsPolicy`); `pluginSuggestionMarketplaces` joins it in the composed policy |
-| hooks engine: one run of the same handler across the groups that matched an event | planned | hooks.md, "Hook handler fields": a handler defined in more than one settings file runs once whatever its matcher; a plugin's or skill's copy stays separate. `mergeHooks` keeps both groups when the matchers differ |
+| hooks engine: one run of the same handler across the groups that matched an event | planned | hooks.md, "Hook handler fields": a handler defined in more than one settings file runs once whatever its matcher; a plugin's or skill's copy stays separate. `mergeSettingsHooks` keeps both groups when the matchers differ |
 | `createMarketplaceGate(view)`, `matchMarketplaceSource(list, entry, source)` | done | `strictKnownMarketplaces` and `blockedMarketplaces`: `check(source)` for add, install, update, refresh and auto-update (blocklist first; `is blocked by enterprise policy`, with the allowed sources for the allowlist), `checkRegistered` and `checkMissing` for session start (`is not in the allowed marketplace list`), `restrictionActive`, `skillsDirectoryPlugins`; the matcher: exact entries, owner wildcards, `hostPattern`, `pathPattern`, canonical git URLs on the blocklist |
 | `createMarketplaceRegistry(view, context).registrations()` | done | `extraKnownMarketplaces` as the plan a host executes: per name the highest file wins whole (nothing inherited), a project, local or `--add-dir` entry in an untrusted folder is `ignoredUntrusted` (no message, as if absent), an entry the allowlist or blocklist refuses is `refusedByAllowlist`, a source that names no marketplace (a policy-list kind, an unknown kind, a `settings` source whose `name` differs from the key or whose plugins are not external) is `invalid` with `PluginIssue`s, a lower entry is `shadowed`; `autoUpdate` resolved (explicit, else on for `claude-plugins-official` and the host's `officialMarketplaces`, off for `knowledge-work-plugins` and `first-party-plugins`), `autoUpdateFixed` for a registered managed entry that sets it, `headersHelper` removed from an `--add-dir` entry and from a non-`https://` `url` source, routing and identity headers (`Host`, `Cookie`, `X-Forwarded-*`) dropped from an inline plugin entry of a project, local or `--add-dir` file, and the official marketplace implied (`implied`) by an `enabledPlugins` `true`. `RegistryContext` is `isFolderTrusted`, `officialMarketplaces` and the gate's `check` as a function |
 | `createCommandSourcePolicy(view)` | done | `disableCommandPluginSources`: `disabled`, `pluginSource` (never run, install, update or load a `command`-sourced plugin, force-enabled ones included) and `headersHelper(declaredIn)`; the effective value is the explicit one (managed only), else `allowManagedHooksOnly`; `disableAllHooks` is not consulted; a marketplace helper is blocked except for a marketplace managed settings declare |

@@ -8,7 +8,7 @@
  * disableSkillShellExecution. The readers of the same fields are tested in tests/format.
  */
 import { describe, expect, test } from 'bun:test';
-import type { PluginSource } from '../../src/skills/expand-policy.ts';
+import type { SkillPluginSource } from '../../src/skills/expand-policy.ts';
 import { abortOf, expandWith, grantsOf, PLUGIN, skillFrom, textOf } from '../support/expand.ts';
 import { spec } from '../support/spec.ts';
 
@@ -120,7 +120,7 @@ spec('skills.frontmatter.allowed-tools', () => {
   test('the same setting ignores `allowed-tools` of a skills-directory plugin and of an `@inline` plugin in a managed Desktop session', async () => {
     const policy = { managedPermissionRulesOnly: true };
     const skill = skillFrom(commit, 'x', PLUGIN);
-    const dropped: readonly PluginSource[] = ['skills-directory', 'inline-managed-session'];
+    const dropped: readonly SkillPluginSource[] = ['skills-directory', 'inline-managed-session'];
     for (const pluginSource of dropped) {
       const run = await expandWith(skill, { request: { policy, session: { pluginSource } } });
       expect(grantsOf(run)).toEqual([]);
@@ -204,7 +204,7 @@ spec('skills.frontmatter.disallowed-tools', () => {
   });
 });
 
-const lockedFor = (pluginSource: PluginSource) => ({
+const lockedFor = (pluginSource: SkillPluginSource) => ({
   policy: { hooksLockedToPlugins: true },
   session: { pluginSource },
 });

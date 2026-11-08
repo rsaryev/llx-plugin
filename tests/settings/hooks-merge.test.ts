@@ -10,10 +10,14 @@
  * directories grant file access, not configuration" (a `--add-dir` directory carries
  * `enabledPlugins` and `extraKnownMarketplaces` only); errors.md § "Managed settings contain
  * invalid entries, including PreToolUse/PermissionRequest hooks that are NOT loaded".
- * `mergeHooks` combines what the files define; running a hook is the hooks engine's.
+ * `mergeSettingsHooks` combines what the files define; running a hook is the hooks engine's.
  */
 import { describe, expect, test } from 'bun:test';
-import { mergeHooks, type PolicyScope, type PolicyLayer } from '../../src/settings/index.ts';
+import {
+  mergeSettingsHooks,
+  type PolicyScope,
+  type PolicyLayer,
+} from '../../src/settings/index.ts';
 import { spec } from '../support/spec.ts';
 import { commandHook, issuesOf, layerOf, plain, preToolUse } from '../support/settings-layers.ts';
 
@@ -33,20 +37,23 @@ const FILE_SCOPES: readonly PolicyScope[] = ['managed', 'flag', 'local', 'projec
 
 /** Every command of a merged `PreToolUse`, flattened, to compare what runs. */
 const commands = (scopes: readonly [PolicyScope, unknown][]): unknown =>
-  mergeHooks(scopes.map(([scope, raw]) => layerOf(scope, raw))).PreToolUse?.flatMap((group) =>
-    group.hooks.map((handler) => ('command' in handler ? handler.command : handler.type)),
+  mergeSettingsHooks(scopes.map(([scope, raw]) => layerOf(scope, raw))).PreToolUse?.flatMap(
+    (group) =>
+      group.hooks.map((handler) => ('command' in handler ? handler.command : handler.type)),
   );
 
 spec('settings.key.hooks', () => {
   test('the documented example is read and merged unchanged', () => {
     for (const scope of FILE_SCOPES) {
-      expect(plain(mergeHooks([layerOf(scope, EXAMPLE)]))).toEqual(EXAMPLE.hooks);
+      expect(plain(mergeSettingsHooks([layerOf(scope, EXAMPLE)]))).toEqual(EXAMPLE.hooks);
     }
   });
 
   test('unset, no hooks run: no layer sets the key, or none at all', () => {
-    expect(mergeHooks([])).toEqual({});
-    expect(mergeHooks([layerOf('user', {}), layerOf('project', { model: 'opus' })])).toEqual({});
+    expect(mergeSettingsHooks([])).toEqual({});
+    expect(
+      mergeSettingsHooks([layerOf('user', {}), layerOf('project', { model: 'opus' })]),
+    ).toEqual({});
   });
 
   test('hooks of every file merge instead of replacing each other', () => {
@@ -60,7 +67,7 @@ spec('settings.key.hooks', () => {
   });
 
   test('events of different files all stay', () => {
-    const merged = mergeHooks([
+    const merged = mergeSettingsHooks([
       layerOf('user', { hooks: { Stop: [{ hooks: [commandHook('stop.sh')] }] } }),
       layerOf('project', { hooks: { SessionStart: [{ hooks: [commandHook('start.sh')] }] } }),
     ]);
@@ -116,12 +123,14 @@ spec('settings.key.hooks', () => {
       { type: 'http', url: 'https://example.com/hook' },
       { type: 'mcp_tool', server: 'memory', tool: 'save' },
     ];
-    const merged = mergeHooks([layerOf('project', { hooks: { Stop: [{ hooks: handlers }] } })]);
+    const merged = mergeSettingsHooks([
+      layerOf('project', { hooks: { Stop: [{ hooks: handlers }] } }),
+    ]);
     expect(plain(merged.Stop?.[0]?.hooks)).toEqual(handlers);
   });
 
   test('the same handler under the same matcher in more than one settings file is kept once', () => {
-    const merged = mergeHooks([
+    const merged = mergeSettingsHooks([
       layerOf('project', preToolUse('Bash', 'shared.sh')),
       layerOf('user', preToolUse('Bash', 'shared.sh')),
     ]);
@@ -143,7 +152,7 @@ spec('settings.key.hooks', () => {
     const parent = layerOf('parent', preToolUse('Bash', 'parent.sh'));
     expect(parent.settings.hooks).toBeUndefined();
     expect(
-      mergeHooks([parent, layerOf('user', preToolUse('Bash', 'user.sh'))]).PreToolUse,
+      mergeSettingsHooks([parent, layerOf('user', preToolUse('Bash', 'user.sh'))]).PreToolUse,
     ).toHaveLength(1);
     expect(issuesOf('parent', preToolUse('Bash', 'parent.sh')).map((found) => found.path)).toEqual([
       'parent:hooks',
@@ -159,7 +168,7 @@ spec('settings.key.hooks', () => {
         },
       },
     };
-    expect(mergeHooks([hand])).toEqual({});
+    expect(mergeSettingsHooks([hand])).toEqual({});
   });
 
   test('settings in a --add-dir directory do not carry hooks', () => {
@@ -211,23 +220,23 @@ describe('hooks merge: judgments (spec/judgments.md)', () => {
   test('the order of the keys of a handler does not make it another handler', () => {
     const a = { hooks: { Stop: [{ hooks: [{ type: 'command', command: 'x.sh', timeout: 5 }] }] } };
     const b = { hooks: { Stop: [{ hooks: [{ timeout: 5, command: 'x.sh', type: 'command' }] }] } };
-    expect(mergeHooks([layerOf('project', a), layerOf('user', b)]).Stop).toHaveLength(1);
+    expect(mergeSettingsHooks([layerOf('project', a), layerOf('user', b)]).Stop).toHaveLength(1);
   });
 
   test('two handlers repeated inside one file both stay: only a second file repeats', () => {
     const twice = { hooks: { Stop: [{ hooks: [commandHook('x.sh'), commandHook('x.sh')] }] } };
-    expect(mergeHooks([layerOf('user', twice)]).Stop?.[0]?.hooks).toHaveLength(2);
+    expect(mergeSettingsHooks([layerOf('user', twice)]).Stop?.[0]?.hooks).toHaveLength(2);
   });
 
   test('a group of which only some handlers repeat keeps the others', () => {
     const higher = { hooks: { Stop: [{ hooks: [commandHook('a.sh')] }] } };
     const lower = { hooks: { Stop: [{ hooks: [commandHook('a.sh'), commandHook('b.sh')] }] } };
-    const merged = mergeHooks([layerOf('project', higher), layerOf('user', lower)]);
+    const merged = mergeSettingsHooks([layerOf('project', higher), layerOf('user', lower)]);
     expect(plain(merged.Stop?.[1]?.hooks)).toEqual([commandHook('b.sh')]);
   });
 
   test('two managed sources are two files: each repeats the other once', () => {
-    const merged = mergeHooks([
+    const merged = mergeSettingsHooks([
       layerOf('managed', preToolUse('Bash', 'a.sh')),
       layerOf('managed', preToolUse('Bash', 'a.sh')),
     ]);
@@ -238,6 +247,6 @@ describe('hooks merge: judgments (spec/judgments.md)', () => {
     const raw = JSON.parse(
       '{"hooks":{"__proto__":[{"hooks":[{"type":"command","command":"x.sh"}]}]}}',
     );
-    expect(Object.keys(mergeHooks([layerOf('user', raw)]))).toEqual(['__proto__']);
+    expect(Object.keys(mergeSettingsHooks([layerOf('user', raw)]))).toEqual(['__proto__']);
   });
 });

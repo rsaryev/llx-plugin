@@ -6,7 +6,44 @@
  */
 export { pluginDataId } from './data-id.ts';
 export { substituteDeep, type DeepSubstituted, type ValuePath } from './deep.ts';
+export {
+  LSP_DEFAULTS,
+  resolveLspServer,
+  type LspResolution,
+  type ResolvedLspServer,
+} from './lsp.ts';
+export {
+  didChangeConfigurationOf,
+  initializeOptionsOf,
+  languageIdFor,
+  lspExtensionConflicts,
+  lspRestartDecision,
+  type DidChangeConfiguration,
+  type LanguageRoute,
+  type RestartDecision,
+} from './lsp-runtime.ts';
+export { substituteContent } from './content.ts';
 export { exportedEnvironment } from './exported-environment.ts';
+export {
+  resolveHookCommand,
+  type HookCommandHandler,
+  type HookCommandOptions,
+  type HookCommandResolution,
+  type ResolvedHookCommand,
+} from './hook-command.ts';
+export {
+  headersHelperEnvironment,
+  mcpServerKey,
+  resolveMcpServer,
+  type McpResolution,
+  type ResolvedMcpServer,
+} from './mcp.ts';
+export { resolveProcesses, type ResolvedProcesses } from './processes.ts';
+export { monitorsToStart, type MonitorEvent, type MonitorMode } from './monitor-trigger.ts';
+export { resolveMonitor, type MonitorResolution, type ResolvedMonitor } from './monitor.ts';
+export { HOOK_GUARD } from './shell-guard-hook.ts';
+export { MONITOR_GUARD } from './shell-guard-monitor.ts';
+export { HEADERS_HELPER_GUARD, rejectUserConfigInShell, type ShellGuard } from './shell-guard.ts';
 export {
   OPTION_VARIABLES,
   VARIABLE_COMPONENTS,

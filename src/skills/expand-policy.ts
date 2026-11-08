@@ -25,7 +25,7 @@ export interface ExpandPolicy {
  *   Claude Code 2.1.305 or later. The host decides all of those conditions. Any other `@inline`
  *   plugin is `installed`.
  */
-export type PluginSource = 'installed' | 'skills-directory' | 'inline-managed-session';
+export type SkillPluginSource = 'installed' | 'skills-directory' | 'inline-managed-session';
 
 interface Keeps {
   /** The skill's frontmatter hooks register under the hooks lock. */
@@ -37,7 +37,7 @@ interface Keeps {
 const KEEPS_ALL: Keeps = { hooks: true, grant: true };
 const KEEPS_NONE: Keeps = { hooks: false, grant: false };
 
-const PLUGIN_KEEPS: { readonly [S in PluginSource]: Keeps } = {
+const PLUGIN_KEEPS: { readonly [S in SkillPluginSource]: Keeps } = {
   installed: KEEPS_ALL,
   'skills-directory': KEEPS_NONE,
   'inline-managed-session': { hooks: true, grant: false },
@@ -50,7 +50,7 @@ const PLUGIN_KEEPS: { readonly [S in PluginSource]: Keeps } = {
  * `allowed-tools` in project and personal skills and in the other sources the setting's entry
  * lists", and a synced skill's grant "doesn't apply". A plugin keeps what its source keeps.
  */
-const KEEPS: { readonly [K in SkillOriginKind]: (source: PluginSource) => Keeps } = {
+const KEEPS: { readonly [K in SkillOriginKind]: (source: SkillPluginSource) => Keeps } = {
   plugin: (source) => PLUGIN_KEEPS[source],
   user: () => KEEPS_NONE,
   project: () => KEEPS_NONE,
@@ -63,7 +63,7 @@ type Source = Pick<Skill | Command, 'origin' | 'context'> & Pick<InvocableFrontm
 export function hooksRegister(
   skill: Source,
   policy: ExpandPolicy | undefined,
-  source: PluginSource = 'installed',
+  source: SkillPluginSource = 'installed',
 ): boolean {
   return policy?.hooksLockedToPlugins !== true || KEEPS[skill.origin.kind](source).hooks;
 }
@@ -77,7 +77,7 @@ export function hooksRegister(
 export function grantApplies(
   skill: Source,
   policy: ExpandPolicy | undefined,
-  source: PluginSource = 'installed',
+  source: SkillPluginSource = 'installed',
 ): boolean {
   if (policy?.managedPermissionRulesOnly === true && !KEEPS[skill.origin.kind](source).grant) {
     return false;

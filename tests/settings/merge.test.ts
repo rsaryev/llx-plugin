@@ -121,7 +121,7 @@ describe('merging the layers of a key', () => {
     expect(createPolicyView([hand]).get('strictKnownMarketplaces')).toBeUndefined();
   });
 
-  test('the view merges hooks the way mergeHooks does', () => {
+  test('the view merges hooks the way mergeSettingsHooks does', () => {
     const hooks = { Stop: [{ hooks: [{ type: 'command', command: 'x.sh' }] }] };
     expect(plain(createPolicyView([layerOf('user', { hooks })]).get('hooks'))).toEqual(hooks);
   });

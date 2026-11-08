@@ -8,7 +8,7 @@
  * settings file, it runs once. A plugin's or skill's copy of the same handler stays separate").
  */
 import { describe, expect, test } from 'bun:test';
-import { mergeHooks, type PolicyScope } from '../../src/settings/index.ts';
+import { mergeSettingsHooks, type PolicyScope } from '../../src/settings/index.ts';
 import { spec } from '../support/spec.ts';
 import { commandHook, issuesOf, layerOf, plain, preToolUse } from '../support/settings-layers.ts';
 
@@ -92,7 +92,7 @@ describe('judgment: a source below the policy tier skips only the entries that f
   });
 
   test('the surviving hooks of a user file still merge under a managed file', () => {
-    const merged = mergeHooks([
+    const merged = mergeSettingsHooks([
       layerOf('managed', preToolUse('Bash', 'managed.sh')),
       layerOf('user', mixed),
     ]);
@@ -103,12 +103,12 @@ describe('judgment: a source below the policy tier skips only the entries that f
   });
 });
 
-describe('judgment: what mergeHooks leaves to the hooks engine', () => {
+describe('judgment: what mergeSettingsHooks leaves to the hooks engine', () => {
   test('the same handler under two matchers that both fire is kept in both groups', () => {
-    // hooks.md says the same handler "runs once". `mergeHooks` cannot know which groups match an
+    // hooks.md says the same handler "runs once". `mergeSettingsHooks` cannot know which groups match an
     // occurrence, so it keeps both groups; dropping the repeat among the groups that matched is an
     // open requirement of the hooks engine (spec/judgments.md, docs/API.md).
-    const merged = mergeHooks([
+    const merged = mergeSettingsHooks([
       layerOf('project', preToolUse('Bash', 'shared.sh')),
       layerOf('user', preToolUse('Bash|Edit', 'shared.sh')),
     ]);
@@ -119,7 +119,7 @@ describe('judgment: what mergeHooks leaves to the hooks engine', () => {
   });
 
   test('a handler of a different matcher that cannot fire together is kept', () => {
-    const merged = mergeHooks([
+    const merged = mergeSettingsHooks([
       layerOf('project', preToolUse('Bash', 'shared.sh')),
       layerOf('user', preToolUse('Edit', 'shared.sh')),
     ]);
