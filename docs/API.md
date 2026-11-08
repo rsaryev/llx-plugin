@@ -75,6 +75,35 @@ interface Plugin {
 }
 ```
 
+### Variable substitution (done: `loading/resolve`)
+
+What a plugin's `${...}` references become, shared by hooks, skills, MCP, LSP and monitors so none
+writes placeholder code of its own (plugins/manifest-reference.md, "Environment variables"):
+
+```ts
+import { substituteSurface, exportedEnvironment } from '@rsaryev/claude-plugin-kit';
+
+const scope = { pluginId: 'fmt@acme', locations, environment, userConfig, windows: false };
+const { text, issues, referenced } = await substituteSurface('hook-exec', '${CLAUDE_PLUGIN_ROOT}/run', scope);
+const env = await exportedEnvironment('hook-command', scope); // what the process receives
+```
+
+| Name                                            | Does                                                                                   |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `substituteTemplate(text, scope, policy, path)` | `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}`, `${CLAUDE_PROJECT_DIR}`, `${user_config.KEY}`, `${VAR}`, `${VAR:-default}` in one pass; unresolved references stay as written with a warning |
+| `substituteDeep(value, scope, policyFor, base)` | the same over every string of a JSON value, one policy per path, the host asked once per variable |
+| `substituteSurface(surface, text, scope)`       | `substituteTemplate` with the policy of a `Surface` (`SURFACE_POLICY`)                 |
+| `SURFACE_POLICY`, `SURFACE_COMPONENT`           | per surface (exec/shell/PowerShell hook, monitor, MCP stdio/remote/`headersHelper`, LSP, Markdown content): which `${user_config.*}` values, whether `${VAR}` expands, how paths are written |
+| `VARIABLE_FIELDS`                               | the table "Where each variable resolves": fields per component, and what it exports   |
+| `exportedEnvironment(component, scope)`         | the path variables and `CLAUDE_PLUGIN_OPTION_<KEY>` a process receives                |
+| `pluginDataId(id)`                              | the `<id>` of the data folder: other characters than letters, digits, `_`, `-` become `-` |
+| `referencesUserConfig(text)`, `optionEnvName`   | the shell-field check runs on the template; `api_token` is `CLAUDE_PLUGIN_OPTION_API_TOKEN` |
+
+A field that refuses `${user_config.*}` (shell-form hook, monitor, `headersHelper`) never gets the
+value: the reference stays as written, and the resolver reports the documented error. The data
+folder is asked of `Locations.pluginData` (with the sanitized id) only when a text references it.
+Skills pass their own variables as `scope.extra` (`CLAUDE_SKILL_DIR`, `CLAUDE_SESSION_ID`).
+
 ## Ports (done)
 
 Interfaces the host implements, in `src/ports/` (type-only, one file per port, all exported from the

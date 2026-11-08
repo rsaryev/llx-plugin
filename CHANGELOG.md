@@ -20,6 +20,11 @@
   fake.
 - `EFFORT_LEVELS`, asserted equal to the SDK's `EffortLevel`, and the official `EffortLevel`,
   `SlashCommand` and `ResolvedSettingSource` types re-exported.
+- Variable substitution in `loading/resolve`: `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}`
+  (created on first reference, `pluginDataId`), `${CLAUDE_PROJECT_DIR}`, `${user_config.KEY}`,
+  `${VAR}` and `${VAR:-default}` in one pass (`substituteTemplate`, `substituteDeep`), the
+  per-component policies (`SURFACE_POLICY`, `VARIABLE_FIELDS`), the environment a process receives
+  (`exportedEnvironment`, `CLAUDE_PLUGIN_OPTION_<KEY>`) and Windows path rendering.
 
 ### Fixed
 

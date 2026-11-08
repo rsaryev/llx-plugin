@@ -19,7 +19,7 @@ agent, not a model client and not a sandbox. It runs anywhere JavaScript runs.
 | 3     | `rules`       | Permission rule syntax: parse and match, tool names, path globs (planned)     |
 | 3     | `settings`    | Settings layers and the policy keys, pure over data (planned)                 |
 | 3     | `marketplace` | Marketplace and plugin-entry reading, sources, dependencies (planned)         |
-| 3     | `loading`     | A plugin folder to a typed `Plugin`; `loading/resolve` holds variable substitution (planned) |
+| 3     | `loading`     | A plugin folder to a typed `Plugin`; `loading/resolve` holds variable substitution (done), the rest planned |
 | 3     | `foundation`  | Shared by mods and the layer-4 streams: budgets, result shapes (planned)      |
 | 4     | `agents`      | Sub-agent definitions and their scoping (planned)                             |
 | 4     | `hooks`       | The hook engine: select, run through ports, merge outputs (planned)           |
