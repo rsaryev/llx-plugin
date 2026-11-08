@@ -30,8 +30,8 @@
   },
   "overrides": [
     {
-      // Scripts are command-line tools: they talk to the person through the console.
-      "files": ["scripts/**"],
+      // Scripts and examples are command-line tools: they talk to the person through the console.
+      "files": ["scripts/**", "examples/**"],
       "rules": { "no-console": "off" }
     }
   ]

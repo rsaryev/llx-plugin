@@ -1,0 +1,22 @@
+{
+  "name": "kit-example-ai-sdk-agent",
+  "private": true,
+  "description": "A small coding agent on the AI SDK that runs Claude Code plugins through @rsaryev/claude-plugin-kit.",
+  "type": "module",
+  "scripts": {
+    "agent": "bun src/cli.ts",
+    "scenarios": "bun scenarios/run.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "4.0.99",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "@rsaryev/claude-plugin-kit": "link:../..",
+    "ai": "7.0.165",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.4",
+    "typescript": "7.0.2"
+  }
+}

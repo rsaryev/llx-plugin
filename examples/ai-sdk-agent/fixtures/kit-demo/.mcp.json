@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "calc": {
+      "command": "bun",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/servers/calc.ts"],
+      "env": { "GREETING": "${user_config.greeting}" }
+    }
+  }
+}

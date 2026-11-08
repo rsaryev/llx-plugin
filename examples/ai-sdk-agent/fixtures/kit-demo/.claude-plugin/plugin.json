@@ -1,0 +1,13 @@
+{
+  "name": "kit-demo",
+  "version": "1.0.0",
+  "description": "Exercises every plugin part the example agent supports: a skill, hooks of four handler types, an agent and an MCP server with user configuration.",
+  "author": { "name": "claude-plugin-kit" },
+  "userConfig": {
+    "greeting": {
+      "type": "string",
+      "title": "Greeting",
+      "description": "The word the calc server greets with"
+    }
+  }
+}
