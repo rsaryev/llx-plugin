@@ -90,6 +90,18 @@
 
 ### Fixed
 
+- Tool semantics: the limits tools-reference.md states are decided by pure functions instead of
+  only the empty-file and default cases. Read: `classifyReadTarget` (binary extensions, images over
+  128 MB, notebooks over 100 MB), `classifyReadSize` and `readTokenLimit` (256 KB whole-file
+  refusal, 25,000 tokens or `CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS`, `PARTIAL view`, `allow_large`).
+  Glob: `validateGlobInput` (null byte) and `globRespectsIgnore`. Grep: `windowGrepContent`
+  (`No entries at this offset`), `windowGrepCounts` and `totalGrepCount`, `effectiveGrepMultiline`,
+  with `GREP_OUTPUT_MODES` declared once in `rules/tools/inputs`. Bash: `shouldMoveToBackground`
+  and the moved, cwd and stop notices, `BASH_DEFAULT_TIMEOUT_MS` for a moved command, and
+  `classifyPowerShellExit` (`findstr`); `! grep` at exit 1 is now a failure and the `!`, assignment,
+  `&` and subshell cases are recorded as judgments. WebSearch: `webSearchLimits` and
+  `webSearchAllowance`. WebFetch: `webFetchTimings` and `redirectNotice`. The Edit tests assert
+  which refusal (not found or found N times) they expect.
 - Tool inputs: the optionality of Bash and PowerShell `run_in_background`, Edit `replace_all` and
   Grep `-i` and `multiline` (the tables mark none optional) is recorded as a judgment and tested
   outside the spec; `answerQuestions` derives its input type from the SDK's `AskUserQuestionInput`

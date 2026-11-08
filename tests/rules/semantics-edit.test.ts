@@ -17,6 +17,12 @@ import {
 } from '../../src/rules/index.ts';
 import { spec } from '../support/spec.ts';
 
+/** The two refusals differ by message, so a test names the one it expects: Match, then Uniqueness. */
+const NOT_FOUND = 'was not found';
+const AMBIGUOUS = 'times in the file';
+const refusal = (result: { readonly issues: readonly { readonly message: string }[] }): string =>
+  result.issues.map((issue) => issue.message).join('\n');
+
 const edit = (content: string, old_string: string, new_string: string, replace_all?: boolean) =>
   applyEdit(content, { old_string, new_string, replace_all });
 
@@ -31,27 +37,27 @@ spec('tools.input.Edit.old_string', () => {
   test('"It doesn\'t use regex": metacharacters match themselves', () => {
     expect(edit('a.c abc', 'a.c', 'X').content).toBe('X abc');
     expect(edit('x+ xx', 'x+', 'Y').content).toBe('Y xx');
-    expect(edit('abc', 'a.c', 'X').issues).toHaveLength(1);
+    expect(refusal(edit('abc', 'a.c', 'X'))).toContain(NOT_FOUND);
   });
 
   test('"A single character of whitespace or indentation difference is enough to miss"', () => {
     const file = 'if (x) {\n  run();\n}\n';
     const miss = edit(file, 'if (x) {\n run();\n}', 'nothing');
-    expect(miss.issues).toHaveLength(1);
+    expect(refusal(miss)).toContain(NOT_FOUND);
     expect(miss.content).toBe(file);
     expect(miss.replacements).toBe(0);
-    expect(edit(file, 'if (x) {\n\trun();\n}', 'nothing').issues).toHaveLength(1);
+    expect(refusal(edit(file, 'if (x) {\n\trun();\n}', 'nothing'))).toContain(NOT_FOUND);
   });
 
   test('"or fuzzy matching": a different case or a near miss is not found', () => {
-    expect(edit('Original Text', 'original text', 'x').issues).toHaveLength(1);
-    expect(edit('original  text', 'original text', 'x').issues).toHaveLength(1);
+    expect(refusal(edit('Original Text', 'original text', 'x'))).toContain(NOT_FOUND);
+    expect(refusal(edit('original  text', 'original text', 'x'))).toContain(NOT_FOUND);
   });
 
   test('"must appear exactly once": a text found twice is refused and the file is unchanged', () => {
     const file = 'foo()\nbar()\nfoo()\n';
     const refused = edit(file, 'foo()', 'baz()');
-    expect(refused.issues).toHaveLength(1);
+    expect(refusal(refused)).toContain(AMBIGUOUS);
     expect(refused.issues[0]?.severity).toBe('error');
     expect(refused.issues[0]?.path).toBe('tool_input.old_string');
     expect(refused.content).toBe(file);
@@ -99,18 +105,18 @@ spec('tools.input.Edit.replace_all', () => {
     expect(edit('foo bar', 'foo', 'qux', false).content).toBe('qux bar');
     expect(edit('foo bar', 'foo', 'qux', undefined).content).toBe('qux bar');
     const twice = edit('foo foo', 'foo', 'qux', false);
-    expect(twice.issues).toHaveLength(1);
+    expect(refusal(twice)).toContain(AMBIGUOUS);
     expect(twice.content).toBe('foo foo');
   });
 
   test('"sets `replace_all: true` to replace them all": the uniqueness check no longer applies', () => {
-    expect(edit('foo foo', 'foo', 'qux').issues).toHaveLength(1);
+    expect(refusal(edit('foo foo', 'foo', 'qux'))).toContain(AMBIGUOUS);
     expect(edit('foo foo', 'foo', 'qux', true).issues).toEqual([]);
   });
 
   test('replace_all does not make a missing text match: "Match" still has to pass', () => {
     const miss = edit('foo', 'bar', 'qux', true);
-    expect(miss.issues).toHaveLength(1);
+    expect(refusal(miss)).toContain(NOT_FOUND);
     expect(miss.content).toBe('foo');
   });
 });
@@ -179,7 +185,7 @@ describe('judgments (spec/judgments.md): what the docs leave open in the Edit to
 
   test('an empty old_string is refused (there is no text to find)', () => {
     const refused = edit('abc', '', 'x');
-    expect(refused.issues).toHaveLength(1);
+    expect(refusal(refused)).toContain('old_string is empty');
     expect(refused.issues[0]?.path).toBe('tool_input.old_string');
     expect(refused.content).toBe('abc');
   });

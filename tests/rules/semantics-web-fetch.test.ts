@@ -7,15 +7,21 @@
  * of characters to skip from the start of the page"; v2.1.290). The set of preapproved
  * documentation domains is not listed in the docs and is not modelled. The wording of the notice
  * and the handling of other schemes and of an offset past the end are judgments, tested outside
- * spec().
+ * spec(). The cache of 15 minutes (`CLAUDE_CODE_WEBFETCH_CACHE_TTL_MS`), the deadline of five
+ * minutes (`CLAUDE_CODE_WEBFETCH_DEADLINE_MS`, "`0` removes it": env-vars.md) and the redirect result
+ * ("returns a text result that names the original URL and the redirect target instead of following
+ * it") are in the same section.
  */
 import { describe, expect, test } from 'bun:test';
 import {
   checkWebFetchUrl,
   FETCH_WINDOW_CHARACTERS,
   LOCAL_HOST_MESSAGE,
+  redirectNotice,
   sliceFetched,
+  webFetchTimings,
 } from '../../src/rules/index.ts';
+import { fakeEnvironment } from '../support/ports.ts';
 import { spec } from '../support/spec.ts';
 
 const REFUSED =
@@ -170,5 +176,60 @@ describe('judgments (spec/judgments.md): what the docs leave open in WebFetch', 
       expect(checked.issues[0]?.message).toBe('Invalid URL');
       expect(checked.issues[0]?.path).toBe('tool_input.url');
     }
+  });
+});
+
+const env = (record: Record<string, string> = {}) => fakeEnvironment(record);
+
+spec('tools.tool.WebFetch', () => {
+  test('a response is cached for 15 minutes and a download may take five', () => {
+    expect(webFetchTimings(env())).toEqual({ cacheTtlMs: 900_000, deadlineMs: 300_000 });
+  });
+
+  test('CLAUDE_CODE_WEBFETCH_CACHE_TTL_MS takes plain digits; 0, a decimal or any other spelling keeps the default', () => {
+    expect(webFetchTimings(env({ CLAUDE_CODE_WEBFETCH_CACHE_TTL_MS: '60000' })).cacheTtlMs).toBe(
+      60_000,
+    );
+    for (const value of ['0', '1.5', '1e3', '15m', '-5', '']) {
+      expect(webFetchTimings(env({ CLAUDE_CODE_WEBFETCH_CACHE_TTL_MS: value })).cacheTtlMs).toBe(
+        900_000,
+      );
+    }
+  });
+
+  test('CLAUDE_CODE_WEBFETCH_DEADLINE_MS changes the limit, 0 removes it, a decimal or other spelling keeps the default', () => {
+    expect(webFetchTimings(env({ CLAUDE_CODE_WEBFETCH_DEADLINE_MS: '10000' })).deadlineMs).toBe(
+      10_000,
+    );
+    expect(
+      webFetchTimings(env({ CLAUDE_CODE_WEBFETCH_DEADLINE_MS: '0' })).deadlineMs,
+    ).toBeUndefined();
+    for (const value of ['1.5', 'never', '-1']) {
+      expect(webFetchTimings(env({ CLAUDE_CODE_WEBFETCH_DEADLINE_MS: value })).deadlineMs).toBe(
+        300_000,
+      );
+    }
+  });
+
+  test('a redirect to a different host is a text result naming the original URL and the target, not followed', () => {
+    const notice = redirectNotice('https://example.com/a', 'https://www.example.org/b');
+    expect(notice).toContain('https://example.com/a');
+    expect(notice).toContain('https://www.example.org/b');
+    expect(notice).toContain('WebFetch');
+  });
+
+  test('a redirect within the host is followed: no notice', () => {
+    expect(redirectNotice('https://example.com/a', 'https://example.com/b')).toBeUndefined();
+  });
+});
+
+describe('judgments (spec/judgments.md): what the docs leave open in WebFetch timings', () => {
+  test('hosts compare by hostname alone: case, port and scheme do not make a different host', () => {
+    expect(redirectNotice('http://Example.com/a', 'https://example.COM:8443/b')).toBeUndefined();
+  });
+
+  test('a URL that does not parse has no redirect notice', () => {
+    expect(redirectNotice('not a url', 'https://example.com')).toBeUndefined();
+    expect(redirectNotice('https://example.com', '/relative')).toBeUndefined();
   });
 });

@@ -14,6 +14,7 @@ import type {
 } from '../../../protocol/official-tools.ts';
 import { answersSchema, questionsSchema } from './ask-user-question.ts';
 import { choice, flag, list, num, text } from './field-schemas.ts';
+import { GREP_OUTPUT_MODES } from './grep.ts';
 import { WEB_SEARCH_MODES } from './web-search.ts';
 
 /** The JSON types of the tables of hooks.md ("PreToolUse input"). */
@@ -121,7 +122,7 @@ export const TOOL_INPUT_FIELDS = {
     pattern: string(),
     path: optional(string('primary')),
     glob: optional(string()),
-    output_mode: optional(oneOf(['content', 'files_with_matches', 'count'])),
+    output_mode: optional(oneOf(GREP_OUTPUT_MODES)),
     '-i': optional(boolean()),
     multiline: optional(boolean()),
   }),

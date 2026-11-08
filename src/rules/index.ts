@@ -97,7 +97,37 @@ export {
   type BashOutputRequest,
   type BashOutputWindow,
 } from './tools/semantics/bash-output.ts';
-export { classifyBashExit } from './tools/semantics/bash-exit.ts';
+export { classifyBashExit, classifyPowerShellExit } from './tools/semantics/bash-exit.ts';
+export {
+  backgroundCwdNote,
+  backgroundStopNotice,
+  movedByTimeoutNotice,
+  shouldMoveToBackground,
+  type MoveSession,
+} from './tools/semantics/bash-background.ts';
+export {
+  classifyReadSize,
+  classifyReadTarget,
+  partialViewNotice,
+  READ_TOO_LARGE_MESSAGE,
+  readTokenLimit,
+  type ReadOutcome,
+  type ReadRefusal,
+  type ReadSizing,
+  type ReadTarget,
+} from './tools/semantics/read-limits.ts';
+export {
+  redirectNotice,
+  webFetchTimings,
+  type FetchTimings,
+} from './tools/semantics/web-fetch-timings.ts';
+export {
+  webSearchAllowance,
+  webSearchLimits,
+  type WebSearchLimits,
+  type WebSearchSession,
+  type WebSearchUsage,
+} from './tools/semantics/web-search-limit.ts';
 export {
   readWindow,
   type NumberedLine,
@@ -113,14 +143,23 @@ export {
   type FetchedPart,
 } from './tools/semantics/web-fetch.ts';
 export { validateWebSearchDomains } from './tools/semantics/web-search.ts';
+export { GREP_OUTPUT_MODES, type GrepOutputMode } from './tools/inputs/grep.ts';
 export {
+  effectiveGrepMultiline,
+  NO_ENTRIES_AT_OFFSET,
   effectiveGrepOutputMode,
-  GREP_OUTPUT_MODES,
-  type GrepOutputMode,
+  totalGrepCount,
+  windowGrepContent,
+  windowGrepCounts,
+  type GrepCount,
+  type GrepWindow,
+  type GrepWindowRequest,
 } from './tools/semantics/grep-defaults.ts';
 export {
   capGlobMatches,
+  globRespectsIgnore,
   GLOB_RESULT_CAP,
+  validateGlobInput,
   type CappedGlob,
   type GlobMatch,
 } from './tools/semantics/glob-cap.ts';
