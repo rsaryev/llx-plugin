@@ -85,6 +85,9 @@
 
 ### Fixed
 
+- Skill, command and agent content: the `user_config` policy applied to a command body is now
+  recorded as the kit's reading (the page words it for skill and agent content and lists commands
+  only in the one table row) in `spec/judgments.md` and the `substituteContent` doc comment.
 - Monitors: the duplicate-name error and the first-wins rule, the error for any other `when` string,
   and the host-owned `description` display and `command` process behaviour are recorded in
   `spec/judgments.md` (the docs say only "Identifier unique within the plugin"); the `description`
