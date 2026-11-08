@@ -5,6 +5,8 @@
  *
  * Type-only imports: the SDK's runtime starts the Claude Code program and is never loaded.
  */
+import type { Settings } from '@anthropic-ai/claude-agent-sdk';
+
 export type {
   AgentDefinition,
   AgentMcpServerSpec,
@@ -30,3 +32,14 @@ export type {
   SyncHookJSONOutput,
 } from '@anthropic-ai/claude-agent-sdk';
 export type { ToolInputSchemas, ToolOutputSchemas } from '@anthropic-ai/claude-agent-sdk/sdk-tools';
+
+/** The members of a union that name their fields, not an open `{ [key: string]: unknown }`. */
+type Declared<T> = T extends unknown ? (string extends keyof T ? never : T) : never;
+
+/**
+ * One saved `userConfig` option value, as the SDK types `Settings.pluginConfigs[id].options[key]`
+ * (a string, number, boolean or list of strings).
+ */
+export type UserConfigValue = NonNullable<
+  Declared<NonNullable<Settings['pluginConfigs']>[string]>['options']
+>[string];

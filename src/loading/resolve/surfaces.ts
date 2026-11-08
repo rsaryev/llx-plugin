@@ -34,6 +34,19 @@ export const SURFACE_COMPONENT: { readonly [S in Surface]: VariableComponent } =
 };
 
 /**
+ * The names mcp.md lists as covered. The page says "such as", so the set is open there; judgment:
+ * the kit covers exactly the names the page writes, and the MCP stream extends the set when the
+ * docs name more (spec/judgments.md). `ANTHROPIC_BASE_URL` and a name like `API_KEY` expand.
+ */
+const REMOTE_MCP_EMPTY_NAMES: ReadonlySet<string> = new Set([
+  'ANTHROPIC_API_KEY',
+  'ANTHROPIC_AUTH_TOKEN',
+  'AWS_BEARER_TOKEN_BEDROCK',
+  'HTTPS_PROXY',
+  'NPM_TOKEN',
+]);
+
+/**
  * The differences between surfaces, from the docs:
  * - `${user_config.*}`: exec-form `args`, MCP config, LSP config (manifest-reference, "Reference a
  *   saved value"); never shell-form hooks, monitors or `headersHelper` ("Fields that run through a
@@ -43,7 +56,10 @@ export const SURFACE_COMPONENT: { readonly [S in Surface]: VariableComponent } =
  *   keeps `${HOME}` for the process, and the docs give the kit no expansion to do.
  * - Windows paths: forward slashes, except exec-form hooks (native) and PowerShell hooks, where
  *   the placeholders become `${env:NAME}` (hooks.md, "Reference scripts by path in PowerShell hooks").
- * `mcp-remote` leaves `readsAsEmpty` to the MCP resolver, which owns the credential names.
+ * - `mcp-remote`: credential variables read as empty in `url` and `headers` (mcp.md, "Credential
+ *   variables that read as empty"), `REMOTE_MCP_EMPTY_NAMES`.
+ * - A hook with no `shell` field runs in PowerShell on Windows without Git Bash (hooks.md, "Exec
+ *   form and shell form"); the kit cannot tell, so the caller picks `hook-shell` or `hook-powershell`.
  */
 export const SURFACE_POLICY: { readonly [S in Surface]: FieldPolicy } = {
   'hook-exec': { userConfig: 'allow', environment: 'literal', paths: 'native' },
@@ -55,7 +71,12 @@ export const SURFACE_POLICY: { readonly [S in Surface]: FieldPolicy } = {
   },
   'monitor-command': { userConfig: 'refuse', environment: 'expand', paths: 'normalized' },
   'mcp-stdio': { userConfig: 'allow', environment: 'expand', paths: 'normalized' },
-  'mcp-remote': { userConfig: 'allow', environment: 'expand', paths: 'normalized' },
+  'mcp-remote': {
+    userConfig: 'allow',
+    environment: 'expand',
+    paths: 'normalized',
+    readsAsEmpty: (name) => REMOTE_MCP_EMPTY_NAMES.has(name),
+  },
   'mcp-headers-helper': { userConfig: 'refuse', environment: 'literal', paths: 'normalized' },
   lsp: { userConfig: 'allow', environment: 'literal', paths: 'normalized' },
   'markdown-content': { userConfig: 'non-sensitive', environment: 'literal', paths: 'normalized' },

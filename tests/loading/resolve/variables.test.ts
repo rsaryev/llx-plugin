@@ -8,6 +8,7 @@
  * text; the paths themselves (and creating the data folder) are the host's, behind `Locations`.
  */
 import { describe, expect, test } from 'bun:test';
+import type { Locations } from '../../../src/ports/index.ts';
 import {
   substituteTemplate,
   type FieldPolicy,
@@ -25,6 +26,27 @@ const NORMALIZED: FieldPolicy = {
 const NATIVE: FieldPolicy = { ...NORMALIZED, paths: 'native' };
 const REFERENCE: FieldPolicy = { ...NORMALIZED, paths: 'environment-reference' };
 
+/** A host that answers with fixed paths and records which port method was asked, with which id. */
+function recordingHost(paths: { root?: string; data?: string; project?: string } = {}) {
+  const calls: string[] = [];
+  const host: Locations = {
+    ...locations(),
+    pluginRoot: (id) => {
+      calls.push(`pluginRoot(${id})`);
+      return paths.root ?? '/r';
+    },
+    pluginData: (id) => {
+      calls.push(`pluginData(${id})`);
+      return Promise.resolve(paths.data ?? '/d');
+    },
+    projectDir: () => {
+      calls.push('projectDir()');
+      return paths.project ?? '/p';
+    },
+  };
+  return { host, calls };
+}
+
 const scopeOf = (overrides: Partial<SubstitutionScope> = {}): SubstitutionScope => ({
   pluginId: 'formatter@acme-tools',
   locations: locations(),
@@ -37,20 +59,36 @@ const substitute = (template: string, policy = NORMALIZED, scope = scopeOf()) =>
   substituteTemplate(template, scope, policy);
 
 spec('environment.variable.${CLAUDE_PLUGIN_ROOT}', () => {
-  test('resolves to the plugin root the host reports for that plugin', async () => {
-    const result = await substitute('"${CLAUDE_PLUGIN_ROOT}"/scripts/process.sh');
-    expect(result.text).toBe('"/plugins/formatter@acme-tools"/scripts/process.sh');
+  test('asks the host for the root of the plugin identifier as written, and for nothing else', async () => {
+    const { host, calls } = recordingHost({ root: '/installed/formatter' });
+    const result = await substitute(
+      '"${CLAUDE_PLUGIN_ROOT}"/scripts/process.sh',
+      NORMALIZED,
+      scopeOf({ locations: host }),
+    );
+    expect(result.text).toBe('"/installed/formatter"/scripts/process.sh');
     expect(result.issues).toEqual([]);
+    expect(calls).toEqual(['pluginRoot(formatter@acme-tools)']);
   });
-  test('each plugin gets its own root', async () => {
-    const other = scopeOf({ pluginId: 'linter@acme-tools' });
-    expect((await substitute('${CLAUDE_PLUGIN_ROOT}', NORMALIZED, other)).text).toBe(
-      '/plugins/linter@acme-tools',
+  test('a path with spaces is written as is, one token, with no quoting added', async () => {
+    const { host } = recordingHost({ root: '/Users/jo smith/plugins/my formatter' });
+    const scope = scopeOf({ locations: host });
+    expect((await substitute('"${CLAUDE_PLUGIN_ROOT}"/run', NORMALIZED, scope)).text).toBe(
+      '"/Users/jo smith/plugins/my formatter"/run',
+    );
+    expect((await substitute('${CLAUDE_PLUGIN_ROOT}', NORMALIZED, scope)).text).toBe(
+      '/Users/jo smith/plugins/my formatter',
     );
   });
   test('every occurrence is replaced, in one pass', async () => {
-    const result = await substitute('${CLAUDE_PLUGIN_ROOT}/a ${CLAUDE_PLUGIN_ROOT}/b');
-    expect(result.text).toBe('/plugins/formatter@acme-tools/a /plugins/formatter@acme-tools/b');
+    const { host, calls } = recordingHost({ root: '/installed/formatter' });
+    const result = await substitute(
+      '${CLAUDE_PLUGIN_ROOT}/a ${CLAUDE_PLUGIN_ROOT}/b',
+      NORMALIZED,
+      scopeOf({ locations: host }),
+    );
+    expect(result.text).toBe('/installed/formatter/a /installed/formatter/b');
+    expect(calls).toEqual(['pluginRoot(formatter@acme-tools)']);
   });
   test('the data folder is not touched by a reference to the root', async () => {
     const host = locations();
@@ -85,9 +123,15 @@ spec('environment.variable.${CLAUDE_PROJECT_DIR}', () => {
     const result = await substitute('${CLAUDE_PROJECT_DIR}/.claude/hooks/check-style.sh');
     expect(result.text).toBe('/work/app/.claude/hooks/check-style.sh');
   });
-  test('does not move with the plugin: another plugin sees the same project', async () => {
-    const other = scopeOf({ pluginId: 'linter@acme-tools' });
-    expect((await substitute('${CLAUDE_PROJECT_DIR}', NORMALIZED, other)).text).toBe('/work/app');
+  test('asks the host for the project directory, never for a plugin location', async () => {
+    const { host, calls } = recordingHost({ project: '/Users/jo smith/my app' });
+    const result = await substitute(
+      '"${CLAUDE_PROJECT_DIR}"/x',
+      NORMALIZED,
+      scopeOf({ locations: host, pluginId: 'linter@acme-tools' }),
+    );
+    expect(result.text).toBe('"/Users/jo smith/my app"/x');
+    expect(calls).toEqual(['projectDir()']);
   });
 });
 

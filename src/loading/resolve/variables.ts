@@ -14,7 +14,7 @@ export const PLUGIN_VARIABLES = [
 export type PluginVariable = (typeof PLUGIN_VARIABLES)[number];
 
 export const isPluginVariable = (name: string): name is PluginVariable =>
-  (PLUGIN_VARIABLES as readonly string[]).includes(name);
+  PLUGIN_VARIABLES.some((variable) => variable === name);
 
 /**
  * Where each variable comes from, as the host reports it (native paths). The data folder is the

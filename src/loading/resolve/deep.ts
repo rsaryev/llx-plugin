@@ -4,8 +4,9 @@ import { substituter, type Substituter, type TokenReference } from './substitute
 
 export type ValuePath = readonly (string | number)[];
 
-export interface DeepSubstituted<T> {
-  readonly value: T;
+export interface DeepSubstituted {
+  /** The input with every string substituted; callers narrow it (a schema parse), the walk keeps no type. */
+  readonly value: unknown;
   readonly issues: readonly PluginIssue[];
   readonly referenced: readonly TokenReference[];
 }
@@ -48,12 +49,12 @@ async function walk(value: unknown, path: ValuePath, state: Walk): Promise<unkno
  * variable for the whole value. Issues name the field (`env.TOKEN`, `args.1`), under `base` when
  * given.
  */
-export async function substituteDeep<T>(
-  value: T,
+export async function substituteDeep(
+  value: unknown,
   scope: SubstitutionScope,
   policyFor: (path: ValuePath) => FieldPolicy,
   base = '',
-): Promise<DeepSubstituted<T>> {
+): Promise<DeepSubstituted> {
   const state: Walk = {
     substitute: substituter(scope),
     policyFor,
@@ -61,7 +62,6 @@ export async function substituteDeep<T>(
     issues: [],
     referenced: [],
   };
-  // The walk maps strings to strings and keeps every container, so the result has the shape of `value`.
-  const done = (await walk(value, [], state)) as T;
+  const done = await walk(value, [], state);
   return { value: done, issues: state.issues, referenced: state.referenced };
 }

@@ -1,13 +1,14 @@
 import { USER_CONFIG_KEY } from '../../format/manifest-schema.ts';
 import type { UserConfigOption } from '../../format/index.ts';
+import type { UserConfigValue } from '../../protocol/official.ts';
+
+export type { UserConfigValue };
 
 /**
  * What the user (or the host) saved for a plugin's `userConfig` options
  * (plugins/manifest-reference.md, "User configuration"). The kit never stores or prompts: the
  * host reads `pluginConfigs` and its secure store and hands the values over as plain data.
  */
-export type UserConfigValue = string | number | boolean | readonly string[];
-
 export interface ResolvedUserConfig {
   /** The manifest's `userConfig`. */
   readonly declared: Readonly<Record<string, UserConfigOption>>;

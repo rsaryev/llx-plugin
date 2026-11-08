@@ -102,7 +102,18 @@ const env = await exportedEnvironment('hook-command', scope); // what the proces
 A field that refuses `${user_config.*}` (shell-form hook, monitor, `headersHelper`) never gets the
 value: the reference stays as written, and the resolver reports the documented error. The data
 folder is asked of `Locations.pluginData` (with the sanitized id) only when a text references it.
-Skills pass their own variables as `scope.extra` (`CLAUDE_SKILL_DIR`, `CLAUDE_SESSION_ID`).
+Skills pass their own variables as `scope.extra` (`CLAUDE_SKILL_DIR`, `CLAUDE_SESSION_ID`); they
+are substituted on every surface and win over `${VAR}`, so pass only what the surface should see.
+
+A remote MCP server (`mcp-remote`) reads the credential variables mcp.md names as empty in `url`
+and `headers`, even when unset and with a `:-default`. `substituteDeep` returns `value: unknown`;
+the caller narrows it (a schema parse). `exportedEnvironment` asks the host for the data folder of
+every hook, stdio and LSP process, referenced or not.
+
+Choosing the hook surface is the caller's: a command hook with `args` is `hook-exec`; shell form is
+`hook-shell` (bash) or `hook-powershell`. A hook with no `shell` field runs in PowerShell on Windows
+without Git Bash (hooks.md, "Exec form and shell form"), and the kit cannot tell the host's shell, so
+the caller passes `hook-powershell` there.
 
 ## Ports (done)
 
