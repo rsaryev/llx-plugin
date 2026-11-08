@@ -133,6 +133,12 @@ async function readSkills(where: Where, container: string): Promise<ScanOutcome>
   return { ...found, issues: [...listed.issues, ...found.issues] };
 }
 
+/** What one command file gave. */
+interface CommandRead {
+  readonly entries: readonly ScannedEntry[];
+  readonly issues: readonly PluginIssue[];
+}
+
 /** `.claude/commands/<path>.md`: the file name, and each folder before it joined by `:`. */
 async function readCommands(where: Where, container: string): Promise<ScanOutcome> {
   const { folder, context, rule, scope } = where;
@@ -141,9 +147,9 @@ async function readCommands(where: Where, container: string): Promise<ScanOutcom
     ...(context.signal === undefined ? {} : { signal: context.signal }),
   });
   const reads = await Promise.all(
-    walked.found.map(async (file) => {
+    walked.found.map(async (file): Promise<CommandRead> => {
       const text = await folder.files.readText(file.path, context.signal);
-      if (text === undefined) return { issues: [] as PluginIssue[], entries: [] };
+      if (text === undefined) return { issues: [], entries: [] };
       const relativePath = file.segments.join('/');
       const read = readCommand(folder.hostPath(file.path), text, {
         origin: rule.origin,

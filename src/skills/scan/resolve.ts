@@ -14,12 +14,27 @@ import type { ScannedEntry } from './scan.ts';
  * skills' are (ignoring case, spacing and invisible characters).
  */
 
+/** Who holds a name: a skill or command file of the folders, or (absent) another source of commands. */
+export interface NameHolder {
+  readonly scope: ScanScope;
+  readonly path: string | undefined;
+}
+
+/** A name an entry would have liked and did not get, and who has it (skills.md, "When a synced skill name matches another command"). */
+export interface YieldedName {
+  readonly name: string;
+  /** The folder skill or command file that uses it; absent for a built-in command, a plugin skill or an MCP prompt. */
+  readonly heldBy: NameHolder | undefined;
+}
+
 export interface ResolvedFolderSkill {
   /** The skill or command with its listed command (`/apps/web:deploy`, `/cli:verify`). */
   readonly invocable: Skill | Command;
   readonly scope: ScanScope;
   /** Every name that invokes it, the listed command first. */
   readonly names: readonly string[];
+  /** The names it prefers that another command already used: a synced skill that lost its short name lists it here. */
+  readonly yielded: readonly YieldedName[];
 }
 
 /** An entry that lost its name to another, for a host that wants to say so. */
@@ -99,20 +114,25 @@ const NAMING: {
  * "Resolve skills that share a name").
  */
 class Claims {
-  readonly #exact = new Set<string>();
-  readonly #folded = new Set<string>();
+  readonly #exact = new Map<string, NameHolder>();
+  readonly #folded = new Map<string, NameHolder | undefined>();
 
   constructor(others: Iterable<string>) {
-    for (const name of others) this.#folded.add(foldName(name));
+    for (const name of others) this.#folded.set(foldName(name), undefined);
   }
 
-  add(name: string): void {
-    this.#exact.add(name);
-    this.#folded.add(foldName(name));
+  add(name: string, holder: NameHolder): void {
+    this.#exact.set(name, holder);
+    this.#folded.set(foldName(name), holder);
   }
 
   free(name: string, folded: boolean): boolean {
     return folded ? !this.#folded.has(foldName(name)) : !this.#exact.has(name);
+  }
+
+  /** Who uses the name; `undefined` for a name nobody has and for one only another source of commands has. */
+  holder(name: string, folded: boolean): NameHolder | undefined {
+    return folded ? this.#folded.get(foldName(name)) : this.#exact.get(name);
   }
 }
 
@@ -165,6 +185,9 @@ function place(entry: ScannedEntry, claims: Claims, context: NamingContext): Pla
   const naming = NAMING[entry.scope](entry, context);
   const free = (name: string) => claims.free(name, naming.folded);
   let names = naming.preferred.filter(free);
+  const yielded = naming.preferred
+    .filter((name) => !free(name))
+    .map((name) => ({ name, heldBy: claims.holder(name, naming.folded) }));
   const usedFallback = names.length === 0;
   if (usedFallback) names = naming.fallback.filter(free).slice(0, 1);
   const [command] = names;
@@ -177,10 +200,11 @@ function place(entry: ScannedEntry, claims: Claims, context: NamingContext): Pla
       },
     };
   }
-  for (const name of names) claims.add(name);
+  const holder: NameHolder = { scope: entry.scope, path: entry.invocable.path };
+  for (const name of names) claims.add(name, holder);
   const base = withCommand(entry.invocable, command);
   const invocable = usedFallback ? qualifiedNote(base, entry, context) : base;
-  return { resolved: { invocable, scope: entry.scope, names } };
+  return { resolved: { invocable, scope: entry.scope, names, yielded } };
 }
 
 const qualifiedNote = (

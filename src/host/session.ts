@@ -1,5 +1,6 @@
 import type { HostState } from './state.ts';
 import { createComponentPart, type ComponentPart } from './session-components.ts';
+import { createSessionDirectories } from './session-directories.ts';
 import { createHookPart, type HookPart } from './session-hooks.ts';
 import { createSkillPart, type SkillPart } from './session-skills.ts';
 import type { SessionOptions } from './types.ts';
@@ -11,12 +12,13 @@ import type { SessionOptions } from './types.ts';
 export type PluginSession = SkillPart & HookPart & ComponentPart;
 
 export function openSession(state: HostState, options: SessionOptions): PluginSession {
-  const hooks = createHookPart(state, options);
+  const directories = createSessionDirectories(options);
+  const hooks = createHookPart(state, options, directories);
   const hookPart: HookPart = {
     dispatch: (event, facts, run) => hooks.dispatch(event, facts, run),
   };
   return {
-    ...createSkillPart(state, options, hooks),
+    ...createSkillPart(state, options, { registrar: hooks, directories }),
     ...hookPart,
     ...createComponentPart(state),
   };

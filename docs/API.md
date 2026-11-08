@@ -143,12 +143,26 @@ resolved[0]; // { invocable: Skill | Command, scope, names: ['deploy', 'deploy-s
   ignoring case, spacing, invisible characters and compatibility forms. The same real folder reached
   through several links is one skill. `names` lists every name that invokes an entry: a skill is typed
   by its frontmatter `name` and by its folder's name.
+- `resolveFolderSkills` also says, per entry, the `yielded` names (a preferred name another command
+  already used, with the folder skill or command file that holds it as `heldBy`) and returns the
+  `shadowed` entries that lost every name.
 - The host: `HostPorts.folders` and `SessionOptions.addedDirectories` turn it on;
+  `SessionOptions.takenCommands` names the commands the host's own sources use (built-in commands,
+  bundled skills, MCP prompts), which only a synced skill's short name yields to.
   `session.reloadSkills({ signal })` (the `/reload-skills` of Claude Code, and the first read) lists the
   folders next to the plugins' skills, and `session.touchFile(path, { signal })` loads the nested ones.
+  `session.addDirectory(path, { signal })` (`/add-dir`) and `session.moveTo(cwd, { signal })` (`/cd`)
+  read the folders again on the live session: its skill hooks, `once` keys and nested directories stay
+  (judgments in `spec/judgments.md`), and hook input `cwd` follows the move. The reads of one session
+  run one after another. `session.skillSources()` returns `{ entries, shadowed }` for the last read:
+  per listed skill its `scope` (`synced` is the `claude.ai sync` group of `/skills`), `origin`, `names`
+  and `yielded`, which is what the note under that group is built from.
   `strictPluginOnlyCustomization` for `skills` stops the personal, project, added-directory and synced
   sources, never the managed directory. A skill of the managed directory keeps its hooks and its
-  `allowed-tools` grant under the locks.
+  `allowed-tools` grant under the locks. `SkillsReload.plugins` leaves out the skills-directory plugins
+  while the settings stop them (`strictPluginOnlyCustomization` set to `true` or to any kind,
+  `strictKnownMarketplaces` without a `skills-dir` entry, `blockedMarketplaces` with one); the folder's
+  `SKILL.md` is still a plain skill unless skills are locked.
 - A plugin's skill whose frontmatter `name` differs from its folder's is also typed by the bare name
   (`/fancy` for `/my-plugin:fancy`) unless a command already uses it; `readSkillMentions` takes
   `names` so a directory-qualified name (`/apps/web:deploy`) is one word.
@@ -807,7 +821,8 @@ The session:
 | Method | Returns |
 | --- | --- |
 | `skills(options?)` | `{ model, menu }`: `modelListing` and `menuEntries` over the skills and commands of every enabled plugin, named `<plugin>:<name>`. The two invocation flags and the budget apply; `skillOverrides` leaves a plugin skill alone, as skills.md says. |
-| `reloadSkills({ signal })`, `touchFile(path, { signal })` | The folders' skills and commands (docs/API.md, "Skills and commands of the folders"): `reloadSkills` reads the managed, personal, project, added and synced folders and lists them next to the plugins' skills; `touchFile` loads the `.claude/skills` below the working directory on the way to a file. Each returns `{ issues, watch, plugins }`. Needs `HostPorts.folders`. |
+| `reloadSkills({ signal })`, `touchFile(path, { signal })`, `addDirectory(path, { signal })`, `moveTo(cwd, { signal })` | The folders' skills and commands (docs/API.md, "Skills and commands of the folders"): `reloadSkills` reads the managed, personal, project, added and synced folders and lists them next to the plugins' skills; `touchFile` loads the `.claude/skills` below the working directory on the way to a file; `addDirectory` is `/add-dir` and `moveTo` is `/cd` on the live session. Each returns `{ issues, watch, plugins }`. Needs `HostPorts.folders`. |
+| `skillSources()` | Where each listed folder skill came from: `{ entries: { command, names, scope, origin, yielded }[], shadowed }` of the last read, for the `claude.ai sync` group and the note under it. |
 | `expandSkill(name, { arguments?, signal, invoker? })` | The `Expansion` of `expandSkill`: text with `$ARGUMENTS`, `${CLAUDE_PLUGIN_ROOT}` and the plugin's options substituted, shell placeholders run through the runner. `invoker` is `user` (default) or `model`. An unknown name, a skill of a disabled plugin or a refused invoker is `{ ok: false, issues }`. `disableSkillShellExecution` of the settings replaces the placeholders. Without `SessionOptions.permissions` a shell placeholder asks, which aborts the expansion. |
 | `dispatch(event, facts, { signal })` | The `HookOutcome<E>` of the engine. `facts` is the event's own fields (`EventFactsOf<E>`); the common fields come from the session. Handlers of every enabled plugin, then of the settings files, run with `if` read by the rules module and the policy of the settings: `disableAllHooks`, `allowManagedHooksOnly` (plugins force-enabled in managed `enabledPlugins` exempt), the `hooks` lock of `strictPluginOnlyCustomization`, `allowedHttpHookUrls`, `httpHookAllowedEnvVars`. A skill's `once` hook that ran is dropped after the dispatch. |
 | `agents(options?)` | `Resolved<SessionAgent>`: the official `AgentDefinition` of each plugin agent under `<plugin>:<name>`, its prompt with the plugin variables substituted, and `extras` (`color`, `isolation`, `cacheTtl`). |

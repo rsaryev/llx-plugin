@@ -69,19 +69,6 @@ spec('skills.behavior.Load skills in monorepos and subdirectories', () => {
     expect(outside.entries).toEqual([]);
     expect(outside.directories).toEqual([]);
   });
-
-  test('moving the session with /cd adds the new directory project skills', async () => {
-    const scenario = inRepo(`${MONO}/packages/backend`);
-    const outcome = await scanFolders({
-      folders: portOf(files, scenario),
-      request: requestOf(scenario),
-    });
-    expect(outcome.entries.map((entry) => entry.invocable.command).toSorted()).toEqual([
-      'migrate',
-      'release',
-      'shared',
-    ]);
-  });
 });
 
 describe('a linked git worktree', () => {

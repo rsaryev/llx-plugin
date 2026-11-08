@@ -64,6 +64,14 @@ export interface SessionOptions {
    * file grants file access only: skills.md, "Load skills from a directory outside the project").
    */
   readonly addedDirectories?: readonly string[];
+  /**
+   * The commands other sources already use: the host's built-in commands, its bundled skills and its
+   * MCP prompts, as typed without the slash (`usage`, `code-review`). The plugins' skills count
+   * already. Only a synced skill's short name yields to them; a skill of the folders replaces a
+   * built-in or bundled command of its name (skills.md, "Resolve skills that share a name" and "When a
+   * synced skill name matches another command").
+   */
+  readonly takenCommands?: readonly string[];
   /** The answer for a skill's shell placeholder; absent, an `ask`, which aborts the expansion. */
   readonly permissions?: ShellPermission;
 }

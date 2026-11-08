@@ -117,8 +117,11 @@ export {
 export { scanNested, type NestedScan } from './scan/nested.ts';
 export {
   resolveFolderSkills,
+  type NameHolder,
   type Resolution,
   type ResolveFolderOptions,
   type ResolvedFolderSkill,
   type ShadowedEntry,
+  type YieldedName,
 } from './scan/resolve.ts';
+export { isStrictlyBelow } from './scan/names.ts';

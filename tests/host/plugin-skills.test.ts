@@ -180,6 +180,17 @@ describe('plugins/components.md, Skills', () => {
       });
       expect(menu(withDirectory)).toEqual(['my-plugin:a']);
     });
+
+    test('a skills key, with no skills/ directory, turns it off too: the root SKILL.md does not load', async () => {
+      const plugin = await loaded({
+        '.claude-plugin/plugin.json': manifest({ skills: ['./extra'] }),
+        'SKILL.md': skill('name: solo', 'description: Solo'),
+        'extra/b/SKILL.md': skill('description: B'),
+      });
+      expect(plugin.skills.map((file) => file.name)).toEqual(['b']);
+      const { host } = await hostOf({ plugins: [{ id: 'my-plugin@acme', plugin }] });
+      expect(menu(host.openSession(SESSION))).toEqual(['my-plugin:b']);
+    });
   });
 });
 

@@ -22,7 +22,13 @@ import {
   type ModelListingResult,
   type ShellPermission,
 } from '../skills/index.ts';
-import { createFolderSkills, type FolderEntry, type SkillsReload } from './session-folders.ts';
+import type { SessionDirectories } from './session-directories.ts';
+import {
+  createFolderSkills,
+  type FolderEntry,
+  type FolderSkillSources,
+  type SkillsReload,
+} from './session-folders.ts';
 import type { SkillHooksRegistrar } from './session-hooks.ts';
 import type { ActivePlugin, HostState } from './state.ts';
 import type { SessionOptions } from './types.ts';
@@ -63,6 +69,24 @@ export interface SkillPart {
    * monorepos and subdirectories").
    */
   touchFile(path: string, options: { readonly signal: AbortSignal }): Promise<SkillsReload>;
+  /**
+   * `/add-dir`: the directory's `.claude/skills` and `.claude/commands` load now, after the ones added
+   * before it (skills.md, "Load skills from a directory outside the project"). The session's skill
+   * hooks, `once` keys and nested directories stay. Needs `HostPorts.folders`.
+   */
+  addDirectory(path: string, options: { readonly signal: AbortSignal }): Promise<SkillsReload>;
+  /**
+   * `/cd`: the new working directory's project skills load next to the added directories' (skills.md,
+   * "Load skills in monorepos and subdirectories"), and hook input `cwd` follows it. The session goes
+   * on as for `addDirectory` (spec/judgments.md). Needs `HostPorts.folders`.
+   */
+  moveTo(cwd: string, options: { readonly signal: AbortSignal }): Promise<SkillsReload>;
+  /**
+   * Where each folder skill the last read listed came from, and what name it gave up: the
+   * `claude.ai sync` group of `/skills` and the note under it for a synced skill that lost its short
+   * name (skills.md, "When a synced skill name matches another command").
+   */
+  skillSources(): FolderSkillSources;
 }
 
 /** A plugin's skill or command, or one of the folders' (`plugin` absent). */
@@ -142,7 +166,10 @@ function shellDisabled(state: HostState): boolean {
 function skillHookRegistration(registrar: SkillHooksRegistrar) {
   const used = new Map<string, HookUsage>();
   const counted = new Map<string, HookUsage>();
-  return (entry: Entry, hooks: NonNullable<Extract<Expansion, { ok: true }>['hooks']>) => {
+  return (
+    entry: Entry,
+    hooks: NonNullable<Extract<Expansion, { ok: true }>['hooks']>,
+  ): readonly PluginIssue[] => {
     const source = hookSourceOf(entry.invocable.origin);
     const prefix = `skill:${ownerOf(entry)}:${entry.invocable.command}`;
     const others = used.get(source) ?? NO_HOOKS_YET;
@@ -171,7 +198,7 @@ function skillHookRegistration(registrar: SkillHooksRegistrar) {
       ...(entry.plugin === undefined ? {} : { pluginId: entry.plugin.id }),
     });
     registrar.registerSkillHooks(prefix, entries);
-    return [] as readonly PluginIssue[];
+    return [];
   };
 }
 
@@ -203,13 +230,17 @@ function withHooks(
 export function createSkillPart(
   state: HostState,
   options: SessionOptions,
-  registrar: SkillHooksRegistrar,
+  parts: { readonly registrar: SkillHooksRegistrar; readonly directories: SessionDirectories },
 ): SkillPart {
+  const { registrar, directories } = parts;
   const addHooks = skillHookRegistration(registrar);
   const { ports } = state.options;
   const windows = state.options.windows ?? false;
   const plugins = pluginEntries(state);
-  const folders = createFolderSkills(state, options, () => plugins.flatMap((entry) => entry.names));
+  const folders = createFolderSkills(state, directories, () => [
+    ...(options.takenCommands ?? []),
+    ...plugins.flatMap((entry) => entry.names),
+  ]);
   const entries = (): readonly Entry[] => [...plugins, ...folders.current()];
   const overrides = state.view.get('skillOverrides');
   const hooksLocked = hookSessionGates(state.view, state.parent).pluginOnlyHooks;
@@ -229,6 +260,9 @@ export function createSkillPart(
     },
     reloadSkills: ({ signal }) => folders.reload(signal),
     touchFile: (path, { signal }) => folders.touch(path, signal),
+    addDirectory: (path, { signal }) => folders.addDirectory(path, signal),
+    moveTo: (cwd, { signal }) => folders.moveTo(cwd, signal),
+    skillSources: () => folders.sources(),
     async expandSkill(name, request) {
       const all = entries();
       const entry =
@@ -253,7 +287,7 @@ export function createSkillPart(
             hooksLockedToPlugins: hooksLocked,
             managedPermissionRulesOnly: managedPermissionRulesOnly(state),
           },
-          cwd: options.cwd,
+          cwd: directories.cwd(),
           signal: request.signal,
         },
         expandPorts,

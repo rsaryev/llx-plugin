@@ -72,7 +72,9 @@ const only = (dir: string | undefined): Promise<readonly string[]> =>
 /**
  * The project's own folders: the working directory and every parent up to the repository root. In a
  * linked worktree whose top has no `.claude/skills`, the main checkout's project skills load instead
- * (v2.1.277 and later, skills.md, "Load skills in monorepos and subdirectories").
+ * (v2.1.277 and later, skills.md, "Load skills in monorepos and subdirectories"). Judgment
+ * (spec/judgments.md): worktrees.md titles that bullet "skills, agents, and commands", so the main
+ * checkout's `.claude/commands` load too; it is never a base of a skill-folder plugin.
  */
 async function projectBases(context: ScanContext): Promise<readonly string[]> {
   const { folders, request, signal } = context;

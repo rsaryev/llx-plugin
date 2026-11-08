@@ -66,8 +66,11 @@ reference, workflows, terminal configuration, output styles and channels).
   it. A section the table rules already read keeps those rows; any other included section gives
   one requirement, `<category>.<page>.<heading>`. A section that lists several rules gives one
   per rule, `<category>.<page>.<heading>.<label>`: one per top-level item that opens with a bold
-  label or a code span, and one per row of a table whose first cell is a short identifier. The
-  section's own id stays when it also holds items without a label, so prose is never dropped.
+  label or a code span, and one per row of a table whose first cell is a short identifier (at most
+  40 characters; a longer first cell is a sentence and gives no row). A page's scope may name a
+  section whose rows are named by phrase (`phrases`, such as the same-name table of skills.md): the
+  whole first cell is then the row's identifier, however long. The section's own id stays when it
+  also holds items without a label, so prose is never dropped.
 - A section Anthropic adds to an audited page therefore appears as an unproven requirement at the
   next `bun run spec:extract`, never as a silent gap. A skip that matches no heading fails the
   extraction (the docs moved).

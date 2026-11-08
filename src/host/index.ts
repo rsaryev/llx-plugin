@@ -7,6 +7,7 @@ export type {
   SkillsListing,
   SkillsOptions,
 } from './session-skills.ts';
+export type { FolderSkillSource, FolderSkillSources, SkillsReload } from './session-folders.ts';
 export type { ResolveOptions, SessionAgent } from './session-components.ts';
 export type {
   HostPlugin,

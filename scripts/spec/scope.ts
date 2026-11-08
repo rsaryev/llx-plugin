@@ -56,6 +56,12 @@ export interface PageScope {
   readonly routes?: readonly Route[];
   /** Sections that stay one requirement however many items or rows they list. */
   readonly whole?: readonly Matcher[];
+  /**
+   * Sections whose table names its rows by a phrase ("Any of those locations and a bundled skill"):
+   * the whole first cell is the row's identifier, however long. Elsewhere a long first cell is a
+   * sentence, not an identifier, and gives no requirement.
+   */
+  readonly phrases?: readonly Matcher[];
   readonly skip: readonly Skip[];
 }
 

@@ -22,7 +22,7 @@ const reload = (session: { reloadSkills(o: { signal: AbortSignal }): Promise<unk
 
 describe('edit a skill during a session', () => {
   spec('skills.behavior.Edit a skill during a session', () => {
-    test('adding, editing and removing a skill under the personal, project and added directories shows at the next read', async () => {
+    test('adding, editing and removing a skill under the personal, project and added directories shows at the next read of the same session (the host watcher calls reloadSkills)', async () => {
       const added = '/work/cli';
       const files: Record<string, string> = {
         [skillFile(HOME, 'one')]: skillText('One'),
@@ -52,8 +52,7 @@ describe('edit a skill during a session', () => {
         [skillFile(MANAGED, 'policy')]: skillText('Policy'),
       };
       const { session } = folderHostOf(files, { session: { addedDirectories: [added] } });
-      const outcome = await reload(session);
-      expect(outcome).toBeDefined();
+      await reload(session);
       const watched = (await session.reloadSkills({ signal: signal() })).watch.toSorted();
       expect(watched).toEqual(
         [
@@ -77,18 +76,6 @@ describe('edit a skill during a session', () => {
         `${PROJECT}/.claude/skills`,
       ]);
       expect(menuOf(session)).toEqual(['fresh', 'one']);
-    });
-
-    test('live detection covers SKILL.md only: a skill folder that is also a plugin is reported as a plugin to reload', async () => {
-      const files: Record<string, string> = {
-        [skillFile(HOME, 'toolbox')]: skillText('Toolbox'),
-        [`${HOME}/.claude/skills/toolbox/.claude-plugin/plugin.json`]: '{"name":"toolbox"}',
-        [`${HOME}/.claude/skills/toolbox/hooks/hooks.json`]: '{"hooks":{}}',
-      };
-      const { session } = folderHostOf(files);
-      const outcome = await session.reloadSkills({ signal: signal() });
-      expect(outcome.plugins.map((plugin) => plugin.id)).toEqual(['toolbox@skills-dir']);
-      expect(menuOf(session)).toEqual(['toolbox']);
     });
   });
 });

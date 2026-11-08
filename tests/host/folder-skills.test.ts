@@ -10,6 +10,7 @@ import { createPolicyView } from '../../src/settings/index.ts';
 import { standardPlugins, signal } from '../support/host.ts';
 import { HOME, MANAGED, PROJECT, folderHostOf, menuOf, skillText } from '../support/scan.ts';
 import { layerOf } from '../support/settings-layers.ts';
+import { spec } from '../support/spec.ts';
 
 const skillFile = (root: string, name: string) => `${root}/.claude/skills/${name}/SKILL.md`;
 const reload = (session: { reloadSkills(o: { signal: AbortSignal }): Promise<unknown> }) =>
@@ -119,3 +120,26 @@ describe('folder skills in a session', () => {
     expect(menuOf(session)).toEqual(['lint']);
   });
 });
+
+spec(
+  'skills.behavior.Resolve skills that share a name.A plugin skill and a skill at any of the locations above',
+  () => {
+    test.each([
+      ['personal', HOME],
+      ['project', PROJECT],
+      ['enterprise', MANAGED],
+    ])(
+      'a %s skill and a plugin skill of one folder name both load: the plugin one is namespaced',
+      async (_scope, root) => {
+        const files = { [skillFile(root, 'review')]: skillText('local review') };
+        const { session } = folderHostOf(files, { plugins: await standardPlugins() });
+        await reload(session);
+        expect(menuOf(session)).toEqual(expect.arrayContaining(['review', 'formatter:review']));
+        const local = await session.expandSkill('review', { signal: signal() });
+        expect(local.ok && local.text).toContain('local review');
+        const plugin = await session.expandSkill('formatter:review', { signal: signal() });
+        expect(plugin.ok && plugin.text).toContain('Review');
+      },
+    );
+  },
+);

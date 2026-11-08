@@ -14384,7 +14384,43 @@
       "section": "Resolve skills that share a name"
     },
     {
+      "id": "skills.behavior.Resolve skills that share a name.A plugin skill and a skill at any of the locations above",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Resolve skills that share a name"
+    },
+    {
       "id": "skills.behavior.Resolve skills that share a name.A project-root skill and a nested skill",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Resolve skills that share a name"
+    },
+    {
+      "id": "skills.behavior.Resolve skills that share a name.An enterprise, personal, or project skill and a skill in an added directory outside the project",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Resolve skills that share a name"
+    },
+    {
+      "id": "skills.behavior.Resolve skills that share a name.Any of the above and the short name of a skill synced from your claude.ai account",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Resolve skills that share a name"
+    },
+    {
+      "id": "skills.behavior.Resolve skills that share a name.Any of those locations and a built-in command",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Resolve skills that share a name"
+    },
+    {
+      "id": "skills.behavior.Resolve skills that share a name.Any of those locations and a bundled skill",
+      "category": "skills",
+      "page": "skills.md",
+      "section": "Resolve skills that share a name"
+    },
+    {
+      "id": "skills.behavior.Resolve skills that share a name.Two added directories outside the project",
       "category": "skills",
       "page": "skills.md",
       "section": "Resolve skills that share a name"

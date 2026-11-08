@@ -33,3 +33,10 @@ export function relativeBelow(cwd: string, base: string): string {
   const below = inside ? parts.slice(root.length) : parts.slice(-1);
   return below.join('/');
 }
+
+/** Whether `path` is inside `parent`, and not `parent` itself. */
+export function isStrictlyBelow(parent: string, path: string): boolean {
+  const root = segmentsOf(parent);
+  const parts = segmentsOf(path);
+  return parts.length > root.length && root.every((part, index) => parts[index] === part);
+}

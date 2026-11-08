@@ -18,8 +18,25 @@
   `/reload-skills`) and `session.touchFile`; `strictPluginOnlyCustomization` for skills is applied to the
   folders. A plugin skill is also typed by its frontmatter `name` without the prefix when no command uses
   it. `readSkillMentions` takes the listed `names`, so `/apps/web:deploy` is one word.
+- Host: `SessionOptions.takenCommands` (the host's built-in commands, bundled skills and MCP prompts a
+  synced skill's short name yields to); `session.addDirectory` (`/add-dir`) and `session.moveTo` (`/cd`),
+  which read the folders again on a live session and keep its skill hooks, `once` keys and nested
+  directories; `session.skillSources()` with each listed folder skill's scope, origin, names and the names
+  it gave up (`yielded`, `heldBy`) and the `shadowed` ones, for the `claude.ai sync` group of `/skills`.
+- Spec: the same-name table of skills.md names its rows by phrase (`PageScope.phrases`), which adds six
+  requirements (bundled skill, built-in command, added directory, two added directories, plugin skill,
+  synced short name).
+
 ### Fixed
 
+- Host: `SkillsReload.plugins` leaves out skills-directory plugins while `strictPluginOnlyCustomization`,
+  `strictKnownMarketplaces` or `blockedMarketplaces` stop them; reads of the folders (`reloadSkills`,
+  `touchFile`, `addDirectory`, `moveTo`) run one after another, so a touched file's skills are no longer
+  overwritten by a reload that was reading at the same time.
+- Tests: the troubleshooting tests name the budget, the per-entry cap and the host-supplied plugin root
+  they exercise; judgments of the folder scan (dot-folders, `taken`, exact local names, bare plugin names,
+  `additionalDirectories`, the main checkout's commands) and every class of refused name have their own
+  tests.
 - Spec: the committed snapshot of the mods reference tables (`spec/docs-tables.json`) keeps only a
   short label and the amounts of each row of the Limits table, not the page's sentences, so the
   repository holds facts and identifiers only.
