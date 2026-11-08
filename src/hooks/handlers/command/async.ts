@@ -43,6 +43,15 @@ function wakeMessage(run: ForegroundRun): string | undefined {
   return text.trim() === '' ? undefined : text;
 }
 
+/**
+ * The host's runner may report what the `CommandRunner` port does not type: "Claude Code finishes
+ * reading the hook's output shortly after the hook's own process exits", and a process the hook
+ * started that still holds its output open makes the capture suspect (`outputHeldOpen`, an optional
+ * field of a runner's answer; docs/API.md, "Ports").
+ */
+const heldOpen = (result: object): boolean =>
+  'outputHeldOpen' in result && result.outputHeldOpen === true;
+
 /** The port's answer as the run the interpreter reads. */
 export async function settle(runner: CommandRunner, request: CommandRun): Promise<ForegroundRun> {
   const result = await runner.run(request);
@@ -54,6 +63,7 @@ export async function settle(runner: CommandRunner, request: CommandRun): Promis
     exitCode: result.exitCode,
     stdout: result.stdout,
     stderr: result.stderr,
+    ...(heldOpen(result) ? { outputHeldOpen: true } : {}),
   };
 }
 

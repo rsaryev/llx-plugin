@@ -19,6 +19,7 @@ import type { DispatchRequest, HookOutcome } from './outcome.ts';
 import { createOutputStage } from './output/stage.ts';
 import type { IfEvaluator } from './select/if-guard.ts';
 import { selectHandlers } from './select/select.ts';
+import { createStopBlockCap } from './verdict/stop-block-cap.ts';
 import type { HookObserver, OutputStage } from './verdict/types.ts';
 
 /** The ports the engine runs handlers through: each handler type needs its own (docs/API.md, "Ports"). */
@@ -62,6 +63,8 @@ export interface HookEngineOptions {
   readonly settingsEnv?: DispatchConfig['settingsEnv'];
   /** `CLAUDE_ENV_FILE` for the events that have one (`createEnvFiles`). */
   readonly envFiles?: DispatchConfig['envFiles'];
+  /** Plugin command hooks first check that their plugin's directory exists. */
+  readonly checkPluginDirectories?: DispatchConfig['checkPluginDirectories'];
 }
 
 export interface HookEngine {
@@ -92,6 +95,7 @@ const hostOf = (options: HookEngineOptions) => ({
   ...(options.processId === undefined ? {} : { processId: options.processId }),
   ...(options.settingsEnv === undefined ? {} : { settingsEnv: options.settingsEnv }),
   ...(options.envFiles === undefined ? {} : { envFiles: options.envFiles }),
+  ...(options.checkPluginDirectories === true ? { checkPluginDirectories: true } : {}),
 });
 
 /** The engine over the real stages: select, build, run through the ports, read, merge. */
@@ -104,6 +108,7 @@ export function createHookEngine(ports: HookPorts, options: HookEngineOptions = 
       output: options.output ?? createOutputStage(scratchOf(ports)),
     },
     ports: runPortsOf(ports),
+    stopCap: createStopBlockCap(),
     windows: options.windows ?? false,
     defaultShell: options.defaultShell ?? 'bash',
     ...(ports.observer === undefined ? {} : { observer: ports.observer }),

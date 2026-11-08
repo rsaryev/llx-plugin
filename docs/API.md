@@ -692,6 +692,43 @@ status and a connection failure are non-blocking errors. Without Git Bash a shel
 or `PermissionRequest` command hook is a gate as the docs describe (`defaultShell: 'powershell'` on
 Windows stands for it).
 
+Outcomes that need the host's facts:
+
+- **Background hooks.** `HookOutcome.background` holds one promise per `async` or `asyncRewake` hook
+  that settles when its process ends, with a `BackgroundDelivery`: `outcome` (`completed`,
+  `cancelled` for a process the session killed at teardown, `timed-out`, `failed`),
+  `additionalContext` and `systemMessage` of the JSON response (the response is alone on stdout or on
+  a line of its own; a field of the wrong type is dropped) and `wake` (an `asyncRewake` hook that
+  exited 2: its stderr, or stdout when stderr is empty). The host delivers `additionalContext` and
+  `systemMessage` to Claude on the next turn, never to the user, and wakes Claude at once on `wake`
+  even when the session is idle. `async` is only a field of command hooks, and its `timeout` is not
+  enforced (it is on `asyncRewake`).
+- **A runner that tells a capture is held open.** The answer of a `CommandRunner` may carry
+  `outputHeldOpen: true` when the hook's own process ended while a process it started still held its
+  stdout or stderr. The run is then refused with `refusing to honor the suspect capture`, as a block
+  where exit 2 blocks and a non-blocking error elsewhere; an exit 2 stays an exit 2. Output printed
+  after the hook's own process exited is never part of the run: the runner returns at that exit.
+- **An interrupt.** `DispatchRequest.interrupt` is the key the user pressed while a tool ran
+  (`{ key: 'esc' | 'enter' | 'ctrl-enter', queuedShellCommand? }`), read for `PostToolUse`:
+  `ctrl-enter` caps every hook that has a limit at 10 seconds whatever its `timeout`, `enter` changes
+  nothing, `esc` cancels the hooks at once (none runs) and `ctrl-enter` acts as `esc` with a queued
+  `!` command or `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`. An aborted `signal` that cancelled a
+  `UserPromptSubmit` hook makes `HookOutcome.interrupted`: the prompt did not go ahead
+  (`proceed: false`) and `restoreInput` says whether its text returns to the input (it does not when
+  a hook blocked the prompt at the same moment).
+- **A blocked prompt.** The block message of `UserPromptSubmit` ends with `Original prompt:` and the
+  submitted text unless a hook printed `suppressOriginalPrompt: true` (a decision block and an exit 2
+  alike). The host still writes the text wherever it keeps its transcript.
+- **The Stop cap.** The engine counts consecutive holds of a `Stop` (and each subagent's
+  `SubagentStop`): an exit 2, a `decision: "block"` or an `additionalContext` that keeps Claude
+  working. After `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` of them (default 8, `0` for none) the next hold is
+  lifted: `proceed` is `true`, `effects.continuesTurn` is dropped and a warning issue says so. A Stop
+  that holds nothing, or with `stop_hook_active` not `true`, starts the count again.
+- **A plugin that blocks.** An exit-2 block of a plugin's hook ends with `This hook comes from the
+  <plugin> plugin.`; with `checkPluginDirectories` a plugin command hook whose directory is gone does
+  not run and reports `Failed to run: Plugin directory does not exist: <path> (<plugin> — run /plugin
+  to reinstall)`.
+
 `buildHookInput` puts `session_id`, `prompt_id` (absent until the first prompt), `transcript_path`,
 `cwd`, `scratchpad_dir` (absent without a scratchpad), `permission_mode` and `effort` (on the events
 that have them), `hook_event_name`, and `agent_id` and `agent_type` (inside an agent, or `agent_type`

@@ -77,6 +77,11 @@ export interface RunContext {
   readonly settingsEnv?: Readonly<Record<string, string>>;
   /** Where `CLAUDE_ENV_FILE` points for the events that have one (hooks.md, "Persist environment variables"). */
   readonly envFiles?: HookEnvFiles;
+  /**
+   * A plugin's command hook whose plugin directory is gone does not run and reports `Failed to run:
+   * Plugin directory does not exist` (plugins/troubleshooting.md). Off unless the host sets it.
+   */
+  readonly checkPluginDirectory?: boolean;
   /** The merged `allowedHttpHookUrls` and `httpHookAllowedEnvVars` of the settings; unset: no limit. */
   readonly httpPolicy?: HttpHookPolicy;
   readonly signal: AbortSignal;
@@ -93,6 +98,11 @@ export interface ExitedRun {
   readonly exitCode: number;
   readonly stdout: string;
   readonly stderr: string;
+  /**
+   * The hook's own process ended while a process it started still held its stdout or stderr open
+   * (hooks.md, "Hooks that start a background process"): the capture is suspect.
+   */
+  readonly outputHeldOpen?: boolean;
 }
 
 /**

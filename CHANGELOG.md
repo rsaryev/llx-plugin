@@ -20,8 +20,17 @@
 - Settings: `resolveSettingsEnv` and `applySettingsEnv`, the `env` block (merge per variable, trust, the
   variables project and local files cannot set, the host-owned identity variables).
 
+- Hooks: runtime outcomes of a run. `UserPromptSubmit` block messages end with `Original prompt:` unless
+  `suppressOriginalPrompt`; `DispatchRequest.interrupt` (`esc`, `enter`, `ctrl-enter` on `PostToolUse`)
+  and `HookOutcome.interrupted` (an interrupted prompt check); the `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`
+  cap on consecutive `Stop` and `SubagentStop` holds (`createStopBlockCap`); `refusing to honor the
+  suspect capture` for a runner that reports `outputHeldOpen`; `This hook comes from the <plugin>
+  plugin.` on a plugin's exit-2 block; `checkPluginDirectories`; `BackgroundDelivery.outcome`.
+
 ### Fixed
 
+- Hooks: `onFailure: "block"` blocked on a failure of a hook with only `asyncRewake` set, which is a
+  background hook like one with `async`.
 - Hooks and settings (review of the exec stream): the scrub keeps `http_proxy` and `https_proxy` in lower
   case as it keeps `HTTP_PROXY` and `HTTPS_PROXY`; `subprocessEnvironment` and
   `session.subprocessEnvironment(kind)` build the environment of a hook, Bash, PowerShell, stdio MCP or

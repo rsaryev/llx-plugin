@@ -12,7 +12,10 @@ import type { EnvFiles } from './env-file/index.ts';
 import type { DispatchRequest, HookOutcome } from './outcome.ts';
 import type { selectHandlers } from './select/select.ts';
 import type { IfEvaluator } from './select/if-guard.ts';
+import { interruptPlan, withInterrupt, type InterruptPlan } from './interrupt.ts';
+import { withOriginalPrompt } from './verdict/blocked-prompt.ts';
 import { interpretRun } from './verdict/interpret.ts';
+import type { StopBlockCap } from './verdict/stop-block-cap.ts';
 import type { HandlerVerdict, HookObserver, OutputStage, TaggedOutput } from './verdict/types.ts';
 
 /**
@@ -47,6 +50,10 @@ export interface DispatchConfig {
   readonly settingsEnv?: RunContext['settingsEnv'];
   /** `CLAUDE_ENV_FILE`: the files, and the clearing a `CwdChanged` event does. */
   readonly envFiles?: EnvFiles;
+  /** Plugin command hooks first check that their plugin's directory exists (`checkPluginDirectory`). */
+  readonly checkPluginDirectories?: boolean;
+  /** The counter of consecutive Stop blocks (`createStopBlockCap`); without it no cap applies. */
+  readonly stopCap?: StopBlockCap;
 }
 
 /** The input text of one handler: a Monitor call that reached a `Bash` matcher is a Bash call. */
@@ -81,6 +88,7 @@ function contextOf(
     ...(config.processId === undefined ? {} : { processId: config.processId }),
     ...(config.settingsEnv === undefined ? {} : { settingsEnv: config.settingsEnv }),
     ...(config.envFiles === undefined ? {} : { envFiles: config.envFiles }),
+    ...(config.checkPluginDirectories === true ? { checkPluginDirectory: true } : {}),
   };
 }
 
@@ -100,6 +108,61 @@ function report(
     observer?.finished?.({ event, handlerId: verdict.handler.id, status: verdict.status });
     if (verdict.notice !== undefined) observer?.notice?.(verdict.notice);
   }
+}
+
+/** "you cancel the hooks at once": the hooks of an interrupted event do not run. */
+const cancelledRuns = (selected: readonly RegisteredHandler[]) =>
+  selected.map((entry) => ({
+    entry,
+    result: { run: { kind: 'cancelled' }, issues: [] } satisfies HandlerResult,
+  }));
+
+/** What the interrupt, the prompt and the Stop cap leave of an outcome (hooks.md, "Hook lifecycle"). */
+function finished<E extends HookEvent>(
+  outcome: HookOutcome<E>,
+  request: DispatchRequest<E>,
+  config: DispatchConfig,
+): HookOutcome<E> {
+  const quoted = withOriginalPrompt(outcome, request.facts);
+  const interrupted = withInterrupt(quoted, request.signal.aborted);
+  const where = { sessionId: request.session.sessionId, facts: request.facts };
+  return config.stopCap?.apply(interrupted, where, config.ports.environment) ?? interrupted;
+}
+
+interface Planned {
+  readonly selection: Selection;
+  readonly plan: InterruptPlan;
+  readonly input: Parameters<typeof serializeHookInput>[0];
+}
+
+async function runAll<E extends HookEvent>(
+  request: DispatchRequest<E>,
+  config: DispatchConfig,
+  { selection, plan, input }: Planned,
+) {
+  const { event } = request;
+  const { environment } = config.ports;
+  const timeouts = planTimeouts(event, selection.selected, environment, plan.capMs);
+  const ran = plan.cancel
+    ? cancelledRuns(selection.selected)
+    : await runLimited(selection.selected, async (entry) => ({
+        entry,
+        result: await config.stages.run(
+          entry,
+          contextOf(config, request, timeouts, inputText(input, selection, entry)),
+        ),
+      }));
+  return ran.map(({ entry, result }) => ({
+    ...interpretRun(entry, result.run, {
+      event,
+      facts: request.facts,
+      parse: config.stages.output.parse,
+      timeoutMs: handlerTimeoutMs(entry, timeouts),
+      effectsIgnored: selection.monitor.get(entry)?.effectsApply === false,
+      gitBashMissing: config.windows && config.defaultShell === 'powershell',
+    }),
+    issues: result.issues,
+  }));
 }
 
 export async function dispatchEvent<E extends HookEvent>(
@@ -122,28 +185,14 @@ export async function dispatchEvent<E extends HookEvent>(
   const issues: readonly PluginIssue[] = [...selection.issues, ...built.issues];
   if (built.input === undefined || selection.selected.length === 0)
     return idleOutcome(event, issues);
-  const { input } = built;
-  const timeouts = planTimeouts(event, selection.selected, config.ports.environment);
-  const ran = await runLimited(selection.selected, async (entry) => ({
-    entry,
-    result: await stages.run(
-      entry,
-      contextOf(config, request, timeouts, inputText(input, selection, entry)),
-    ),
-  }));
-  const verdicts = ran.map(({ entry, result }) => ({
-    ...interpretRun(entry, result.run, {
-      event,
-      facts,
-      parse: stages.output.parse,
-      timeoutMs: handlerTimeoutMs(entry, timeouts),
-      effectsIgnored: selection.monitor.get(entry)?.effectsApply === false,
-      gitBashMissing: config.windows && config.defaultShell === 'powershell',
-    }),
-    issues: result.issues,
-  }));
+  const plan = interruptPlan(event, request.interrupt, config.ports.environment);
+  const verdicts = await runAll(request, config, { selection, plan, input: built.input });
   report(config.observer, event, verdicts);
   const limited = await stages.output.limit(event, verdicts.map(tagged), request.signal);
   const merged = stages.output.merge(event, limited.outputs, facts);
-  return assemble(event, verdicts, merged, [...issues, ...limited.issues]);
+  return finished(
+    assemble(event, verdicts, merged, [...issues, ...limited.issues]),
+    request,
+    config,
+  );
 }

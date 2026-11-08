@@ -82,9 +82,18 @@ export interface Feedback {
   readonly text: string;
 }
 
+/**
+ * How a background hook's process ended: `cancelled` is a process the session killed ("in
+ * non-interactive mode with the `-p` flag, Claude Code kills any async hook still running at
+ * teardown and finalizes it with outcome `cancelled`"); `timed-out` an `asyncRewake` hook that
+ * reached its timeout; `failed` one that did not start.
+ */
+export type BackgroundOutcome = 'completed' | 'cancelled' | 'timed-out' | 'failed';
+
 /** What `async` and `asyncRewake` hooks hand over once their process ends. */
 export interface BackgroundDelivery {
   readonly handlerId: string;
+  readonly outcome: BackgroundOutcome;
   /** `additionalContext` of the JSON response, for the next turn. */
   readonly additionalContext?: string;
   /** `systemMessage` of the JSON response, for Claude on the next turn. */

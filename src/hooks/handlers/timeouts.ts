@@ -51,6 +51,8 @@ export interface SessionEndLimits {
 /** What an event adds to the timeouts of its handlers; computed once per dispatch. */
 export interface TimeoutPlan {
   readonly sessionEnd?: SessionEndLimits;
+  /** An interrupt caps every hook that has a limit (hooks.md, "PostToolUse after an interrupt"). */
+  readonly interruptCapMs?: number;
 }
 
 const seconds = (value: number | undefined): number | undefined =>
@@ -105,7 +107,11 @@ export const planTimeouts = (
   event: HookEvent,
   selected: readonly RegisteredHandler[],
   environment: Environment,
-): TimeoutPlan => EVENT_PLANS[event]?.(selected, environment) ?? {};
+  interruptCapMs?: number,
+): TimeoutPlan => ({
+  ...EVENT_PLANS[event]?.(selected, environment),
+  ...(interruptCapMs === undefined ? {} : { interruptCapMs }),
+});
 
 /**
  * "Claude Code doesn't enforce it on a command hook you run with `async: true`", but "still
@@ -132,5 +138,7 @@ export function handlerTimeoutMs(entry: RegisteredHandler, plan: TimeoutPlan): n
   if (unbounded(entry.handler)) return undefined;
   const own = seconds(entry.handler.timeout);
   const limit = own === undefined ? defaultMs(entry, plan) : toMs(own);
-  return plan.sessionEnd === undefined ? limit : Math.min(limit, plan.sessionEnd.budgetMs);
+  const budget = plan.sessionEnd === undefined ? limit : Math.min(limit, plan.sessionEnd.budgetMs);
+  // "kills a command hook that is still running, whatever its `timeout`".
+  return plan.interruptCapMs === undefined ? budget : Math.min(budget, plan.interruptCapMs);
 }

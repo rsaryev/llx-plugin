@@ -70,7 +70,8 @@ const isWindowsGate = (subject: Subject): boolean => {
  */
 const runsInBackground = (subject: Subject): boolean => {
   const { handler } = subject.entry;
-  return 'async' in handler && Boolean(handler.async || handler.asyncRewake);
+  // `asyncRewake` "implies async" (the SDK type): either field alone makes the hook a background one.
+  return 'command' in handler && (handler.async === true || handler.asyncRewake === true);
 };
 
 /**
