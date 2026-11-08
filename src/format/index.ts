@@ -22,3 +22,4 @@ export {
   type IntegerBounds,
   type ListOptions,
 } from './frontmatter-values.ts';
+export { readHooksFile, readHooksSettings, type HooksRead } from './hooks-settings.ts';

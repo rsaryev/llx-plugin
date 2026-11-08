@@ -20,6 +20,10 @@
   fake.
 - `EFFORT_LEVELS`, asserted equal to the SDK's `EffortLevel`, and the official `EffortLevel`,
   `SlashCommand` and `ResolvedSettingSource` types re-exported.
+- `readHooksFile` and `readHooksSettings`: hook configuration read and validated as hooks.md
+  describes (events, matcher groups, the five handler types and their fields), into the official
+  `HooksSettings`; and `matchesMatcher`, the matcher grammar of hooks.md (match-all, exact list,
+  unanchored regular expression, the narrower set of `FileChanged` and `StopFailure`).
 
 ### Fixed
 
