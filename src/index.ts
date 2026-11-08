@@ -39,3 +39,20 @@ export {
   type SdkOnlyTool,
 } from './protocol/tool-names.ts';
 export type * from './protocol/official-tools.ts';
+export {
+  readOutputStyle,
+  type OutputStyle,
+  type OutputStyleContext,
+  type OutputStyleRead,
+} from './format/output-style.ts';
+export {
+  BUILTIN_OUTPUT_STYLES,
+  DEFAULT_OUTPUT_STYLE_ID,
+  includeCodingInstructions,
+  listOutputStyles,
+  resolveOutputStyle,
+  type OutputStyleChoice,
+  type OutputStyleRequest,
+  type PromptKind,
+  type StyleSelection,
+} from './skills/output-style-select.ts';

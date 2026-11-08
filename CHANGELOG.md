@@ -4,6 +4,10 @@
 
 ### Added
 
+- Output styles: `readOutputStyle` (`name`, `description`, `keep-coding-instructions`,
+  `force-for-plugin`, `<plugin>:<name>` ids, a YAML error loads the style under its file name),
+  `resolveOutputStyle` (case-sensitive setting, case-insensitive `/output-style`, a forced plugin
+  style overrides both), `includeCodingInstructions` (full prompt only) and `listOutputStyles`.
 - The evidence pipeline: `docs:pull` mirrors the official Claude Code docs, `spec:extract` turns
   them into `spec/requirements.json`, and `compat` reports the share each test run proves.
 - Official types re-exported from `@anthropic-ai/claude-agent-sdk`, with `HOOK_EVENTS` and

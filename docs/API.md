@@ -44,7 +44,25 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 | `readHooksSettings(raw)`            | done    | the bare event map (inline `hooks`, skill frontmatter, `settings.json`) |
 | `matchesMatcher(matcher, value, mode?)` | done | a hook `matcher` against the field its event filters on: match-all, exact list, unanchored regex; `'narrow'` for FileChanged and StopFailure |
 | `readMcpConfig(raw)`                | planned | `.mcp.json` → official `McpServerConfig` map                          |
-| `readLspConfig(raw)`, `readMonitors(raw)`, `readOutputStyle(...)` | planned | the remaining component files |
+| `readOutputStyle(path, text, { plugin? })` | done | an output style file: `name` (default the file name; `<plugin>:<name>` for a plugin), `description`, `keep-coding-instructions`, `force-for-plugin` (plugin styles only); a YAML error loads the style with no fields and a warning |
+| `readLspConfig(raw)`, `readMonitors(raw)` | planned | the remaining component files |
+
+### Output styles (done: `format/output-style`, `skills/output-style-select`)
+
+```ts
+import { readOutputStyle, resolveOutputStyle, includeCodingInstructions } from '@rsaryev/claude-plugin-kit';
+
+const { style } = readOutputStyle('output-styles/terse.md', text, { plugin: 'my-plugin' });
+const active = resolveOutputStyle({ setting: 'Concise', command, styles: [style] });
+includeCodingInstructions(active, 'full'); // false for a custom style without keep-coding-instructions
+```
+
+`resolveOutputStyle` takes the `outputStyle` setting (case-sensitive, unknown gives Default), the
+argument of `/output-style` (case-insensitive) and the custom styles in precedence order; a
+`force-for-plugin` style wins over both and the first one loaded wins. `includeCodingInstructions`
+says whether Claude Code's software engineering section stays in the prompt: only the full prompt has
+it. `listOutputStyles` is the `/output-style` list. The host writes the setting and injects the
+`instructions` of `active.style`; the kit never sends a prompt.
 
 ## Loading (planned)
 
