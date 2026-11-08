@@ -148,17 +148,18 @@ spec('marketplace.field.allowCrossMarketplaceDependenciesOn', () => {
     // a plugin of a third marketplace, and SHARED's own list allows it: only ROOT's list counts.
     const sharedPlugin = { name: 'audit-logger', marketplace: SHARED };
     const dep = dependency(SHARED, { name: 'log-sink', marketplace: 'third-party' });
-    const decision = (rootAllows: readonly string[]) =>
+    const decision = (rootAllows: readonly string[], sharedAllows: readonly string[]) =>
       crossMarketplaceDecision({
         dep,
         requiredBy: sharedPlugin,
         root: marketplace(rootAllows),
+        declaringMarketplace: marketplace(sharedAllows, SHARED),
         enabledAtScope: new Set(),
         declaredIn: 'entry',
       });
-    expect(decision([SHARED])).toMatchObject({ allowed: false });
-    expect(decision(['third-party'])).toEqual({ allowed: true });
-    const refused = decision([SHARED]);
+    expect(decision([SHARED], ['third-party'])).toMatchObject({ allowed: false });
+    expect(decision(['third-party'], [])).toEqual({ allowed: true });
+    const refused = decision([SHARED], ['third-party']);
     expect(refused.allowed ? '' : refused.message).toContain(
       '(required by audit-logger@your-shared-marketplace)',
     );

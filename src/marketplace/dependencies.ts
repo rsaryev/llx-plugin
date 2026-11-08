@@ -1,4 +1,5 @@
 import { error, type PluginIssue } from '../format/issues.ts';
+import { pluginIdIssues } from '../format/marketplace/ids.ts';
 import { isValidRange, satisfiesRange } from './semver.ts';
 import type { NormalizedDependency } from './types.ts';
 
@@ -43,16 +44,33 @@ const stringField = (
   return error(`${path}.${key}`, `"${key}" must be ${empty ? 'a string' : 'a non-empty string'}`);
 };
 
-/** `name@marketplace` splits at the first `@`; plugin names hold no `@` (`PLUGIN_ID_PART`). */
+/** The first way a `name` or `marketplace` breaks the id grammar (`PLUGIN_ID_PART`), reported on `path`. */
+const idIssue = (
+  part: 'marketplace' | 'plugin',
+  text: string | undefined,
+  path: string,
+): PluginIssue | undefined =>
+  text === undefined ? undefined : pluginIdIssues(part, text, path)[0];
+
+/** Each part of a dependency is a part of a plugin id: the name as in its marketplace entry, and the marketplace. */
+const checkParts = (parts: Parts, namePath: string, marketplacePath: string): Parts | PluginIssue =>
+  idIssue('plugin', parts.name, namePath) ??
+  idIssue('marketplace', parts.marketplace, marketplacePath) ??
+  parts;
+
+/** `name@marketplace` splits at the first `@`; a second `@` is left in the marketplace, which the id grammar then refuses. */
 const fromString = (text: string, path: string): Parts | PluginIssue => {
   const at = text.indexOf('@');
-  if (at < 0)
-    return text === '' ? error(path, 'A dependency name must not be empty') : { name: text };
+  if (at < 0) {
+    return text === ''
+      ? error(path, 'A dependency name must not be empty')
+      : checkParts({ name: text }, path, path);
+  }
   const name = text.slice(0, at);
   const marketplace = text.slice(at + 1);
   return name === '' || marketplace === ''
     ? error(path, `Dependency "${text}" must be "name" or "name@marketplace"`)
-    : { name, marketplace };
+    : checkParts({ name, marketplace }, path, path);
 };
 
 const fromObject = (raw: Record<string, unknown>, path: string): Parts | PluginIssue => {
@@ -66,11 +84,15 @@ const fromObject = (raw: Record<string, unknown>, path: string): Parts | PluginI
   if (failed !== undefined) return failed;
   if (name === undefined) return error(`${path}.name`, 'A dependency needs a "name"');
   if (isIssue(name)) return name;
-  return {
-    name,
-    ...(typeof marketplace === 'string' ? { marketplace } : {}),
-    ...(typeof version === 'string' ? { version } : {}),
-  };
+  return checkParts(
+    {
+      name,
+      ...(typeof marketplace === 'string' ? { marketplace } : {}),
+      ...(typeof version === 'string' ? { version } : {}),
+    },
+    `${path}.name`,
+    `${path}.marketplace`,
+  );
 };
 
 const readParts = (value: unknown, path: string): Parts | PluginIssue => {
@@ -81,7 +103,9 @@ const readParts = (value: unknown, path: string): Parts | PluginIssue => {
 
 /**
  * Reads one `dependencies` item. Judgments (spec/judgments.md): an empty or blank `version` is no
- * constraint (node-semver reads "" as any version); a key other than the three is ignored.
+ * constraint (node-semver reads "" as any version); a key other than the three is ignored. The
+ * `name` and the marketplace must each satisfy the plugin id grammar, as a marketplace entry's name
+ * must, or they could never resolve; `a@b@c` is refused for that reason.
  * `declaringMarketplace` is the marketplace of the plugin that declares it, or `undefined` for a
  * plugin that has none (loaded from claude.ai), whose bare names then have no marketplace.
  */
@@ -119,8 +143,24 @@ export interface InstalledDependency {
   readonly id?: string;
 }
 
-const issueFor = (dep: NormalizedDependency, message: string): PluginIssue =>
-  error(`${PATH}.${dependencyId(dep)}`, message);
+/**
+ * The `errorDetails.type` `claude plugin list --json` carries for a dependency problem
+ * (plugins/troubleshooting.md, "Dependency errors"): `dependency-unsatisfied` for a dependency that
+ * is not installed (also with the `@synced` note) or disabled, `dependency-version-unsatisfied` for
+ * `Requires "<dep>" <range>, installed <version>`.
+ */
+export type DependencyErrorType = 'dependency-unsatisfied' | 'dependency-version-unsatisfied';
+
+/** A dependency problem, with the type the host reports it under. */
+export interface DependencyIssue extends PluginIssue {
+  readonly errorType: DependencyErrorType;
+}
+
+const issueFor = (
+  dep: NormalizedDependency,
+  errorType: DependencyErrorType,
+  message: string,
+): DependencyIssue => ({ ...error(`${PATH}.${dependencyId(dep)}`, message), errorType });
 
 /** The version a copy states, as the troubleshooting message shows it. */
 const shown = (version: string | undefined): string => version ?? '(no version)';
@@ -129,11 +169,12 @@ const shown = (version: string | undefined): string => version ?? '(no version)'
 const rangeIssue = (
   dep: NormalizedDependency,
   copy: InstalledDependency,
-): PluginIssue | undefined => {
+): DependencyIssue | undefined => {
   if (dep.range === undefined || copy.local === true) return undefined;
   if (copy.version !== undefined && satisfiesRange(copy.version, dep.range)) return undefined;
   return issueFor(
     dep,
+    'dependency-version-unsatisfied',
     `Requires "${dependencyId(dep)}" ${dep.range}, installed ${shown(copy.version)}`,
   );
 };
@@ -147,13 +188,18 @@ const rangeIssue = (
 export function checkInstalledDependency(
   dep: NormalizedDependency,
   installed: InstalledDependency | undefined,
-): PluginIssue | undefined {
+): DependencyIssue | undefined {
   if (installed === undefined) {
-    return issueFor(dep, `Dependency "${dependencyId(dep)}" is not installed`);
+    return issueFor(
+      dep,
+      'dependency-unsatisfied',
+      `Dependency "${dependencyId(dep)}" is not installed`,
+    );
   }
   if (!installed.enabled) {
     return issueFor(
       dep,
+      'dependency-unsatisfied',
       `Dependency "${installed.id ?? dependencyId(dep)}" is disabled — enable it or remove the dependency`,
     );
   }
@@ -175,7 +221,7 @@ const SYNCED_NOTE = (name: string): string =>
 const claudeAiIssue = (
   dep: NormalizedDependency,
   copy: InstalledDependency,
-): PluginIssue | undefined => {
+): DependencyIssue | undefined => {
   if (!copy.enabled) return checkInstalledDependency(dep, copy);
   return copy.version === undefined ? undefined : rangeIssue(dep, copy);
 };
@@ -186,20 +232,25 @@ const claudeAiIssue = (
  * a dependency that names a marketplace met by the copy installed from it and enabled (its range
  * checked against that copy), or by an enabled claude.ai plugin of the same name (its range checked
  * against its version; one that states none passes). For any other plugin a claude.ai copy meets
- * nothing, and the `is not installed` message says so.
+ * nothing, and the `is not installed` message says so (only while that plugin is enabled: a disabled
+ * one is not loaded, troubleshooting.md "Dependency errors"). Each issue carries its `errorType`.
  */
 export function checkDependency(
   dep: NormalizedDependency,
   found: DependencyCopies,
   loadsFromClaudeAi: boolean,
-): PluginIssue | undefined {
+): DependencyIssue | undefined {
   const fromMarketplace = checkInstalledDependency(dep, found.marketplace);
   if (fromMarketplace === undefined || found.claudeAi === undefined) return fromMarketplace;
   if (loadsFromClaudeAi) {
     const fromClaudeAi = claudeAiIssue(dep, found.claudeAi);
     return fromClaudeAi === undefined ? undefined : fromMarketplace;
   }
-  return found.marketplace === undefined
-    ? issueFor(dep, `${fromMarketplace.message}: ${SYNCED_NOTE(dep.name)}`)
+  return found.marketplace === undefined && found.claudeAi.enabled
+    ? issueFor(
+        dep,
+        fromMarketplace.errorType,
+        `${fromMarketplace.message}: ${SYNCED_NOTE(dep.name)}`,
+      )
     : fromMarketplace;
 }

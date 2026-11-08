@@ -120,6 +120,13 @@
 
 ### Fixed
 
+- Marketplace dependencies (`marketplace`): a dependency `name` and `marketplace` must satisfy the
+  plugin id grammar (`a@b@c` and blank names are errors); the `@synced` note is added only for an
+  enabled claude.ai plugin; `combineRanges` takes the dependency and names it by id; the new
+  `autoUpdateDecision` skips an update whose current copy falls outside any installed range or whose
+  ranges conflict; dependency issues carry the `errorType` of `claude plugin list --json`
+  (`DependencyIssue`); `crossMarketplaceDecision` accepts the declaring plugin's marketplace and
+  ignores its list; weak and misfiled dependency tests are replaced or moved outside `spec(...)`.
 - Marketplace renames and removal (`marketplace`): `migrateSettingsKeys` and `migrateSettingsScopes`
   keep the type of the values they carry; `InstallScope` derives from the SDK's setting sources;
   `Renames` is the one type of the map; tests now prove the notice appears once, managed settings

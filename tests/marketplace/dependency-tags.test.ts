@@ -53,16 +53,11 @@ const alternatives = (minor: number): string =>
 
 spec('dependencies.field.version', () => {
   describe('release tags are <plugin-name>--v<version>', () => {
-    test('a tag is built from the plugin name and version', () => {
-      expect(releaseTag('secrets-vault', '2.1.0')).toBe('secrets-vault--v2.1.0');
-    });
-
     test('a tag of the plugin parses to its version, another plugin tag or a non-semver one does not', () => {
       expect(parseReleaseTag('secrets-vault--v2.1.0', NAME)).toBe('2.1.0');
       expect(parseReleaseTag('secrets-vault--v2.0.0-beta.1', NAME)).toBe('2.0.0-beta.1');
       expect(parseReleaseTag('deploy-kit--v2.1.0', NAME)).toBeUndefined();
       expect(parseReleaseTag('v2.1.0', NAME)).toBeUndefined();
-      expect(parseReleaseTag('secrets-vault--v2.1', NAME)).toBeUndefined();
       expect(parseReleaseTag('secrets-vault--latest', NAME)).toBeUndefined();
     });
   });
@@ -107,33 +102,35 @@ spec('dependencies.field.version', () => {
       const found = combineRanges(
         ['^2.0', '>=2.1'],
         tags('2.0.0', '2.1.0', '2.4.2', '3.0.0'),
-        NAME,
+        dep(),
       );
       expect(found).toEqual({ tag: 'secrets-vault--v2.4.2', version: '2.4.2' });
     });
 
     test('row 2: ~2.1 and ~3.0 conflict, and the message says "has conflicting version requirements" and lists the ranges', () => {
-      const found = combineRanges(['~2.1', '~3.0'], tags('2.1.0', '3.0.0'), NAME);
+      const found = combineRanges(['~2.1', '~3.0'], tags('2.1.0', '3.0.0'), dep());
       expect(found).toMatchObject({ severity: 'error' });
       const message = isIssue(found) ? found.message : '';
-      expect(message).toContain('"secrets-vault" has conflicting version requirements');
+      expect(message).toContain(
+        '"secrets-vault@your-marketplace" has conflicting version requirements',
+      );
       expect(message).toContain('~2.1');
       expect(message).toContain('~3.0');
     });
 
     test('row 3: =2.1.0 alone stays at 2.1.0 although newer tags exist', () => {
-      expect(combineRanges(['=2.1.0'], tags('2.1.0', '2.2.0', '3.0.0'), NAME)).toEqual({
+      expect(combineRanges(['=2.1.0'], tags('2.1.0', '2.2.0', '3.0.0'), dep())).toEqual({
         tag: 'secrets-vault--v2.1.0',
         version: '2.1.0',
       });
     });
 
     test('ranges that overlap but have no tag in common select nothing: the current copy is fetched', () => {
-      expect(combineRanges(['^2.0', '>=2.1'], tags('2.0.0', '3.0.0'), NAME)).toBeUndefined();
+      expect(combineRanges(['^2.0', '>=2.1'], tags('2.0.0', '3.0.0'), dep())).toBeUndefined();
     });
 
     test('a range that is not valid semver is "has an invalid version requirement"', () => {
-      const found = combineRanges(['^2.0', 'banana'], tags('2.0.0'), NAME);
+      const found = combineRanges(['^2.0', 'banana'], tags('2.0.0'), dep());
       expect(found).toMatchObject({ severity: 'error' });
       expect(isIssue(found) ? found.message : '').toContain('has an invalid version requirement');
     });
@@ -256,40 +253,47 @@ describe('judgments (outside spec)', () => {
     }
   });
 
+  test('a version with fewer than three parts is not a release tag', () => {
+    expect(parseReleaseTag('secrets-vault--v2.1', NAME)).toBeUndefined();
+  });
+
   test('a plugin whose name contains --v does not read another plugin tag as its own', () => {
-    expect(parseReleaseTag('a--v2.0.0', 'a--v2')).toBeUndefined();
+    // `a--v2` is a plugin of its own, and its tag starts with the tag prefix of plugin `a`.
+    expect(parseReleaseTag('a--v2--v1.0.0', 'a')).toBeUndefined();
+    expect(parseReleaseTag('a--v2--v1.0.0', 'a--v2')).toBe('1.0.0');
+    expect(parseReleaseTag('a--v2.0.0', 'a')).toBe('2.0.0');
   });
 
   test('more than 64 || combinations are "too complex to intersect"', () => {
-    const found = combineRanges([alternatives(0), alternatives(1)], tags('1.0.0'), NAME);
+    const found = combineRanges([alternatives(0), alternatives(1)], tags('1.0.0'), dep());
     expect(found).toMatchObject({ severity: 'error' });
     expect(isIssue(found) ? found.message : '').toBe(
-      'Dependency "secrets-vault" has version requirements too complex to intersect',
+      'Dependency "secrets-vault@your-marketplace" has version requirements too complex to intersect',
     );
   });
 
   test('ranges with || combine by distribution: (^1 || ^3) and ^3.1 select the 3.x tag', () => {
     expect(
-      versionOf(combineRanges(['^1.0.0 || ^3.0.0', '^3.1.0'], tags('1.5.0', '3.2.0'), NAME)),
+      versionOf(combineRanges(['^1.0.0 || ^3.0.0', '^3.1.0'], tags('1.5.0', '3.2.0'), dep())),
     ).toBe('3.2.0');
     expect(
-      combineRanges(['^1.0.0 || ^3.0.0', '^2.0.0'], tags('1.5.0', '3.2.0'), NAME),
+      combineRanges(['^1.0.0 || ^3.0.0', '^2.0.0'], tags('1.5.0', '3.2.0'), dep()),
     ).toMatchObject({
       severity: 'error',
     });
   });
 
   test('duplicate ranges are one range', () => {
-    expect(versionOf(combineRanges(['^2.0', '^2.0'], tags('2.1.0'), NAME))).toBe('2.1.0');
+    expect(versionOf(combineRanges(['^2.0', '^2.0'], tags('2.1.0'), dep()))).toBe('2.1.0');
   });
 
   test('a range no version can satisfy conflicts even alone', () => {
-    expect(combineRanges(['>2.0.0 <1.0.0'], tags('1.5.0'), NAME)).toMatchObject({
+    expect(combineRanges(['>2.0.0 <1.0.0'], tags('1.5.0'), dep())).toMatchObject({
       severity: 'error',
     });
   });
 
   test('no ranges select nothing', () => {
-    expect(combineRanges([], tags('1.0.0'), NAME)).toBeUndefined();
+    expect(combineRanges([], tags('1.0.0'), dep())).toBeUndefined();
   });
 });

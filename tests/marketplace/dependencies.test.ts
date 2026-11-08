@@ -12,7 +12,6 @@ import { describe, expect, test } from 'bun:test';
 import {
   checkDependency,
   checkInstalledDependency,
-  dependencyId,
   normalizeDependency,
 } from '../../src/marketplace/dependencies.ts';
 import { spec } from '../support/spec.ts';
@@ -56,50 +55,13 @@ spec('dependencies.field.name', () => {
     }
   });
 
-  test('a dependency is identified as `name@marketplace`, or by `name` alone with no marketplace', () => {
-    expect(dependencyId({ name: 'audit-logger', marketplace: MARKETPLACE })).toBe(
-      'audit-logger@your-marketplace',
-    );
-    expect(dependencyId({ name: 'audit-logger' })).toBe('audit-logger');
-  });
-
-  test('a missing dependency is `Dependency "<dep>" is not installed`', () => {
-    expect(
-      checkInstalledDependency({ name: 'audit-logger', marketplace: MARKETPLACE }, undefined),
-    ).toEqual({
-      severity: 'error',
-      path: 'dependencies.audit-logger@your-marketplace',
-      message: 'Dependency "audit-logger@your-marketplace" is not installed',
-    });
-  });
-
-  test('a disabled dependency is `Dependency "<dep>" is disabled`, ending "enable it or remove the dependency"', () => {
-    const found = checkInstalledDependency(
-      { name: 'audit-logger', marketplace: MARKETPLACE },
-      { version: '1.0.0', enabled: false },
-    );
-    expect(found?.message).toBe(
-      'Dependency "audit-logger@your-marketplace" is disabled — enable it or remove the dependency',
-    );
-  });
-
-  test('a dependency that is installed and enabled is met', () => {
-    expect(
-      checkInstalledDependency(
-        { name: 'audit-logger', marketplace: MARKETPLACE },
-        { enabled: true },
-      ),
-    ).toBeUndefined();
-  });
-
-  test('a disabled `--plugin-dir` copy names itself as `<name>@inline` in the error', () => {
-    const found = checkInstalledDependency(
-      { name: 'my-dependency', marketplace: MARKETPLACE },
-      { enabled: false, local: true, id: 'my-dependency@inline' },
-    );
-    expect(found?.message).toBe(
-      'Dependency "my-dependency@inline" is disabled — enable it or remove the dependency',
-    );
+  test('a name is a plugin id part, as it appears in its marketplace entry: one that breaks the grammar can never resolve', () => {
+    for (const bad of ['a@b@c', ' ', 'a b', '-a', 'a/b', 'a\nb']) {
+      expect(normalized(bad)).toMatchObject({ severity: 'error', path: PATH });
+      expect(normalized({ name: bad })).toMatchObject({ severity: 'error', path: `${PATH}.name` });
+    }
+    expect(normalized('a@b@c')).toMatchObject({ severity: 'error' });
+    expect(normalized('a.b_c-1')).toEqual({ name: 'a.b_c-1', marketplace: MARKETPLACE });
   });
 });
 
@@ -136,6 +98,16 @@ spec('dependencies.field.marketplace', () => {
     expect(normalized({ name: 'a', marketplace: 5 })).toMatchObject({
       path: `${PATH}.marketplace`,
     });
+  });
+
+  test('a marketplace is a plugin id part too: one that breaks the grammar is an error on the field', () => {
+    for (const bad of ['b@c', 'a b', '-m', 'm/n']) {
+      expect(normalized({ name: 'a', marketplace: bad })).toMatchObject({
+        severity: 'error',
+        path: `${PATH}.marketplace`,
+      });
+    }
+    expect(normalized('a@b@c')).toMatchObject({ severity: 'error', path: PATH });
   });
 
   describe('a plugin loaded from claude.ai (`<name>@synced`, no marketplace)', () => {
@@ -184,6 +156,11 @@ spec('dependencies.field.marketplace', () => {
       );
     });
 
+    test('a disabled claude.ai plugin is not loaded, so the @synced note is not added for a plugin that does not load from claude.ai', () => {
+      const found = checkDependency(dep, { claudeAi: { version: '2.1.0', enabled: false } }, false);
+      expect(found?.message).toBe('Dependency "audit-logger@shared-libs" is not installed');
+    });
+
     test('a plugin that does not load from claude.ai is met by the marketplace copy as usual', () => {
       expect(
         checkDependency(dep, { marketplace: { version: '2.0.0', enabled: true } }, false),
@@ -222,6 +199,7 @@ spec('dependencies.field.version', () => {
       severity: 'error',
       path: 'dependencies.secrets-vault@your-marketplace',
       message: 'Requires "secrets-vault@your-marketplace" ~2.1.0, installed 3.0.0',
+      errorType: 'dependency-version-unsatisfied',
     });
     expect(checkInstalledDependency(dep, { version: '2.1.7', enabled: true })).toBeUndefined();
   });
@@ -272,7 +250,8 @@ describe('judgments (outside spec)', () => {
     expect(normalized({ name: 'a', extra: 1 })).toEqual({ name: 'a', marketplace: MARKETPLACE });
   });
 
-  test('the first @ splits `name@marketplace`', () => {
-    expect(normalized('a@b@c')).toEqual({ name: 'a', marketplace: 'b@c' });
+  test('the first @ splits `name@marketplace`, so a second one is part of the marketplace and refused by the id grammar', () => {
+    expect(normalized('a@b@c')).toMatchObject({ severity: 'error', path: PATH });
+    expect(errorOf('a@b@c')).toContain('"b@c"');
   });
 });

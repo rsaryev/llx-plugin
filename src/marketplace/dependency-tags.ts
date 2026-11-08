@@ -66,37 +66,90 @@ export function selectTag(
   );
 }
 
-const problem = (name: string, what: string): PluginIssue =>
-  error(`dependencies.${name}`, `Dependency "${name}" ${what}`);
+/** The id, not the bare name, names the dependency: two marketplaces can host the same plugin name (troubleshooting.md uses `"<dep>"`). */
+const problem = (dep: NormalizedDependency, what: string): PluginIssue =>
+  error(`dependencies.${dependencyId(dep)}`, `Dependency "${dependencyId(dep)}" ${what}`);
 
 /**
  * The tag a dependency resolves to when several installed plugins constrain it: the highest that
  * satisfies every range. A `PluginIssue` when the ranges cannot all hold: `has an invalid version
  * requirement`, `has version requirements too complex to intersect` or `has conflicting version
  * requirements` (with the ranges listed); `undefined` when they overlap but no tag falls in the
- * overlap, which is when the marketplace's current copy is fetched. Judgment: the text after the
- * quoted words, and 64 combinations of `||` alternatives as the limit of "too complex".
+ * overlap, which is when the marketplace's current copy is fetched (`autoUpdateDecision` decides
+ * what that means). The dependency's `name` reads the tags; its id names it in a message. Judgment:
+ * the text after the quoted words, and 64 combinations of `||` alternatives as the limit of "too complex".
  */
 export function combineRanges(
   ranges: readonly string[],
   tags: readonly string[],
-  name: string,
+  dep: NormalizedDependency,
 ): ReleaseTag | PluginIssue | undefined {
   const distinct = [...new Set(ranges)];
   if (distinct.length === 0) return undefined;
   const invalid = distinct.find((range) => !isValidRange(range));
   if (invalid !== undefined) {
-    return problem(name, `has an invalid version requirement: "${invalid}"`);
+    return problem(dep, `has an invalid version requirement: "${invalid}"`);
   }
   const overlap = rangesOverlap(distinct);
   if (overlap === undefined)
-    return problem(name, 'has version requirements too complex to intersect');
-  if (!overlap)
-    return problem(name, `has conflicting version requirements: ${distinct.join(', ')}`);
-  const fits = releaseTags(tags, name).filter((one) =>
+    return problem(dep, 'has version requirements too complex to intersect');
+  if (!overlap) return problem(dep, `has conflicting version requirements: ${distinct.join(', ')}`);
+  const fits = releaseTags(tags, dep.name).filter((one) =>
     distinct.every((range) => satisfiesRange(one.version, range)),
   );
   return tagAt(fits, highestVersion(fits.map((one) => one.version)));
+}
+
+/** What auto-update does with a dependency that installed plugins constrain (plugins/dependencies.md, "Combine constraints from several plugins"). */
+export type AutoUpdateDecision =
+  | {
+      readonly outcome: 'update';
+      readonly via: 'tag';
+      readonly tag: string;
+      readonly version: string;
+    }
+  | { readonly outcome: 'update'; readonly via: 'current-copy'; readonly version?: string }
+  | { readonly outcome: 'skip'; readonly reason: 'ranges-conflict'; readonly issue: PluginIssue }
+  | {
+      readonly outcome: 'skip';
+      readonly reason: 'current-copy-out-of-range';
+      readonly version?: string;
+    };
+
+export interface AutoUpdateInput {
+  readonly dep: NormalizedDependency;
+  /** The range of every installed plugin that constrains the dependency. */
+  readonly ranges: readonly string[];
+  readonly tags: readonly string[];
+  /** The `version` in the plugin.json of the marketplace's current copy. */
+  readonly currentCopyVersion?: string;
+}
+
+const currentCopyDecision = (input: AutoUpdateInput): AutoUpdateDecision => {
+  const version = input.currentCopyVersion;
+  const fits =
+    version !== undefined && input.ranges.every((range) => satisfiesRange(version, range));
+  const found = version === undefined ? {} : { version };
+  return fits || input.ranges.length === 0
+    ? { outcome: 'update', via: 'current-copy', ...found }
+    : { outcome: 'skip', reason: 'current-copy-out-of-range', ...found };
+};
+
+/**
+ * Whether auto-update moves a constrained dependency, and to what (plugins/dependencies.md, "Combine
+ * constraints from several plugins"): to the highest tag that satisfies every installed plugin's
+ * range; when the ranges do not overlap, nowhere (the dependency stays at its current version and
+ * the Errors tab names the constraining plugin: `issue` is that conflict); when they overlap and no
+ * tag falls in the overlap, to the marketplace's current copy, unless its `version` falls outside any
+ * range, which skips the update. A copy that states no version satisfies no range (judgment).
+ */
+export function autoUpdateDecision(input: AutoUpdateInput): AutoUpdateDecision {
+  const combined = combineRanges(input.ranges, input.tags, input.dep);
+  if (combined === undefined) return currentCopyDecision(input);
+  if ('severity' in combined) {
+    return { outcome: 'skip', reason: 'ranges-conflict', issue: combined };
+  }
+  return { outcome: 'update', via: 'tag', tag: combined.tag, version: combined.version };
 }
 
 /** What the constraint was checked against: a tag, or the marketplace's current copy (`version` is its `plugin.json` version, absent when it has none). */
