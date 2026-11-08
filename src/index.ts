@@ -51,9 +51,14 @@ export {
 export type { McpLoadContext } from './format/mcp-bundles.ts';
 export {
   CREDENTIAL_ENV_NAMES,
+  FIXED_CREDENTIAL_NAMES,
   NOT_EXPANDED_TOWARD_REMOTE,
   credentialDebugLine,
+  hasUrlPassword,
   readsAsEmptyTowardRemote,
+  scrubAction,
+  withoutUserinfo,
+  type ScrubAction,
 } from './format/credential-env.ts';
 export {
   MCP_DISPLAY_SCOPES,

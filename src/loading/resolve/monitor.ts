@@ -1,11 +1,11 @@
 import type { PluginIssue } from '../../format/issues.ts';
 import type { Monitor, MonitorTrigger } from '../../format/monitors.ts';
-import { exportedEnvironment } from './exported-environment.ts';
-import { fieldRunner } from './field-runner.ts';
-import type { SubstitutionScope } from './scope.ts';
+import type { MonitorPaths, SubstitutionScope } from './scope.ts';
 import { rejectUserConfigInShell } from './shell-guard.ts';
 import { MONITOR_GUARD } from './shell-guard-monitor.ts';
-import { substituter } from './substitute.ts';
+import { monitorCommandPolicy } from './surfaces.ts';
+import { substituter, type TokenReference } from './substitute.ts';
+import { isPluginVariable, pluginVariableValue } from './variables.ts';
 
 /**
  * A monitor resolved for this host (plugins/manifest-reference.md, "Where each variable resolves";
@@ -24,6 +24,8 @@ export interface ResolvedMonitor {
   /**
    * What the process receives besides the host's own environment: nothing. The table says "Not
    * exported" and components.md adds that monitor processes get no `CLAUDE_PLUGIN_OPTION_<KEY>`.
+   * With `SubstitutionScope.monitorPaths: 'environment-reference'` (an opt-in) the path variables
+   * `command` names, as the host reports them, so that the references it holds have a value.
    */
   readonly environment: Readonly<Record<string, string>>;
 }
@@ -33,6 +35,26 @@ export interface MonitorResolution {
   readonly resolved: ResolvedMonitor | undefined;
   readonly issues: readonly PluginIssue[];
 }
+
+type Exported = (
+  referenced: readonly TokenReference[],
+  scope: SubstitutionScope,
+) => Promise<Record<string, string>>;
+
+/** The path variables a command references, as the host reports them. */
+const referencedPaths: Exported = async (referenced, scope) => {
+  const names = referenced.flatMap((token) =>
+    'name' in token && isPluginVariable(token.name) ? [token.name] : [],
+  );
+  const values = await Promise.all(names.map((name) => pluginVariableValue(name, scope)));
+  return Object.fromEntries(names.map((name, at) => [name, values[at] ?? '']));
+};
+
+/** Pasted paths need no environment ("Not exported"); references need the values they name. */
+const EXPORTED: { readonly [M in MonitorPaths]: Exported } = {
+  pasted: () => Promise.resolve({}),
+  'environment-reference': referencedPaths,
+};
 
 /**
  * Resolves one monitor of a plugin. `command` gets the three path variables and `${ENV_VAR}` from the
@@ -51,19 +73,16 @@ export async function resolveMonitor(
     path,
   );
   if (refused) return { resolved: undefined, issues: [refused] };
-  const run = fieldRunner(substituter(scope), `monitors.${monitor.name}`);
-  const [command, environment] = await Promise.all([
-    run.one('monitor-command', monitor.command, 'command'),
-    exportedEnvironment('monitor-command', scope),
-  ]);
+  const done = await substituter(scope).run(monitor.command, monitorCommandPolicy(scope), path);
+  const environment = await EXPORTED[scope.monitorPaths ?? 'pasted'](done.referenced, scope);
   return {
     resolved: {
       name: monitor.name,
-      command: command.value,
+      command: done.text,
       description: monitor.description,
       when: monitor.when,
       environment,
     },
-    issues: command.issues,
+    issues: [...done.issues],
   };
 }

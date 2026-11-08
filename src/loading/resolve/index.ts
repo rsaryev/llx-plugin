@@ -39,6 +39,7 @@ export {
   type McpResolution,
   type ResolvedMcpServer,
 } from './mcp.ts';
+export { scrubEnvironment, subprocessScrubEnabled, type ScrubOptions } from './subprocess-scrub.ts';
 export { resolveProcesses, type ResolvedProcesses } from './processes.ts';
 export { monitorsToStart, type MonitorEvent, type MonitorMode } from './monitor-trigger.ts';
 export { resolveMonitor, type MonitorResolution, type ResolvedMonitor } from './monitor.ts';
@@ -57,6 +58,7 @@ export {
 export type {
   EnvironmentExpansion,
   FieldPolicy,
+  MonitorPaths,
   PathRendering,
   SubstitutionScope,
   UserConfigPolicy,
@@ -92,3 +94,35 @@ export {
   pluginVariableValue,
   type PluginVariable,
 } from './variables.ts';
+export {
+  HEADERS_HELPER_ORIGINS,
+  configDirectory,
+  type DirectoryKind,
+  type HeadersHelperOrigin,
+  type HelperContext,
+} from './headers-helper-origins.ts';
+export {
+  TRUST_SOURCES,
+  persistedTrust,
+  type HelperNotice,
+  type HelperTrust,
+  type TrustSource,
+} from './headers-helper-trust.ts';
+export {
+  HEADERS_HELPER_TIMEOUT_MS,
+  helperVariables,
+  planHeadersHelper,
+  type HeadersHelperPlan,
+  type HelperNotLoaded,
+  type HelperRun,
+  type HelperServer,
+  type HelperSkipped,
+} from './headers-helper.ts';
+export {
+  attemptWithHeadersHelper,
+  connectionHeaders,
+  runMcpHeadersHelper,
+  type ConnectionHeaders,
+  type HelperAttempt,
+  type HelperOutput,
+} from './headers-helper-run.ts';

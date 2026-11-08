@@ -4,6 +4,25 @@
 
 ### Added
 
+- MCP `headersHelper` and the subprocess environment, pure over data. `planHeadersHelper` answers
+  where a server's helper runs (plugin root, project directory, primary working directory or the
+  configuration directory, by where the server was configured), with which environment (credential
+  variables removed for a project `.mcp.json`, a plugin and a project or `--add-dir` agent file;
+  `CLAUDE_CODE_MCP_SERVER_NAME`, `_URL` with `REDACTED` for a removed variable's live value, and
+  `CLAUDE_PLUGIN_ROOT` for a plugin), under 10 seconds, and whether it runs at all: a project or local
+  server in a folder without persisted trust (a parent's and the automatic `-p` or SDK trust do not
+  count) connects with its static headers and gets the `headersHelper not run` notice, an agent file's
+  server in an untrusted folder is not loaded; `persistedTrust` reads `hasTrustDialogAccepted`.
+  `runMcpHeadersHelper`, `connectionHeaders` and `attemptWithHeadersHelper` run it fresh each time,
+  let dynamic headers win, stop the OAuth fall back on an `Authorization` header and retry a 401 or 403
+  once. `scrubEnvironment` and `subprocessScrubEnabled` apply `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB`'s
+  table (credential names and URLs with a password removed, registry URLs lose their userinfo, GitHub
+  tokens, proxies and `GIT_CONFIG_*` kept; the pre-2.1.251 behaviour by `version`). One credential
+  classifier (`isCredentialVariable`) serves all of them and the marketplace helper. A monitor
+  `command` can opt into `monitorPaths: 'environment-reference'`: the three path variables become
+  `${NAME}` references and `ResolvedMonitor.environment` supplies the values, so a path holding shell
+  metacharacters cannot inject.
+
 - Managed MCP: `readManagedMcpFile` and `loadManagedMcpFile` read `managed-mcp.json` from the path of
   each platform; `readManagedMcpServers` validates `managedMcpServers` entries (remote `https` only, no
   program, no `${VAR}`, plain names and characters) with a notice for each dropped one;

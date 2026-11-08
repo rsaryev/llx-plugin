@@ -1,6 +1,6 @@
 import { readsAsEmptyTowardRemote } from '../../format/credential-env.ts';
 import type { VariableComponent } from './field-map.ts';
-import type { FieldPolicy, SubstitutionScope } from './scope.ts';
+import type { FieldPolicy, MonitorPaths, PathRendering, SubstitutionScope } from './scope.ts';
 import { substituteTemplate, type Substituted } from './substitute.ts';
 
 /**
@@ -77,3 +77,15 @@ export const substituteSurface = (
   scope: SubstitutionScope,
   path = '',
 ): Promise<Substituted> => substituteTemplate(template, scope, SURFACE_POLICY[surface], path);
+
+/** What `monitorPaths` makes of the `monitor-command` surface's path rendering. */
+const MONITOR_PATHS: { readonly [M in MonitorPaths]: PathRendering } = {
+  pasted: 'normalized',
+  'environment-reference': 'shell-reference',
+};
+
+/** The `monitor-command` policy for this scope: the one surface that reads `scope.monitorPaths`. */
+export const monitorCommandPolicy = (scope: SubstitutionScope): FieldPolicy => ({
+  ...SURFACE_POLICY['monitor-command'],
+  paths: MONITOR_PATHS[scope.monitorPaths ?? 'pasted'],
+});

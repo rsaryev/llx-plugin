@@ -431,6 +431,44 @@ shares the per-reference rule (`resolveEnvReference`) with this expander, so the
 | `mcpEndpointKey(server)` | equal for two servers exactly when they are one endpoint: URLs that differ only in the case of scheme or host, the scheme's default port or a trailing slash; a different path, query, userinfo or non-default port is two; a stdio server is its `command` and `args`. Plugins and connectors are matched with the servers above them by this key |
 | `CREDENTIAL_ENV_NAMES`, `readsAsEmptyTowardRemote(name)`, `credentialDebugLine(name)` | the five names mcp.md writes (`ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `AWS_BEARER_TOKEN_BEDROCK`, `HTTPS_PROXY`, `NPM_TOKEN`), matched exactly; `ANTHROPIC_BASE_URL` and `API_KEY` expand |
 
+| `isCredentialVariable(name)`, `withoutCredentials(env)`, `FIXED_CREDENTIAL_NAMES` | the one credential classifier of every command the kit runs without the user's credentials: a name with `TOKEN`, `SECRET`, `PASSWORD`, `KEY` or `AUTH` in either letter case, less Git's `GIT_CONFIG_KEY_<n>`, plus a fixed list (`ANTHROPIC_CUSTOM_HEADERS`, the docs' one name; the OpenTelemetry exporter headers, a judgment); marketplace and MCP helpers both use it |
+| `scrubAction(name, value)`, `hasUrlPassword(value)`, `withoutUserinfo(value)` | the table of env-vars.md "What the subprocess environment scrub removes" as data: `remove`, `keep` or `cut-userinfo` per variable (a credential name or a URL with a password removed; the GitHub tokens, `HTTP(S)_PROXY` and `GIT_CONFIG_*` kept whatever they hold; `CLAUDE_CONFIG_DIR` removed; registry URLs lose their userinfo) |
+
+#### Subprocess environment scrub (done: `loading/resolve/subprocess-scrub`)
+
+| API | What it does |
+| --- | --- |
+| `scrubEnvironment(snapshot, { version })` | pure: the environment a subprocess gets when `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` is on in the snapshot (`1`, `true`, `yes` or `on`, any casing); the snapshot copied unchanged when it is not. `version` below `2.1.251` removes only `ANTHROPIC_API_KEY` and `AWS_SECRET_ACCESS_KEY`; an unreadable version is the current table |
+| `subprocessScrubEnabled(snapshot)` | whether the switch is on |
+
+The Linux PID namespace the scrub gives Bash subprocesses (`ps`, `pgrep` and `kill` cannot see host
+processes) is a process option, not an environment edit: it stays the host's, as does setting the
+variable for `claude-code-action`.
+
+#### MCP `headersHelper` (done: `loading/resolve/headers-helper*`)
+
+```ts
+import { persistedTrust, planHeadersHelper, runMcpHeadersHelper, connectionHeaders } from '@rsaryev/claude-plugin-kit';
+
+const trust = { source: persistedTrust(claudeJson, projectDir), key: projectDir, interactive: false };
+const plan = planHeadersHelper({ name, url, headersHelper }, 'project', trust, context);
+if (!plan.run) return plan.headersOnly ? staticHeadersOnly(plan.notice) : skipServer(); // not trusted
+const output = await runMcpHeadersHelper(plan, runner, signal); // { headers } | PluginIssue
+const { headers, oauthFallback } = connectionHeaders(staticHeaders, output.headers);
+```
+
+| API | What it does |
+| --- | --- |
+| `planHeadersHelper(server, origin, trust, context)` | pure, made again on every connection: where to run (`cwd`: plugin root; project directory for `project` and `local`; primary working directory for `agent-project`, `sdk`, `mcp-config`; configuration directory, `CLAUDE_CONFIG_DIR` or `~/.claude`, for `user`, `managed`, `connector`, `agent-user`, `agent-managed`, `agent-flag`, `agent-add-dir`), the environment (credentials removed for `project`, `plugin`, `agent-project`, `agent-add-dir`; `CLAUDE_CODE_MCP_SERVER_NAME`, `CLAUDE_CODE_MCP_SERVER_URL` with a removed variable's live value replaced by `REDACTED`, and `CLAUDE_PLUGIN_ROOT` for a plugin only), the 10 second limit; or `{ run: false, loaded: true, headersOnly: true, notice }` for a project or local server in a folder without persisted trust, or `{ run: false, loaded: false }` for an agent file's server in an untrusted project or `--add-dir` directory |
+| `persistedTrust(claudeJson, key)`, `TrustSource` | `projects["<key>"].hasTrustDialogAccepted === true` is `persisted`; only that counts: `parent-folder` and `automatic-session` (the `-p` and SDK trust for settings hooks) never do |
+| `runMcpHeadersHelper(plan, runner, signal)` | runs the command through `CommandRunner` (shell form, `bash`; the host maps the shell on Windows), no cache; a failure, a timeout or output that is not a JSON object of strings is a `PluginIssue` |
+| `connectionHeaders(static, dynamic)` | dynamic headers override static ones of the same name (any letter case); `oauthFallback` is `false` once either holds an `Authorization` header |
+| `attemptWithHeadersHelper(phase, produce, send)` | a call answering 401 or 403 re-runs the helper once and retries once (`needs-authentication` only if that fails too); a rejection while connecting is `failed`, with no re-run |
+
+The origins are the settings scopes plus the places the three tables of mcp.md name; a ranked
+candidate's `scope` is one of them. Where the notice goes (`stderr` in `-p` and SDK sessions, the debug
+log in an interactive one) is in the plan.
+
 A bundle whose own `user_config` has a required setting with no saved value is not started and
 reports `Bundled MCP server "<name>" was not started: it needs configuration`; the rest of the
 plugin loads. Without a `McpBundleReader` a bundle is a warning. Paths given to the reader are
@@ -480,7 +518,7 @@ for (const monitor of toStart) started.add(monitor.name); // the host spawns eac
 | --- | --- |
 | `Monitor`, `MonitorTrigger` | kit-owned types (the SDK has no monitor config type): `name`, `command`, `description`, and `when` as a tagged trigger |
 | `readMonitors(raw, origin)` | the array of one source; a strict entry (an unknown key is an error), `when` absent is `always`, a malformed `when` is an error naming the two forms, a repeated `name` is an error and the first keeps it; valid entries are still returned |
-| `resolveMonitor(monitor, scope)` | `command` gets the three path variables and `${ENV_VAR}`; `${user_config.*}` in it is the errors.md message and `resolved` is `undefined`, with no value needed; `environment` is always empty (nothing exported, no `CLAUDE_PLUGIN_OPTION_<KEY>`) |
+| `resolveMonitor(monitor, scope)` | `command` gets the three path variables and `${ENV_VAR}`; `${user_config.*}` in it is the errors.md message and `resolved` is `undefined`, with no value needed; `environment` is empty (nothing exported, no `CLAUDE_PLUGIN_OPTION_<KEY>`) unless the scope opts in with `monitorPaths: 'environment-reference'`: then `command` holds `${CLAUDE_PLUGIN_ROOT}` (braced, as the template wrote it) instead of the path and `environment` carries the path variables the command references, so a path with shell metacharacters is never parsed as shell and the command line is the same when run with `environment` |
 | `monitorsToStart(monitors, event, started, mode)` | pure: `always` starts on `session-start` and `plugin-reload`; `on-skill-invoke:<skill>` starts on `skill-invoked` for that skill, the first time only; nothing starts when `mode.interactive` is false (`-p`) |
 | `MONITOR_GUARD` | the monitor message for `rejectUserConfigInShell` |
 

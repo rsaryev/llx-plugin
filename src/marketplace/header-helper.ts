@@ -1,4 +1,5 @@
 import { error, type PluginIssue } from '../format/issues.ts';
+import { readHelperHeaders } from '../format/helper-headers.ts';
 import { commandTextIssues } from '../format/marketplace/plugin-source-kinds.ts';
 import type { CommandResult, CommandRunner } from '../ports/command-runner.ts';
 import type { Clock } from '../ports/clock.ts';
@@ -58,20 +59,15 @@ function runIssue(result: CommandResult): PluginIssue | undefined {
 
 /** "Print one JSON object of header names and string values on stdout." */
 function readHeaders(stdout: string): ResolvedHeaders | PluginIssue {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stdout);
-  } catch {
-    return problem('The headersHelper command did not print a JSON object');
+  const read = readHelperHeaders(stdout);
+  if ('problem' in read) {
+    return problem(
+      read.problem === 'not-an-object'
+        ? 'The headersHelper command did not print a JSON object'
+        : 'The headersHelper command printed a header whose value is not a string',
+    );
   }
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    return problem('The headersHelper command did not print a JSON object');
-  }
-  const values = Object.values(parsed);
-  if (!values.every((value): value is string => typeof value === 'string')) {
-    return problem('The headersHelper command printed a header whose value is not a string');
-  }
-  return { headers: normalizeHeaders(Object.fromEntries(Object.entries(parsed))) };
+  return { headers: normalizeHeaders(read.headers) };
 }
 
 /** Runs the layer's command and reads what it printed; a layer without a command prints no headers. */

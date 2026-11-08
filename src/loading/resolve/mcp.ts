@@ -7,6 +7,7 @@ import {
 import type { McpStdioServerConfig } from '../../protocol/official.ts';
 import { exportedEnvironment } from './exported-environment.ts';
 import { fieldOf, fieldRunner, when } from './field-runner.ts';
+import { helperVariables } from './headers-helper.ts';
 import type { SubstitutionScope } from './scope.ts';
 import { HEADERS_HELPER_GUARD, rejectUserConfigInShell } from './shell-guard.ts';
 import { substituter } from './substitute.ts';
@@ -44,8 +45,10 @@ export const mcpServerKey = (plugin: string, server: string): string =>
 const pluginName = (pluginId: string): string => pluginId.split('@')[0] ?? pluginId;
 
 /**
- * The environment of a `headersHelper` (mcp.md, "dynamic headers"; manifest-reference, "Fields that
- * run through a shell"): the plugin root, the server's name and its URL, and no option values.
+ * The environment of a plugin server's `headersHelper` (mcp.md, "dynamic headers"; manifest-reference,
+ * "Fields that run through a shell"): the plugin root, the server's name and its URL, and no option
+ * values. The three names are `helperVariables`'; `planHeadersHelper` adds the inherited environment
+ * (less credentials) and the working directory.
  * Judgment: the name is the registered `plugin:<plugin>:<server>` key, the one `/mcp` shows.
  */
 export function headersHelperEnvironment(
@@ -53,11 +56,11 @@ export function headersHelperEnvironment(
   url: string,
   scope: SubstitutionScope,
 ): Record<string, string> {
-  return {
-    CLAUDE_PLUGIN_ROOT: scope.locations.pluginRoot(scope.pluginId),
-    CLAUDE_CODE_MCP_SERVER_NAME: mcpServerKey(pluginName(scope.pluginId), name),
-    CLAUDE_CODE_MCP_SERVER_URL: url,
-  };
+  return helperVariables({
+    name: mcpServerKey(pluginName(scope.pluginId), name),
+    url,
+    pluginRoot: scope.locations.pluginRoot(scope.pluginId),
+  });
 }
 
 const invalid = (name: string, path: string, why: string): PluginIssue =>
