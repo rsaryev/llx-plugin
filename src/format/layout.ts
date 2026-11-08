@@ -179,3 +179,17 @@ export function declaredKey(
   }
   return undefined;
 }
+
+/** The first segment of a kind's default location: what a plugin root holds for that kind. */
+const topLevelOf = (kind: ComponentKind): string | undefined =>
+  STANDARD_LAYOUT[kind].location.split('/')[0];
+
+/**
+ * The component kinds a directory listing shows at the plugin root, by their default locations (the
+ * manifest's `.claude-plugin/` folder is not a component). `names` are the entry names of the root.
+ */
+export const componentsAt = (names: readonly string[]): readonly ComponentKind[] =>
+  COMPONENT_KINDS.filter((kind) => {
+    const top = topLevelOf(kind);
+    return kind !== 'manifest' && top !== undefined && names.includes(top);
+  });

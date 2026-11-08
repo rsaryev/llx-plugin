@@ -33,7 +33,7 @@ export interface LoadPluginInput {
   readonly signal?: AbortSignal;
 }
 
-interface ManifestStep {
+export interface ManifestStep {
   /** Whether `.claude-plugin/plugin.json` exists. */
   readonly present: boolean;
   readonly manifest: PluginManifest | undefined;
@@ -41,7 +41,10 @@ interface ManifestStep {
 }
 
 /** Reads the optional manifest: absent is fine, unreadable JSON or a manifest with an error is not. */
-async function loadManifest(files: PluginFiles, signal?: AbortSignal): Promise<ManifestStep> {
+export async function loadManifest(
+  files: PluginFiles,
+  signal?: AbortSignal,
+): Promise<ManifestStep> {
   const { location } = STANDARD_LAYOUT.manifest;
   if (!(await files.exists(location, signal))) {
     return { present: false, manifest: undefined, issues: [] };

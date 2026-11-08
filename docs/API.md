@@ -396,6 +396,35 @@ interface Plugin {
 
 Loading never calls the resolvers: the host loads, then resolves with its scope.
 
+### Repository plugins and workspace trust (done: `loading/repository-*`, `trust-gates`, `workspace-trust`, `local-settings-trust`, `folder-plugin`, `plugin-scaffold`, `plugin-debug`)
+
+What a repository may bring (plugins/loading.md, "Trust check and component limits for repository
+plugins", "Check why a repository plugin didn't load"; permissions.md, "What runs before you trust a
+folder"; hooks.md, "Workspace trust"). All pure: the host answers the facts, the kit decides.
+
+```ts
+import { decideRepositoryPlugin, loadRepositoryPlugin } from '@rsaryev/claude-plugin-kit';
+
+const verdict = decideRepositoryPlugin({ origin: 'skills-dir', folderTrusted, parentTrusted: false,
+  nonInteractive: false, primaryDirIsRoot: true, worktree: false });          // { load, reason, from }
+const loaded = await loadRepositoryPlugin({ files }, 'skills-dir');            // limits applied
+```
+
+| API | What it does |
+| --- | --- |
+| `decideRepositoryPlugin(facts)`, `repositoryCauses(facts)`, `REPOSITORY_ORIGINS` | whether a project `@skills-dir` plugin, a project-scope marketplace plugin or a plugin of `~/.claude/skills/` loads: the folder itself must be trusted (a parent's trust and `-p` never suffice; your own skills folder is exempt), the plugin sits in the session's primary directory (parents are not searched), a managed block (`SkillsDirBlock`) stops both skills folders; in a worktree it is read from the main checkout |
+| `explainRepositoryPlugin(facts)` | the decision with each cause in words (`/cd`, the trust dialog, `/status` and `Enterprise managed settings`) |
+| `loadRepositoryPlugin(input, origin)`, `repositoryLoadInput`, `limitRepositoryPlugin`, `COMPONENT_LIMITS` | `loadPlugin` for a repository-supplied plugin: MCP servers wait for the per-server approval of a project `.mcp.json` (`approvals`), a bundle (`.mcpb`, `.dxt`, a URL) is skipped with an issue, a server file outside the directory is refused, monitors do not load; one limit per component kind, none for `~/.claude/skills/` |
+| `WorkspaceTrust` (port) | `isFolderTrusted(path, signal?)`: whether the dialog was accepted for the key; the host stores it |
+| `workspaceTrustKey(facts)`, `workspaceTrustState(trust, facts, signal?)`, `manualTrustEntry(key)` | the key (repository root, the main checkout in a worktree, the start directory outside a repository; the home directory is not persisted), `folder` / `parent` / `none`, and the `~/.claude.json` entry that trusts by hand |
+| `settingsHooksMayRun(nonInteractive, state)` | interactive sessions hold hooks of every settings file until the dialog; `-p` and the SDK treat the folder as trusted |
+| `projectEntryApplies(entry, folderTrusted)`, `trustDialogListing(permissions)` | `allow` and `additionalDirectories` of a project file apply only once trusted; `deny` and `ask` always |
+| `trustSituation(facts)`, `contentGate(content, situation)`, `CONTENT_GATES` | the docs' table, one row per kind of repository content: used, held for the dialog, asks per server, never; the stderr line and the static-`headers` fallback; a nested repository follows the dialog (or the `-p` column) |
+| `localSettingsVerdict(facts)` | when `.claude/settings.local.json` needs trust: tracked in git or a `.claude` symlink; git runs only once trusted; the configuration home applies it at once |
+| `probeFolder(files, folderName, origin)`, `skillsDirPluginEnabled`, `skillsDirCommands(plugin, folder)` | whether a folder is a `@skills-dir` or `@inline` plugin (a manifest is required in a skills directory, optional for `--plugin-dir`), its id, `defaultEnabled`, root skill and components, and the commands (`/my-tool`, `/my-tool:example`) |
+| `planPluginScaffold({ name, scope, withSkills? })` | the files `claude plugin init` writes under `~/.claude/skills/<name>/` (or the same layout under `.claude/skills/<name>/` to share through a repository) and the two lines it prints; the host writes |
+| `pluginDebugSteps(facts)`, `COMPONENT_CHECKS` | the ordered "Test and debug" checks |
+
 ### Variable substitution (done: `loading/resolve`)
 
 What a plugin's `${...}` references become, shared by hooks, skills, MCP, LSP and monitors so none

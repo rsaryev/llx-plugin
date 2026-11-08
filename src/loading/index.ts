@@ -24,3 +24,80 @@ export type {
   ReaderContext,
 } from './reader-types.ts';
 export * from './validate/index.ts';
+export type { WorkspaceTrust } from './ports.ts';
+export {
+  REPOSITORY_ORIGINS,
+  REPOSITORY_REASONS,
+  decideRepositoryPlugin,
+  isRepositorySupplied,
+  repositoryCauses,
+} from './repository-trust.ts';
+export type {
+  RepositoryDecision,
+  RepositoryOrigin,
+  RepositoryPluginFacts,
+  RepositoryReason,
+  RepositorySource,
+} from './repository-trust.ts';
+export type { SkillsDirBlock } from './repository-types.ts';
+export {
+  COMPONENT_LIMITS,
+  limitRepositoryPlugin,
+  loadRepositoryPlugin,
+  repositoryLoadInput,
+} from './repository-limits.ts';
+export type { ComponentLimit, Limited } from './repository-limits.ts';
+export {
+  BUNDLES_NOT_LOADED,
+  MONITORS_NOT_LOADED,
+  WORKTREE_NOTE,
+  explainRepositoryPlugin,
+} from './repository-messages.ts';
+export type { RepositoryExplanation } from './repository-messages.ts';
+export {
+  CONTENT_GATES,
+  PROJECT_PERMISSION_ENTRIES,
+  REPOSITORY_CONTENT,
+  TRUST_SITUATIONS,
+  contentGate,
+  projectEntryApplies,
+  trustDialogListing,
+  trustSituation,
+} from './trust-gates.ts';
+export type {
+  Consent,
+  ContentGate,
+  ProjectPermissionEntry,
+  RepositoryContent,
+  TrustSituation,
+  TrustSituationFacts,
+} from './trust-gates.ts';
+export {
+  manualTrustEntry,
+  settingsHooksMayRun,
+  workspaceTrustKey,
+  workspaceTrustState,
+} from './workspace-trust.ts';
+export type { TrustFacts, TrustKey, WorkspaceTrustState } from './workspace-trust.ts';
+export { LOCAL_TRUST, localSettingsVerdict } from './local-settings-trust.ts';
+export type {
+  LocalSettingsFacts,
+  LocalSettingsVerdict,
+  LocalTrust,
+} from './local-settings-trust.ts';
+export {
+  FOLDER_ORIGINS,
+  probeFolder,
+  skillsDirCommands,
+  skillsDirPluginEnabled,
+} from './folder-plugin.ts';
+export type { FolderOrigin, FolderPlugin, FolderProbe, SkillsDirFolder } from './folder-plugin.ts';
+export { SCAFFOLD_SCOPES, planPluginScaffold } from './plugin-scaffold.ts';
+export type {
+  ScaffoldFile,
+  ScaffoldInput,
+  ScaffoldPlan,
+  ScaffoldScope,
+} from './plugin-scaffold.ts';
+export { COMPONENT_CHECKS, pluginDebugSteps } from './plugin-debug.ts';
+export type { DebugFacts, DebugPlace, DebugStep } from './plugin-debug.ts';

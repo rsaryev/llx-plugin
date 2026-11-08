@@ -4,6 +4,16 @@
 
 ### Added
 
+- Repository plugins and workspace trust: `decideRepositoryPlugin` (the folder itself must be trusted;
+  a parent's trust and `-p` never suffice; `~/.claude/skills/` is exempt; the primary directory, a
+  worktree's main checkout and a managed block), `loadRepositoryPlugin` and its component limits (MCP
+  servers wait for per-server approval, bundles and files outside the directory are skipped, monitors do
+  not load), `contentGate` (the table of what runs before a folder is trusted), `workspaceTrustKey`,
+  `workspaceTrustState`, `settingsHooksMayRun`, `localSettingsVerdict`, `projectEntryApplies` and the
+  `WorkspaceTrust` port. The folder-is-a-plugin probe (`probeFolder`: `@skills-dir` needs a manifest,
+  `--plugin-dir` does not), `planPluginScaffold` (`claude plugin init`) and `pluginDebugSteps`. An inline
+  (`settings`) marketplace on `strictKnownMarketplaces` now needs identical `plugins` as well as the name.
+
 - The install and cache lifecycle: `decideInstallMode` (in place, copied or linked, and the printed
   directory refusals), `planTreeCopy` (the symlink rule of a cache copy), `escapedPathIssue`,
   `planInstallStart` and `planInstallFinish` (fetch plan, cache folder, record change, orphaned
