@@ -205,3 +205,18 @@ spec('mcp.behavior.Respond to MCP elicitation requests', () => {
     );
   });
 });
+
+spec('hooks.output.ElicitationResult.Cancel the request', () => {
+  test('cancel goes to the server along with the values the user submitted; decline withholds them; an Elicitation hook cancel sends none', () => {
+    const answer = { action: 'accept', content: { a: 'user' } } as const;
+    expect(
+      overrideElicitationResult(answer, { hookEventName: 'ElicitationResult', action: 'cancel' }),
+    ).toEqual({ action: 'cancel', content: { a: 'user' } });
+    expect(
+      overrideElicitationResult(answer, { hookEventName: 'ElicitationResult', action: 'decline' }),
+    ).toEqual({ action: 'decline' });
+    expect(
+      autoRespondElicitation({ hookEventName: 'Elicitation', action: 'cancel', content: { a: 1 } }),
+    ).toEqual({ action: 'cancel' });
+  });
+});

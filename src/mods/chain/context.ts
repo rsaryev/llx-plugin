@@ -3,6 +3,7 @@ import { MOD_LIMITS } from '../../protocol/mods-limits.ts';
 import type { Clock } from '../../ports/index.ts';
 import type { DispatchOptions, EventRules, HookAccess } from '../types.ts';
 import type { ChainEntry } from './registry.ts';
+import type { Steps } from './trace.ts';
 
 /** What one dispatch of an event shares across the hooks it runs. */
 export interface Context {
@@ -20,6 +21,8 @@ export interface Context {
   /** How long the matcher engine has for one test. */
   readonly matcherMs: number;
   readonly admit?: (access: HookAccess) => boolean;
+  /** The steps the dispatch took, when `DispatchOptions.trace` asked for them. */
+  readonly steps?: Steps;
 }
 
 /** The events whose hooks have less than the usual 10 seconds (reference.md, "Limits"). */

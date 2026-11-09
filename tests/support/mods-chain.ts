@@ -133,6 +133,8 @@ export interface FireOptions {
   readonly reentry?: ReentryInfo;
   readonly groupMs?: number;
   readonly before?: (e: unknown) => unknown;
+  readonly only?: DispatchOptions['only'];
+  readonly trace?: DispatchOptions['trace'];
 }
 
 type Raw = {
@@ -166,6 +168,13 @@ export function harness(
     hooks: readonly RegisteredHook[],
     api: Readonly<Record<string, Method>> = {},
   ): readonly PluginIssue[] => chain.register({ name, api: fakeApi(name, api) }, tier, hooks);
+  /** A mod the host placed: `position` is where it runs among the mods of its tier. */
+  const modAt = (
+    name: string,
+    tier: RegisterTier,
+    position: number,
+    hooks: readonly RegisteredHook[],
+  ): readonly PluginIssue[] => chain.register({ name, api: fakeApi(name), position }, tier, hooks);
   const options = (given: FireOptions): DispatchOptions => ({
     origin: given.origin ?? ENGINE_ORIGIN,
     signal: given.signal ?? new AbortController().signal,
@@ -179,12 +188,14 @@ export function harness(
     ...(given.reentry ? { reentry: given.reentry } : {}),
     ...(given.before ? { before: given.before } : {}),
     ...(given.groupMs === undefined ? {} : { groupMs: given.groupMs }),
+    ...(given.only === undefined ? {} : { only: given.only }),
+    ...(given.trace ? { trace: given.trace } : {}),
   });
   const fire = (name: string, input: Ev = {}, given: FireOptions = {}): Promise<unknown> =>
     raw.dispatch(name, input, options(given));
   const fireStream = (name: string, input: Ev = {}, given: FireOptions = {}) =>
     raw.dispatchStream(name, input, options(given));
-  return { clock, chain, reports, coreSeen, mod, fire, fireStream };
+  return { clock, chain, reports, coreSeen, mod, modAt, fire, fireStream };
 }
 
 /** Lets every promise that can settle settle; time does not move. */

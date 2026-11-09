@@ -19,6 +19,7 @@ import { nestingProblem } from './nesting.ts';
 import { reentryFailure } from './reentry.ts';
 import type { ChainEntry } from './registry.ts';
 import { TIER_RANK } from './tiers.ts';
+import { coreStep, hookStep } from './trace.ts';
 
 /** A hook of the chain where it is about to run, with what it needs. */
 interface Site {
@@ -36,9 +37,13 @@ interface Run {
 }
 
 async function* runCore(ctx: Context, e: unknown): Stream {
-  const out = ctx.options.core(ctx.rules.coreInput(ctx.name, ctx.input, e));
+  const started = ctx.clock.now();
+  const received = ctx.rules.coreInput(ctx.name, ctx.input, e);
+  const out = ctx.options.core(received);
   if (isAsyncIterator(out)) return yield* out;
-  return await out;
+  const returned = await out;
+  coreStep(ctx, { started, received, returned });
+  return returned;
 }
 
 /**
@@ -199,9 +204,15 @@ function noteAnswer(site: Site): void {
 }
 
 async function* invoke(site: Site): Stream {
+  const started = site.ctx.clock.now();
   const skipped = reentryFailure(site.entry.plugin.name, site.ctx.options.reentry);
   const outcome: Outcome = skipped ? { failed: skipped } : yield* attempt(site, hookRun(site));
   if (!('value' in outcome)) return yield* recover(site, outcome.failed);
   noteAnswer(site);
+  await hookStep(
+    site.ctx,
+    { ...site, latest: site.downstream.latest()?.result },
+    { started, returned: outcome.value },
+  );
   return outcome.value;
 }

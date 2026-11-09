@@ -25,6 +25,11 @@
       "bun": "./src/testing/index.ts",
       "import": "./dist/testing/index.js"
     },
+    "./elicitation": {
+      "types": "./dist/format/mcp-elicitation.d.ts",
+      "bun": "./src/format/mcp-elicitation.ts",
+      "import": "./dist/format/mcp-elicitation.js"
+    },
     "./layout": {
       "types": "./dist/format/layout.d.ts",
       "bun": "./src/format/layout.ts",

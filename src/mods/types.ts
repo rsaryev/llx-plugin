@@ -9,6 +9,7 @@ import type {
   StreamEventName,
 } from '../protocol/mods-events.ts';
 import type { ModsMethod, ModsNamespace } from '../protocol/mods-api-names.ts';
+import type { DispatchTrace } from './trace-types.ts';
 import type { ElementTable } from './ui/elements/table.ts';
 
 /**
@@ -144,6 +145,12 @@ export interface ModPluginInfo {
   readonly api: ModsApi;
   /** Native modules remain trusted even when the host places them in the user tier. */
   readonly isBuiltin?: boolean;
+  /**
+   * Where the mod runs among the mods of its tier: a lower number first, whenever it registered.
+   * A host that loads mods one at a time (in the order its own settings give) gives each one; mods
+   * with none run after those with one, in the order they registered (judgment).
+   */
+  readonly position?: number;
 }
 
 /** Admission uses the original frozen input, not a previous hook's rewrite. */
@@ -235,13 +242,18 @@ export interface DispatchOptions {
    * Only this mod's hooks handle the event: what Claude Code fires for one mod alone (`ui.message`
    * and `ui.fault` reach the mod that drew the `Client`, reference.md, "Interface").
    */
-  readonly only?: string;
+  readonly only?: string | ReadonlySet<string>;
   /** The debug log: the chain says there which mod answered without calling `next`. */
   readonly debug?: (line: string) => void;
   /** The limit all the hooks of the event share, in milliseconds; `session.end` has one by default. */
   readonly groupMs?: number;
   /** Observes each valid hook result before outer hooks can replace it (engine settings refusals). */
   readonly observeResult?: (value: unknown) => void;
+  /**
+   * Told once the dispatch has settled (or failed) which hooks ran and what each one did: a host's
+   * diagnostics (judgment, spec/judgments.md: the docs describe no such trace).
+   */
+  readonly trace?: (trace: DispatchTrace) => void;
 }
 
 export interface ModChain {
@@ -252,6 +264,11 @@ export interface ModChain {
     hooks: readonly RegisteredHook[],
   ): readonly PluginIssue[];
   unregister(plugin: string): void;
+  /**
+   * Whether a mod has a hook that handles `event` (`only` limits it to the mods named: one name or a
+   * set). A host asks before it builds an event the mods would never see. A matcher is not tested.
+   */
+  hears(event: string, only?: string | ReadonlySet<string>): boolean;
   dispatch<N extends AnyModEventName>(
     name: N,
     input: EventOf<N>,

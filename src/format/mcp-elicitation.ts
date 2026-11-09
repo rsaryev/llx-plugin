@@ -9,6 +9,16 @@ import type {
 } from '../protocol/official.ts';
 import { contentOf, formAnswer, type ElicitationAnswer } from './mcp-elicitation-form.ts';
 
+export {
+  elicitationFieldProblems,
+  elicitationFormFields,
+  type ElicitationAnswer,
+  type ElicitationField,
+  type ElicitationFieldType,
+  type ElicitationFormat,
+  type ElicitationValue,
+} from './mcp-elicitation-form.ts';
+
 /**
  * MCP elicitation (mcp.md, "Respond to MCP elicitation requests", "Elicitation modes Claude Code
  * declares"): a server asks for input mid-task, in form mode (fields the server defines) or URL mode
@@ -114,12 +124,17 @@ export function elicitationHookFacts(request: ElicitationRequest): ElicitationHo
   };
 }
 
-/** An answer: only an acceptance carries content (judgment, spec/judgments.md: MCP defines content for `accept`). */
+/**
+ * An answer, with the content only the actions in `carrying` send. Judgment (spec/judgments.md): MCP
+ * defines `content` for `accept`; the docs add that an `ElicitationResult` hook's `cancel` goes to the
+ * server "along with the values the user submitted", and that a decline is "without the user's values".
+ */
 const answered = (
   action: ElicitationResult['action'],
   content: Readonly<Record<string, unknown>> | undefined,
+  carrying: readonly ElicitationResult['action'][],
 ): ElicitationResult =>
-  action === 'accept' && content !== undefined
+  carrying.includes(action) && content !== undefined
     ? { action, content: contentOf(content) }
     : { action };
 
@@ -131,7 +146,7 @@ export function autoRespondElicitation(
   output: ElicitationHookSpecificOutput | undefined,
 ): ElicitationResult | undefined {
   if (output?.action === undefined) return undefined;
-  return answered(output.action, output.content);
+  return answered(output.action, output.content, ['accept']);
 }
 
 /** The `ElicitationResult` hook "can override the action or content before the response is sent". */
@@ -139,5 +154,8 @@ export function overrideElicitationResult(
   result: ElicitationResult,
   output: ElicitationResultHookSpecificOutput,
 ): ElicitationResult {
-  return answered(output.action ?? result.action, output.content ?? result.content);
+  return answered(output.action ?? result.action, output.content ?? result.content, [
+    'accept',
+    'cancel',
+  ]);
 }

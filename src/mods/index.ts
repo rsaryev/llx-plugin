@@ -6,3 +6,4 @@ export * from './load/index.ts';
 export * from './ui/index.ts';
 export type * from './ports.ts';
 export type * from './types.ts';
+export type * from './trace-types.ts';

@@ -15,8 +15,10 @@ import type {
 import { GROUP_MS, type Context } from './context.ts';
 import type { Stream } from './downstream.ts';
 import { runFrom } from './invoke.ts';
+import { isAmong } from './only.ts';
 import { createRegistry } from './registry.ts';
 import { NO_RULES } from './rules.ts';
+import { stepsFor, traceOf } from './trace.ts';
 import { deepFreeze } from '../../foundation/index.ts';
 
 export interface ModChainOptions {
@@ -64,11 +66,12 @@ export function createModChain(options: ModChainOptions): ModChain {
       clock: options.clock,
       chain: registry
         .chainFor(name, opts.caller)
-        .filter((entry) => opts.only === undefined || entry.plugin.name === opts.only),
+        .filter((entry) => isAmong(opts.only, entry.plugin.name)),
       input: frozen,
       rules,
       matcherMs: options.matcherMs ?? MATCHER_MS,
       ...(options.admit === undefined ? {} : { admit: options.admit }),
+      ...stepsFor(opts),
       ...(groupMs === undefined
         ? {}
         : {
@@ -82,12 +85,14 @@ export function createModChain(options: ModChainOptions): ModChain {
       return yield* runFrom(ctx, 0, frozen);
     } finally {
       ctx.group?.budget.dispose();
+      opts.trace?.(traceOf(ctx));
     }
   }
 
   return {
     register: (plugin, tier, hooks) => registry.register(plugin, tier, hooks),
     unregister: (plugin) => registry.unregister(plugin),
+    hears: (event, only) => registry.hears(event, only),
     dispatch: async <N extends AnyModEventName>(
       name: N,
       input: EventOf<N>,
