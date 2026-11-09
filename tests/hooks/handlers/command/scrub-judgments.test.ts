@@ -42,8 +42,8 @@ describe('the scrub of a hook process (oracle 2.1.321)', () => {
     const env = await scrubbed(
       Object.fromEntries(candidates.map(({ name, value }) => [name, value])),
     );
-    for (const { name } of candidates)
-      expect([name, env[name] ?? null]).toEqual([name, left[name]]);
+    const got = Object.fromEntries(candidates.map(({ name }) => [name, env[name] ?? null]));
+    expect(got).toEqual(left);
   });
 
   test('the switch reads `true` as `1`', async () => {
