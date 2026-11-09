@@ -1,3 +1,4 @@
+import type { HookPorts } from '../hooks/index.ts';
 import type { PermissionRule } from '../rules/index.ts';
 import type { EffortLevel, PermissionMode } from '../protocol/official.ts';
 import type { SessionLimits, ShellPermission } from '../skills/index.ts';
@@ -8,6 +9,14 @@ import type { SessionLimits, ShellPermission } from '../skills/index.ts';
  * session's for good.
  */
 export interface SessionOptions {
+  /**
+   * Ports of the hook engine this session binds itself: the model evaluators, the MCP caller, the
+   * observer and the like, for a host that shares one `PluginHost` among sessions and so cannot
+   * give them to the host once. Each given port replaces the host's of that name for this session's
+   * dispatches; a port left out stays the host's. Judgment (spec/judgments.md): the docs do not
+   * describe the embedding.
+   */
+  readonly hookPorts?: Partial<HookPorts>;
   readonly sessionId: string;
   /** The working directory: hook input `cwd`, and where `if` path rules and shell placeholders run. */
   readonly cwd: string;

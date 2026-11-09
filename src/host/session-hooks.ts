@@ -52,7 +52,7 @@ function sessionOf(
     forceEnabledPlugins: new Set(
       state.active.filter((plugin) => gates.forceEnabled(plugin.id)).map((plugin) => plugin.id),
     ),
-    mcpAvailable: state.options.ports.mcp !== undefined,
+    mcpAvailable: (options.hookPorts?.mcp ?? state.options.ports.mcp) !== undefined,
   };
 }
 
@@ -86,7 +86,7 @@ function engineOf(
   options: SessionOptions,
   environment: HookEnvironment,
 ) {
-  const { ports } = state.options;
+  const ports = { ...state.options.ports, ...options.hookPorts };
   const windows = state.options.windows ?? false;
   return createHookEngine(ports, {
     ...state.options.hookExecution,
