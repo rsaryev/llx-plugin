@@ -1,4 +1,5 @@
 import type { ChannelPluginRef } from '../protocol/official.ts';
+import { OFFICIAL_MARKETPLACE } from './marketplaces/registry.ts';
 import type { ChannelAccount } from './channels/channel-gate.ts';
 import type { WorkflowSize } from './workflows/size.ts';
 
@@ -41,4 +42,24 @@ export interface PolicyContext {
   readonly workflowSizeChoice?: WorkflowSize;
   /** The session has ultracode on (`/effort ultracode`): the `Large workflow` warning does not show then. */
   readonly ultracode?: boolean;
+}
+
+/**
+ * A `PolicyContext` from the facts a host knows; every fact it leaves out takes the value that grants
+ * the least (spec/judgments.md): an API-key (`console`) account without Pro, no managed settings and no
+ * parent merge, no folder trusted, an empty environment, no default channel allowlist, and the one
+ * official marketplace the docs name (plugins/loading.md).
+ */
+export function policyContext(facts: Partial<PolicyContext> = {}): PolicyContext {
+  return {
+    account: 'console',
+    plan: { pro: false },
+    hasManagedSettings: false,
+    parentMerge: false,
+    isFolderTrusted: () => false,
+    env: {},
+    defaultChannelAllowlist: [],
+    officialMarketplaces: [OFFICIAL_MARKETPLACE],
+    ...facts,
+  };
 }

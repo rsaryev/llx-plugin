@@ -1,5 +1,5 @@
 /** Settings layers and the policy keys, pure over data (docs/API.md, "Settings"). */
-export type { PolicyContext } from './context.ts';
+export { policyContext, type PolicyContext } from './context.ts';
 export { problemKind, type ProblemKind } from './broken-file.ts';
 export { mergeSettingsHooks } from './hooks-policy.ts';
 export {

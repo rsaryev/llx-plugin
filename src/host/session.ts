@@ -8,6 +8,7 @@ import { createTurnScope, type HookScope, type TurnScope } from './session-hook-
 import { createHookPart, type HookPart } from './session-hooks.ts';
 import { createMentionPart, type MentionPart } from './session-mentions.ts';
 import { createSkillPart, type SkillPart } from './session-skills.ts';
+import { createToolCheckPart, type ToolCheckPart } from './session-tool-check.ts';
 import type { SessionOptions } from './session-types.ts';
 import { applyTurn, type TurnOptions } from './turn.ts';
 
@@ -34,6 +35,7 @@ export interface TurnPart {
 export type PluginSession = SkillPart &
   MentionPart &
   HookPart &
+  ToolCheckPart &
   HookScope &
   ComponentPart &
   TurnPart &
@@ -65,6 +67,7 @@ function viewOf(
       ...content.folders.current(),
     ]),
     ...part,
+    ...createToolCheckPart(part),
     get hookEnvironment() {
       return part.hookEnvironment;
     },

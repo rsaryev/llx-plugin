@@ -31,7 +31,7 @@ A name lives in one subpath; the root re-exports the few a host loop calls.
 
 | Import                                    | What it holds                                                                                                                                     |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@rsaryev/claude-plugin-kit`              | `createPluginHost` and its sessions, `loadPlugin`, `validatePlugin`, `decide`, the permission policy, `preToolUseHookOutcome`, the port types, Claude Code's types and closed lists |
+| `@rsaryev/claude-plugin-kit`              | `createPluginHost` and its sessions (`session.checkTool`), `loadPlugin`, `validatePlugin`, `decide`, the permission policy and `policyContext`, `preToolUseHookOutcome`, the port types, Claude Code's types and closed lists |
 | `@rsaryev/claude-plugin-kit/loading`      | loading, repository plugins and workspace trust, variable substitution, MCP, LSP and monitors of a plugin (`src/entry/loading.ts`)                  |
 | `@rsaryev/claude-plugin-kit/format`       | the reader of every plugin file (`src/entry/format.ts`)                                                                                            |
 | `@rsaryev/claude-plugin-kit/skills`       | skills and commands (`src/entry/skills.ts`)                                                                                                        |
@@ -1259,6 +1259,22 @@ Outcomes that need the host's facts:
 - **The permission check.** `preToolUseHookOutcome(outcome)` turns a `PreToolUse` outcome into the
   `DecideContext.hook` the rules read (`decision`, `blocked` for an exit 2, `hasUpdatedInput`), which is
   how `AskUserQuestion` and `ExitPlanMode` stay unapproved by an `allow` without `updatedInput`.
+  `session.checkTool(call, { toolUseId, permissions, signal })` does the whole check of one call: the
+  `PreToolUse` hooks, then `decide` over the input they return (`updatedInput`, dropped after a deny or
+  a defer) with their answer. It returns `{ hook, input, decision }`: `input` is what runs. The prompt,
+  a deferred turn and the auto-mode review of a changed input stay the host's. `permissions` is the
+  `context` of `startPermissions`; `policyContext(facts)` fills the `PolicyContext` facts a host leaves
+  out with the value that grants the least (an API-key account, nothing trusted, no managed settings).
+
+```ts
+const view = createPolicyView(layers);
+const started = startPermissions({ policy: createPermissionsPolicy(view, policyContext()), start, paths });
+if (started.outcome === 'refused') throw new Error(started.reason);
+const { input, decision } = await session.checkTool(
+  { toolName: 'Bash', input: { command: 'npm test' } },
+  { toolUseId, permissions: started.context, signal },
+);
+```
 - **A task completed.** `DispatchRequest.taskCompletedBy` (`task-update` or `teammate-turn`) says what
   fired `TaskCompleted`: a `TaskUpdate` call ignores `continue: false`, a teammate's finished turn is
   stopped by it and an `ok: false` prompt hook then behaves as on `TeammateIdle`. Without it

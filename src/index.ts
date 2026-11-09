@@ -42,6 +42,7 @@ export { decide, type DecideContext, type Decision, type PreparedCall } from './
 export {
   createPermissionsPolicy,
   createPolicyView,
+  policyContext,
   readSettingsLayer,
   type PermissionsPolicy,
   type PolicyContext,

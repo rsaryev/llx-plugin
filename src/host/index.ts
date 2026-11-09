@@ -2,6 +2,7 @@
 export { createPluginHost, type PluginHost, type UpdateResult } from './host.ts';
 export type { BackgroundListener } from './background-queue.ts';
 export type { PluginSession, TurnPart } from './session.ts';
+export type { ToolCheck, ToolCheckPart } from './session-tool-check.ts';
 export type { SessionOptions } from './session-types.ts';
 export type { TurnOptions } from './turn.ts';
 export type {
