@@ -159,8 +159,9 @@ executes the plugin: point it only at fixtures written for it.
 registers, plugin by plugin, for the fixtures of `tests/fixtures/runtime/<case>/` (each folder is a
 tiny plugin of its own, named after the case). Claude Code's side is the `init` event of
 `claude -p --plugin-dir <fixture> --output-format stream-json --verbose --max-turns 1 hi`, run as a
-black box (`scripts/oracle/runtime.ts`) in a private config folder and a private working folder, with
-an invalid API key so the model call fails and nothing is spent. It runs the fixture's hooks and MCP
+black box (`scripts/oracle/runtime.ts`) in a private home, config folder and working folder, with no
+inherited variable but `PATH`, an invalid API key and an API address nothing listens on; the run is
+ended at `init`, before the model is asked, so nothing is spent. It runs the fixture's hooks and MCP
 servers (a stdio server that does not exist is enough: its name is registered, its status `failed`),
 so point it only at fixtures written for it, never at a third-party or corpus plugin. The event is
 cached per Claude Code version and content hash of the fixture in `.cache/oracle-runtime/<version>/`;

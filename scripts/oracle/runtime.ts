@@ -1,9 +1,10 @@
 /**
  * The runtime oracle: what a Claude Code SESSION registers from a plugin, read from the `init`
  * event of `claude -p --plugin-dir <fixture> --output-format stream-json --verbose` run as a black
- * box (never reading the program). An invalid API key makes the model call fail, so the run costs
- * nothing; the config folder and the working folder are private, so no person's settings, plugins
- * or project play a part.
+ * box (never reading the program). The run ends at `init`, before the model is asked, and an
+ * invalid key and an API address nothing listens on keep it from reaching the API; the home, config
+ * and working folders are private and no variable but `PATH` is inherited, so no person's settings,
+ * plugins or project play a part.
  *
  * This RUNS the plugin's hooks and MCP servers: point it only at fixtures written for this
  * purpose (tests/fixtures/runtime), never at a third-party or corpus plugin.
@@ -82,44 +83,56 @@ export async function claudeVersion(): Promise<string | undefined> {
 
 const TIMEOUT_MS = 120_000;
 
-/** One run of `claude -p` over the fixture; `undefined` when no `init` event came. */
+/**
+ * Nothing of the person's machine reaches the run: a private home, config folder and working
+ * folder, no inherited variable but `PATH`, an invalid key and an API address nothing listens on.
+ */
+const isolatedEnv = (scratch: string): Record<string, string> => ({
+  PATH: process.env.PATH ?? '',
+  HOME: join(scratch, 'home'),
+  CLAUDE_CONFIG_DIR: join(scratch, 'config'),
+  ANTHROPIC_API_KEY: 'sk-ant-invalid-for-oracle',
+  ANTHROPIC_BASE_URL: 'http://127.0.0.1:9',
+  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+  DISABLE_TELEMETRY: '1',
+  DISABLE_AUTOUPDATER: '1',
+});
+
+/** The first `init` of a stream-json stdout, read line by line; the reader stops there. */
+async function firstInit(stdout: ReadableStream<Uint8Array>): Promise<RuntimeInit | undefined> {
+  const decoder = new TextDecoder();
+  let pending = '';
+  for await (const chunk of stdout) {
+    pending += decoder.decode(chunk, { stream: true });
+    const lines = pending.split('\n');
+    pending = lines.pop() ?? '';
+    const init = parseInit(lines.join('\n'));
+    if (init !== undefined) return init;
+  }
+  return parseInit(pending);
+}
+
+/** One run of `claude -p` over the fixture, ended at its `init`; `undefined` when none came. */
 async function runClaude(fixture: string): Promise<RuntimeInit | undefined> {
   const scratch = await mkdtemp(join(tmpdir(), 'runtime-oracle-'));
   try {
+    await mkdir(join(scratch, 'config'), { recursive: true });
+    await mkdir(join(scratch, 'home'), { recursive: true });
     const settings = await readFile(join(fixture, SETTINGS_FILE), 'utf8').catch(() => undefined);
-    if (settings !== undefined) {
-      await mkdir(join(scratch, 'config'), { recursive: true });
-      await writeFile(join(scratch, 'config', 'settings.json'), settings);
-    }
-    const run = Bun.spawn(
-      [
-        'claude',
-        '-p',
-        '--plugin-dir',
-        fixture,
-        '--output-format',
-        'stream-json',
-        '--verbose',
-        '--max-turns',
-        '1',
-        'hi',
-      ],
-      {
-        cwd: scratch,
-        env: {
-          ...process.env,
-          CLAUDE_CONFIG_DIR: join(scratch, 'config'),
-          ANTHROPIC_API_KEY: 'sk-ant-invalid-for-oracle',
-        },
-        stdout: 'pipe',
-        stderr: 'ignore',
-      },
-    );
+    if (settings !== undefined) await writeFile(join(scratch, 'config', 'settings.json'), settings);
+    const args = ['-p', '--plugin-dir', fixture, '--output-format', 'stream-json', '--verbose'];
+    const run = Bun.spawn(['claude', ...args, '--max-turns', '1', 'hi'], {
+      cwd: scratch,
+      env: isolatedEnv(scratch),
+      stdout: 'pipe',
+      stderr: 'ignore',
+    });
     const timer = setTimeout(() => run.kill(), TIMEOUT_MS);
-    const out = await new Response(run.stdout).text();
+    const init = await firstInit(run.stdout);
+    run.kill();
     await run.exited;
     clearTimeout(timer);
-    return parseInit(out);
+    return init;
   } finally {
     await rm(scratch, { recursive: true, force: true });
   }
