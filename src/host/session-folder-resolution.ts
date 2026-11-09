@@ -40,7 +40,11 @@ export function createFolderResolution(
       addedDirectories: directories.added(),
       taken: taken(),
     });
-    listed = resolution.resolved.map(({ invocable, names }) => ({ invocable, names }));
+    listed = resolution.resolved.map(({ invocable, names, readBody }) => ({
+      invocable,
+      names,
+      readBody,
+    }));
     sources = sourcesOf(resolution);
     previous = state;
   };

@@ -1,3 +1,4 @@
+import { dedupeSettingsHandlers } from './dedupe.ts';
 import type { HookEvent } from '../../protocol/official.ts';
 import type { HookSession, RegisteredHandler } from '../contracts.ts';
 import { supportsHandlerType } from './event-catalog.ts';
@@ -58,5 +59,22 @@ export function hasRunnableHandler(
       entry.event === event &&
       supportsHandlerType(event, entry.handler.type) &&
       passesGates(entry, session),
+  );
+}
+
+/**
+ * The handlers of `entries` that would run in the session, in order: they pass the gates and have a
+ * type their event supports (matchers and `if` are not read), and a handler written in several
+ * settings files is listed once (hooks.md, "Hook handler fields"). What a host lists in a `/hooks` view.
+ */
+export function runnableHandlers(
+  entries: readonly RegisteredHandler[],
+  session: HookSession,
+): readonly RegisteredHandler[] {
+  return dedupeSettingsHandlers(
+    entries.filter(
+      (entry) =>
+        supportsHandlerType(entry.event, entry.handler.type) && passesGates(entry, session),
+    ),
   );
 }

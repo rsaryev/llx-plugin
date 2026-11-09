@@ -31,7 +31,7 @@ export const NO_REDIRECTS: RedirectFacts = {
   protectedWrite: false,
 };
 
-interface Target {
+export interface Target {
   readonly text: string;
   readonly kind: 'output' | 'input';
   /** A `cd` ran earlier in the command. */
@@ -76,7 +76,8 @@ const teeTargets = (words: readonly string[], afterCd: boolean): Target[] =>
         .map((text) => ({ text, kind: 'output' as const, afterCd }))
     : [];
 
-function targetsOf(command: string): Target[] {
+/** The files a command's redirections and `tee`s read or write, as written, in the order they run. */
+export function redirectTargets(command: string): readonly Target[] {
   const scan = scanCommand(command);
   let afterCd = false;
   const targets: Target[] = [];
@@ -141,7 +142,7 @@ function judgeTarget(target: Target, ctx: DecideContext): RedirectFacts {
 
 /** What the redirect targets of a Bash command ask of the permission check. */
 export function redirectFacts(command: string, ctx: DecideContext): RedirectFacts {
-  const judged = targetsOf(command).map((target) => judgeTarget(target, ctx));
+  const judged = redirectTargets(command).map((target) => judgeTarget(target, ctx));
   return {
     denied: judged.some((fact) => fact.denied),
     approval: judged.some((fact) => fact.approval),

@@ -47,6 +47,8 @@ export {
 export { createScope, type CallContext, type Scope } from './scope.ts';
 export { createStateStore, type StateStore } from './state.ts';
 export { atom, read, update, type Atom, type AtomKey, type StateHost } from './state-library.ts';
+export { contextUsage } from './context-usage.ts';
+export { STATE_LIBRARY_SOURCE } from './state-library-source.ts';
 export { isValidModName, nameProblem } from './names.ts';
 export {
   settingsLayersForMods,

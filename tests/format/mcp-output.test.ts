@@ -10,6 +10,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import {
+  boundedMcpErrorText,
   limitMcpResult,
   mcpOutputLimits,
   persistedResultMessage,
@@ -234,5 +235,27 @@ describe('what the docs leave open', () => {
       action: 'inline',
       exceedsTokenLimit: true,
     });
+  });
+});
+
+describe('the text of an error that is not a result (judgment)', () => {
+  test('mcp.md "MCP output limits and warnings": error text over about 11,000 characters keeps its two 5,000-character ends, as a result does', () => {
+    const text = `${'a'.repeat(5_000)}${'m'.repeat(2_000)}${'z'.repeat(5_000)}`;
+    const message = boundedMcpErrorText(text);
+    const result = limitMcpResult({ content: [{ type: 'text', text }], isError: true }, limitsOf());
+    expect(result).toMatchObject({ action: 'error', message });
+    expect(message.startsWith('a'.repeat(5_000))).toBe(true);
+    expect(message.endsWith('z'.repeat(5_000))).toBe(true);
+    expect(message).toContain('2000 characters removed');
+    expect(boundedMcpErrorText('short')).toBe('short');
+  });
+
+  test('an error cut inside a character that takes two UTF-16 units drops that half, not both', () => {
+    const text = `${'a'.repeat(4_999)}\u{1F6A8}${'m'.repeat(3_000)}\u{1F6A8}${'z'.repeat(4_999)}`;
+    const message = boundedMcpErrorText(text);
+    expect(message).not.toMatch(
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/,
+    );
+    expect(message.startsWith('a'.repeat(4_999))).toBe(true);
   });
 });

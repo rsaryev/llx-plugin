@@ -30,7 +30,8 @@ export type McpBundleServer = McpStdioServerConfig | McpSSEServerConfig | McpHtt
 export interface McpBundle {
   /** The `name` in the bundle's manifest: the server takes this name. */
   readonly name: string;
-  readonly server: McpBundleServer;
+  /** The kit reads it as any `mcpServers` entry (`readMcpServer`), so a manifest-shaped record does. */
+  readonly server: McpBundleServer | Readonly<Record<string, unknown>>;
   /** The bundle's `user_config` block, by setting name. */
   readonly userConfig?: Readonly<Record<string, McpBundleSetting>>;
 }

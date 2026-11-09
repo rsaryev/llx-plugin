@@ -162,6 +162,26 @@ export interface Command extends InvocableFrontmatter {
   readonly body: string;
 }
 
+/**
+ * A skill or a command read without its body: every field of the frontmatter and the identity, so a
+ * catalog, a listing and a `/` menu are built, and no Markdown is kept in memory (judgment,
+ * spec/judgments.md, "metadata-first catalog"). The body is read when the skill runs, through a
+ * `BodyReader`.
+ */
+export type SkillHead = Omit<Skill, 'body'>;
+export type CommandHead = Omit<Command, 'body'>;
+export type InvocableHead = SkillHead | CommandHead;
+
+/**
+ * Reads the body of a skill or command the catalog holds without it. The read happens when it is
+ * called, through the host's file port, and nothing is memoized: a body edited since the scan is
+ * what the call returns (skills.md, "Edit a skill during a session"), and a host that wants a cache
+ * keeps its own. It is `undefined` when the file is gone or no longer loads as a skill, and it
+ * rejects with the port's own error when the host's port refuses the read (a file over a size limit,
+ * text that is not UTF-8). The frontmatter fields stay as the scan read them until the next scan.
+ */
+export type BodyReader = (signal?: AbortSignal) => Promise<string | undefined>;
+
 /** Where a `SKILL.md` sits: its origin and the name of its folder. */
 export interface SkillLayout {
   readonly origin: SkillOrigin;

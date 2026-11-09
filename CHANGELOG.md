@@ -2,14 +2,30 @@
 
 ## [Unreleased]
 
+### Changed
+
+- The folder scan is metadata-first: `ScannedEntry` and `ResolvedFolderSkill` hold the skill or command
+  without its body (`SkillHead`, `CommandHead`, `InvocableHead`) and a `BodyReader` (`readBody(signal?)`)
+  that reads the body through the host's `FolderScan` port when the skill runs, fresh each time. A port
+  that refuses a file now skips that file with a warning instead of failing the scan, and a session
+  expands an edited folder skill without a reload. `Invocable` is `InvocableHead`, and `stackSkills` keeps
+  the caller's skill type.
+
 ### Added
 
-- `SessionOptions.hookPorts`: a session binds its own hook ports (model evaluators, MCP caller, observer), so one `PluginHost` can serve many sessions.
+- `readMcpbManifest`, `bundleServerOf`, `fillBundleSettings`, `requiredBundleSettings` and `missingBundleSettings` read an MCPB bundle's own manifest (name, server for the platform, `user_config`, variables), so a host that opens bundles keeps no manifest parser; `modelVisibleMcpTool` applies `_meta.ui.visibility` and `boundedMcpErrorText` bounds the error text of a failed call as an error result is bounded.
+- `structuredPatchOf(diff)` turns a unified diff into the `structuredPatch` hunks of an `Edit` or `Write` result, so a host that reports tool results to `PostToolUse` hooks does not parse diffs itself.
+- `STATE_LIBRARY_SOURCE` is the JavaScript text of `atom`, `read` and `update` for a host that bundles them into an isolate; `atom` now returns a frozen value. `contextUsage({ tokens, window })` builds the `context` of `$.session.usage()` and `session.measure`.
+- Export `rangesOverlap(ranges)`: whether any version satisfies every range, so a host does not fetch a dependency at a combined range no version meets, and `combineRanges` reports the conflict.
+- `bashFileTargets(command, paths)` reads the files a Bash line names for `Read` and `Edit` rules (file commands and redirection targets), so a host does not keep its own list of them.
+- `SessionOptions.hookPorts`: a session binds its own hook ports (model evaluators, MCP caller, observer), so one `PluginHost` can serve many sessions; `withTurn({ hookPorts })` binds those of one run.
+- `session.hookEntries()` and `runnableHandlers(entries, session)`: the registered hooks that would run, with their source, for a read-only `/hooks` view.
 - `readChannelNotification(params)` reads the params of a channel notification (`content` string required, `meta` kept for identifier keys with string values), so a host does not write its own validator before `channelTag`.
 - Export `findInjections` and `runInjections` (with their context, port and result types), so a host that binds skill arguments itself, for hostile input, still finds and runs the documented `` !`command` `` placeholders through the kit.
 
 ### Fixed
 
+- `parseRule` reads `Task(...)` as `Agent(...)`, as sub-agents.md says the renamed tool still works.
 - Declare the MCP SDK as a peer: the public protocol declarations reference its official types,
   so consumer projects must not depend on this checkout's development dependencies to find them.
 - Background hook deliveries carry their command's exit code, so hosts can keep a failed `once`

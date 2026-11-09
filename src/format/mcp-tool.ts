@@ -102,6 +102,17 @@ export function readMcpToolHints(entry: unknown): McpToolHints {
 }
 
 /**
+ * Whether a server lists a tool for Claude (mcp.md, "Tool availability": "The server lists the tool for
+ * its own interface and not for Claude ... add `model` to the tool's `_meta.ui.visibility` to give
+ * Claude the tool"). Judgment (spec/judgments.md): an entry with no `_meta.ui.visibility` array, or
+ * with a malformed one, is visible; an array without `model` hides the tool from Claude.
+ */
+export function modelVisibleMcpTool(entry: unknown): boolean {
+  const visibility = memberOf(memberOf(memberOf(entry, '_meta'), 'ui'), 'visibility');
+  return !Array.isArray(visibility) || visibility.includes('model');
+}
+
+/**
  * The callable names of the tools of one server that "require explicit approval on every call", for
  * `DecideContext.requiresUserInteraction` of the permission check. `server` is the name the tools are
  * registered under (`pluginMcpServerName` for a plugin's).

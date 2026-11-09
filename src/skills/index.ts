@@ -156,6 +156,7 @@ export {
   type SkillsDirectoryPlugin,
 } from './scan/scan.ts';
 export { scanNested, type NestedScan } from './scan/nested.ts';
+export { scanSkillContainer, type ContainerRequest } from './scan/container.ts';
 export {
   resolveFolderSkills,
   type NameHolder,

@@ -3,6 +3,7 @@ import {
   hasRunnableHandler,
   mergeWatchPaths,
   registerHooks,
+  runnableHandlers,
   type HookOutcome,
   type HookSession,
   type HookSource,
@@ -140,6 +141,14 @@ export interface HookScope {
   removeHooks(prefix: string): void;
   /** Whether a handler that passes this turn's gates would run for the event (matchers are not read). */
   hasHooks(event: HookEvent): boolean;
+  /**
+   * The handlers that would run in this turn, in registry order (plugins, settings files, then what
+   * was added): each with its event, matcher, official handler object, id and `source` (kind, label,
+   * scope, plugin name), for a read-only `/hooks` view (hooks.md, "The `/hooks` menu"). A handler the
+   * gates silence (`disableAllHooks`, trust, a disabled plugin, a managed lock) or of a type its
+   * event does not support is not listed; a `once` handler that was consumed is gone.
+   */
+  hookEntries(): readonly RegisteredHandler[];
   /** The literal names of the FileChanged matchers, then the dynamic `watchPaths`, each once. */
   fileChangedWatchList(): readonly string[];
   /** The background deliveries that settled since the last call (docs/API.md, "Background hooks"). */
@@ -182,6 +191,7 @@ export function createHookScope(
       const now = session();
       return hasRunnableHandler(core.registry.get().entries, now, event);
     },
+    hookEntries: () => runnableHandlers(core.registry.get().entries, session()),
     fileChangedWatchList: () => {
       const now = session();
       return [

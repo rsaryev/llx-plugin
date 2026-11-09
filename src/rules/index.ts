@@ -57,6 +57,7 @@ export {
   type ToolType,
 } from './decide/approval-memory.ts';
 export { decide } from './decide/decide.ts';
+export { bashFileTargets, type BashFileTargets } from './decide/file-targets.ts';
 export {
   CHANGED_INPUT_DENIAL,
   reviewHookRewrite,
@@ -196,3 +197,4 @@ export {
   type BashEditFile,
 } from './tools/responses/bash-edit-diff.ts';
 export { interactiveShell, type InteractiveShell } from './tools/shell-selection.ts';
+export { structuredPatchOf, type PatchHunk } from './tools/responses/structured-patch.ts';

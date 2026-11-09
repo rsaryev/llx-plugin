@@ -79,16 +79,20 @@ describe('live change detection covers SKILL.md text only', () => {
     expect(runner.calls).toEqual([]);
   });
 
-  test('the kit never watches: the folders to watch are a list the host reads, and a change reaches the session only through reloadSkills', async () => {
+  test('the kit never watches: the folders to watch are a list the host reads; the metadata changes only through reloadSkills, the body is read when the skill runs', async () => {
     const files: Record<string, string> = { [`${toolbox}/SKILL.md`]: skillText('Toolbox') };
     const { session } = folderHostOf(files);
     const read = await session.reloadSkills({ signal: signal() });
     expect(read.watch).toEqual([`${HOME}/.claude/skills`]);
+    const describe = () =>
+      session.skills().menu.find((entry) => entry.name === 'toolbox')?.description;
     files[`${toolbox}/SKILL.md`] = skillText('Toolbox edited');
-    const stale = await session.expandSkill('toolbox', { signal: signal() });
-    expect(stale.ok && stale.text).toContain('Toolbox work');
+    // Judgment (spec/judgments.md, "metadata-first catalog"): the body is not held, so the edit is what runs.
+    const edited = await session.expandSkill('toolbox', { signal: signal() });
+    expect(edited.ok && edited.text).toContain('Toolbox edited work');
+    expect(describe()).toContain('Toolbox');
+    expect(describe()).not.toContain('edited');
     await session.reloadSkills({ signal: signal() });
-    const fresh = await session.expandSkill('toolbox', { signal: signal() });
-    expect(fresh.ok && fresh.text).toContain('Toolbox edited work');
+    expect(describe()).toContain('Toolbox edited');
   });
 });

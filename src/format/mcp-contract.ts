@@ -35,6 +35,7 @@ export {
   MCP_RESULT_SIZE_CEILING,
   MCP_TOOL_NAME_LIMIT,
   mcpPromptToolAnswer,
+  modelVisibleMcpTool,
   mcpToolSendCheck,
   permissionPromptToolNotFound,
   readMcpToolHints,
@@ -53,6 +54,7 @@ export {
   type McpToolPreparation,
 } from './mcp-tool-schema.ts';
 export {
+  boundedMcpErrorText,
   imageResultNote,
   limitMcpResult,
   MCP_DEFAULT_MAX_OUTPUT_TOKENS,
@@ -144,3 +146,17 @@ export {
   type McpStartupRun,
   type McpStartupServer,
 } from './mcp-startup.ts';
+export {
+  bundleServerOf,
+  bundleSettingKey,
+  fillBundleSettings,
+  MCPB_OPTION_TYPES,
+  missingBundleSettings,
+  readMcpbManifest,
+  requiredBundleSettings,
+  type McpbManifest,
+  type McpbOption,
+  type McpbOptionType,
+  type McpbRead,
+  type McpbVariables,
+} from './mcpb-manifest.ts';

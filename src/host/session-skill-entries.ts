@@ -1,5 +1,5 @@
 import type { Invocable } from '../skills/index.ts';
-import type { Command, Skill } from '../format/skill-types.ts';
+import type { InvocableHead } from '../format/skill-types.ts';
 import type { FolderEntry } from './session-folders.ts';
 import type { ActivePlugin, HostState } from './state.ts';
 
@@ -17,7 +17,7 @@ const folderName = (dir: string): string =>
  * skill gets its command name"). A skill that keeps its folder's name has no bare name (judgment: the
  * docs state it for a `name`), and neither has a plugin's root `SKILL.md`.
  */
-function bareName(invocable: Skill | Command): string | undefined {
+function bareName(invocable: InvocableHead): string | undefined {
   const { origin } = invocable;
   if (!('plugin' in origin) || origin.rootSkill === true || !('dir' in invocable)) return undefined;
   const bare = invocable.command.slice(`${origin.plugin}:`.length);
@@ -33,10 +33,12 @@ export function entriesOf(state: HostState): readonly Entry[] {
   const entries = state.active.flatMap((plugin) => {
     const commands = new Set(plugin.catalog.commands.map((command) => command.command));
     const skills = plugin.catalog.skills.filter((skill) => !commands.has(skill.command));
+    // A plugin's Markdown is read at load (`readCatalog`), so its body is already in hand.
     return [...skills, ...plugin.catalog.commands].map((invocable) => ({
       plugin,
       invocable,
       names: [invocable.command],
+      readBody: () => Promise.resolve(invocable.body),
     }));
   });
   const used = new Set(entries.map((entry) => entry.invocable.command));

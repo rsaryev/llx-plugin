@@ -119,11 +119,23 @@ const joined = (result: McpCallToolResult): string =>
 /** Judgment: the marker's wording; the docs say it "says how many characters were removed". */
 const removedMarker = (removed: number): string => `\n[... ${removed} characters removed ...]\n`;
 
-function errorVerdict(text: string): McpResultVerdict {
+/**
+ * The text of an error as Claude receives it: "Error text longer than about 11,000 characters keeps only
+ * its first 5,000 and last 5,000 characters". For an error that is not a tool's result (a failed call),
+ * so a host bounds both the same way.
+ */
+export const boundedMcpErrorText = (text: string): string => errorVerdict(text).message;
+
+const HIGH_SURROGATE = /[\uD800-\uDBFF]$/;
+const LOW_SURROGATE = /^[\uDC00-\uDFFF]/;
+
+/** Judgment (spec/judgments.md): a cut never leaves half of a character that takes two UTF-16 units. */
+function errorVerdict(text: string): Extract<McpResultVerdict, { readonly action: 'error' }> {
   if (text.length <= ERROR_TEXT_LIMIT) return { action: 'error', message: text, removed: 0 };
-  const removed = text.length - 2 * ERROR_TEXT_KEPT;
-  const message = `${text.slice(0, ERROR_TEXT_KEPT)}${removedMarker(removed)}${text.slice(-ERROR_TEXT_KEPT)}`;
-  return { action: 'error', message, removed };
+  const head = text.slice(0, ERROR_TEXT_KEPT).replace(HIGH_SURROGATE, '');
+  const tail = text.slice(-ERROR_TEXT_KEPT).replace(LOW_SURROGATE, '');
+  const removed = text.length - head.length - tail.length;
+  return { action: 'error', message: `${head}${removedMarker(removed)}${tail}`, removed };
 }
 
 /** Whether the text is too large to stay in the conversation, for a result with no image content. */

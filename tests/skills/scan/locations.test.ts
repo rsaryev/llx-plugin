@@ -133,7 +133,7 @@ describe('symlinked folders', () => {
       };
       const outcome = await scanOf(files);
       expect(outcome.entries.map((entry) => entry.invocable.command)).toEqual(['review']);
-      expect(outcome.entries[0]?.invocable.body).toContain('Review');
+      expect(await outcome.entries[0]?.readBody()).toContain('Review');
     });
 
     test('works in the enterprise and the project location too', async () => {

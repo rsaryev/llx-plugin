@@ -131,6 +131,7 @@ export {
   type ReleaseTag,
   type ResolvedVersion,
 } from './dependency-tags.ts';
+export { rangesOverlap } from './semver.ts';
 export {
   checkDeclaredDependency,
   constraintsOn,

@@ -7,7 +7,9 @@ import type { SessionOptions } from './session-types.ts';
  *
  * Judgment (spec/judgments.md): `sessionId`, `transcriptPath` and `trusted` are not here. They
  * name the session and its workspace trust, which a turn does not change; `interactive` is here
- * because the same session can serve a `-p` turn and an interactive one.
+ * because the same session can serve a `-p` turn and an interactive one; `hookPorts` is here
+ * because a host binds the model evaluators, MCP caller and observer of the run it serves, and a
+ * session outlives its runs (the turn's ports replace the session's whole).
  */
 export type TurnOptions = Partial<
   Pick<
@@ -23,6 +25,7 @@ export type TurnOptions = Partial<
     | 'folderTrustAccepted'
     | 'interactive'
     | 'limits'
+    | 'hookPorts'
   >
 >;
 
@@ -39,6 +42,7 @@ const TURN_FIELDS: { readonly [K in keyof Required<TurnOptions>]: true } = {
   folderTrustAccepted: true,
   interactive: true,
   limits: true,
+  hookPorts: true,
 };
 
 const isTurnKey = (key: string): key is keyof TurnOptions => Object.hasOwn(TURN_FIELDS, key);

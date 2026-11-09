@@ -131,8 +131,23 @@ const { resolved, shadowed } = resolveFolderSkills([...outcome.entries, ...neste
   addedDirectories: ['../cli'],
   taken: ['usage'], // commands other sources use: only a synced skill's short name yields to them
 });
-resolved[0]; // { invocable: Skill | Command, scope, names: ['deploy', 'deploy-staging'] }
+resolved[0]; // { invocable: SkillHead | CommandHead, readBody, scope, names: ['deploy', 'deploy-staging'] }
+const body = await resolved[0].readBody(signal); // the Markdown now, or undefined when the file is gone
 ```
+
+- **Metadata first.** A scanned entry holds the skill or command without its body (`SkillHead`,
+  `CommandHead`, `InvocableHead`: a `Skill` or `Command` minus `body`; `scanSkillContainer(folders, dir, container, request)` reads any other skills folder the same way) and a `BodyReader`,
+  `readBody(signal?)`, which reads the body through the same `FolderScan` port when the skill runs, so a
+  catalog of hundreds of skills holds names, descriptions and settings and not their Markdown. Contract
+  (judgment, `spec/judgments.md`): nothing is memoized (a host that wants a cache keeps its own, keyed by
+  what its port tells it changed); the folder is opened again on each call, so a body edited since the scan
+  is what runs while the frontmatter stays as the scan read it until the next scan; `undefined` means the
+  file is gone or no longer loads as a skill; a port that refuses a read (a size limit, text that is not
+  UTF-8) rejects, and at scan time the kit turns that rejection into a warning that carries the port's
+  message and goes on with the other files, in the agents scan too (an aborted `signal` still rejects). The session expands a
+  folder skill with the body read at that moment; a refused or missing file fails that expansion with an
+  issue. `listingLine`, `modelListing`, `menuEntries`, `invocationPolicy`, `checkInvocation`, `stackSkills`
+  and the mention readers accept heads.
 
 - `scanFolders` reads the scopes in precedence order (`SCAN_SCOPES`): managed, personal, project, the
   added directories, synced. A refused name (`anthropic-skills`, a folder `synced` in any
@@ -441,6 +456,7 @@ const { plan } = planPluginFetch(entry.source, { platform: 'posix' }); // data: 
 | `normalizeDependency(value, declaringMarketplace, path?)`, `dependencyId(dep)` | done | one `dependencies` item as `{ name, marketplace?, range? }` (the marketplace defaults to the declaring plugin's; none for a plugin loaded from claude.ai); `name` is required, `version` a valid node-semver range (an empty one is no constraint), each a string; `name` and the marketplace must satisfy the plugin id grammar (`a@b@c` is refused); `PluginIssue` otherwise |
 | `releaseTag(name, version)`, `parseReleaseTag(tag, name)`, `selectTag(tags, name, range)` | done | the `<name>--v<version>` tag convention; the highest tag in the range, a pre-release only with an opt-in range such as `^2.0.0-0` |
 | `combineRanges(ranges, tags, dep)` | done | the highest tag that satisfies every plugin's range; `has conflicting version requirements` (ranges listed), `has an invalid version requirement` or `has version requirements too complex to intersect` as a `PluginIssue`; `undefined` when the ranges overlap and no tag does (the current copy is fetched); the messages name the dependency by id (`name@marketplace`) |
+| `rangesOverlap(ranges)` | done | whether some version satisfies every range (`true`), none does (`false`) or there are too many `\|\|` alternatives to decide (`undefined`): the question `combineRanges` asks first, exported so a host that fetches a dependency at the combined range can skip the fetch for ranges no version meets and let `combineRanges` report `has conflicting version requirements` |
 | `autoUpdateDecision({ dep, ranges, tags, currentCopyVersion? })` | done | what auto-update does with a constrained dependency: update to the highest tag in every range, skip when the ranges conflict, else update to the current copy unless its version is outside any range |
 | `resolveDependencyVersion({ dep, ranges?, source, tags, currentCopyVersion? })`, `resolvedVersionLabel(resolved, commit?)` | done | what a constraint is checked against by source kind: a tag of its own repository (`github`, `url`, `git-subdir`; none in range is `has no git tag satisfying <range>`), a tag or else the current copy (`relative`), the plugin.json version (`npm`, `archive`, `command`); the tag version beats plugin.json; with `ranges` (every installed plugin's range on the dependency) several ranges resolve together (`combineRanges`); the label is the version `claude plugin list` shows, a tag's with its 12-character commit suffix (`2.1.0-8713c5b11005`) |
 | `checkInstalledDependency(dep, installed)`, `checkDependency(dep, copies, loadsFromClaudeAi)`, `InstalledDependency`, `DependencyIssue` | done | a `PluginIssue` with the `errorType` of `claude plugin list --json` (`dependency-unsatisfied`, `dependency-version-unsatisfied`): `Dependency "<dep>" is not installed`, `... is disabled`, `Requires "<dep>" <range>, installed <version>`; a `--plugin-dir` copy skips the range; a claude.ai plugin meets a marketplace dependency only for a plugin loaded from claude.ai (no version passes), and the `@synced` note names it only while it is enabled |
@@ -765,7 +781,7 @@ const { resolved, issues: more } = await resolveMcpServer('db', servers.db, scop
 | --- | --- |
 | `PluginMcpServer` | the SDK's stdio, SSE and HTTP configs plus the two things the SDK does not type: the `ws` transport and `headersHelper` on every remote server (mcp.md, "Option 4"); `type: "streamable-http"` reads as `http`; a `url` with no `type` and a `type: "sdk"` entry are dropped with the messages mcp.md quotes |
 | `collectMcpServers(files, manifestValue, { bundles?, bundleSettings?, signal? })` | root `.mcp.json` first, then each declared source in array order; sources load concurrently, merge in order |
-| `McpBundleReader` (port, optional) | the host opens a `.mcpb` or `.dxt` (extract into `.mcpb-cache`, or download) and returns `{ name, server, userConfig? }`; the kit never unzips or downloads, and never maps the MCPB manifest |
+| `McpBundleReader` (port, optional) | the host opens a `.mcpb` or `.dxt` (extract into `.mcpb-cache`, or download) and returns `{ name, server, userConfig? }`; the kit never unzips or downloads, and does not unzip: it reads the MCPB manifest (`readMcpbManifest`, see "MCP contracts") the host extracted |
 | `resolveMcpServer(name, server, scope)` | stdio: `command`, `args`, `env` substituted, the three path variables in `environment`; http, sse and ws: `url`, `headers`, `headersHelper` substituted, credential variables read as empty in `url` and `headers`; a `headersHelper` that references `${user_config.*}` keeps the server from starting |
 | `resolveChannel(channel, servers, scope)` | a `channels` entry against the plugin's servers: `server` must be a key of `mcpServers` (else an issue and no `resolved`), `displayName` defaults to the server name, and the channel's `userConfig` options join the plugin's so `${user_config.KEY}` in that server's `env` takes the saved value; `loadPlugin` reports a `channels[i].server` that names no server as an error issue (the plugin still loads) |
 | `validateUserConfigValues(config)` | one error per declared option whose value (saved, else `default`) would not be accepted: `required` and empty, a value of the wrong `type`, `multiple` not an array of strings, outside `options`, below `min` or above `max`; the dialog is the host's |
@@ -858,6 +874,9 @@ const verdict = limitMcpResult(result, mcpOutputLimits(lookup, hints, countToken
 | `mcpToolName`, `pluginMcpServerName`, `normalizeMcpServerName` | the `mcp__<server>__<tool>` name (moved from `rules`, which re-exports them) |
 | `mcpToolSendCheck(fullName)`, `MCP_TOOL_NAME_LIMIT` | a full name over 128 characters is left out, with the debug line |
 | `readMcpToolHints(entry)`, `requiringInteraction(server, tools)`, `MCP_RESULT_SIZE_CEILING` | `anthropic/maxResultSizeChars` and `requiresUserInteraction` (only the JSON `true` counts); the second feeds `DecideContext.requiresUserInteraction` so approval holds in every mode |
+| `modelVisibleMcpTool(entry)` | whether a server lists a tool for Claude: `_meta.ui.visibility` without `model` hides it, absent or malformed leaves it visible (a judgment) |
+| `boundedMcpErrorText(text)` | the text of an error Claude receives: over about 11,000 characters only the first and last 5,000 stay, for a failed call as for an error result |
+| `readMcpbManifest(manifest, platform)`, `bundleServerOf(manifest, variables)`, `fillBundleSettings(value, saved)`, `requiredBundleSettings(manifest)`, `missingBundleSettings(required, saved)`, `bundleSettingKey(server, key)` | an MCPB bundle's own `manifest.json` (a judgment: the format is not in the docs): the `name`, the `server.mcp_config` or `entry_point` for the platform with its `platform_overrides`, the `user_config` options; `${__dirname}`, `${HOME}`, `${/}`, `${pathSeparator}` substituted and `${user_config.<key>}` rewritten to `${user_config.<server>.<key>}`, which `fillBundleSettings` fills from the plugin's saved values; a required option with no default and no saved value keeps the server from starting. A host's `McpBundleReader.open` passes `bundleServerOf(...)` as `server` |
 | `prepareMcpTool(tool, policy)` (a `McpListedTool`: the SDK's `Tool` name and description, an input schema of any type), `excludedToolsNotice`, `refusedSchemaFallback` | a root-level combinator rewritten to an object schema, an invalid input schema excluded with a notice, a schema the API refused sent without parameters |
 | `mcpOutputLimits`, `limitMcpResult`, `persistedResultMessage`, `imageResultNote`, `mcpImageFiles`, `oversizedMcpMessage` | `MAX_MCP_OUTPUT_TOKENS` (default 25,000, warning at 10,000), the 50,000-character persistence, error results cut in the middle, images saved, the 16 MiB WebSocket message and HTTP/SSE response size |
 | `listablePrompts`, `mcpPromptListing`, `mcpPromptCommand`, `readMcpPromptInvocation` | MCP prompts as `/server:prompt (MCP)` commands and the arguments they take |
@@ -1318,7 +1337,7 @@ host.openSession(options: SessionOptions): PluginSession;
 session.withTurn(turn: TurnOptions): PluginSession;
 // TurnOptions: Partial<Pick<SessionOptions, 'permissionMode' | 'effort' | 'cwd' |
 //   'additionalDirectories' | 'permissions' | 'promptId' | 'scratchpadDir' | 'agent' |
-//   'folderTrustAccepted' | 'interactive' | 'limits'>>
+//   'folderTrustAccepted' | 'interactive' | 'limits' | 'hookPorts'>>
 ```
 
 A plugin runs when `HostPlugin.enabled` says so, else when `enabledPlugins` of the settings says so,
@@ -1346,6 +1365,7 @@ The session:
 | `runScoped(turn, run)` | `withTurn` for one run: `run` gets the view of the turn, and the hooks added with `lifetime: 'turn'` through it are dropped when `run` settles (see "Scoped hooks"). |
 | `addHooks(prefix, hooks, source, options?)`, `removeHooks(prefix)` | Hooks of a run, an agent or a skill added to and removed from the session; `addHooks` returns `{ remove() }` (see "Scoped hooks"). |
 | `hasHooks(event)` | Whether a handler that passes this turn's gates would run for the event. |
+| `hookEntries()` | The `RegisteredHandler`s that would run in this turn, in registry order (plugins, settings files, then what `addHooks` and skills added): `id`, `event`, `matcher`, the official `handler`, `source` (`kind`, `label`, `scope`, `pluginName`, `managed`) and `pluginId`. For a read-only `/hooks` view (hooks.md, "The `/hooks` menu"); a handler the gates silence, of a type its event does not support, or a consumed `once` one is not listed, and a handler written in several settings files is listed once. Also `runnableHandlers(entries, session)` over any registry. |
 | `fileChangedWatchList()` | The literal names of the `FileChanged` matchers, then the dynamic `watchPaths` of the last SessionStart, CwdChanged or FileChanged output that returned the field. |
 | `takeBackground()` | The background deliveries that settled since the last call, as `{ additionalContext[], systemMessages[], wake? }` (see "Background hooks"). |
 | `onBackground(listener)` | Calls `listener` with each background delivery as it settles (a `wake` included) and returns the function that stops it; it takes nothing from the queue. |
@@ -1379,7 +1399,9 @@ await turn.expandSkill('formatter:status', { signal });
 await turn.dispatch('PreToolUse', facts, { signal });
 ```
 
-A turn replaces the fields it names and keeps the others; `agent` replaces whole. It may not change
+A turn replaces the fields it names and keeps the others; `agent` and `hookPorts` replace whole (a host
+that serves one run per turn binds that run's model evaluators, MCP caller and observer with
+`withTurn({ hookPorts })`; a port the turn leaves out is the host's). It may not change
 `sessionId`, `transcriptPath` or `trusted`, which belong to the session (spec/judgments.md), and a
 field given as `undefined` is ignored: a turn replaces a field but cannot unset it. The session
 `withTurn` is called on does not change, and `withTurn` on a view builds on that view's fields. Views
@@ -1538,7 +1560,8 @@ const verdict = evaluateRules(rules, { toolName: 'Agent', input: { model: 'opus'
 
 | Function                         | Status  | Does                                                                         |
 | -------------------------------- | ------- | ---------------------------------------------------------------------------- |
-| `parseRule(text, { behavior, source })` | done | `Tool` / `Tool(specifier)` to a `PermissionRule`; a skipped rule is `rule: undefined` plus issues |
+| `parseRule(text, { behavior, source })` | done | `Tool` / `Tool(specifier)` to a `PermissionRule`; a skipped rule is `rule: undefined` plus issues; `Task(...)` is read as `Agent(...)` (sub-agents.md: the renamed tool "still work[s] as alias"), `rule.text` as written |
+| `bashFileTargets(command, paths)` | done | `{ reads, writes }`: the absolute POSIX paths a Bash line names for `Read` and `Edit` rules (permissions.md, "What `Read` and `Edit` rules cover"): redirection targets, `tee`, and the file commands `cat`, `head`, `tail`, `sed` (`-i` writes), `grep`, `cp`/`mv` (last operand written) and the like; a command that reads files without naming them gives none. `cd` is not followed (judgment). `decide` does not use it: a host matches the paths with `evaluateRules` |
 | `formatRule(value)`              | done    | the text of an official `PermissionRuleValue`                                |
 | `matchRule(rule, call, context)` | done    | bare rules, tool-name globs and `Tool(param:value)`; other specifiers go to the matcher of the tool's rule format |
 | `evaluateRules(rules, call, context)` | done | deny, then ask, then allow; the first match wins and specificity never reorders |
@@ -1563,6 +1586,7 @@ const verdict = evaluateRules(rules, { toolName: 'Agent', input: { model: 'opus'
 | `answerQuestions(input, selections)` | done | AskUserQuestion answered for a hook's `updatedInput`: `answers` maps question text to the label, multi-select joined with commas; `{ input, issues }` |
 | `effectiveExitPlanModeInput(input)`, `effectiveSearchMode(input)` | done | ExitPlanMode without the ignored `allowedPrompts`; WebSearch's `standard` or `extended` (absent is the full search) |
 | `expandToolPath(path, at)`, `expandToolInputPath(tool, input, at)` | done | the absolute `file_path` of `Write`, `Edit` and `Read` as hooks receive it: `~` and relative paths expanded, backslashes on Windows |
+| `structuredPatchOf(diff)` | done | the hunks of a unified diff as the `structuredPatch` of an `Edit` or `Write` result (`{ oldStart, oldLines, newStart, newLines, lines }`, SDK `FileEditOutput`); file headers are skipped, a no-newline marker stays with its line (judgment: the docs type the field and not how a host derives it) |
 | `applyEdit(content, { old_string, new_string, replace_all })` | done | the Edit tool's replacement (tools-reference.md): exact, no regex, `old_string` found exactly once unless `replace_all`, `new_string` inserted as plain text; `{ content, replacements, issues }` and the file untouched when refused |
 | `editEncodingIssue(bytes, tool)`, `writeEncodingIssue(existing, content)`, `NOT_UTF8_MESSAGE` | done | Edit and NotebookEdit refuse a file that is not valid UTF-8 (Edit accepts a UTF-16 little-endian byte-order mark); Write may replace such a file unless the content holds `U+FFFD` |
 | `effectiveBashTimeout(timeout, env)`, `backgroundTimeLimit({ session, env, timeout, moved })` | done | the foreground timeout (120000 default, 600000 ceiling, `BASH_DEFAULT_TIMEOUT_MS` and `BASH_MAX_TIMEOUT_MS`, the larger wins, above the maximum reduced) and the limit of a background command in an unattended session (30 minutes, 10 for `-p` text, 2 hours at most) |
@@ -1675,6 +1699,7 @@ const result = await chain.dispatch('tool.call', event, {
 | `settleModApi(built, answer, options)` | done    | the same engine-create settlement for a host-backed API: preserve built namespaces, apply changes, lend added methods through `{ plugin, scope, scopes, canWithhold }` |
 | `runScopedModCall(scope, method, run)` | done    | the same API-call admission for host-backed methods: reject `prompt.submit` while the scope is lent to a waiting hook; otherwise preserve the method's synchronous or asynchronous result |
 | `createRegistries()`, `createStateStore()`, `readEngineSettings(options)`, `withApiRules(rules)`, `isValidModName`, `atom`, `read`, `update` | done | what mods registered (commands, tools as `mcp__<plugin>__<name>`, subagent types), `$.state`, Claude Code's own `settings.read`, the shape rule for API calls, the 64-character name rule, the state helpers |
+| `STATE_LIBRARY_SOURCE`, `contextUsage({ tokens, window })` | done | the JavaScript text of `atom`, `read` and `update` for a host that bundles them behind `import … from 'claude-code'` into an isolate that never loads the kit (a test runs it beside the kit's own helpers); the `{ window, tokens, percent }` of `$.session.usage()` and `session.measure`, with `tokens` and `percent` left out while the window is not measured (judgment: whole percent) |
 | `createModsUi(options)`, `withUiRules(rules)`, `uiApi(deps, parts)` | done | the interface part: the `$.ui` of a mod (`ModsApiOptions.ui = ui.api`), `draw` a render site (fires `ui.render`, folds the answer), `loadMod` (fires `ui.resolve`), `fault(plugin, report)` and `message(plugin, data)` (each reaches only that mod's hooks), `change` (focus and scroll), the panes, the toast board and the redraw throttle; the chain takes `withUiRules(withApiRules(createEventRules()))` |
 | `defaultElementTable(surface)`, `treeProblem`, `sizeProblem`, `foldRender`, `renderEvent`, `decideSite` | done | the 12 elements an app draws, why a tree is not valid for a site and app, which size limit refuses it, what a site shows once the chain settled (tree, Claude Code's own drawing, refused), and the `ui.render` event for a site |
 | `routeControl`, `hotkeyTable`, `digitButton`, `actionButtons`, `collectControls` | done | a press, typing or a pick routed to a control by its key through `ui.press`, `ui.input`, `ui.select` before its callback; hotkeys (later duplicate wins, none in VS Code or a collapsed band), the band's digit hotkey, `action` bindings |

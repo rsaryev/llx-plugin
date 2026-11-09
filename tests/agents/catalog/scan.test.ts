@@ -9,6 +9,7 @@ import { scanAgents } from '../../../src/agents/catalog/scan.ts';
 import { folderScan } from '../../../src/testing/ports/index.ts';
 import { HOME, MANAGED, PROJECT } from '../../support/scan.ts';
 import { agent, namesOf, scan } from '../../support/agent-scan.ts';
+import { refusing } from '../../support/refusing-folders.ts';
 import { spec } from '../../support/spec.ts';
 
 spec('agents.behavior.Choose the subagent scope', () => {
@@ -156,5 +157,18 @@ describe('judgments of the agents scan (spec/judgments.md)', () => {
       { addedDirectories: ['/shared'], allows: (origin) => origin === 'managedDirectory' },
     );
     expect(namesOf(outcome)).toEqual(['managed:policy']);
+  });
+});
+
+describe('a port that refuses an agent file', () => {
+  test('skips that file with a warning that carries the port message, and lists the others', async () => {
+    const files = {
+      [`${HOME}/.claude/agents/big.md`]: agent('big'),
+      [`${HOME}/.claude/agents/small.md`]: agent('small'),
+    };
+    const folders = refusing(folderScan(files), 'big.md', 'file is 2 MiB');
+    const outcome = await scanAgents({ folders, request: { home: HOME, cwd: PROJECT } });
+    expect(outcome.entries.map((entry) => entry.agent.name)).toEqual(['small']);
+    expect(outcome.issues.map((issue) => issue.message).join('\n')).toContain('file is 2 MiB');
   });
 });

@@ -1,6 +1,6 @@
 import { createFolderResolution } from './session-folder-resolution.ts';
 import { warning, type PluginIssue } from '../format/issues.ts';
-import type { Command, Skill, SkillOrigin } from '../format/skill-types.ts';
+import type { BodyReader, InvocableHead, SkillOrigin } from '../format/skill-types.ts';
 import {
   isStrictlyBelow,
   scanFolders,
@@ -28,9 +28,11 @@ import type { HostState } from './state.ts';
  */
 
 export interface FolderEntry {
-  readonly invocable: Skill | Command;
+  /** The skill or command without its body: the session reads the body when it runs (`readBody`). */
+  readonly invocable: InvocableHead;
   /** Every name that invokes it, the listed command first. */
   readonly names: readonly string[];
+  readonly readBody: BodyReader;
 }
 
 /**

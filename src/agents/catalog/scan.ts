@@ -1,6 +1,7 @@
 import { readAgent } from '../../format/agent.ts';
 import type { AgentSource } from '../../format/agent-record.ts';
 import type { PluginIssue } from '../../format/issues.ts';
+import { readTextOf } from '../../foundation/folder-read.ts';
 import { walkFiles } from '../../foundation/folder-walk.ts';
 import type { ScanFolder } from '../../ports/folder-scan.ts';
 import type { AgentsOrigin } from '../../settings/customization/sources.ts';
@@ -72,8 +73,10 @@ async function readFiles(where: Where): Promise<AgentScanOutcome> {
   });
   const reads = await Promise.all(
     walked.found.map(async (file) => {
-      const text = await files.files.readText(file.path, context.signal);
-      if (text === undefined) return EMPTY;
+      const { text, issue } = await readTextOf(files, file.path, context.signal);
+      if (text === undefined) {
+        return { ...EMPTY, issues: issue === undefined ? [] : [issue] } satisfies AgentScanOutcome;
+      }
       const read = readAgent(text, { source, path: files.hostPath(file.path) });
       const entries: ScannedAgent[] =
         read.agent === undefined

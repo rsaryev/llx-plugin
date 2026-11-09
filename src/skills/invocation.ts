@@ -1,4 +1,4 @@
-import type { Command, Skill } from '../format/skill-types.ts';
+import type { InvocableHead } from '../format/skill-types.ts';
 import { exposureOf, type ModelListing, type SkillOverrides } from './visibility.ts';
 
 /**
@@ -7,8 +7,12 @@ import { exposureOf, type ModelListing, type SkillOverrides } from './visibility
  * reads the settings and passes `skillOverrides` in.
  */
 
-/** A skill or a command file: both carry the two frontmatter fields (skills.md, "Choose where skills load"). */
-export type Invocable = Skill | Command;
+/**
+ * A skill or a command file: both carry the two frontmatter fields (skills.md, "Choose where skills
+ * load"). The body is not needed to decide who may invoke it or how it is listed, so a skill read
+ * without its body (`InvocableHead`) is as good as a whole one.
+ */
+export type Invocable = InvocableHead;
 
 /**
  * Who starts a skill: the user typing `/name`, Claude through the Skill tool, a subagent's `skills`

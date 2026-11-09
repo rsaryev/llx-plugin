@@ -1,7 +1,7 @@
-import type { Command, Skill } from '../../format/skill-types.ts';
+import type { BodyReader, InvocableHead, SkillHead } from '../../format/skill-types.ts';
 import { SCOPE_RULES, type ScanScope } from './locations.ts';
 import { foldName, relativeBelow, segmentsOf } from './names.ts';
-import type { ScannedEntry } from './scan.ts';
+import type { ScannedEntry } from './scan-types.ts';
 
 /**
  * Which skill a name runs when several share it (skills.md, "Resolve skills that share a name", "How
@@ -28,8 +28,10 @@ export interface YieldedName {
 }
 
 export interface ResolvedFolderSkill {
-  /** The skill or command with its listed command (`/apps/web:deploy`, `/cli:verify`). */
-  readonly invocable: Skill | Command;
+  /** The skill or command, without its body, with its listed command (`/apps/web:deploy`, `/cli:verify`). */
+  readonly invocable: InvocableHead;
+  /** Reads its body when it runs (`ScannedEntry.readBody`). */
+  readonly readBody: BodyReader;
   readonly scope: ScanScope;
   /** Every name that invokes it, the listed command first. */
   readonly names: readonly string[];
@@ -73,7 +75,7 @@ interface NamingContext {
   readonly prefixes: ReadonlyMap<string, string>;
 }
 
-const isSkill = (invocable: Skill | Command): invocable is Skill => 'dir' in invocable;
+const isSkill = (invocable: InvocableHead): invocable is SkillHead => 'dir' in invocable;
 
 const unique = (names: readonly string[]): readonly string[] => [...new Set(names)];
 
@@ -161,13 +163,13 @@ function prefixesOf(directories: readonly string[]): ReadonlyMap<string, string>
   return found;
 }
 
-const withCommand = (invocable: Skill | Command, command: string): Skill | Command => ({
+const withCommand = (invocable: InvocableHead, command: string): InvocableHead => ({
   ...invocable,
   command,
 });
 
 /** Nested skills that took a qualified name say which directory they apply to (skills.md, "Load skills in monorepos"). */
-function qualified(invocable: Skill | Command, directory: string): Skill | Command {
+function qualified(invocable: InvocableHead, directory: string): InvocableHead {
   const note = `applies to ${directory}`;
   const { description } = invocable;
   return {
@@ -204,14 +206,14 @@ function place(entry: ScannedEntry, claims: Claims, context: NamingContext): Pla
   for (const name of names) claims.add(name, holder);
   const base = withCommand(entry.invocable, command);
   const invocable = usedFallback ? qualifiedNote(base, entry, context) : base;
-  return { resolved: { invocable, scope: entry.scope, names, yielded } };
+  return { resolved: { invocable, readBody: entry.readBody, scope: entry.scope, names, yielded } };
 }
 
 const qualifiedNote = (
-  invocable: Skill | Command,
+  invocable: InvocableHead,
   entry: ScannedEntry,
   context: NamingContext,
-): Skill | Command =>
+): InvocableHead =>
   isSkill(invocable) && entry.scope === 'nested'
     ? qualified(invocable, relativeBelow(context.options.cwd, entry.base))
     : invocable;

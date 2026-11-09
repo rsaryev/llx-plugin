@@ -14,6 +14,7 @@ import {
   mcpPromptToolAnswer,
   mcpToolName,
   mcpToolSendCheck,
+  modelVisibleMcpTool,
   pluginMcpServerName,
   readMcpToolHints,
   requiringInteraction,
@@ -242,6 +243,28 @@ describe('what the docs leave open', () => {
         parallelWithReadOnly: false,
         requiresUserInteraction: false,
       });
+    }
+  });
+});
+
+describe('which tools a server lists for Claude (judgment)', () => {
+  test('mcp.md "Tool availability": add `model` to `_meta.ui.visibility` to give Claude the tool', () => {
+    expect(modelVisibleMcpTool({ name: 't', _meta: { ui: { visibility: ['app'] } } })).toBe(false);
+    expect(
+      modelVisibleMcpTool({ name: 't', _meta: { ui: { visibility: ['model', 'app'] } } }),
+    ).toBe(true);
+  });
+
+  test('a tool with no visibility array, or a malformed one, is visible', () => {
+    for (const entry of [
+      { name: 't' },
+      { name: 't', _meta: {} },
+      { name: 't', _meta: { ui: [] } },
+      { name: 't', _meta: { ui: { visibility: 'app' } } },
+      null,
+      'x',
+    ]) {
+      expect(modelVisibleMcpTool(entry)).toBe(true);
     }
   });
 });

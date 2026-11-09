@@ -23,9 +23,9 @@ export interface StackOptions {
   readonly takesCommandArguments?: ReadonlySet<string>;
 }
 
-export interface Stack {
+export interface Stack<T extends Invocable = Invocable> {
   /** The skills to expand, in the order typed: the first, then the ones stacked after it. */
-  readonly skills: readonly Invocable[];
+  readonly skills: readonly T[];
   /** The text after the last expanded skill: passed as `$ARGUMENTS` to each of them. */
   readonly arguments: string;
 }
@@ -42,11 +42,11 @@ const stackableAfter =
  * The skills a message starts with and the argument text they share. An empty stack when the
  * message does not start with the name of a skill of the session; the host then treats it as text.
  */
-export function stackSkills(
+export function stackSkills<T extends Invocable>(
   message: string,
-  catalog: readonly Invocable[],
+  catalog: readonly T[],
   options: StackOptions = {},
-): Stack {
+): Stack<T> {
   const byCommand = new Map(catalog.map((skill) => [skill.command, skill]));
   const canStack = stackableAfter(options);
   const mentionOptions: MentionOptions = {

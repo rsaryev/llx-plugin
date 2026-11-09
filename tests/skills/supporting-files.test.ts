@@ -34,8 +34,13 @@ const FILES = {
 /** Scans the folder and expands the one skill found, with a runner that records what it ran. */
 async function expandFound() {
   const outcome = await scanOf(FILES);
-  const skill = outcome.entries[0]?.invocable;
-  if (skill === undefined || skill.kind !== 'skill') throw new Error('expected a skill');
+  const entry = outcome.entries[0];
+  const head = entry?.invocable;
+  const body = await entry?.readBody();
+  if (head === undefined || head.kind !== 'skill' || body === undefined) {
+    throw new Error('expected a skill');
+  }
+  const skill = { ...head, body };
   const runner = scriptedRunner({ stdout: 'checked' });
   const expansion = await expandSkill(
     skill,
@@ -57,7 +62,7 @@ spec('skills.behavior.Add supporting files', () => {
     const outcome = await scanOf(FILES);
     expect(outcome.entries.map((entry) => entry.invocable.command)).toEqual(['api-helper']);
     const [entry] = outcome.entries;
-    const body = entry?.invocable.body ?? '';
+    const body = (await entry?.readBody()) ?? '';
     expect(body.includes('REFERENCE')).toBe(false);
     expect(body.includes('EXAMPLES')).toBe(false);
     expect(body.includes('print("ok")')).toBe(false);

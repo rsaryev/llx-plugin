@@ -103,12 +103,24 @@ const skip = (at: RuleOrigin, problem: Problem): RuleParse => ({
 });
 
 /**
+ * "In version 2.1.63, the Task tool was renamed to Agent. Existing `Task(...)` references in settings
+ * and agent definitions still work as aliases." (sub-agents.md, "Restrict which subagents can be
+ * spawned"): a rule names the tool as `Agent`, its `text` stays as written.
+ */
+const RENAMED_TOOLS: Readonly<Record<string, string>> = { Task: 'Agent' };
+
+const renamed = (parts: RuleParts | undefined): RuleParts | undefined =>
+  parts === undefined
+    ? undefined
+    : { ...parts, toolName: RENAMED_TOOLS[parts.toolName] ?? parts.toolName };
+
+/**
  * Reads one permission rule (permissions.md, "Permission rule syntax"). A rule Claude Code skips or
  * ignores comes back as `rule: undefined` with the issue it reports; nothing throws.
  */
 export function parseRule(text: string, at: RuleOrigin): RuleParse {
   const raw = text.trim();
-  const parts = splitRule(raw);
+  const parts = renamed(splitRule(raw));
   if (parts === undefined) return skip(at, invalid(raw, MALFORMED_RULE));
   const refused = checkToolName(parts, at, raw);
   if (refused !== undefined) return skip(at, refused);

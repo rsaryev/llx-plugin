@@ -23,11 +23,8 @@ export interface StateHost {
   };
 }
 
-export const atom = <T>(key: AtomKey, initial: T): Atom<T> => ({
-  plugin: key.plugin,
-  key: key.key,
-  initial,
-});
+export const atom = <T>(key: AtomKey, initial: T): Atom<T> =>
+  Object.freeze({ plugin: key.plugin, key: key.key, initial });
 
 /** The value, or the atom's default while nothing was written. */
 export async function read<T>($: StateHost, value: Atom<T>): Promise<T> {

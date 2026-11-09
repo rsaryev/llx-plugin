@@ -126,13 +126,37 @@ interface Use {
   readonly options: SessionOptions;
 }
 
-function expansionOf(use: Use, entry: Entry, request: ExpandOptions): Promise<Expansion> {
+/** The body as the skill's file holds it now; a file the port refuses is the skill's failure, not a throw. */
+async function bodyOf(entry: Entry, signal: AbortSignal): Promise<string | Expansion> {
+  const { command } = entry.invocable;
+  try {
+    const body = await entry.readBody(signal);
+    return body ?? failed(command, 'The skill file is gone or no longer loads as a skill');
+  } catch (cause) {
+    if (signal.aborted) throw cause;
+    return failed(command, `The skill file cannot be read: ${errorText(cause)}`);
+  }
+}
+
+const errorText = (cause: unknown): string =>
+  cause instanceof Error ? cause.message : String(cause);
+
+/** The optional limits of a request, set only when the caller set them. */
+const requestLimits = (request: ExpandOptions) => ({
+  ...(request.bashOutputMaxChars === undefined
+    ? {}
+    : { bashOutputMaxChars: request.bashOutputMaxChars }),
+  ...(request.bare === undefined ? {} : { bare: request.bare }),
+});
+
+async function expansionOf(use: Use, entry: Entry, request: ExpandOptions): Promise<Expansion> {
+  const body = await bodyOf(entry, request.signal);
+  if (typeof body !== 'string') return body;
   const { state, gates, options } = use;
   const { ports } = state.options;
   const windows = state.options.windows ?? false;
-  const invoker = request.invoker ?? 'user';
   return expandSkill(
-    entry.invocable,
+    { ...entry.invocable, body },
     {
       arguments: request.arguments ?? '',
       sessionId: options.sessionId,
@@ -140,17 +164,14 @@ function expansionOf(use: Use, entry: Entry, request: ExpandOptions): Promise<Ex
       permissionMode: options.permissionMode,
       disableShellExecution: shellDisabled(state),
       shells: state.options.shells ?? { bash: true, powershell: windows },
-      context: { interactive: options.interactive ?? true, trigger: invoker },
+      context: { interactive: options.interactive ?? true, trigger: request.invoker ?? 'user' },
       session: skillSession(entry, windows),
       policy: {
         hooksLockedToPlugins: gates.pluginOnlyHooks,
         managedPermissionRulesOnly: managedPermissionRulesOnly(state),
       },
       cwd: options.cwd,
-      ...(request.bashOutputMaxChars === undefined
-        ? {}
-        : { bashOutputMaxChars: request.bashOutputMaxChars }),
-      ...(request.bare === undefined ? {} : { bare: request.bare }),
+      ...requestLimits(request),
       signal: request.signal,
     },
     {
