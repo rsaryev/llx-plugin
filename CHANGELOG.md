@@ -27,6 +27,8 @@
 
 ### Performance
 
+- One load asks the host's port for the `stat` or `exists` of a path once: repeated port calls on the
+  community corpus fell from 4.2% to 0.1% of all calls (69,148 instead of 72,130), with the same result.
 - `parseFrontmatter` reads a file line by line up to the closing `---` instead of splitting the whole
   file: 44% faster on the 67,907 Markdown files of claude-plugins-community, same result on each.
 

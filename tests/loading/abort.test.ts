@@ -1,5 +1,5 @@
 /**
- * Judgment (spec/judgments.md, `src/format/abortable-files.ts`): once the signal of `loadPlugin` or
+ * Judgment (spec/judgments.md, `src/format/load-files.ts`): once the signal of `loadPlugin` or
  * `validatePlugin` aborts, the call rejects with the signal's reason and the port is called no more,
  * whether or not the host's port honours the signal itself.
  */

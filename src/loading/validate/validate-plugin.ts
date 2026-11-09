@@ -1,4 +1,4 @@
-import { abortableFiles } from '../../format/abortable-files.ts';
+import { loadFiles } from '../../format/load-files.ts';
 import { errorIn } from '../../format/validate/finding.ts';
 import type { PluginFiles } from '../../ports/index.ts';
 import { componentsOnly } from './components-only.ts';
@@ -26,7 +26,7 @@ const NO_MANIFEST =
  */
 export async function validatePlugin(input: ValidatePluginInput): Promise<ValidationReport> {
   const { signal } = input;
-  const files = abortableFiles(input.files, signal);
+  const files = loadFiles(input.files, signal);
   const label = input.label ?? '.';
   if (await isMissing(files, signal)) {
     return { target: 'none', issues: [errorIn(label, 'file', `File not found: ${label}`)] };
