@@ -43,8 +43,36 @@ export const FILE_READING_PROGRAMS: ReadonlySet<string> = new Set([
   'file',
 ]);
 
-/** The "read-only forms of `git`" the docs do not list: a seed (spec/judgments.md). */
-export const GIT_READ_ONLY: ReadonlySet<string> = new Set(['status', 'log', 'diff', 'show']);
+/** `--output <file>` / `--output=<file>`: `git diff`, `log` and `show` write their output to a file. */
+const writesOutput = (args: readonly string[]): boolean =>
+  args.some((arg) => arg === '--output' || arg.startsWith('--output='));
+
+/** The flags of `git branch` that only list; any other word names, moves or deletes a branch. */
+const BRANCH_LISTING: ReadonlySet<string> = new Set([
+  '--show-current',
+  '--list',
+  '-a',
+  '--all',
+  '-r',
+  '--remotes',
+  '-v',
+  '-vv',
+  '--verbose',
+]);
+
+/**
+ * The "read-only forms of `git`" the docs do not list: a seed (spec/judgments.md), each subcommand
+ * with what keeps its arguments read-only.
+ */
+export const GIT_READ_ONLY: {
+  readonly [subcommand: string]: (args: readonly string[]) => boolean;
+} = {
+  status: () => true,
+  log: (args) => !writesOutput(args),
+  diff: (args) => !writesOutput(args),
+  show: (args) => !writesOutput(args),
+  branch: (args) => args.every((arg) => BRANCH_LISTING.has(arg)),
+};
 
 /** The read-only forms of `docker` and `podman`: a seed (spec/judgments.md). */
 const CONTAINER_READ_ONLY: ReadonlySet<string> = new Set([

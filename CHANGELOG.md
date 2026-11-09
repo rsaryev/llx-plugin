@@ -51,6 +51,9 @@
 
 ### Fixed
 
+- `git diff`, `git log` and `git show` with `--output` are no longer read-only commands: they write a
+  file. `git branch` with only listing flags (`--show-current`, `-a`, `-v`, …) is read-only.
+
 - An `env` value that is not a string is read as the text claude sets (`{"PORT": 8080}` is `"8080"`,
   `null` is `"null"`) with a warning, instead of being dropped (oracle 2.1.321).
 

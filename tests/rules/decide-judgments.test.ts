@@ -29,6 +29,21 @@ describe('the read-only set: the documented names, plus a seed of read-only git 
     }
   });
 
+  test('git branch that only lists is read-only; one that names a branch or deletes is not', () => {
+    for (const command of ['git branch', 'git branch --show-current', 'git branch -a -v']) {
+      expect(bash('default', command)).toEqual(allow('read-only-command'));
+    }
+    for (const command of ['git branch topic', 'git branch -d topic', 'git branch -m old new']) {
+      expect(bash('default', command)).toEqual(ask('default-prompt'));
+    }
+  });
+
+  test('a git read form that writes a file through --output prompts', () => {
+    for (const command of ['git diff --output=patch.txt', 'git log --output patch.txt']) {
+      expect(bash('default', command)).toEqual(ask('default-prompt'));
+    }
+  });
+
   test('git with an unquoted glob prompts (a glob could expand to a write-capable flag)', () => {
     expect(bash('default', 'git diff *.ts')).toEqual(ask('default-prompt'));
   });

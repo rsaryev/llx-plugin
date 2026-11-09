@@ -92,10 +92,13 @@ function readOnlyCd(words: readonly string[], walk: Walk): boolean {
   return true;
 }
 
-/** `git status`, `git log`, `git diff` and `git show`, with no option before the subcommand. */
+/** A read-only form of `git` (`GIT_READ_ONLY`), with no option before the subcommand. */
 function readOnlyGit(words: readonly string[], walk: Walk): boolean {
   walk.usedGit = true;
-  return GIT_READ_ONLY.has(words[1] ?? '');
+  const form = Object.hasOwn(GIT_READ_ONLY, words[1] ?? '')
+    ? GIT_READ_ONLY[words[1] ?? '']
+    : undefined;
+  return form?.(words.slice(2)) ?? false;
 }
 
 const SPECIAL: { readonly [program: string]: (words: readonly string[], walk: Walk) => boolean } = {
