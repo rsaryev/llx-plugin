@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Declare the MCP SDK as a peer: the public protocol declarations reference its official types,
+  so consumer projects must not depend on this checkout's development dependencies to find them.
 - Background hook deliveries carry their command's exit code, so hosts can keep a failed `once`
   hook registered instead of consuming it as a success.
 - Command hooks and `subprocessEnvironment` for Bash set `CLAUDE_EFFORT` to the session's effort level.
@@ -11,6 +13,10 @@
 
 ### Added
 
+- `settleModApi` and `runScopedModCall` share the built-in API's namespace lending and turn-start
+  admission with hosts supplying their own API adapters; no second engine-create policy is needed.
+- A `./layout` subpath exports the standard layout registry without importing the full host,
+  parsers or hook/mod engines. Small folder classifiers can depend on this boundary alone.
 - `HookEngineOptions.shellPaths`: the engine's bash hooks keep their path variables as environment
   references, as `resolveHookCommand` does.
 - `resolveHookCommand` option `shellPaths`: keep a bash hook's path variables as environment

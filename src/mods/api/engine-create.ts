@@ -6,9 +6,15 @@ import type { CallContext, Scope } from './scope.ts';
 
 type Method = (...args: readonly unknown[]) => unknown;
 const isMethod = (value: unknown): value is Method => typeof value === 'function';
+type ApiOwner = Pick<Deps, 'plugin' | 'scope'>;
 
 /** The scopes of the other loaded mods, which a lent method's calls run in the caller's context. */
 export type ScopeBook = Map<string, Scope>;
+
+export interface ModApiSettlementOptions extends ApiOwner {
+  readonly scopes: ScopeBook;
+  readonly canWithhold: boolean;
+}
 
 /** Runs `run` with `context` as the current one in every scope of `scopes`, until it settles. */
 function inAll<T>(
@@ -27,7 +33,7 @@ function inAll<T>(
  * caller's context (its working directory, its origin, and a `lent` re-entry), and a call that
  * starts a turn rejects. Calls that overlap from two mods can cross contexts.
  */
-function lend(method: Method, deps: Deps, book: ScopeBook): Method {
+function lend(method: Method, deps: ApiOwner, book: ScopeBook): Method {
   return (...args) => {
     const caller = deps.scope.current();
     const context: CallContext = {
@@ -41,7 +47,7 @@ function lend(method: Method, deps: Deps, book: ScopeBook): Method {
   };
 }
 
-const lendNamespace = (value: unknown, deps: Deps, book: ScopeBook): unknown =>
+const lendNamespace = (value: unknown, deps: ApiOwner, book: ScopeBook): unknown =>
   isRecord(value)
     ? Object.fromEntries(
         Object.entries(value).map(([name, member]) => [
@@ -57,17 +63,17 @@ const lendNamespace = (value: unknown, deps: Deps, book: ScopeBook): unknown =>
  * withhold it ("A mod outside the `user` tier can also withhold one"). Judgment: an answer that is
  * not an object is no change, and which mod answered is the host's to say (`canWithhold`).
  */
-function settleApi(
+export function settleModApi(
   built: ModsApi,
   answered: unknown,
-  options: { readonly deps: Deps; readonly book: ScopeBook; readonly canWithhold: boolean },
+  options: ModApiSettlementOptions,
 ): ModsApi {
   if (!isRecord(answered)) return built;
   const builtIn: ReadonlySet<string> = new Set(Object.keys(MODS_API));
   const kept = Object.entries(built).filter(([name]) => name in answered || !options.canWithhold);
   const added = Object.entries(answered)
     .filter(([name]) => !builtIn.has(name))
-    .map(([name, value]) => [name, lendNamespace(value, options.deps, options.book)]);
+    .map(([name, value]) => [name, lendNamespace(value, options, options.scopes)]);
   const changed = Object.entries(answered).filter(([name]) => builtIn.has(name));
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the namespaces of the built API, with a hook's changes and additions
   return Object.freeze({
@@ -93,5 +99,10 @@ export async function fireEngineCreate(
       core: () => Promise.resolve(built),
     },
   );
-  return settleApi(built, answer, { deps, ...options });
+  return settleModApi(built, answer, {
+    plugin: deps.plugin,
+    scope: deps.scope,
+    scopes: options.book,
+    canWithhold: options.canWithhold,
+  });
 }

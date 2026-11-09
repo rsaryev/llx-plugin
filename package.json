@@ -24,6 +24,11 @@
       "types": "./dist/testing/index.d.ts",
       "bun": "./src/testing/index.ts",
       "import": "./dist/testing/index.js"
+    },
+    "./layout": {
+      "types": "./dist/format/layout.d.ts",
+      "bun": "./src/format/layout.ts",
+      "import": "./dist/format/layout.js"
     }
   },
   "publishConfig": {
@@ -84,7 +89,8 @@
     "typescript": "7.0.2"
   },
   "peerDependencies": {
-    "@anthropic-ai/claude-agent-sdk": ">=0.3.319 <0.4.0"
+    "@anthropic-ai/claude-agent-sdk": ">=0.3.319 <0.4.0",
+    "@modelcontextprotocol/sdk": ">=1.32.2 <2.0.0"
   },
   "packageManager": "bun@1.4.4"
 }

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { ModsNamespaceApi } from '../types.ts';
 import { call, parse, type Deps } from './call.ts';
 import { droppedPrompt, refusing, waitsInQueue } from './refusal.ts';
+import { runScopedModCall } from './scoped-call.ts';
 
 /** `$.prompt.submit({ text, asUser })` (api.md, "Start a turn from a background job"). */
 const submit = z.looseObject({ text: z.string(), asUser: z.boolean().optional() });
@@ -20,11 +21,7 @@ export function promptApi(deps: Deps): ModsNamespaceApi<'prompt'> {
     // user's own words without it, and `asUser: false` is a plain submit. The sentence is the host's:
     // the port gets `from` or `asUser`.
     submit: async (...args) => {
-      const lent = deps.scope.current().lentTo;
-      // Judgment: "`$.prompt.submit` rejects while the turn is waiting on that hook"; the docs give no message.
-      if (lent !== undefined) {
-        throw new Error(`$.prompt.submit: the turn is waiting on a hook of ${lent}`);
-      }
+      runScopedModCall(deps.scope, 'prompt.submit', () => undefined);
       const request = parse('$.prompt.submit', submit, args[0]);
       // The `session.start` of a fresh copy does not submit what the first copy submitted.
       return deps.replay.once(deps.plugin, 'prompt.submit', () =>

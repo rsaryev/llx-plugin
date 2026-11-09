@@ -23,11 +23,15 @@ every finding's severity, message, file and path (docs/TESTING.md, "Corpus").
 ```sh
 # ~/.npmrc: @rsaryev:registry=https://npm.pkg.github.com
 bun add @rsaryev/claude-plugin-kit
-bun add -d @anthropic-ai/claude-agent-sdk --omit=optional   # types only
+bun add -d @anthropic-ai/claude-agent-sdk @modelcontextprotocol/sdk --omit=optional
 ```
 
-The kit uses the Agent SDK for types alone; its runtime and the Claude Code binary it ships as
-an optional dependency are never loaded, so install it without optional dependencies.
+The two SDK peers supply official types, including MCP tools and prompts. The kit never loads
+their runtimes or the Claude Code binary the Agent SDK ships as an optional dependency, so install
+them without optional dependencies. Keep these peers available wherever the kit's declarations
+are type-checked; a host does not need to start Claude Code or an MCP client to import the kit.
+For Node TypeScript projects, supply the runtime's `@types/node` and a library set including
+`esnext.disposable`, which the official Agent SDK declarations use.
 
 ## Use
 

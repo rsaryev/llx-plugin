@@ -21,6 +21,17 @@ or **planned** (designed here, not built yet). A planned part changes only throu
    tied to the official unions; what differs per member is a strategy in a registry typed over the
    union, so a member Anthropic adds fails the typecheck until it is handled.
 
+## Type dependencies
+
+`@rsaryev/claude-plugin-kit/layout` exposes the same `STANDARD_LAYOUT`, `COMPONENT_KINDS`,
+`declaredKey`, `componentsAt` and layout types as the root, through a dependency-free runtime entry.
+Use it when a folder classifier needs only the standard paths, not the plugin engine.
+
+The package declares `@anthropic-ai/claude-agent-sdk` and `@modelcontextprotocol/sdk` as peers:
+its public declarations refer to their official shapes. They must be available when a consumer
+type-checks the kit, not just when developing this repository. All SDK imports in the kit are
+type-only; importing the package starts neither Claude Code nor an MCP client.
+
 ## Format (done: the manifest)
 
 Pure functions over parsed JSON and file text. No ports.
@@ -1659,6 +1670,8 @@ const result = await chain.dispatch('tool.call', event, {
 | `clampReason`, `mergeToolCheck`, `skillPromptEvent`, `autocompleteRows` | done | the 4,096-character reason cut; the `tool.check` decision with plan mode (a mod can tighten a call that is not read-only, not approve it) and the organization's `ceiling: 'ask'` (an `allow` still asks); the `skill.prompt` event from a skill and its parsed frontmatter; Claude Code's autocomplete rows then the mods' |
 | `toolReadOnlyReport(call, checks)`, `inputChangedDenial(call)`, `withheldResultText(call)`, `promptDroppedText(reason)`, `unansweredCommandReply(plugin, command)` | done | `e.isReadOnly` of `tool.check` as `true` or `undefined` (never `false`: Read, Grep, Glob, WebSearch, WebFetch and Agent report it, Bash through the host's read-only command check, an MCP tool by its `readOnlyHint`); the auto-mode denial of a call whose input a hook changed after the review (`a hook changed this call's input after the model wrote it`, or `after auto mode reviewed it`); what Claude reads when a hook withholds the result of a call that ran (`Bash ran, and a plugin withheld its result: <reason>`); the line the user sees of a dropped prompt (`Prompt dropped by a hook: <reason>`); the reply for a command a mod registered that no `command.run` hook answered |
 | `createModsApi(options, plugin)`      | done    | the `$` of one mod: every namespace of the reference, each call an event through the chain and then a port; `engine.create` fires once and may add or withhold a namespace; `dispose()` stops its timers and forgets its registrations |
+| `settleModApi(built, answer, options)` | done    | the same engine-create settlement for a host-backed API: preserve built namespaces, apply changes, lend added methods through `{ plugin, scope, scopes, canWithhold }` |
+| `runScopedModCall(scope, method, run)` | done    | the same API-call admission for host-backed methods: reject `prompt.submit` while the scope is lent to a waiting hook; otherwise preserve the method's synchronous or asynchronous result |
 | `createRegistries()`, `createStateStore()`, `readEngineSettings(options)`, `withApiRules(rules)`, `isValidModName`, `atom`, `read`, `update` | done | what mods registered (commands, tools as `mcp__<plugin>__<name>`, subagent types), `$.state`, Claude Code's own `settings.read`, the shape rule for API calls, the 64-character name rule, the state helpers |
 | `createModsUi(options)`, `withUiRules(rules)`, `uiApi(deps, parts)` | done | the interface part: the `$.ui` of a mod (`ModsApiOptions.ui = ui.api`), `draw` a render site (fires `ui.render`, folds the answer), `loadMod` (fires `ui.resolve`), `fault(plugin, report)` and `message(plugin, data)` (each reaches only that mod's hooks), `change` (focus and scroll), the panes, the toast board and the redraw throttle; the chain takes `withUiRules(withApiRules(createEventRules()))` |
 | `defaultElementTable(surface)`, `treeProblem`, `sizeProblem`, `foldRender`, `renderEvent`, `decideSite` | done | the 12 elements an app draws, why a tree is not valid for a site and app, which size limit refuses it, what a site shows once the chain settled (tree, Claude Code's own drawing, refused), and the `ui.render` event for a site |

@@ -55,6 +55,7 @@ export {
 } from './settings-layers.ts';
 export { readEngineSettings, type EngineReadOptions } from './engine-settings.ts';
 export { apiEventRules, withApiRules } from './rules.ts';
-export type { ScopeBook } from './engine-create.ts';
+export { settleModApi, type ModApiSettlementOptions, type ScopeBook } from './engine-create.ts';
+export { runScopedModCall } from './scoped-call.ts';
 export type * from './ports.ts';
 export { modFetchVerdict, type ModFetchFacts, type ModFetchVerdict } from './fetch-policy.ts';
