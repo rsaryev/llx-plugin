@@ -183,3 +183,15 @@ instead) and exits non-zero on a difference not recorded in `tests/fixtures/runt
 Where the oracle cannot see: the winner of two agents with one name (names only), the model's skill
 listing, output styles (`init.output_style` echoes the setting; a forced plugin style is not
 reflected), and statuses of servers that need a network.
+
+## Settings oracle
+
+`bun run oracle:settings` compares the kit's settings merge (`loadSettingsLayers`, `createPolicyView`,
+`startingMode`) with the Agent SDK's own resolver, `resolveSettings` and `filterEscalatingDefaultMode`
+(pure JS, `@alpha`), for the cases of `scripts/oracle/settings-cases.ts`; for the mode a session
+starts in it also asks `claude` itself, isolated as the runtime oracle is and ended at `init`. HOME
+and the config folder are private; the machine's managed settings file cannot be moved, so the kit is
+handed the same file (an MDM profile is not seen). Lists compare as sets, since the order carries no
+behaviour. A case where the kit is known to differ carries the reason (`known`); the run exits
+non-zero on an unknown difference, on a known one that no longer differs, and on any difference from
+`claude`. Nothing is cached or committed but the cases.
