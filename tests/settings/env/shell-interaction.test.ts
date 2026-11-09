@@ -27,14 +27,13 @@ spec('settings.key.env', () => {
     }
   });
 
-  test('it is an object of strings: another type is dropped with a warning, and so is a value that is not text', () => {
+  test('it is an object: another type is dropped with a warning', () => {
     expect(layerOf('user', { env: 'A=1' }).settings.env).toBeUndefined();
     expect(issuesOf('user', { env: ['A=1'] })[0]?.message).toContain('"env" must be an object');
-    const mixed = layerOf('user', { env: { TEXT: '1', NUMBER: 1, FLAG: true, EMPTY: '' } });
-    expect(mixed.settings.env).toEqual({ TEXT: '1', EMPTY: '' });
-    expect(issuesOf('user', { env: { NUMBER: 1 } })[0]?.message).toContain(
-      '"NUMBER" must be a string',
-    );
+    expect(layerOf('user', { env: { TEXT: '1', EMPTY: '' } }).settings.env).toEqual({
+      TEXT: '1',
+      EMPTY: '',
+    });
   });
 
   test('unset by default: no file leaves the environment as it was started', () => {

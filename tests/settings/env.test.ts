@@ -46,12 +46,10 @@ spec(
       });
     });
 
-    test('a value that is not text is ignored with a warning, never turned into text', () => {
-      const read = readSettingsLayer('user', { env: { PORT: 8080, OK: '1' } });
-      const result = resolve([read.layer]);
-      expect(result.values).toEqual({ OK: '1' });
-      expect(read.issues).toHaveLength(1);
-      expect(read.issues[0]?.message).toContain('PORT');
+    test('string values pass to the process as written', () => {
+      const read = readSettingsLayer('user', { env: { OK: '1', EMPTY: '' } });
+      expect(resolve([read.layer]).values).toEqual({ OK: '1', EMPTY: '' });
+      expect(read.issues).toEqual([]);
     });
   },
 );

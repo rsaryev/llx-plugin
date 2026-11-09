@@ -34,6 +34,9 @@
 
 ### Fixed
 
+- An `env` value that is not a string is read as the text claude sets (`{"PORT": 8080}` is `"8080"`,
+  `null` is `"null"`) with a warning, instead of being dropped (oracle 2.1.321).
+
 - One subprocess scrub, proven against claude 2.1.321: hooks used a second copy that read only `=1` as on
   and kept `MY_AUTH`, `FOO_KEY`, `SSH_AUTH_SOCK`, JWT values and lower-case GitHub tokens wrongly; the
   other copy removed `MONKEY`, `TOKENIZER`, `AUTHOR` by substring and kept PEM keys. Both now go through
