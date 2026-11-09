@@ -2,6 +2,7 @@ import { STANDARD_LAYOUT } from '../format/layout.ts';
 import type { DirectoryEntry, FileStat } from '../ports/index.ts';
 import { childPath } from '../format/locate.ts';
 import type { DiscoverContext, DiscoveredFile } from './discovered.ts';
+import { listSorted } from '../format/listing.ts';
 
 /**
  * How each directory-shaped component turns one existing location (a file or a folder, default or
@@ -41,7 +42,7 @@ const baseName = (path: string): string => path.slice(path.lastIndexOf('/') + 1)
 const single = (path: string): DiscoveredFile[] => [{ path, name: stem(baseName(path)) }];
 
 const entriesOf = async (context: DiscoverContext, path: string): Promise<DirectoryEntry[]> => [
-  ...((await context.files.list(path, context.signal)) ?? []),
+  ...((await listSorted(context.files, path, context.signal)) ?? []),
 ];
 
 /** The direct children of a folder that are files of the kind's extension. */

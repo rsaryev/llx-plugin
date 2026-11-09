@@ -27,6 +27,14 @@
 
 ### Fixed
 
+- An abort stops: `loadPlugin` and `validatePlugin` reject with the signal's reason and call the port no
+  more once it aborts (before, a port that ignored the signal was read to the end, and one that honoured
+  it was still called by the other branches); a command hook whose signal is aborted is `cancelled`
+  instead of a non-blocking error, and one aborted before the start spawns nothing.
+- The kit sorts every folder listing itself (`format/listing.ts`, by code unit): a port whose `list`
+  is unsorted or locale-sorted no longer changes the order of skills, commands and agents, which
+  duplicate wins, or which skills keep their description in the listing budget. `PluginFiles.list`
+  may return entries in any order.
 - One containment check for every plugin path: `locate` moved to `format/locate.ts`, and the MCP
   sources (`.mcp.json`, a declared `.json` file, a bundle path) now go through it. An absolute or
   backslash `mcpServers` path, or one that is a symlink leading outside the plugin, is rejected as

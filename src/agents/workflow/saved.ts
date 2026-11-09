@@ -1,4 +1,5 @@
 import { error, type PluginIssue } from '../../format/issues.ts';
+import { byCodeUnit } from '../../format/listing.ts';
 
 /**
  * Where a saved workflow is written and which one `/<name>` runs (workflows.md, "Save the workflow
@@ -117,19 +118,13 @@ export interface SavedResolution {
 const rank = (workflow: SavedWorkflow): number =>
   workflow.scope === 'personal' ? Number.POSITIVE_INFINITY : workflow.distance;
 
-/** Orders by UTF-16 code units, so the order never depends on the host's locale. */
-const byCodeUnits = (first: string, second: string): number => {
-  if (first === second) return 0;
-  return first < second ? -1 : 1;
-};
-
 /**
  * "when more than one defines the same name Claude Code runs the one closest to the working
  * directory. If a project workflow and a personal workflow share a name, the project one runs." Two in
  * one folder with one name: the first path in code-unit order (judgment).
  */
 export function resolveSavedWorkflows(found: readonly SavedWorkflow[]): SavedResolution {
-  const ordered = found.toSorted((a, b) => rank(a) - rank(b) || byCodeUnits(a.path, b.path));
+  const ordered = found.toSorted((a, b) => rank(a) - rank(b) || byCodeUnit(a.path, b.path));
   const winners = new Map<string, SavedWorkflow>();
   const shadowed: SavedWorkflow[] = [];
   for (const workflow of ordered) {

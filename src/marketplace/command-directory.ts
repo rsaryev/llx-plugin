@@ -1,6 +1,7 @@
 import { error, type PluginIssue } from '../format/issues.ts';
 import type { PluginFiles } from '../ports/files.ts';
 import { PLUGIN_CONTENT_DIRECTORIES } from './plugin-content.ts';
+import { listSorted } from '../format/listing.ts';
 
 /**
  * What a `command` source's printed directory must hold and stay within (plugins/marketplace-
@@ -32,7 +33,7 @@ export async function contentIssue(
   files: PluginFiles,
   signal: AbortSignal,
 ): Promise<PluginIssue | undefined> {
-  const top = (await files.list('.', signal)) ?? [];
+  const top = (await listSorted(files, '.', signal)) ?? [];
   const has = top.some(
     (entry) => entry.isDirectory && PLUGIN_CONTENT_DIRECTORIES.includes(entry.name),
   );
@@ -81,7 +82,7 @@ export async function copyLimitIssue(
     directory !== undefined;
     directory = tally.pending.pop()
   ) {
-    for (const entry of (await files.list(directory, signal)) ?? []) {
+    for (const entry of (await listSorted(files, directory, signal)) ?? []) {
       const issue = await countEntry(files, child(directory, entry.name), tally, signal);
       if (issue !== undefined) return issue;
     }
@@ -96,7 +97,7 @@ export async function linkIssue(
   files: PluginFiles,
   signal: AbortSignal,
 ): Promise<PluginIssue | undefined> {
-  for (const entry of (await files.list('.', signal)) ?? []) {
+  for (const entry of (await listSorted(files, '.', signal)) ?? []) {
     const stat = await files.stat(entry.name, signal);
     if (stat?.isSymlink === true && LEAVES_ROOT.test(stat.realPath ?? '')) {
       return problem(

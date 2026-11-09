@@ -1,4 +1,5 @@
 import type { DirectoryEntry, PluginFiles } from '../../ports/index.ts';
+import { listSorted } from '../../format/listing.ts';
 
 /** A manifest path (`./skills/a`, `./`) as a `PluginFiles` path: no `./`, no trailing slash, `.` for the root. */
 export function pluginPath(path: string): string {
@@ -18,5 +19,5 @@ export async function entriesOf(
   dir: string,
   signal?: AbortSignal,
 ): Promise<readonly DirectoryEntry[]> {
-  return (await files.list(dir, signal)) ?? [];
+  return (await listSorted(files, dir, signal)) ?? [];
 }

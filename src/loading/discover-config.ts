@@ -5,6 +5,7 @@ import { COMBINE } from './combine.ts';
 import type { ConfigInput, DiscoverContext, Discovered, Found } from './discovered.ts';
 import { ignoredFolderIssues } from './ignored-folder.ts';
 import { locate, rootRelative, childPath } from '../format/locate.ts';
+import { listSorted } from '../format/listing.ts';
 
 /** The kinds whose files are JSON configuration, read by their own reader. */
 export const CONFIG_KINDS = ['hooks', 'lspServers', 'monitors'] as const;
@@ -99,7 +100,7 @@ export async function discoverBin(context: DiscoverContext): Promise<Discovered[
   const { location } = STANDARD_LAYOUT.bin;
   const located = await locate(context, 'bin', location);
   if (!located.stat?.isDirectory) return { present: false, files: [] };
-  const entries = (await context.files.list(location, context.signal)) ?? [];
+  const entries = (await listSorted(context.files, location, context.signal)) ?? [];
   return {
     present: true,
     files: entries.filter((one) => one.isFile).map((one) => childPath(location, one.name)),

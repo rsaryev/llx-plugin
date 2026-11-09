@@ -125,7 +125,6 @@ describe('what a load reports (judgments)', () => {
 
   test('the abort signal reaches every read of the files port', async () => {
     const controller = new AbortController();
-    controller.abort();
     const seen: (AbortSignal | undefined)[] = [];
     const files = memoryFiles({ 'commands/a.md': 'A.' });
     const watching = {

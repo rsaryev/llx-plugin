@@ -13,6 +13,7 @@ import type { SkillOrigin } from '../format/skill-types.ts';
 import type { PluginFiles } from '../ports/files.ts';
 import { loadManifest } from './load-plugin.ts';
 import type { Plugin } from './plugin-model.ts';
+import { listSorted } from '../format/listing.ts';
 
 /** `skills-dir`: a folder of `~/.claude/skills/` or `.claude/skills/`; `inline`: a `--plugin-dir` directory. */
 export const FOLDER_ORIGINS = ['skills-dir', 'inline'] as const;
@@ -76,7 +77,7 @@ export async function probeFolder(
   origin: FolderOrigin,
   signal?: AbortSignal,
 ): Promise<FolderProbe> {
-  const names = ((await files.list('.', signal)) ?? []).map((entry) => entry.name);
+  const names = ((await listSorted(files, '.', signal)) ?? []).map((entry) => entry.name);
   const rootSkill = names.includes('SKILL.md');
   const components = componentsAt(names);
   const step = await loadManifest(files, signal);

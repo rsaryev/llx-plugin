@@ -1,5 +1,6 @@
 import { warning, type PluginIssue } from '../format/issues.ts';
 import type { ScanFolder } from '../ports/folder-scan.ts';
+import { listSorted } from '../format/listing.ts';
 
 /**
  * The walk of a scope folder, shared by the skills and the agents scans: the entries of a directory
@@ -35,7 +36,7 @@ export async function listChildren(
   directory: string,
   signal?: AbortSignal,
 ): Promise<Walked<Child>> {
-  const entries = await folder.files.list(directory, signal);
+  const entries = await listSorted(folder.files, directory, signal);
   if (entries === undefined) return { found: [], issues: [] };
   const checked = await Promise.all(
     entries.map(async (entry) => {

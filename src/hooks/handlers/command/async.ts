@@ -56,10 +56,19 @@ export interface HeldOpenResult extends CommandResult {
 
 const heldOpen = (result: HeldOpenResult): boolean => result.outputHeldOpen === true;
 
-/** The port's answer as the run the interpreter reads. */
+/**
+ * The port's answer as the run the interpreter reads. A start error under an aborted signal is a
+ * cancelled run (Node's `spawn({ signal })` answers an abort with an error, not an exit), and a
+ * signal aborted before the start runs nothing; a run that exited keeps its exit.
+ */
 export async function settle(runner: CommandRunner, request: CommandRun): Promise<ForegroundRun> {
+  if (request.signal.aborted) return { kind: 'cancelled' };
   const result: HeldOpenResult = await runner.run(request);
-  if (result.startError !== undefined) return { kind: 'not-started', message: result.startError };
+  if (result.startError !== undefined) {
+    return request.signal.aborted
+      ? { kind: 'cancelled' }
+      : { kind: 'not-started', message: result.startError };
+  }
   if (result.timedOut) return { kind: 'timed-out' };
   if (result.exitCode === null) return { kind: 'cancelled' };
   return {

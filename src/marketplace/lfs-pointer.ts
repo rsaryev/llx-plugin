@@ -1,5 +1,6 @@
 import { warning, type PluginIssue } from '../format/issues.ts';
 import type { PluginFiles } from '../ports/files.ts';
+import { listSorted } from '../format/listing.ts';
 
 /**
  * A Git LFS pointer file, which is what an LFS-tracked file is after a clone (plugins/host-
@@ -74,7 +75,7 @@ async function lookups(
 ): Promise<{ readonly paths: readonly string[]; readonly directories: readonly string[] }> {
   const paths: string[] = [];
   const directories: string[] = [];
-  for (const entry of (await files.list(directory, signal)) ?? []) {
+  for (const entry of (await listSorted(files, directory, signal)) ?? []) {
     const path = child(directory, entry.name);
     const stat = await files.stat(path, signal);
     const walked = stat?.isDirectory === true && !stat.isSymlink && entry.name !== '.git';

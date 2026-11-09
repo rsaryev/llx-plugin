@@ -1,3 +1,4 @@
+import { abortableFiles } from '../format/abortable-files.ts';
 import { error, type PluginIssue } from '../format/issues.ts';
 import { STANDARD_LAYOUT } from '../format/layout.ts';
 import { readManifest } from '../format/manifest.ts';
@@ -157,7 +158,8 @@ const mcpOptions = (input: LoadPluginInput): CollectOptions => ({
  * docs say for paths ("the plugin loads without that component"); the rest loads (spec/judgments.md).
  */
 export async function loadPlugin(input: LoadPluginInput): Promise<LoadedPlugin> {
-  const { files, signal } = input;
+  const { signal } = input;
+  const files = abortableFiles(input.files, signal);
   const step = await loadManifest(files, signal);
   if (step.present && !step.manifest) return { plugin: undefined, issues: step.issues };
   const named = nameOf(step.manifest, input.fallbackName);

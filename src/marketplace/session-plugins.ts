@@ -3,6 +3,7 @@ import type { PluginIssue } from '../format/issues.ts';
 import type { PluginFiles } from '../ports/files.ts';
 import { fetchArchive, type ArchivePorts, type FetchedArchive } from './archive-source.ts';
 import { ARCHIVE_LIMITS } from './fetch-plan.ts';
+import { listSorted } from '../format/listing.ts';
 
 /**
  * The plugins a session loads from where they are, not from a marketplace (plugins/create.md,
@@ -46,7 +47,7 @@ export interface PluginDirectoryReading {
 
 async function subfolderPlugins(files: PluginFiles, signal?: AbortSignal): Promise<string[]> {
   const loaded: string[] = [];
-  for (const entry of (await files.list('.', signal)) ?? []) {
+  for (const entry of (await listSorted(files, '.', signal)) ?? []) {
     if (entry.isDirectory && (await files.exists(`${entry.name}/${MANIFEST}`, signal))) {
       loaded.push(entry.name);
     }
@@ -68,7 +69,7 @@ export async function readPluginDirectory(
   files: PluginFiles,
   signal?: AbortSignal,
 ): Promise<PluginDirectoryReading> {
-  const names = ((await files.list('.', signal)) ?? []).map((entry) => entry.name);
+  const names = ((await listSorted(files, '.', signal)) ?? []).map((entry) => entry.name);
   const hasComponents = names.some((name) => COMPONENT_NAMES.has(name));
   const hasManifest = await files.exists(MANIFEST, signal);
   const hasMarketplaceOnly = !hasManifest && (await files.exists(MARKETPLACE_FILE, signal));

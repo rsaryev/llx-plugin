@@ -628,7 +628,8 @@ const { plugin, issues } = await loadPlugin({ files, fallbackName: 'formatter' }
 `files` is the `PluginFiles` port: read access to one plugin folder, wherever it is (a disk, an
 object store, a sandbox, an archive in memory). `loadPlugin` finds every component in the
 standard layout and the manifest's paths (plugins/manifest-reference.md, "Standard layout", "How
-each key combines with its default location") and returns a `Plugin`. It never throws: `plugin` is
+each key combines with its default location") and returns a `Plugin`. It never throws but for an
+abort: once `signal` aborts it rejects with the signal's reason and calls the port no more. `plugin` is
 `undefined` only when the plugin does not load at all (a `plugin.json` that is not JSON or fails
 validation, no manifest and no `fallbackName`, a guard hook that cannot be read, or an inline
 `mcpServers` entry of the manifest that cannot be read: spec/judgments.md, "oracle 2.1.319 overrides

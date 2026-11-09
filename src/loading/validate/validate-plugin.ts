@@ -1,3 +1,4 @@
+import { abortableFiles } from '../../format/abortable-files.ts';
 import { errorIn } from '../../format/validate/finding.ts';
 import type { PluginFiles } from '../../ports/index.ts';
 import { componentsOnly } from './components-only.ts';
@@ -24,7 +25,8 @@ const NO_MANIFEST =
  * the official CLI of the same release reports (docs/SPEC.md, "Sources of truth"). Never throws.
  */
 export async function validatePlugin(input: ValidatePluginInput): Promise<ValidationReport> {
-  const { files, signal } = input;
+  const { signal } = input;
+  const files = abortableFiles(input.files, signal);
   const label = input.label ?? '.';
   if (await isMissing(files, signal)) {
     return { target: 'none', issues: [errorIn(label, 'file', `File not found: ${label}`)] };

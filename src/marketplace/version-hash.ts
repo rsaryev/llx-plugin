@@ -1,5 +1,6 @@
 import type { PluginFiles } from '../ports/files.ts';
 import type { Sha256 } from '../ports/marketplace.ts';
+import { listSorted } from '../format/listing.ts';
 
 /**
  * What a plugin version is hashed from (plugins/loading.md, "How Claude Code computes the version";
@@ -17,11 +18,6 @@ export const shortHash12 = (hex: string): string => hex.toLowerCase().slice(0, 1
 
 const SUBDIRECTORY_HASH_LENGTH = 8;
 
-const byCodeUnit = (a: string, b: string): number => {
-  if (a === b) return 0;
-  return a < b ? -1 : 1;
-};
-
 const digestOf = (text: string, sha256: Sha256): Promise<string> =>
   sha256.hex(encoder.encode(text));
 
@@ -31,8 +27,8 @@ async function namesIn(
   directory: string,
   signal: AbortSignal | undefined,
 ): Promise<readonly string[]> {
-  const entries = (await files.list(directory, signal)) ?? [];
-  return entries.map((entry) => entry.name).toSorted(byCodeUnit);
+  const entries = (await listSorted(files, directory, signal)) ?? [];
+  return entries.map((entry) => entry.name);
 }
 
 const childPath = (directory: string, name: string): string =>

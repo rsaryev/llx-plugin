@@ -34,7 +34,7 @@ export interface TextFileReader {
 
 export interface PluginFiles extends TextFileReader {
   readBytes(path: string, signal?: AbortSignal): Promise<Uint8Array | undefined>;
-  /** Entries of a directory sorted by name, or `undefined` when it does not exist. */
+  /** Entries of a directory in any order (the kit sorts them), or `undefined` when it does not exist. */
   list(path: string, signal?: AbortSignal): Promise<readonly DirectoryEntry[] | undefined>;
   stat(path: string, signal?: AbortSignal): Promise<FileStat | undefined>;
   exists(path: string, signal?: AbortSignal): Promise<boolean>;
