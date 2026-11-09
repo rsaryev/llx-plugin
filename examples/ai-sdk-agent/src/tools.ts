@@ -1,13 +1,15 @@
 /**
  * Claude Code's built-in tools under their own names and input shapes (tools-reference.md), so a
  * plugin's `"matcher": "Write|Edit"` and `"if": "Bash(git *)"` mean what they mean there. Every
- * call goes through the plugins' `PreToolUse` and `PostToolUse` hooks first and after.
+ * call goes through the plugins' `PreToolUse` hooks and the permission rules first, and the
+ * `PostToolUse` hooks after.
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, resolve } from 'node:path';
-import type { PluginSession } from '@rsaryev/claude-plugin-kit';
+import type { Decision, PluginSession } from '@rsaryev/claude-plugin-kit';
 import { tool, type ToolSet } from 'ai';
 import { z } from 'zod';
+import type { TurnPermissions } from './permissions.ts';
 import type { Trace } from './trace.ts';
 
 export interface ToolContext {
@@ -15,12 +17,16 @@ export interface ToolContext {
   readonly cwd: string;
   readonly trace: Trace;
   readonly signal: AbortSignal;
+  /** The permission rules of the turn: the settings', and the grants of the skills it invoked. */
+  readonly permissions: TurnPermissions;
 }
 
 const text = (value: unknown): string =>
   typeof value === 'string' ? value : JSON.stringify(value, null, 2);
 
-/** Runs `execute` between the plugins' `PreToolUse` and `PostToolUse` hooks, as Claude Code does. */
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 /** One tool call as the hooks see it: Claude Code's tool name, its input and the call id. */
 export interface ToolCall {
   readonly name: string;
@@ -28,31 +34,40 @@ export interface ToolCall {
   readonly toolUseId: string;
 }
 
+/** Why a call does not run, in the words of the hook, else of the decision. */
+const REFUSAL: { readonly [O in Exclude<Decision['outcome'], 'allow'>]: string } = {
+  deny: 'denied',
+  ask: 'needs approval, and no one can answer in this non-interactive agent',
+  classify: 'needs the auto-mode review, which this agent does not run',
+};
+
+/**
+ * Runs `execute` as Claude Code runs a tool: `session.checkTool` runs the plugins' `PreToolUse`
+ * hooks and decides over the input they return; only an `allow` runs, then `PostToolUse`.
+ */
 export async function guarded(
   context: ToolContext,
   { name, input, toolUseId }: ToolCall,
   execute: (input: Record<string, unknown>) => Promise<unknown>,
 ): Promise<string> {
-  const { session, trace, signal } = context;
-  const pre = await session.dispatch(
-    'PreToolUse',
-    { tool_name: name, tool_input: input, tool_use_id: toolUseId },
-    { signal },
+  const { session, trace, signal, permissions } = context;
+  const check = await session.checkTool(
+    { toolName: name, input },
+    { toolUseId, permissions: permissions.current(), signal },
   );
-  for (const message of pre.systemMessages)
+  const { hook, decision } = check;
+  for (const message of hook.systemMessages)
     trace.add({ kind: 'hook', event: 'PreToolUse', detail: message });
-  if (
-    !pre.proceed ||
-    pre.effects.permissionDecision === 'deny' ||
-    pre.effects.permissionDecision === 'ask'
-  ) {
-    const reason =
-      pre.block?.reason || pre.effects.permissionDecisionReason || 'denied by a PreToolUse hook';
+  if (decision.outcome !== 'allow') {
+    const why = hook.block?.reason || hook.effects.permissionDecisionReason;
+    const reason = why
+      ? `${why} (${decision.reason})`
+      : `${REFUSAL[decision.outcome]} (${decision.reason})`;
     trace.add({ kind: 'blocked', name, reason });
-    return `The ${name} call was blocked by a plugin hook: ${reason}`;
+    return `The ${name} call did not run: ${reason}`;
   }
-  const effective = pre.effects.updatedInput ?? input;
-  if (pre.effects.updatedInput)
+  const effective = isRecord(check.input) ? check.input : input;
+  if (hook.effects.updatedInput)
     trace.add({
       kind: 'hook',
       event: 'PreToolUse',
@@ -71,7 +86,7 @@ export async function guarded(
   );
   const output = text(post.effects.updatedToolOutput ?? response);
   trace.add({ kind: 'tool', name, input: effective, output });
-  const notes = [...pre.additionalContext, ...post.additionalContext];
+  const notes = [...hook.additionalContext, ...post.additionalContext];
   if (post.block) notes.push(post.block.reason);
   for (const note of notes) trace.add({ kind: 'hook', event: 'PostToolUse', detail: note });
   return notes.length === 0

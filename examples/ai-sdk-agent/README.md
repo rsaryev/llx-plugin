@@ -8,7 +8,8 @@ the plugin work, the agent only supplies ports and a tool loop.
 | -------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Ports          | `./src/ports.ts`                  | the plugin folder on disk, commands through `bash`, `fetch`, the process environment, the model for `prompt` hooks                  |
 | Agent          | `./src/agent.ts`, `./src/turn.ts` | `loadPlugin`, `createPluginHost`, a session; `SessionStart`, `UserPromptSubmit`, `Stop` (looping while a hook blocks), `SessionEnd` |
-| Built-in tools | `./src/tools.ts`                  | `Bash`, `Read`, `Write`, `Edit` under Claude Code's names, each between `PreToolUse` and `PostToolUse`                              |
+| Built-in tools | `./src/tools.ts`                  | `Bash`, `Read`, `Write`, `Edit` under Claude Code's names; `session.checkTool` runs `PreToolUse` and the rules, then `PostToolUse`  |
+| Permissions    | `./src/permissions.ts`            | the `permissions` of user, project and local settings, started in `--permission-mode` (`acceptEdits` by default)                    |
 | Skills         | `./src/agent.ts`                  | listed to the model; the `Skill` tool and `/plugin:name` prompts call `session.expandSkill`                                         |
 | Subagents      | `./src/subagent.ts`               | the `Agent` tool runs a plugin agent's definition, with `SubagentStart` and `SubagentStop`                                          |
 | MCP            | `./src/mcp.ts`                    | starts each resolved plugin server with the official MCP client; tools as `mcp__plugin_<plugin>_<server>__<tool>`                   |
@@ -23,6 +24,10 @@ bun install            # here
 bun run scenarios      # every scenario on Claude Haiku 5.5
 bun src/cli.ts --plugin fixtures/kit-demo --cwd /tmp/work "/kit-demo:greet Alice"
 ```
+
+The agent runs like `claude -p`: there is no one to answer a prompt, so a call the rules would ask
+about does not run (`prompt-unavailable`). A skill's `` !`command` `` placeholder is decided by the
+same rules, with the skill's `allowed-tools` added as allow rules.
 
 The Anthropic key comes from `ANTHROPIC_API_KEY`, else from `~/.config/llx/key-anthropic`. The model
 is `claude-haiku-5-5`.

@@ -22,6 +22,7 @@ import {
 import { tool, type LanguageModel, type ModelMessage, type ToolSet } from 'ai';
 import { z } from 'zod';
 import { PluginMcp } from './mcp.ts';
+import { loadPermissions, shellPermission, turnPermissions } from './permissions.ts';
 import {
   aiSdkModels,
   diskFiles,
@@ -48,6 +49,8 @@ export interface AgentOptions {
   readonly userConfig?: Record<string, Record<string, string | number | boolean | string[]>>;
   readonly echo?: boolean;
   readonly maxSteps?: number;
+  /** `--permission-mode`; `acceptEdits` when omitted, so file edits in the working folder run. */
+  readonly permissionMode?: string;
 }
 
 const BASE_INSTRUCTIONS = `You are a coding agent working in a local project. Use the tools to act; keep answers short.
@@ -87,6 +90,9 @@ export async function createPluginAgent(options: AgentOptions): Promise<PluginAg
     options.model ?? 'claude-haiku-5-5',
   );
   const { plugins, roots } = await loadAll(options.plugins, trace);
+  const permissions = await loadPermissions(options.cwd, options.permissionMode ?? 'acceptEdits');
+  for (const issue of permissions.issues)
+    trace.add({ kind: 'issue', message: `${issue.path}: ${issue.message}` });
   const dataDir = join(tmpdir(), 'kit-agent-data');
   await mkdir(dataDir, { recursive: true });
   const mcp = new PluginMcp();
@@ -103,6 +109,7 @@ export async function createPluginAgent(options: AgentOptions): Promise<PluginAg
       models: aiSdkModels(model),
       mcp,
     },
+    settings: permissions.view,
     ...(options.userConfig ? { userConfig: options.userConfig } : {}),
   });
   for (const issue of host.issues)
@@ -110,11 +117,11 @@ export async function createPluginAgent(options: AgentOptions): Promise<PluginAg
   const session = host.openSession({
     sessionId,
     cwd: options.cwd,
-    permissionMode: 'acceptEdits',
+    permissionMode: permissions.mode,
     transcriptPath,
     effort: { level: 'medium' },
     interactive: false,
-    permissions: () => 'allow',
+    permissions: shellPermission(permissions.context),
   });
   const abort = new AbortController();
   const signal = abort.signal;
@@ -129,7 +136,13 @@ export async function createPluginAgent(options: AgentOptions): Promise<PluginAg
     trace.add({ kind: 'hook', event: 'SessionStart', detail: context });
   const styles = session.outputStyles().filter((style) => style.forceForPlugin);
 
-  const context: ToolContext = { session, cwd: options.cwd, trace, signal };
+  const context: ToolContext = {
+    session,
+    cwd: options.cwd,
+    trace,
+    signal,
+    permissions: turnPermissions(permissions.context),
+  };
   const listing = session.skills().model;
   const instructions = [
     BASE_INSTRUCTIONS,
@@ -157,6 +170,7 @@ export async function createPluginAgent(options: AgentOptions): Promise<PluginAg
           invoker: 'model',
         });
         trace.add({ kind: 'skill', name: skill, by: 'model', ok: expansion.ok });
+        if (expansion.ok) context.permissions.grant(expansion.grants);
         return expansion.ok
           ? expansion.text
           : `Skill refused: ${expansion.issues.map((i) => i.message).join('; ')}`;
@@ -170,13 +184,14 @@ export async function createPluginAgent(options: AgentOptions): Promise<PluginAg
     trace,
     session,
     async send(prompt) {
+      context.permissions.newTurn();
       const submit = await session.dispatch('UserPromptSubmit', { prompt }, { signal });
       if (!submit.proceed) {
         const reason = submit.block?.reason ?? 'blocked';
         trace.add({ kind: 'blocked', name: 'UserPromptSubmit', reason });
         return `Prompt blocked by a plugin hook: ${reason}`;
       }
-      let content = await expandSlash(prompt, session, trace, signal);
+      let content = await expandSlash(prompt, context);
       if (submit.additionalContext.length > 0) {
         for (const extra of submit.additionalContext)
           trace.add({ kind: 'hook', event: 'UserPromptSubmit', detail: extra });
@@ -205,12 +220,7 @@ export async function createPluginAgent(options: AgentOptions): Promise<PluginAg
 }
 
 /** `/plugin:skill args` typed by the user expands the skill in place of the prompt. */
-async function expandSlash(
-  prompt: string,
-  session: PluginSession,
-  trace: Trace,
-  signal: AbortSignal,
-) {
+async function expandSlash(prompt: string, { session, trace, signal, permissions }: ToolContext) {
   const match = /^\/(\S+)\s*([\s\S]*)$/.exec(prompt.trim());
   if (!match?.[1]) return prompt;
   const expansion = await session.expandSkill(match[1], {
@@ -223,5 +233,6 @@ async function expandSlash(
     for (const issue of expansion.issues) trace.add({ kind: 'issue', message: issue.message });
     return prompt;
   }
+  permissions.grant(expansion.grants);
   return expansion.text;
 }
