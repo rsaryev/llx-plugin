@@ -1,6 +1,6 @@
 import { error, type PluginIssue } from '../issues.ts';
 import type { PluginManifest } from '../manifest-schema.ts';
-import { defined } from './defined.ts';
+import { defined } from '../defined.ts';
 import { appendPaths, combineCommands, mergeHooks } from './entry-append.ts';
 import { isRecord } from './marketplace-schema.ts';
 import type { MarketplaceEntry, PluginSource, PluginSourceKind } from './types.ts';

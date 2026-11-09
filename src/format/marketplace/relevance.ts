@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { warning, type PluginIssue } from '../issues.ts';
-import { defined } from './defined.ts';
+import { defined } from '../defined.ts';
 import { isRecord, typeName, unknownField } from './marketplace-schema.ts';
 import { zodIssues } from './schema-issues.ts';
 import type { Relevance, RelevanceSignals } from './types.ts';

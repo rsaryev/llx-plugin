@@ -1,5 +1,5 @@
 import { error, type PluginIssue } from '../issues.ts';
-import { defined } from './defined.ts';
+import { defined } from '../defined.ts';
 import {
   invalidInput,
   isText,

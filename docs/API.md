@@ -42,6 +42,7 @@ A name lives in one subpath; the root re-exports the few a host loop calls.
 | `@rsaryev/claude-plugin-kit/agents`       | sub-agents, their catalog and workflows (`src/entry/agents.ts`)                                                                                    |
 | `@rsaryev/claude-plugin-kit/mods`         | mods and their test kit, `modsTesting` (`src/entry/mods.ts`)                                                                                       |
 | `@rsaryev/claude-plugin-kit/cli`          | the `claude plugin` command line (`src/entry/cli.ts`)                                                                                              |
+| `@rsaryev/claude-plugin-kit/sdk`          | a session's plugin hooks as the `hooks` option of a Claude Agent SDK query (`src/entry/sdk.ts`)                                                    |
 | `@rsaryev/claude-plugin-kit/testing`      | fakes of every port (`src/testing/index.ts`)                                                                                                       |
 | `@rsaryev/claude-plugin-kit/layout`       | the standard layout, without the plugin engine                                                                                                     |
 | `@rsaryev/claude-plugin-kit/elicitation`  | MCP elicitation shapes, without the plugin engine                                                                                                  |
@@ -1594,6 +1595,37 @@ the latest run's hooks to its sessions: it calls `update` when the plugins or se
 Not in the host: reading plugin folders from disk and caching them (the host owns that and feeds new `Plugin` objects
 through `update`), starting servers and monitors, the permission decision of a tool call (`decide` in the rules
 module), and mods, which stay their own entry (`MODS_API`, `modsTesting`).
+
+## Claude Agent SDK (done: `sdk`)
+
+A host that drives Claude Code through the Agent SDK runs the plugins' hooks in its own process:
+`sdkHooks(session)` returns the `hooks` option of `query()` (agent-sdk/hooks.md, "Configure
+hooks"), one callback per event with no matcher. Each call dispatches the event to the session,
+which selects the handlers (matchers, `if`, gates, `once`) at that moment, so hooks a skill or a
+reload adds later run without a new query; `{ events }` narrows the events registered.
+
+```ts
+import { query } from '@anthropic-ai/claude-agent-sdk';
+import { createPluginHost } from '@rsaryev/claude-plugin-kit';
+import { sdkHooks } from '@rsaryev/claude-plugin-kit/sdk';
+
+const session = host.openSession({ sessionId, cwd, permissionMode: 'default', transcriptPath });
+for await (const message of query({ prompt, options: { cwd, hooks: sdkHooks(session) } })) {
+  // ...
+}
+```
+
+`toSdkHookOutput(outcome)` writes a merged `HookOutcome` as the JSON one SDK callback returns
+("SDK callback hooks use the same JSON output format as Claude Code shell command hooks"): the
+top-level `continue`, `stopReason`, `systemMessage`, `decision` and `reason`, and each event's
+`hookSpecificOutput`, typed by the SDK's own output types. A block by exit code 2 on `PreToolUse`
+is `permissionDecision: 'deny'`; on `PermissionRequest`, a `deny` decision.
+
+Judgments (spec/judgments.md): several hooks' `additionalContext` and `systemMessage` are joined
+with a newline; the matcher's `timeout` is the longest handler limit of the event when the hooks
+are built, so the SDK never cancels a callback before the kit's own limit; an input the event's
+schema refuses throws, which the SDK reports as a failed callback. Do not also pass the same
+plugins to the SDK's `plugins` option: Claude Code would run their hooks a second time.
 
 ## Permission rules (done: syntax, bare, parameter and glob rules, precedence, Bash and PowerShell commands, hook `if`, path rules, domain, MCP, Agent and Skill rules, the six permission modes)
 

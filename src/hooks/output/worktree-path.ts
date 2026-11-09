@@ -130,7 +130,7 @@ async function firstSymlinkBelow(
 }
 
 /** The candidate text of the hooks' answers: an HTTP hook's path, else a command hook's last line. */
-function candidateOf(answer: WorktreeAnswer): string | undefined {
+export function worktreeCandidate(answer: WorktreeAnswer): string | undefined {
   const http = answer.effects.worktreePath;
   if (http !== undefined && http.trim() !== '') return http.trim();
   return answer.stdout.map(lastPathLine).findLast((line) => line !== undefined);
@@ -149,7 +149,7 @@ export async function resolveWorktreePath(
 ): Promise<WorktreePath> {
   if (!answer.proceed)
     return { failure: 'The WorktreeCreate hook failed, so no worktree was created.' };
-  const given = candidateOf(answer);
+  const given = worktreeCandidate(answer);
   if (given === undefined) {
     return { failure: 'The WorktreeCreate hook returned no worktree path.' };
   }

@@ -12,7 +12,12 @@ export { limitOutputs } from './limit.ts';
 export { PREVIEW_LENGTH, TEXT_CAP } from './text-cap.ts';
 export { CHECKED_TOOL_OUTPUTS } from './tool-output.ts';
 export { finalizeEffects } from './finalize.ts';
-export { lastPathLine, resolveWorktreePath, stripAnsi } from './worktree-path.ts';
+export {
+  lastPathLine,
+  resolveWorktreePath,
+  stripAnsi,
+  worktreeCandidate,
+} from './worktree-path.ts';
 export type { WorktreeAnswer, WorktreeLocation, WorktreePath } from './worktree-path.ts';
 export { resolveDefer } from './defer.ts';
 export type { DeferResolution, DeferTurn } from './defer.ts';

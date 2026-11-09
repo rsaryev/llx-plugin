@@ -30,6 +30,11 @@
       "bun": "./src/entry/format.ts",
       "import": "./dist/entry/format.js"
     },
+    "./sdk": {
+      "types": "./dist/entry/sdk.d.ts",
+      "bun": "./src/entry/sdk.ts",
+      "import": "./dist/entry/sdk.js"
+    },
     "./skills": {
       "types": "./dist/entry/skills.d.ts",
       "bun": "./src/entry/skills.ts",

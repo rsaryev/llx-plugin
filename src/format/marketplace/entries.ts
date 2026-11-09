@@ -1,6 +1,6 @@
 import { blocksLoading, error, warning, type PluginIssue } from '../issues.ts';
 import { MANIFEST_SCHEMAS } from '../manifest-schema.ts';
-import { defined } from './defined.ts';
+import { defined } from '../defined.ts';
 import { headerIssues, nameReports, versionIssues } from './entry-checks.ts';
 import { ENTRY_KEYS, isEntryKey, readEntryFields, type EntryFields } from './entry-schema.ts';
 import type { EntryReader, EntryReading, EntrySlot } from './marketplace.ts';

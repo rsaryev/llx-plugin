@@ -19,6 +19,8 @@ export type {
   ElicitationResultHookSpecificOutput,
   EffortLevel,
   ExitReason,
+  HookCallback,
+  HookCallbackMatcher,
   HookEvent,
   HookInput,
   HookJSONOutput,

@@ -1,5 +1,5 @@
 import type { PluginManifest } from '../manifest-schema.ts';
-import { defined } from './defined.ts';
+import { defined } from '../defined.ts';
 import type { MarketplaceEntry, PluginSourceKind } from './types.ts';
 
 /**

@@ -25,6 +25,7 @@
 
 ### Added
 
+- `@rsaryev/claude-plugin-kit/sdk`: `sdkHooks(session)` gives the `hooks` option of a Claude Agent SDK query that runs the session's plugin hooks, and `toSdkHookOutput(outcome)` writes a merged outcome as one SDK callback's JSON.
 - `session.checkTool(call, { toolUseId, permissions, signal })`: the `PreToolUse` hooks, then
   `decide` over the input they return, in one call (`{ hook, input, decision }`).
 - `policyContext(facts)`: a `PolicyContext` whose missing facts grant the least.
