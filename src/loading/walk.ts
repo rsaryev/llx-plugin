@@ -1,6 +1,6 @@
 import { STANDARD_LAYOUT } from '../format/layout.ts';
 import type { DirectoryEntry, FileStat } from '../ports/index.ts';
-import { childPath } from './locate.ts';
+import { childPath } from '../format/locate.ts';
 import type { DiscoverContext, DiscoveredFile } from './discovered.ts';
 
 /**

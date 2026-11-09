@@ -27,6 +27,12 @@
 
 ### Fixed
 
+- One containment check for every plugin path: `locate` moved to `format/locate.ts`, and the MCP
+  sources (`.mcp.json`, a declared `.json` file, a bundle path) now go through it. An absolute or
+  backslash `mcpServers` path, or one that is a symlink leading outside the plugin, is rejected as
+  `path escapes plugin directory` instead of being read; `rootRelative` drops `.` and empty segments,
+  so `.//x` is read as `x` and no port is handed an absolute path. `collectMcpServers` takes
+  `platform` and `roots`, and `loadPlugin` passes them.
 - `parseRule` reads `Task(...)` as `Agent(...)`, as sub-agents.md says the renamed tool still works.
 - Declare the MCP SDK as a peer: the public protocol declarations reference its official types,
   so consumer projects must not depend on this checkout's development dependencies to find them.

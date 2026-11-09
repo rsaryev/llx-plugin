@@ -5,7 +5,7 @@ import type { CommandEntry, PluginManifest } from '../format/manifest-schema.ts'
 import { COMBINE } from './combine.ts';
 import type { DiscoverContext, DiscoveredFile, Found } from './discovered.ts';
 import { ignoredFolderIssues } from './ignored-folder.ts';
-import { locate, rootRelative } from './locate.ts';
+import { locate, rootRelative } from '../format/locate.ts';
 import { DECLARED_SHAPE } from './declared-shape.ts';
 import { WALKERS, type ListedKind } from './walk.ts';
 

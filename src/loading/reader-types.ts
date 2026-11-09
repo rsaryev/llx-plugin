@@ -16,7 +16,7 @@ export interface ReaderContext {
   readonly manifest: PluginManifest | undefined;
   readonly pluginName: string;
   readonly discovered: Discovered;
-  /** The host's MCP bundle capabilities. */
+  /** What contains MCP paths (as every component path), and the host's MCP bundle capabilities. */
   readonly mcp: CollectOptions;
   readonly signal?: AbortSignal;
 }

@@ -4,18 +4,17 @@ import type { PluginFiles } from '../ports/index.ts';
 import { discoverBin, discoverConfig, discoverSettings } from './discover-config.ts';
 import { discoverListed } from './discover-listed.ts';
 import type { Discovered } from './discovered.ts';
-import type { LocateContext } from './locate.ts';
+import { locateContext, type LocateOptions } from '../format/locate.ts';
 
 /** What decides whether a declared path leaves the plugin, and the signal of the reads. */
-export type DiscoverOptions = Partial<Pick<LocateContext, 'platform' | 'roots' | 'signal'>>;
+export type DiscoverOptions = LocateOptions;
 
 /**
  * Finds every component of a plugin folder (plugins/manifest-reference.md, "Standard layout", "Path
  * rules", "How each key combines with its default location") through `PluginFiles` alone: the
  * default locations and the manifest's paths, each key combined with its default by its own rule,
  * containment and existence checked, nothing parsed. `pluginName` is what components are namespaced
- * under and what names a skill at the plugin root. `platform` defaults to `posix`, the stricter
- * one: a backslash in a declared path escapes there.
+ * under and what names a skill at the plugin root; `locateContext` sets the platform default.
  */
 export async function discoverComponents(
   files: PluginFiles,
@@ -23,15 +22,7 @@ export async function discoverComponents(
   pluginName: string,
   options: DiscoverOptions = {},
 ): Promise<Discovered> {
-  const { signal, roots, platform = 'posix' } = options;
-  const context = {
-    files,
-    manifest,
-    pluginName,
-    platform,
-    ...(signal && { signal }),
-    ...(roots && { roots }),
-  };
+  const context = { ...locateContext(files, options), manifest, pluginName };
   const [skills, commands, agents, outputStyles, workflows, themes] = await Promise.all([
     discoverListed('skills', context),
     discoverListed('commands', context),

@@ -1,14 +1,17 @@
-import type { PluginIssue } from '../format/issues.ts';
-import { escapedPathIssue, type LinkRoots } from '../format/path-escape.ts';
 import type { FileStat, PluginFiles } from '../ports/index.ts';
+import type { PluginIssue } from './issues.ts';
+import { escapedPathIssue, type LinkRoots } from './path-escape.ts';
 
 /**
- * A component path as a `PluginFiles` path: relative to the root, `/`-separated, no `./`, no trailing
- * slash; the plugin root is `.` ("Both `"."` and `"./"` denote the plugin root").
+ * A component path as a `PluginFiles` path: relative to the root, `/`-separated, no `.` or empty
+ * segment, no trailing slash; the plugin root is `.` ("Both `"."` and `"./"` denote the plugin
+ * root"). `.//x` is `x`, as a file system resolves it under the root: the result never starts
+ * with `/`, so a port that resolves it against the root stays there. `..` is kept; `locate`
+ * rejects it before any read.
  */
 export function rootRelative(path: string): string {
-  const stripped = path.replace(/^(\.\/)+/, '').replace(/\/+$/, '');
-  return stripped === '' || stripped === '.' ? '.' : stripped;
+  const parts = path.split('/').filter((part) => part !== '' && part !== '.');
+  return parts.length === 0 ? '.' : parts.join('/');
 }
 
 /** `base` and a child name, as a root-relative path. */
@@ -31,8 +34,19 @@ export interface LocateContext {
   readonly signal?: AbortSignal;
 }
 
-/** Whether the path is one of the plugin's own files (errors.md reports those by full path). */
-const ownedBy = (own: boolean | undefined): boolean => own === true;
+/** What a caller may leave out of a `LocateContext`. */
+export type LocateOptions = Partial<Omit<LocateContext, 'files'>>;
+
+/**
+ * The context every loader of plugin paths shares. `platform` defaults to `posix`, the stricter
+ * one: a backslash in a declared path escapes there.
+ */
+export const locateContext = (files: PluginFiles, options: LocateOptions = {}): LocateContext => ({
+  files,
+  platform: options.platform ?? 'posix',
+  ...(options.roots && { roots: options.roots }),
+  ...(options.signal && { signal: options.signal }),
+});
 
 /**
  * Containment and existence (plugins/manifest-reference.md, "Containment and existence"; loading.md,
@@ -40,7 +54,8 @@ const ownedBy = (own: boolean | undefined): boolean => own === true;
  * macOS and Linux, or a symlink that leads outside the plugin (other than to another plugin of
  * its marketplace) "doesn't load" and is reported as `<component> path escapes plugin directory:
  * <path>` (`escapedPathIssue`); a path that is not there is `undefined` and the caller decides
- * whether it was declared. `written` is the spelling the message quotes.
+ * whether it was declared. `written` is the spelling the message quotes. Every reader of a
+ * declared or standard plugin path decides containment here, and nowhere else.
  */
 export async function locate(
   context: LocateContext,
@@ -48,7 +63,7 @@ export async function locate(
   written: string,
   own?: boolean,
 ): Promise<Located> {
-  const declared = { component, written, platform: context.platform, own: ownedBy(own) };
+  const declared = { component, written, platform: context.platform, own: own === true };
   const asWritten = escapedPathIssue(declared);
   if (asWritten) return { issue: asWritten };
   const stat = await context.files.stat(rootRelative(written), context.signal);

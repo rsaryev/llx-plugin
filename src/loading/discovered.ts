@@ -1,6 +1,6 @@
 import type { PluginIssue } from '../format/issues.ts';
 import type { PluginManifest, CommandEntry } from '../format/manifest-schema.ts';
-import type { LocateContext } from './locate.ts';
+import type { LocateContext } from '../format/locate.ts';
 
 /**
  * What discovery finds: paths and names only, no file is parsed (the readers do that), so what the

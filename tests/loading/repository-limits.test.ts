@@ -92,7 +92,9 @@ spec('trust.loading.Trust check and component limits for repository plugins', ()
         '.mcp.json': json({ mcpServers: { filed: { command: 'filed-server' } } }),
       });
       expect(Object.keys(loaded.plugin?.mcpServers ?? {}).toSorted()).toEqual(['filed', 'inline']);
-      expect(messagesOf(loaded.issues)).toEqual(['mcpServers path not found: ./shared.json']);
+      expect(messagesOf(loaded.issues)).toEqual([
+        'mcpServers path escapes plugin directory: ./shared.json — it resolves to ../shared/mcp.json, outside the plugin directory',
+      ]);
     });
 
     test('a declared path with .. names a file outside the directory: the manifest is refused', async () => {

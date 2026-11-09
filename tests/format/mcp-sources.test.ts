@@ -81,13 +81,13 @@ spec('mcp.source..json', () => {
 });
 
 spec('mcp.source.Inline map', () => {
-  test('uses the map as server configs keyed by name, reading no file but .mcp.json', async () => {
+  test('uses the map as server configs keyed by name, looking at no file but .mcp.json', async () => {
     const files = memoryFiles({});
     const inline = { 'deploy-api': node('server.js') };
     const { servers, issues } = await collectMcpServers(files, inline);
     expect(issues).toEqual([]);
     expect(servers).toEqual(inline);
-    expect(files.reads).toEqual(['.mcp.json']);
+    expect(files.accesses.map(({ path }) => path)).toEqual(['.mcp.json']);
   });
 
   test('a manifest server replaces the .mcp.json server of the same name', async () => {

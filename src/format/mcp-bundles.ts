@@ -1,6 +1,6 @@
-import type { PluginFiles } from '../ports/index.ts';
 import type { McpBundleReader, McpBundleSource } from '../ports/mcp-bundle.ts';
 import { error, warning, type PluginIssue } from './issues.ts';
+import type { LocateContext } from './locate.ts';
 import { readMcpServer, type McpConfigRead } from './mcp-config.ts';
 
 /**
@@ -14,9 +14,11 @@ import { readMcpServer, type McpConfigRead } from './mcp-config.ts';
 /** Where the host puts an extracted or downloaded bundle, relative to the plugin root. */
 export const MCPB_CACHE_DIR = '.mcpb-cache';
 
-/** What a source needs to load: the plugin's files and, optionally, the host's capabilities. */
-export interface McpLoadContext {
-  readonly files: PluginFiles;
+/**
+ * What a source needs to load: the plugin's files and what decides whether a path leaves them
+ * (`locate`), and, optionally, the host's capabilities.
+ */
+export interface McpLoadContext extends LocateContext {
   /** Absent: a bundle is a warning, never a crash. */
   readonly bundles?: McpBundleReader;
   /**
@@ -25,7 +27,6 @@ export interface McpLoadContext {
    * format is the host's to read.
    */
   readonly bundleSettings?: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
-  readonly signal?: AbortSignal;
 }
 
 const BUNDLE_EXTENSIONS = ['.mcpb', '.dxt'] as const;

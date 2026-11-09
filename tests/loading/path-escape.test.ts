@@ -8,7 +8,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { loadPlugin } from '../../src/index.ts';
-import { locate, type LocateContext } from '../../src/loading/locate.ts';
+import { locate, type LocateContext } from '../../src/format/locate.ts';
 import { memoryFiles } from '../support/ports.ts';
 import { json, messagesOf } from '../support/plugin-folder.ts';
 import { spec } from '../support/spec.ts';
@@ -36,6 +36,13 @@ spec('install.loading.Paths that escape the plugin directory', () => {
     );
     expect((await where('../shared-utils'))?.severity).toBe('error');
     expect((await where('/etc/commands.md'))?.message).toContain('path escapes plugin directory');
+  });
+
+  test('a path spelled with empty or `.` segments stays inside: the port is never handed an absolute path', async () => {
+    const files = memoryFiles({ [FILE]: 'x' });
+    const found = await locate({ files, platform: 'posix' }, 'commands', './/commands/./deploy.md');
+    expect(found.stat?.isFile).toBe(true);
+    expect(files.accesses.map(({ path }) => path)).toEqual([FILE]);
   });
 
   test('a symlink that leads outside the plugin is rejected, and the message says where it resolves', async () => {

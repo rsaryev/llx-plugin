@@ -1,5 +1,6 @@
 import type { PluginFiles } from '../ports/index.ts';
 import { error, type PluginIssue } from './issues.ts';
+import { locate, locateContext, rootRelative, type LocateOptions } from './locate.ts';
 import { loadBundle, type McpLoadContext } from './mcp-bundles.ts';
 import {
   readMcpConfig,
@@ -31,33 +32,27 @@ const ROOT_FILE = '.mcp.json';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** A manifest path as a `PluginFiles` path (no `./`), or `undefined` when it leaves the plugin. */
-const rootRelative = (path: string): string | undefined =>
-  path.split('/').includes('..') ? undefined : path.replace(/^(\.\/)+/, '');
+const none = (issues: PluginIssue[] = []): McpConfigRead => ({ servers: {}, issues });
 
-const escapes = (path: string): McpConfigRead => ({
-  servers: {},
-  issues: [error(FIELD, `${FIELD} path escapes plugin directory: ${path}`)],
-});
+const failed = (path: string, message: string): McpConfigRead => none([error(path, message)]);
 
-const failed = (path: string, message: string): McpConfigRead => ({
-  servers: {},
-  issues: [error(path, message)],
-});
-
-/** A `.json` file holding an `mcpServers` map, wrapper or bare (components.md, "MCP servers"). */
+/**
+ * A `.json` file holding an `mcpServers` map, wrapper or bare (components.md, "MCP servers").
+ * Containment is `locate`'s, as for every other component path; the root `.mcp.json` is one of
+ * the plugin's own files, so a link of it that leads outside is reported by its full path.
+ */
 async function loadJsonFile(
   path: string,
   context: McpLoadContext,
   missing: 'report' | 'ignore',
 ): Promise<McpConfigRead> {
-  const relative = rootRelative(path);
-  if (relative === undefined) return escapes(path);
-  const text = await context.files.readText(relative, context.signal);
+  const located = await locate(context, FIELD, path, missing === 'ignore');
+  if (located.issue) return none([located.issue]);
+  const text = located.stat?.isFile
+    ? await context.files.readText(rootRelative(path), context.signal)
+    : undefined;
   if (text === undefined) {
-    return missing === 'ignore'
-      ? { servers: {}, issues: [] }
-      : failed(FIELD, `${FIELD} path not found: ${path}`);
+    return missing === 'ignore' ? none() : failed(FIELD, `${FIELD} path not found: ${path}`);
   }
   let parsed: unknown;
   try {
@@ -69,6 +64,13 @@ async function loadJsonFile(
   return isRecord(parsed)
     ? readMcpConfig(parsed, path)
     : failed(path, `${FIELD} ${path} must hold a JSON object of servers`);
+}
+
+/** A bundle in the plugin folder: contained as any other component path, then opened. */
+async function loadBundlePath(value: string, context: McpLoadContext): Promise<McpConfigRead> {
+  const located = await locate(context, FIELD, value);
+  if (located.issue) return none([located.issue]);
+  return loadBundle(value, { kind: 'path', path: rootRelative(value) }, context);
 }
 
 /** One strategy per kind: `undefined` when the value is not of that kind. */
@@ -85,17 +87,10 @@ const STRATEGIES: { readonly [K in McpSourceKind]: (value: unknown) => McpSource
       ? { kind: 'json-file', load: (context) => loadJsonFile(value, context, 'report') }
       : undefined,
   // Any other string is a bundle path: a wrong extension then fails as "must end in .mcpb or .dxt".
-  'bundle-path': (value) => {
-    if (typeof value !== 'string') return undefined;
-    const relative = rootRelative(value);
-    return {
-      kind: 'bundle-path',
-      load: (context) =>
-        relative === undefined
-          ? Promise.resolve(escapes(value))
-          : loadBundle(value, { kind: 'path', path: relative }, context),
-    };
-  },
+  'bundle-path': (value) =>
+    typeof value === 'string'
+      ? { kind: 'bundle-path', load: (context) => loadBundlePath(value, context) }
+      : undefined,
   'inline-map': (value) =>
     isRecord(value)
       ? {
@@ -126,8 +121,11 @@ export function classifyMcpSource(value: unknown): McpSource | undefined {
   return undefined;
 }
 
-/** The host's capabilities: a bundle opener (without it a bundle is a warning) and saved bundle settings. */
-export type CollectOptions = Omit<McpLoadContext, 'files'>;
+/**
+ * What decides containment (`platform`, `roots`), and the host's capabilities: a bundle opener
+ * (without it a bundle is a warning) and saved bundle settings.
+ */
+export type CollectOptions = LocateOptions & Omit<McpLoadContext, keyof LocateOptions | 'files'>;
 
 export interface CollectedMcpServers {
   readonly servers: Record<string, PluginMcpServer>;
@@ -152,7 +150,7 @@ export async function collectMcpServers(
   manifestValue: unknown,
   options: CollectOptions = {},
 ): Promise<CollectedMcpServers> {
-  const context: McpLoadContext = { files, ...options };
+  const context: McpLoadContext = { ...options, ...locateContext(files, options) };
   const declared = Array.isArray(manifestValue)
     ? manifestValue
     : manifestValue === undefined

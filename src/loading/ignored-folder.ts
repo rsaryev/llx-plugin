@@ -1,7 +1,7 @@
 import { STANDARD_LAYOUT, declaredKey, type ComponentKind } from '../format/layout.ts';
 import { warning, type PluginIssue } from '../format/issues.ts';
 import { defaultFolderIgnored } from '../format/messages.ts';
-import { rootRelative } from './locate.ts';
+import { rootRelative } from '../format/locate.ts';
 import type { DiscoverContext } from './discovered.ts';
 
 const isInside = (folder: string, path: string): boolean =>

@@ -133,18 +133,18 @@ async function readComponents(context: ReaderContext): Promise<{
   };
 }
 
-/** The host's MCP bundle capabilities, as the readers take them. */
-const mcpOptions = (input: LoadPluginInput): CollectOptions => ({
-  ...(input.bundles && { bundles: input.bundles }),
-  ...(input.bundleSettings && { bundleSettings: input.bundleSettings }),
-  ...(input.signal && { signal: input.signal }),
-});
-
 /** What decides whether a declared path leaves the plugin, from the input. */
 const discoverOptionsOf = (input: LoadPluginInput): DiscoverOptions => ({
   ...(input.platform && { platform: input.platform }),
   ...(input.roots && { roots: input.roots }),
   ...(input.signal && { signal: input.signal }),
+});
+
+/** MCP paths are contained by the same rule as every other component path. */
+const mcpOptions = (input: LoadPluginInput): CollectOptions => ({
+  ...discoverOptionsOf(input),
+  ...(input.bundles && { bundles: input.bundles }),
+  ...(input.bundleSettings && { bundleSettings: input.bundleSettings }),
 });
 
 /**

@@ -4,7 +4,7 @@ import { pathNotFound } from '../format/messages.ts';
 import { COMBINE } from './combine.ts';
 import type { ConfigInput, DiscoverContext, Discovered, Found } from './discovered.ts';
 import { ignoredFolderIssues } from './ignored-folder.ts';
-import { locate, rootRelative, childPath } from './locate.ts';
+import { locate, rootRelative, childPath } from '../format/locate.ts';
 
 /** The kinds whose files are JSON configuration, read by their own reader. */
 export const CONFIG_KINDS = ['hooks', 'lspServers', 'monitors'] as const;
