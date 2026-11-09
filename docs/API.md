@@ -810,7 +810,7 @@ shares the per-reference rule (`resolveEnvReference`) with this expander, so the
 
 | API | What it does |
 | --- | --- |
-| `scrubEnvironment(snapshot, { version })` | pure: the environment a subprocess gets when `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` is on in the snapshot (`1`, `true`, `yes` or `on`, any casing); the snapshot copied unchanged when it is not. `version` below `2.1.251` removes only `ANTHROPIC_API_KEY` and `AWS_SECRET_ACCESS_KEY`; an unreadable version is the current table |
+| `scrubEnvironment(snapshot, { version }?)` | pure: the environment a subprocess gets when `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` is on in the snapshot (`1`, `true`, `yes` or `on`, any casing); the snapshot copied unchanged when it is not. `version` below `2.1.251` removes only `ANTHROPIC_API_KEY` and `AWS_SECRET_ACCESS_KEY`; an unreadable version is the current table |
 | `subprocessScrubEnabled(snapshot)` | whether the switch is on |
 
 The Linux PID namespace the scrub gives Bash subprocesses (`ps`, `pgrep` and `kill` cannot see host
@@ -1278,8 +1278,8 @@ removal, `CLAUDECODE` for every kind, `CLAUDE_CODE_CHILD_SESSION` for all but `m
 `session.subprocessEnvironment(kind)` calls it with the session's settings `env`, session id, process id
 and environment, so a host builds its own Bash, PowerShell, stdio MCP and Monitor environments without
 copying the logic. It never holds `CLAUDE_ENV_FILE` or the plugin path variables, and the kit starts none
-of those processes itself (what is left out is in `spec/judgments.md`). `scrubEnvironment(env, windows)`
-and `scrubRequested(env)` are the scrub on its own.
+of those processes itself (what is left out is in `spec/judgments.md`). `scrubEnvironment(env)` and
+`subprocessScrubEnabled(env)` (Loading) are the scrub on its own: one table for every kind.
 
 A shell-form hook that PowerShell runs by the host's default (no `shell` field) and whose command is only
 quoted strings starts nothing: the run is `not-started` with a message that begins `PowerShell started no

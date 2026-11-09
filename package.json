@@ -58,6 +58,7 @@
     "corpus": "bun scripts/corpus/run.ts",
     "oracle:runtime": "bun scripts/oracle/runtime-compare.ts",
     "oracle:settings": "bun scripts/oracle/settings.ts",
+    "oracle:subprocess-scrub": "bun scripts/oracle/subprocess-scrub.ts",
     "oracle:remote-mcp-env": "bun scripts/oracle/remote-mcp-env.ts",
     "oracle:headers-helper-env": "bun scripts/oracle/headers-helper-env.ts",
     "oracle:model-content": "bun scripts/oracle/model-content.ts",

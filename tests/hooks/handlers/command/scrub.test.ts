@@ -41,8 +41,14 @@ spec('environment.host.CLAUDE_CODE_SUBPROCESS_ENV_SCRUB', () => {
     expect(env['LANG']).toBe('en_US.UTF-8');
   });
 
-  test('unset, or any value other than 1, leaves the environment alone', async () => {
-    for (const value of [undefined, '0', '', 'true']) {
+  test('unset, or an off spelling, leaves the environment alone; `true` turns it on as `1` does', async () => {
+    // env-vars.md: "set `1`, `true`, `yes`, or `on` to turn it on and `0`, `false`, `no`, or `off` to turn it off".
+    expect(
+      (await hookEnv({ ANTHROPIC_API_KEY: 'k', CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 'true' }))[
+        'ANTHROPIC_API_KEY'
+      ],
+    ).toBeUndefined();
+    for (const value of [undefined, '0', '', 'false', 'off']) {
       const env = await hookEnv({
         ANTHROPIC_API_KEY: 'sk-ant-secret',
         ...(value === undefined ? {} : { CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: value }),

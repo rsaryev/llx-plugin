@@ -141,6 +141,13 @@ of `tests/fixtures/headers-helper-env/candidates.txt` is set to a dummy value in
 received to a local HTTP server through `claude mcp get`, and the result is committed as
 `expected.json`; `tests/loading/helper-credentials.test.ts` checks the kit's rule against it.
 
+`bun run oracle:subprocess-scrub` observes what `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` leaves of each
+variable of `tests/fixtures/subprocess-scrub/candidates.json` (env-vars.md, "What the subprocess
+environment scrub removes", gives the rule by example): a bare environment, a private config folder
+whose SessionStart hook prints its environment, an API address nobody listens on, and the run stopped
+once the hook wrote. The result is committed as `expected.json`;
+`tests/hooks/handlers/command/scrub-judgments.test.ts` checks the kit's one scrub against it.
+
 ## Model-request oracle
 
 `bun run oracle:model-content` reads what Claude Code sends the model when a plugin's skill or

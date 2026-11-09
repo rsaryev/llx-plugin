@@ -56,8 +56,8 @@ function scrubberFor(version: string): Scrubber {
 }
 
 export interface ScrubOptions {
-  /** The Claude Code release whose behaviour to follow, such as `2.1.319`. */
-  readonly version: string;
+  /** The Claude Code release whose behaviour to follow, such as `2.1.319`; absent is the current table. */
+  readonly version?: string;
 }
 
 /**
@@ -68,10 +68,10 @@ export interface ScrubOptions {
  */
 export function scrubEnvironment(
   snapshot: Readonly<Record<string, string>>,
-  options: ScrubOptions,
+  options: ScrubOptions = {},
 ): Record<string, string> {
   if (!subprocessScrubEnabled(snapshot)) return { ...snapshot };
-  const scrubber = scrubberFor(options.version);
+  const scrubber = options.version === undefined ? SCRUBBERS.table : scrubberFor(options.version);
   const out: Record<string, string> = {};
   for (const [name, value] of Object.entries(snapshot)) {
     const kept = scrubber(name, value);

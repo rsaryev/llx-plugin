@@ -9,10 +9,10 @@
 import { describe, expect, test } from 'bun:test';
 import {
   SUBPROCESS_KINDS,
-  scrubHookEnvironment as scrubEnvironment,
   subprocessEnvironment,
   type SubprocessKind,
 } from '../../../../src/hooks/index.ts';
+import { scrubEnvironment } from '../../../../src/loading/index.ts';
 
 const HOST = { PATH: '/bin', OTEL_LOGS_EXPORTER: 'otlp', CLAUDE_ENV_FILE: '/launch/env.sh' };
 
@@ -120,16 +120,19 @@ describe('env-vars.md: what every kind inherits', () => {
 describe('scrubEnvironment is the host-facing scrub', () => {
   test('it removes credentials by name and value and cuts index URL passwords', () => {
     expect(
-      scrubEnvironment(
-        {
-          NPM_TOKEN: 'x',
-          DATABASE_URL: 'postgres://a:b@h/db',
-          PIP_INDEX_URL: 'https://u:p@h/simple',
-          GITHUB_TOKEN: 'ghp_x',
-          PATH: '/bin',
-        },
-        false,
-      ),
-    ).toEqual({ PIP_INDEX_URL: 'https://h/simple', GITHUB_TOKEN: 'ghp_x', PATH: '/bin' });
+      scrubEnvironment({
+        NPM_TOKEN: 'x',
+        DATABASE_URL: 'postgres://a:b@h/db',
+        PIP_INDEX_URL: 'https://u:p@h/simple',
+        GITHUB_TOKEN: 'ghp_x',
+        PATH: '/bin',
+        CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1',
+      }),
+    ).toEqual({
+      PIP_INDEX_URL: 'https://h/simple',
+      GITHUB_TOKEN: 'ghp_x',
+      PATH: '/bin',
+      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1',
+    });
   });
 });

@@ -1,3 +1,4 @@
+import { MARKETPLACE_SOURCE_KINDS } from '../../protocol/settings-keys.ts';
 import type { PluginDependency, PluginManifest } from '../manifest-schema.ts';
 import type { PluginIssue } from '../issues.ts';
 import type { Renames } from './renames.ts';
@@ -59,20 +60,9 @@ export type PluginSourceOf<Kind extends PluginSourceKind> = Extract<PluginSource
 /**
  * The ten forms a marketplace source takes: in `extraKnownMarketplaces`, in `marketplace add`
  * input, and, for the last three, only in the policy lists (marketplace-reference.md,
- * "Marketplace sources", "Source values valid only in policy lists").
+ * "Marketplace sources", "Source values valid only in policy lists"). One list with the settings.
  */
-export const MARKETPLACE_SOURCE_KINDS = [
-  'url',
-  'github',
-  'git',
-  'npm',
-  'file',
-  'directory',
-  'settings',
-  'skills-dir',
-  'hostPattern',
-  'pathPattern',
-] as const;
+export { MARKETPLACE_SOURCE_KINDS };
 export type MarketplaceSourceKind = (typeof MARKETPLACE_SOURCE_KINDS)[number];
 
 export interface Owner {

@@ -13,7 +13,6 @@ export type {
 } from './context.ts';
 export type { HeldOpenResult } from './command/async.ts';
 export { HANDLERS, runHandler } from './registry.ts';
-export { scrubEnvironment as scrubHookEnvironment, scrubRequested } from './command/scrub.ts';
 export {
   SUBPROCESS_KINDS,
   subprocessEnvironment,

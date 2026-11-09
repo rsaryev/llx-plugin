@@ -34,6 +34,14 @@
 
 ### Fixed
 
+- One subprocess scrub, proven against claude 2.1.321: hooks used a second copy that read only `=1` as on
+  and kept `MY_AUTH`, `FOO_KEY`, `SSH_AUTH_SOCK`, JWT values and lower-case GitHub tokens wrongly; the
+  other copy removed `MONKEY`, `TOKENIZER`, `AUTHOR` by substring and kept PEM keys. Both now go through
+  `scrubAction` (whole words of the name in any case, URL passwords, PEM private keys and JWTs by value,
+  `YARN_REGISTRY` among the registry URLs), 72 of 72 probed variables as claude leaves them.
+  `scrubHookEnvironment` and `scrubRequested` are removed: `scrubEnvironment(env)` and
+  `subprocessScrubEnabled(env)` serve every kind; `ScrubOptions.version` is optional.
+- `MARKETPLACE_SOURCE_KINDS` has one definition (`format/marketplace` re-exports the settings list).
 - Reading frontmatter no longer writes YAML parser warnings to the host's process (a key that is a
   collection, as in `{ SKILL_NAME }: x`); the key is read as its text, as before.
 - The warning for a hook type an event does not support reads `A hook of type http is not supported

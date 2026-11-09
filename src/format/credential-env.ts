@@ -84,20 +84,33 @@ export const withoutUserinfo = (value: string): string => value.replace(USERINFO
 /** What the scrub does to one variable (env-vars.md, "What the subprocess environment scrub removes"). */
 export type ScrubAction = 'remove' | 'keep' | 'cut-userinfo';
 
-interface ScrubRule {
-  readonly decide: (name: string, value: string) => ScrubAction | undefined;
-}
-
-const exactly =
-  (names: ReadonlySet<string>, action: ScrubAction): ScrubRule['decide'] =>
-  (name) =>
-    names.has(name) ? action : undefined;
-
 /**
- * "Leaves it in place, so that `gh` and scripts that call the GitHub API keep working", and
- * "including a username and password in the URL" for the proxies. The proxies are matched in their
- * lower-case spelling too, the same variable on a Unix host (judgment).
+ * The scrub's rules (env-vars.md, "What the subprocess environment scrub removes"): the table is the
+ * docs', the rest is oracle 2.1.321, a hook printing its environment under the scrub
+ * (spec/judgments.md). Every name compares without regard to case.
+ * - A name is a credential when a `_`-separated word of it is one of `CREDENTIAL_WORDS`: `MY_AUTH`,
+ *   `FOO_KEY`, `MY_PASS`, `SSH_AUTH_SOCK` go, `MONKEY`, `TOKENIZER`, `TOKENS`, `OAUTH`, `KEYCHAIN` stay.
+ * - A value is a credential when it holds a URL with a password, a PEM private key or a JWT; a token
+ *   by its prefix alone (`ghp_`, `sk-ant-`, `AKIA`) and a public key stay.
+ * - The registry URLs keep the URL without its userinfo, a bare token as the username included.
  */
+const CREDENTIAL_WORDS: ReadonlySet<string> = new Set([
+  'TOKEN',
+  'PASS',
+  'PASSWD',
+  'PASSWORD',
+  'SECRET',
+  'SECRETS',
+  'CREDENTIAL',
+  'CREDENTIALS',
+  'KEY',
+  'APIKEY',
+  'PRIVATEKEY',
+  'ACCESSKEY',
+  'AUTH',
+]);
+
+/** "Leaves it in place": the GitHub tokens, so `gh` keeps working, and the proxies. */
 const KEPT_NAMES: ReadonlySet<string> = new Set([
   'GITHUB_TOKEN',
   'GH_TOKEN',
@@ -105,43 +118,48 @@ const KEPT_NAMES: ReadonlySet<string> = new Set([
   'GITHUB_ENTERPRISE_TOKEN',
   'HTTP_PROXY',
   'HTTPS_PROXY',
-  'http_proxy',
-  'https_proxy',
 ]);
 
-/** Registry URLs: "keeps the URL and cuts the username and password from it". The list is partly judgment. */
+/** "Keeps the URL and cuts the username and password from it". */
 const REGISTRY_URL_NAMES: ReadonlySet<string> = new Set([
   'PIP_INDEX_URL',
   'PIP_EXTRA_INDEX_URL',
   'NPM_CONFIG_REGISTRY',
-  'npm_config_registry',
   'UV_INDEX_URL',
   'UV_EXTRA_INDEX_URL',
+  'YARN_REGISTRY',
 ]);
 
+const REMOVED_NAMES: ReadonlySet<string> = new Set([
+  'CLAUDE_CONFIG_DIR',
+  ...FIXED_CREDENTIAL_NAMES,
+]);
 const GIT_CONFIG_ENTRY = /^GIT_CONFIG_(?:COUNT|KEY_\d+|VALUE_\d+)$/;
+const PRIVATE_KEY_BLOCK = /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----/;
+const JWT = /\beyJ[\w-]+\.eyJ[\w-]+\.[\w-]*/;
 
-/**
- * First rule that decides wins: what is kept whatever it holds comes first. A registry URL with any
- * userinfo is cut, a bare token as the username included (judgment); another URL is removed only
- * when it carries a password, so an `ssh://git@host` value stays.
- */
+const nameIsCredential = (key: string): boolean =>
+  key.split('_').some((word) => CREDENTIAL_WORDS.has(word));
+
+const valueIsCredential = (value: string): boolean =>
+  hasUrlPassword(value) || PRIVATE_KEY_BLOCK.test(value) || JWT.test(value);
+
+type ScrubRule = (key: string, value: string) => ScrubAction | undefined;
+
+/** First rule that decides wins: what the docs leave in place whatever it holds comes first. */
 const SCRUB_RULES: readonly ScrubRule[] = [
-  { decide: (name) => (GIT_CONFIG_ENTRY.test(name) ? 'keep' : undefined) },
-  { decide: exactly(KEPT_NAMES, 'keep') },
-  { decide: exactly(new Set(['CLAUDE_CONFIG_DIR']), 'remove') },
-  { decide: (name) => (isCredentialVariable(name) ? 'remove' : undefined) },
-  {
-    decide: (name, value) =>
-      REGISTRY_URL_NAMES.has(name) && withoutUserinfo(value) !== value ? 'cut-userinfo' : undefined,
-  },
-  { decide: (_name, value) => (hasUrlPassword(value) ? 'remove' : undefined) },
+  (key) => (GIT_CONFIG_ENTRY.test(key) || KEPT_NAMES.has(key) ? 'keep' : undefined),
+  (key) => (REMOVED_NAMES.has(key) || nameIsCredential(key) ? 'remove' : undefined),
+  (key, value) =>
+    REGISTRY_URL_NAMES.has(key) && withoutUserinfo(value) !== value ? 'cut-userinfo' : undefined,
+  (_key, value) => (valueIsCredential(value) ? 'remove' : undefined),
 ];
 
 /** What the scrub does to the variable `name` holding `value`; a variable no rule names is kept. */
 export function scrubAction(name: string, value: string): ScrubAction {
+  const key = name.toUpperCase();
   for (const rule of SCRUB_RULES) {
-    const decided = rule.decide(name, value);
+    const decided = rule(key, value);
     if (decided !== undefined) return decided;
   }
   return 'keep';

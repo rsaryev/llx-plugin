@@ -1,5 +1,5 @@
 import { applySettingsEnv } from '../../../settings/env.ts';
-import { scrubEnvironment, scrubRequested } from './scrub.ts';
+import { scrubEnvironment } from '../../../loading/resolve/subprocess-scrub.ts';
 
 /**
  * The environment of a subprocess Claude Code starts (env-vars.md, "Set variables in settings files",
@@ -87,7 +87,7 @@ function setByClaudeCode(input: SubprocessEnvironmentInput): Record<string, stri
 export function subprocessEnvironment(input: SubprocessEnvironmentInput): Record<string, string> {
   const { windows } = input;
   const parent = applySettingsEnv(input.environment, input.settingsEnv ?? {}, windows);
-  const scrubbed = scrubRequested(parent) ? scrubEnvironment(parent, windows) : parent;
+  const scrubbed = scrubEnvironment(parent);
   const exporter = windows ? OTEL_ANY_CASE : OTEL;
   const isEnvFile = (name: string): boolean => (windows ? name.toUpperCase() : name) === ENV_FILE;
   const inherited = Object.entries(scrubbed).filter(
