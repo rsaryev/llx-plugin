@@ -113,7 +113,7 @@ async function kitSide(
 ): Promise<Record<string, string>> {
   const loaded = await loadSettingsLayers(
     { read: async (scope) => raws[scope], managed: async () => machine.reads },
-    new AbortController().signal,
+    { signal: new AbortController().signal },
   );
   const view = createPolicyView(loaded.layers);
   const start = createPermissionsPolicy(view, context).startingMode({

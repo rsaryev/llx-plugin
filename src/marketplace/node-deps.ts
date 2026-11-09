@@ -80,7 +80,7 @@ export function planNodeDepsInstall(input: NodeDepsInput): NodeDepsResult {
 export function nodeDepsRun(
   plan: NodeDepsInstall,
   env: Readonly<Record<string, string>>,
-  signal: AbortSignal,
+  { signal }: { readonly signal: AbortSignal },
 ): CommandRun {
   return {
     spec: plan.run.spec,

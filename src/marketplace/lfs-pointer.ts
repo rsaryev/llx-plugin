@@ -92,7 +92,7 @@ async function lookups(
  */
 export async function lfsPointerIssues(
   files: PluginFiles,
-  signal?: AbortSignal,
+  { signal }: { readonly signal?: AbortSignal | undefined } = {},
 ): Promise<readonly PluginIssue[]> {
   const found: PluginIssue[] = [];
   const pending = ['.'];

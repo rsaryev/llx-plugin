@@ -26,22 +26,21 @@ function host(sources: Partial<Record<PolicyScope, unknown>>) {
 describe('loadSettingsLayers', () => {
   test('asks for every scope and returns a layer for each source that exists, highest first', async () => {
     const sources = host({ user: { enableWorkflows: true }, managed: { disableWorkflows: true } });
-    const { layers, issues } = await loadSettingsLayers(sources, signal);
+    const { layers, issues } = await loadSettingsLayers(sources, { signal });
     expect(sources.asked).toEqual([...POLICY_SCOPES]);
     expect(layers.map((layer) => layer.scope)).toEqual(['managed', 'user']);
     expect(issues).toEqual([]);
   });
 
   test('a source given as text is parsed', async () => {
-    const { layers } = await loadSettingsLayers(
-      host({ project: '{ "enableWorkflows": false }' }),
+    const { layers } = await loadSettingsLayers(host({ project: '{ "enableWorkflows": false }' }), {
       signal,
-    );
+    });
     expect(plain(layers[0]?.settings)).toEqual({ enableWorkflows: false });
   });
 
   test('an empty document counts as {}', async () => {
-    const { layers, issues } = await loadSettingsLayers(host({ managed: '  \n' }), signal);
+    const { layers, issues } = await loadSettingsLayers(host({ managed: '  \n' }), { signal });
     expect(layers).toEqual([{ scope: 'managed', settings: {} }]);
     expect(issues).toEqual([]);
   });
@@ -49,7 +48,7 @@ describe('loadSettingsLayers', () => {
   test('a managed document that does not parse is a fatal error with the documented message, and no layer survives', async () => {
     const { layers, issues, fatal } = await loadSettingsLayers(
       host({ managed: '{ nope', user: { enableWorkflows: true } }),
-      signal,
+      { signal },
     );
     expect(fatal).toBe(true);
     expect(layers).toEqual([]);
@@ -63,7 +62,7 @@ describe('loadSettingsLayers', () => {
   test('a user file that does not parse is skipped with a Settings Error, the rest continues', async () => {
     const { layers, issues, fatal } = await loadSettingsLayers(
       host({ user: '{ nope', project: { enableWorkflows: true } }),
-      signal,
+      { signal },
     );
     expect(layers.map((layer) => layer.scope)).toEqual(['project']);
     expect(issues.map((one) => one.severity)).toEqual(['error']);
@@ -72,7 +71,7 @@ describe('loadSettingsLayers', () => {
 
   test('only the scopes asked for are read', async () => {
     const sources = host({ user: {}, project: {} });
-    const { layers } = await loadSettingsLayers(sources, signal, ['user']);
+    const { layers } = await loadSettingsLayers(sources, { signal, scopes: ['user'] });
     expect(sources.asked).toEqual(['user']);
     expect(layers.map((layer) => layer.scope)).toEqual(['user']);
   });
@@ -80,7 +79,7 @@ describe('loadSettingsLayers', () => {
   test('what each layer says is collected', async () => {
     const { issues } = await loadSettingsLayers(
       host({ user: { strictKnownMarketplaces: [] }, managed: { disableAllHooks: 'yes' } }),
-      signal,
+      { signal },
     );
     expect(issues.map((one) => one.path).toSorted()).toEqual([
       'managed:disableAllHooks',

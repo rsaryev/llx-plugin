@@ -42,7 +42,7 @@ const file = (plugins: Record<string, unknown>, version = 2) =>
 describe('a healthy file', () => {
   test('is read and nothing is written', async () => {
     const store = memoryStateStore({ 'installed_plugins.json': file({ 'f@acme': [record] }) });
-    const loaded = await loadInstalledPlugins(ports(store), signal);
+    const loaded = await loadInstalledPlugins(ports(store), { signal });
     expect(loaded.read.records['f@acme']).toHaveLength(1);
     expect(loaded.failure).toBeUndefined();
     expect(store.writes).toEqual([]);
@@ -50,7 +50,7 @@ describe('a healthy file', () => {
 
   test('no file is no installs and nothing is written', async () => {
     const store = memoryStateStore();
-    const loaded = await loadInstalledPlugins(ports(store), signal);
+    const loaded = await loadInstalledPlugins(ports(store), { signal });
     expect(loaded.read.records).toEqual({});
     expect(store.writes).toEqual([]);
   });
@@ -59,7 +59,7 @@ describe('a healthy file', () => {
 spec('install.troubleshooting.installed_plugins.json could not be read and was rebuilt', () => {
   test('keeps the old text in a dated .kept copy, then starts the file over', async () => {
     const store = memoryStateStore({ 'installed_plugins.json': '{ not json' });
-    await loadInstalledPlugins(ports(store), signal);
+    await loadInstalledPlugins(ports(store), { signal });
     expect(store.writes.map((write) => write.name)).toEqual([
       unreadableName('{ not json'),
       'installed_plugins.json',
@@ -75,7 +75,7 @@ spec('install.troubleshooting.installed_plugins.json could not be read and was r
     const store = memoryStateStore({ 'installed_plugins.json': 'garbage' }, [
       unreadableName('garbage'),
     ]);
-    const loaded = await loadInstalledPlugins(ports(store), signal);
+    const loaded = await loadInstalledPlugins(ports(store), { signal });
     expect(loaded.failure?.failure).toBe('write');
     expect(store.files['installed_plugins.json']).toBe('garbage');
   });
@@ -84,7 +84,7 @@ spec('install.troubleshooting.installed_plugins.json could not be read and was r
     const store = memoryStateStore({ 'installed_plugins.json': 'garbage' }, [
       'installed_plugins.json',
     ]);
-    const loaded = await loadInstalledPlugins(ports(store), signal);
+    const loaded = await loadInstalledPlugins(ports(store), { signal });
     expect(loaded.failure?.failure).toBe('write');
     expect(store.writes.map((write) => write.name)).toEqual([unreadableName('garbage')]);
     expect(store.files['installed_plugins.json']).toBe('garbage');
@@ -94,9 +94,9 @@ spec('install.troubleshooting.installed_plugins.json could not be read and was r
     const first = memoryStateStore({ 'installed_plugins.json': 'garbage one' });
     const second = memoryStateStore({ 'installed_plugins.json': 'garbage two' });
     const again = memoryStateStore({ 'installed_plugins.json': 'garbage one' });
-    await loadInstalledPlugins(ports(first), signal);
-    await loadInstalledPlugins(ports(second), signal);
-    await loadInstalledPlugins(ports(again), signal);
+    await loadInstalledPlugins(ports(first), { signal });
+    await loadInstalledPlugins(ports(second), { signal });
+    await loadInstalledPlugins(ports(again), { signal });
     expect(firstWrite(first)).toBe(unreadableName('garbage one'));
     expect(firstWrite(second)).toBe(unreadableName('garbage two'));
     expect(firstWrite(first)).not.toBe(firstWrite(second));
@@ -111,7 +111,7 @@ spec(
       const store = memoryStateStore({
         'installed_plugins.json': file({ 'bad name': [record], 'f@acme': [record] }),
       });
-      const loaded = await loadInstalledPlugins(ports(store), signal);
+      const loaded = await loadInstalledPlugins(ports(store), { signal });
       const copy = JSON.stringify({ 'bad name': [record] }, null, 2);
       expect(store.writes.map((write) => write.name)).toEqual([
         setAsideName(copy),
@@ -128,7 +128,7 @@ spec(
       const text = file({ 'bad name': [record], 'f@acme': [record] });
       const copy = JSON.stringify({ 'bad name': [record] }, null, 2);
       const store = memoryStateStore({ 'installed_plugins.json': text }, [setAsideName(copy)]);
-      const loaded = await loadInstalledPlugins(ports(store), signal);
+      const loaded = await loadInstalledPlugins(ports(store), { signal });
       expect(loaded.failure?.failure).toBe('write');
       expect(store.writes).toEqual([]);
       expect(store.files['installed_plugins.json']).toBe(text);
@@ -140,7 +140,7 @@ spec(
       const store = memoryStateStore({ 'installed_plugins.json': text }, [
         'installed_plugins.json',
       ]);
-      const loaded = await loadInstalledPlugins(ports(store), signal);
+      const loaded = await loadInstalledPlugins(ports(store), { signal });
       expect(loaded.failure?.failure).toBe('write');
       expect(store.writes.map((write) => write.name)).toEqual([setAsideName(copy)]);
       expect(store.files['installed_plugins.json']).toBe(text);
@@ -149,7 +149,7 @@ spec(
     test('a key named __proto__ is copied aside with the rest, never lost to the prototype', async () => {
       const text = `{"version":2,"plugins":{"__proto__":[${JSON.stringify(record)}],"bad name":[${JSON.stringify(record)}],"f@acme":[${JSON.stringify(record)}]}}`;
       const store = memoryStateStore({ 'installed_plugins.json': text });
-      await loadInstalledPlugins(ports(store), signal);
+      await loadInstalledPlugins(ports(store), { signal });
       const kept = JSON.parse(store.writes[0]?.text ?? '{}');
       expect(Object.keys(kept)).toEqual(['__proto__', 'bad name']);
       expect(Object.keys(JSON.parse(store.files['installed_plugins.json'] ?? '').plugins)).toEqual([
@@ -165,7 +165,7 @@ spec(
     test('does not rewrite the file while such a record is there, and drops nothing', async () => {
       const text = file({ 'new@acme': [{ scope: 'galaxy' }], 'bad name': [record] });
       const store = memoryStateStore({ 'installed_plugins.json': text });
-      const loaded = await loadInstalledPlugins(ports(store), signal);
+      const loaded = await loadInstalledPlugins(ports(store), { signal });
       expect(store.writes).toEqual([]);
       expect(store.files['installed_plugins.json']).toBe(text);
       expect(loaded.read.unreadable).toEqual(['new@acme']);
@@ -174,7 +174,7 @@ spec(
     test('a format this version does not know is left as it is too', async () => {
       const text = file({}, 9);
       const store = memoryStateStore({ 'installed_plugins.json': text });
-      await loadInstalledPlugins(ports(store), signal);
+      await loadInstalledPlugins(ports(store), { signal });
       expect(store.writes).toEqual([]);
     });
   },

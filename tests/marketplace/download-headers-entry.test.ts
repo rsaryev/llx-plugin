@@ -35,12 +35,9 @@ const download = (
   rest = setting(),
 ) => {
   const fakes = portsWith(replies);
-  const result = archiveDownloadHeaders(
-    { archiveUrl: ARCHIVE_URL, ...parts },
-    rest,
-    fakes.ports,
+  const result = archiveDownloadHeaders({ archiveUrl: ARCHIVE_URL, ...parts }, rest, fakes.ports, {
     signal,
-  );
+  });
   return { ...fakes, result };
 };
 
@@ -218,7 +215,7 @@ describe('after a redirect to another origin the request carries none of the mer
             rootDepth: 'top-or-one-down',
           },
           { http, sha256: fakeSha256('0'), archive: fakeArchive(stats()) },
-          signal,
+          { signal },
         );
         expect('bytes' in fetched).toBe(true);
         expect(http.requests.map((request) => request.headers)).toEqual([

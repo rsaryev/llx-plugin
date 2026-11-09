@@ -38,7 +38,7 @@ const OUTPUT_PROBLEMS = {
 export async function runMcpHeadersHelper(
   plan: HelperRun,
   runner: CommandRunner,
-  signal: AbortSignal,
+  { signal }: { readonly signal: AbortSignal },
 ): Promise<{ readonly headers: Record<string, string> } | PluginIssue> {
   const server = plan.environment.CLAUDE_CODE_MCP_SERVER_NAME ?? '';
   const result = await runner.run({

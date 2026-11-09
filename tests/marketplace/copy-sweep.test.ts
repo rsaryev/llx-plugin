@@ -74,14 +74,14 @@ describe('sweeping through the store', () => {
       [],
       { 'installed_plugins.json': NOW - 90 * DAY, [KEPT]: NOW - 40 * DAY, [ASIDE]: NOW - 2 * DAY },
     );
-    const swept = await sweepAgedCopies({ store, clock: fixedClock(NOW) }, {}, signal);
+    const swept = await sweepAgedCopies({ store, clock: fixedClock(NOW) }, {}, { signal });
     expect(swept).toEqual({ removed: [KEPT], failures: [] });
     expect(Object.keys(store.files)).toEqual(['installed_plugins.json', ASIDE]);
   });
 
   test('a copy with no known age is left alone', async () => {
     const store = memoryStateStore({ [KEPT]: 'old' });
-    const swept = await sweepAgedCopies({ store, clock: fixedClock(NOW) }, {}, signal);
+    const swept = await sweepAgedCopies({ store, clock: fixedClock(NOW) }, {}, { signal });
     expect(swept.removed).toEqual([]);
     expect(store.removals).toEqual([]);
   });
@@ -91,7 +91,7 @@ describe('sweeping through the store', () => {
       [KEPT]: NOW - 40 * DAY,
       [ASIDE]: NOW - 40 * DAY,
     });
-    const swept = await sweepAgedCopies({ store, clock: fixedClock(NOW) }, {}, signal);
+    const swept = await sweepAgedCopies({ store, clock: fixedClock(NOW) }, {}, { signal });
     expect(swept.removed).toEqual([ASIDE]);
     expect(swept.failures).toEqual([{ failure: 'remove', message: `cannot remove ${KEPT}` }]);
     expect(Object.keys(store.files)).toEqual([KEPT]);
@@ -99,13 +99,13 @@ describe('sweeping through the store', () => {
 
   test('the copies loadInstalledPlugins writes are the ones that age out later', async () => {
     const store = memoryStateStore({ 'installed_plugins.json': '{ garbage' }, [], {}, () => NOW);
-    await loadInstalledPlugins({ store, sha256: realSha256, clock: fixedClock(NOW) }, signal);
+    await loadInstalledPlugins({ store, sha256: realSha256, clock: fixedClock(NOW) }, { signal });
     const copy = (await store.names(signal)).find((name) => name.endsWith('.kept'));
     expect(copy).toBeDefined();
     const later = await sweepAgedCopies(
       { store, clock: fixedClock(NOW + 31 * DAY) },
       { cleanupPeriodDays: 30 },
-      signal,
+      { signal },
     );
     expect(later.removed).toEqual(copy === undefined ? [] : [copy]);
   });

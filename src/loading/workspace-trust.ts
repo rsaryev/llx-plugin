@@ -46,7 +46,7 @@ export type WorkspaceTrustState = 'folder' | 'parent' | 'none';
 export async function workspaceTrustState(
   trust: WorkspaceTrust,
   facts: TrustFacts,
-  signal?: AbortSignal,
+  { signal }: { readonly signal?: AbortSignal | undefined } = {},
 ): Promise<WorkspaceTrustState> {
   const { key } = workspaceTrustKey(facts);
   if (await trust.isFolderTrusted(key, signal)) return 'folder';

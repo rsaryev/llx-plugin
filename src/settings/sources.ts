@@ -124,8 +124,10 @@ async function loadWithManaged(
  */
 export function loadSettingsLayers(
   sources: SettingsSources,
-  signal: AbortSignal,
-  scopes: readonly PolicyScope[] = POLICY_SCOPES,
+  {
+    signal,
+    scopes = POLICY_SCOPES,
+  }: { readonly signal: AbortSignal; readonly scopes?: readonly PolicyScope[] },
 ): Promise<LoadedSettings> {
   if (sources.managed === undefined || !scopes.includes('managed')) {
     return loadScopes(sources, signal, scopes);

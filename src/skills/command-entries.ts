@@ -96,7 +96,7 @@ export async function loadCommandEntries(
   map: Readonly<Record<string, CommandEntry>>,
   files: PluginFiles,
   ctx: CommandEntryContext,
-  signal: AbortSignal,
+  { signal }: { readonly signal: AbortSignal },
 ): Promise<CommandEntriesLoaded> {
   const loaded = await Promise.all(
     Object.entries(map).map(([key, entry]) => loadEntry(key, entry, { files, ctx, signal })),

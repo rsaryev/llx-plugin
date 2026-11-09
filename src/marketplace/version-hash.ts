@@ -75,7 +75,7 @@ async function treeLines(
 export async function copyModeHash(
   files: PluginFiles,
   sha256: Sha256,
-  signal?: AbortSignal,
+  { signal }: { readonly signal?: AbortSignal | undefined } = {},
 ): Promise<string> {
   const lines = await treeLines(files, '.', sha256, signal);
   return shortHash12(await digestOf(lines.join('\n'), sha256));
@@ -90,7 +90,7 @@ export async function linkModeHash(
   realPath: string,
   files: PluginFiles,
   sha256: Sha256,
-  signal?: AbortSignal,
+  { signal }: { readonly signal?: AbortSignal | undefined } = {},
 ): Promise<string> {
   const names = await namesIn(files, '.', signal);
   return shortHash12(await digestOf([realPath, ...names].join('\0'), sha256));

@@ -108,7 +108,7 @@ export async function frontmatterIssues(
   kind: ComponentKind,
   files: PluginFiles,
   paths: readonly string[],
-  signal?: AbortSignal,
+  { signal }: { readonly signal?: AbortSignal | undefined } = {},
 ): Promise<ValidationIssue[]> {
   const issues: ValidationIssue[] = [];
   for (const path of paths) {
@@ -126,7 +126,7 @@ export async function componentIssues(
   const issues: ValidationIssue[] = [];
   for (const kind of COMPONENT_KINDS) {
     const scan = await scanDefault(kind, files, signal);
-    issues.push(...scan.issues, ...(await frontmatterIssues(kind, files, scan.files, signal)));
+    issues.push(...scan.issues, ...(await frontmatterIssues(kind, files, scan.files, { signal })));
   }
   return issues;
 }

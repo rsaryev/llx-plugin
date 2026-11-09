@@ -28,12 +28,9 @@ const download = (
   rest = setting(),
 ) => {
   const fakes = portsWith(replies);
-  const result = archiveDownloadHeaders(
-    { archiveUrl: ARCHIVE_URL, ...parts },
-    rest,
-    fakes.ports,
+  const result = archiveDownloadHeaders({ archiveUrl: ARCHIVE_URL, ...parts }, rest, fakes.ports, {
     signal,
-  );
+  });
   return { ...fakes, result };
 };
 
@@ -41,7 +38,7 @@ spec('marketplace.sourceField.headers', () => {
   test('headers of a url source ride the marketplace.json fetch', async () => {
     const layer = sourceLayer({ headers: { Authorization: 'Bearer t', 'X-Team': 'infra' } });
     const fakes = portsWith([]);
-    const result = await resolveHeaders(layer, setting(), fakes.ports, signal);
+    const result = await resolveHeaders(layer, setting(), fakes.ports, { signal });
     expect(headersOf(result)).toEqual({ authorization: 'Bearer t', 'x-team': 'infra' });
   });
 
@@ -63,7 +60,7 @@ spec('marketplace.sourceField.headers', () => {
         { archiveUrl, marketplace },
         setting(),
         fakes.ports,
-        signal,
+        { signal },
       );
       expect(headersOf(result)).toEqual({});
     }
@@ -76,7 +73,7 @@ spec('marketplace.sourceField.headers', () => {
       { archiveUrl: 'https://plugins.example.com:443/p.zip', marketplace },
       setting(),
       fakes.ports,
-      signal,
+      { signal },
     );
     expect(headersOf(result)).toEqual({ authorization: 'Bearer t' });
   });
@@ -88,7 +85,7 @@ spec('marketplace.sourceField.headers', () => {
       headersHelper: helper,
     });
     const fakes = portsWith([]);
-    const result = await resolveHeaders(layer, setting(), fakes.ports, signal);
+    const result = await resolveHeaders(layer, setting(), fakes.ports, { signal });
     expect(headersOf(result)).toEqual({ 'x-team': 'infra' });
     expect(fakes.runner.calls).toEqual([]);
   });
@@ -96,7 +93,7 @@ spec('marketplace.sourceField.headers', () => {
   test('a source header is not filtered: Host and Cookie on the url source are sent', async () => {
     const layer = sourceLayer({ headers: { Cookie: 'a=b' } }, 'project');
     const fakes = portsWith([]);
-    expect(headersOf(await resolveHeaders(layer, setting(), fakes.ports, signal))).toEqual({
+    expect(headersOf(await resolveHeaders(layer, setting(), fakes.ports, { signal }))).toEqual({
       cookie: 'a=b',
     });
   });
@@ -108,7 +105,7 @@ spec('marketplace.sourceField.headersHelper', () => {
     const onOrigin = download({ marketplace }, [prints({ Authorization: 'Bearer minted' })]);
     expect(headersOf(await onOrigin.result)).toEqual({ authorization: 'Bearer minted' });
     const fakes = portsWith([prints({ Authorization: 'Bearer fetch' })]);
-    const fetched = await resolveHeaders(marketplace, setting(), fakes.ports, signal);
+    const fetched = await resolveHeaders(marketplace, setting(), fakes.ports, { signal });
     expect(headersOf(fetched)).toEqual({ authorization: 'Bearer fetch' });
   });
 
@@ -121,7 +118,7 @@ spec('marketplace.sourceField.headersHelper', () => {
       },
       setting(),
       fakes.ports,
-      signal,
+      { signal },
     );
     expect(headersOf(result)).toEqual({});
     expect(fakes.runner.calls).toEqual([]);
@@ -142,12 +139,9 @@ spec('marketplace.sourceField.headersHelper', () => {
       'add-dir',
     );
     const fakes = portsWith([]);
-    const result = await resolveHeaders(
-      layer,
-      setting({ folderTrusted: true }),
-      fakes.ports,
+    const result = await resolveHeaders(layer, setting({ folderTrusted: true }), fakes.ports, {
       signal,
-    );
+    });
     expect(headersOf(result)).toEqual({ authorization: 'Bearer fixed' });
     expect(fakes.runner.calls).toEqual([]);
   });
@@ -155,7 +149,7 @@ spec('marketplace.sourceField.headersHelper', () => {
   test('a command in project settings of an untrusted folder does not run: its headers are sent', async () => {
     const layer = sourceLayer({ headers: { 'X-Team': 'infra' }, headersHelper: helper }, 'project');
     const fakes = portsWith([]);
-    const result = await resolveHeaders(layer, setting(), fakes.ports, signal);
+    const result = await resolveHeaders(layer, setting(), fakes.ports, { signal });
     expect(headersOf(result)).toEqual({ 'x-team': 'infra' });
     expect(fakes.runner.calls).toEqual([]);
   });
@@ -167,7 +161,7 @@ spec('marketplace.sourceField.headersHelper', () => {
       layer,
       setting({ allowManagedHooksOnly: true }),
       blocked.ports,
-      signal,
+      { signal },
     );
     expect(headersOf(skipped)).toEqual({ 'x-team': 'infra' });
     expect(blocked.runner.calls).toEqual([]);
@@ -176,7 +170,7 @@ spec('marketplace.sourceField.headersHelper', () => {
       layer,
       setting({ allowManagedHooksOnly: true, managedMarketplace: true }),
       declared.ports,
-      signal,
+      { signal },
     );
     expect(headersOf(ran)).toEqual({ authorization: 'Bearer minted', 'x-team': 'infra' });
   });
@@ -191,14 +185,11 @@ spec('marketplace.sourceField.headersHelper', () => {
   test('two downloads within 60 seconds run the command once', async () => {
     const marketplace = sourceLayer({ headersHelper: helper });
     const fakes = portsWith([prints({ A: 'b' })]);
-    await resolveHeaders(marketplace, setting(), fakes.ports, signal);
+    await resolveHeaders(marketplace, setting(), fakes.ports, { signal });
     fakes.clock.advance(30_000);
-    await archiveDownloadHeaders(
-      { archiveUrl: ARCHIVE_URL, marketplace },
-      setting(),
-      fakes.ports,
+    await archiveDownloadHeaders({ archiveUrl: ARCHIVE_URL, marketplace }, setting(), fakes.ports, {
       signal,
-    );
+    });
     expect(fakes.runner.calls).toHaveLength(1);
   });
 });

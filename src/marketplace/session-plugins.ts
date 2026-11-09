@@ -67,7 +67,7 @@ async function subfolderPlugins(files: PluginFiles, signal?: AbortSignal): Promi
  */
 export async function readPluginDirectory(
   files: PluginFiles,
-  signal?: AbortSignal,
+  { signal }: { readonly signal?: AbortSignal | undefined } = {},
 ): Promise<PluginDirectoryReading> {
   const names = ((await listSorted(files, '.', signal)) ?? []).map((entry) => entry.name);
   const hasComponents = names.some((name) => COMPONENT_NAMES.has(name));
@@ -122,7 +122,7 @@ export interface SessionArchives {
 export async function fetchSessionArchives(
   urls: readonly string[],
   ports: ArchivePorts,
-  signal: AbortSignal,
+  { signal }: { readonly signal: AbortSignal },
 ): Promise<SessionArchives> {
   const loaded: { url: string; archive: FetchedArchive }[] = [];
   const errors: { url: string; issue: PluginIssue }[] = [];
@@ -130,7 +130,7 @@ export async function fetchSessionArchives(
     const fetched = await fetchArchive(
       { kind: 'archive', url, limits: ARCHIVE_LIMITS, headers: {}, rootDepth: 'top-or-one-down' },
       ports,
-      signal,
+      { signal },
     );
     if ('severity' in fetched) errors.push({ url, issue: fetched });
     else loaded.push({ url, archive: fetched });

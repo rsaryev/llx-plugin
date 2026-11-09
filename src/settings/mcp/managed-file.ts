@@ -68,7 +68,7 @@ export function readManagedMcpFile(text: string | undefined): ManagedMcpFileRead
 export async function loadManagedMcpFile(
   reader: TextFileReader,
   platform: ManagedMcpPlatform,
-  signal?: AbortSignal,
+  { signal }: { readonly signal?: AbortSignal | undefined } = {},
 ): Promise<ManagedMcpFileRead> {
   return readManagedMcpFile(await reader.readText(managedMcpFilePath(platform), signal));
 }

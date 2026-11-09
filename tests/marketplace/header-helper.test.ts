@@ -28,7 +28,7 @@ const layer = (extra = {}, origin?: Parameters<typeof sourceLayer>[1]) =>
   sourceLayer({ headersHelper: helper, ...extra }, origin);
 const run = (replies: Parameters<typeof portsWith>[0], l = layer(), s = setting()) => {
   const fakes = portsWith(replies);
-  return { ...fakes, result: runHeadersHelper(l, fakes.ports, s, signal) };
+  return { ...fakes, result: runHeadersHelper(l, fakes.ports, s, { signal }) };
 };
 
 spec(
@@ -55,13 +55,13 @@ spec(
 
     test('CLAUDE_CONFIG_DIR is the working directory when it is set', async () => {
       const fakes = portsWith([prints({})], { env: { CLAUDE_CONFIG_DIR: '/etc/claude' } });
-      await runHeadersHelper(layer(), fakes.ports, setting(), signal);
+      await runHeadersHelper(layer(), fakes.ports, setting(), { signal });
       expect(fakes.runner.calls[0]?.cwd).toBe('/etc/claude');
     });
 
     test('an empty CLAUDE_CONFIG_DIR is unset: the working directory is ~/.claude (judgment)', async () => {
       const fakes = portsWith([prints({})], { env: { CLAUDE_CONFIG_DIR: '' } });
-      await runHeadersHelper(layer(), fakes.ports, setting(), signal);
+      await runHeadersHelper(layer(), fakes.ports, setting(), { signal });
       expect(fakes.runner.calls[0]?.cwd).toBe('/home/user/.claude');
     });
 
@@ -112,7 +112,9 @@ spec(
       for (const command of ['x'.repeat(501), 'tokén', 'a    b', 'a\tb']) {
         const fakes = portsWith([]);
         const found = issueOf(
-          await runHeadersHelper(layer({ headersHelper: command }), fakes.ports, setting(), signal),
+          await runHeadersHelper(layer({ headersHelper: command }), fakes.ports, setting(), {
+            signal,
+          }),
         );
         expect(found.severity).toBe('error');
         expect(fakes.runner.calls).toEqual([]);
@@ -122,7 +124,7 @@ spec(
         layer({ headersHelper: 'x'.repeat(500) }),
         limit.ports,
         setting(),
-        signal,
+        { signal },
       );
       expect(headersOf(accepted)).toEqual({});
     });
@@ -154,7 +156,7 @@ spec(
       const env = { PATH: '/bin', ANTHROPIC_API_KEY: 'k', MY_REGISTRY_TOKEN: 't' };
       for (const l of [layerOfEntry({ headersHelper: helper }), layer({}, 'project')]) {
         const fakes = portsWith([prints({})], { env });
-        await runHeadersHelper(l, fakes.ports, setting({ folderTrusted: true }), signal);
+        await runHeadersHelper(l, fakes.ports, setting({ folderTrusted: true }), { signal });
         expect(fakes.runner.calls[0]?.env).toEqual(expect.objectContaining({ PATH: '/bin' }));
         expect(fakes.runner.calls[0]?.env).not.toHaveProperty('ANTHROPIC_API_KEY');
         expect(fakes.runner.calls[0]?.env).not.toHaveProperty('MY_REGISTRY_TOKEN');
@@ -165,7 +167,7 @@ spec(
       const env = { PATH: '/bin', ANTHROPIC_API_KEY: 'k', MY_REGISTRY_TOKEN: 't' };
       for (const origin of ['user', 'cli-settings', 'managed', 'server-managed'] as const) {
         const fakes = portsWith([prints({})], { env });
-        await runHeadersHelper(layer({}, origin), fakes.ports, setting(), signal);
+        await runHeadersHelper(layer({}, origin), fakes.ports, setting(), { signal });
         expect(fakes.runner.calls[0]?.env).toMatchObject(env);
       }
     });
@@ -224,11 +226,11 @@ const twice = async (gap: number) => {
   ]);
   const key = layer();
   const first = await fakes.ports.cache.remember(key, () =>
-    runHeadersHelper(key, fakes.ports, setting(), signal),
+    runHeadersHelper(key, fakes.ports, setting(), { signal }),
   );
   fakes.clock.advance(gap);
   const second = await fakes.ports.cache.remember(key, () =>
-    runHeadersHelper(key, fakes.ports, setting(), signal),
+    runHeadersHelper(key, fakes.ports, setting(), { signal }),
   );
   return { first, second, runs: fakes.runner.calls.length };
 };
@@ -250,7 +252,9 @@ spec('marketplace.sourceField.headersHelper', () => {
     const fakes = portsWith([prints({ A: 'b' })]);
     const key = layer();
     const remember = () =>
-      fakes.ports.cache.remember(key, () => runHeadersHelper(key, fakes.ports, setting(), signal));
+      fakes.ports.cache.remember(key, () =>
+        runHeadersHelper(key, fakes.ports, setting(), { signal }),
+      );
     const [first, second] = await Promise.all([remember(), remember()]);
     expect(fakes.runner.calls).toHaveLength(1);
     expect(headersOf(second)).toEqual(headersOf(first));
@@ -260,7 +264,9 @@ spec('marketplace.sourceField.headersHelper', () => {
     const fakes = portsWith([{ exitCode: 1 }, prints({ A: 'b' })]);
     const key = layer();
     const run1 = () =>
-      fakes.ports.cache.remember(key, () => runHeadersHelper(key, fakes.ports, setting(), signal));
+      fakes.ports.cache.remember(key, () =>
+        runHeadersHelper(key, fakes.ports, setting(), { signal }),
+      );
     expect(issueOf(await run1()).severity).toBe('error');
     expect(headersOf(await run1())).toEqual({ a: 'b' });
   });
@@ -271,7 +277,7 @@ spec('marketplace.sourceField.headersHelper', () => {
     const b = layer({ url: 'https://other.example.com/marketplace.json' });
     for (const l of [a, b]) {
       await fakes.ports.cache.remember(l, () =>
-        runHeadersHelper(l, fakes.ports, setting(), signal),
+        runHeadersHelper(l, fakes.ports, setting(), { signal }),
       );
     }
     expect(fakes.runner.calls).toHaveLength(2);
@@ -282,7 +288,7 @@ spec('marketplace.sourceField.headersHelper', () => {
     const entry = layerOfEntry({ headersHelper: helper });
     for (let i = 0; i < 2; i += 1) {
       await fakes.ports.cache.remember(entry, () =>
-        runHeadersHelper(entry, fakes.ports, setting(), signal),
+        runHeadersHelper(entry, fakes.ports, setting(), { signal }),
       );
     }
     expect(fakes.runner.calls).toHaveLength(2);

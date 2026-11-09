@@ -191,7 +191,7 @@ function rootOf(topLevel: readonly string[]): string | PluginIssue {
 export async function fetchArchive(
   plan: ArchiveFetchPlan,
   ports: ArchivePorts,
-  signal: AbortSignal,
+  { signal }: { readonly signal: AbortSignal },
 ): Promise<FetchedArchive | PluginIssue> {
   const blocked = archiveUrlIssues(plan.url, 'source.url')[0];
   if (blocked !== undefined) return blocked;

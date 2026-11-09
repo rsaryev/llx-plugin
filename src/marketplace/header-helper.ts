@@ -75,7 +75,7 @@ export async function runHeadersHelper(
   layer: HeaderLayer,
   ports: HeadersHelperPorts,
   setting: Pick<HeadersSetting, 'platform'>,
-  signal: AbortSignal,
+  { signal }: { readonly signal: AbortSignal },
 ): Promise<ResolvedHeaders | PluginIssue> {
   const command = layer.headersHelper;
   if (command === undefined) return { headers: {} };

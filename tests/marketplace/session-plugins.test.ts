@@ -147,7 +147,7 @@ spec('install.develop.Load a plugin from a URL', () => {
       { status: 200, bytes: ZIP },
       { status: 200, bytes: ZIP },
     ]);
-    const result = await fetchSessionArchives([`${URL_A} ${URL_B}`], ports, signal);
+    const result = await fetchSessionArchives([`${URL_A} ${URL_B}`], ports, { signal });
     expect(result.loaded.map((one) => one.url)).toEqual([URL_A, URL_B]);
     expect(result.errors).toEqual([]);
     expect(ports.http.requests.map((request) => request.url)).toEqual([URL_A, URL_B]);
@@ -158,7 +158,7 @@ spec('install.develop.Load a plugin from a URL', () => {
     const result = await fetchSessionArchives(
       [URL_A, URL_B],
       { http, sha256: fakeSha256('0'), archive: fakeArchive(stats()) },
-      signal,
+      { signal },
     );
     expect(result.loaded.map((one) => one.url)).toEqual([URL_B]);
     expect(result.errors).toHaveLength(1);
@@ -172,7 +172,7 @@ spec('install.develop.Load a plugin from a URL', () => {
         sha256: fakeSha256('0'),
         archive: fakeArchive({ failure: 'corrupt', message: 'not a zip' }),
       },
-      signal,
+      { signal },
     );
     expect(invalid.loaded).toEqual([]);
     expect(invalid.errors[0]?.issue.message).toContain('not a zip');
@@ -180,7 +180,7 @@ spec('install.develop.Load a plugin from a URL', () => {
 
   test('a URL that is not https is not fetched at all', async () => {
     const ports = archivePorts([]);
-    const result = await fetchSessionArchives(['http://example.com/a.zip'], ports, signal);
+    const result = await fetchSessionArchives(['http://example.com/a.zip'], ports, { signal });
     expect(result.errors).toHaveLength(1);
     expect(ports.http.requests).toEqual([]);
   });
@@ -279,7 +279,7 @@ describe('judgments: session plugins', () => {
     const result = await fetchSessionArchives(
       [URL_A],
       { http: recordingHttp({ status: 200, bytes: ZIP }), sha256: fakeSha256('0'), archive: huge },
-      signal,
+      { signal },
     );
     expect(result.errors[0]?.issue.message).toContain('100000');
   });

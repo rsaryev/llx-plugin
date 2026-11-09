@@ -36,7 +36,7 @@ spec('mcp.behavior.Use dynamic headers for custom authentication', () => {
   test('the command runs in a shell, from the planned directory and environment, with a 10 second limit', async () => {
     const runner = scriptedRunner({ stdout: OUT });
     const plan = planned();
-    const result = await runMcpHeadersHelper(plan, runner, signal);
+    const result = await runMcpHeadersHelper(plan, runner, { signal });
     expect(result).toEqual({ headers: { Authorization: 'Bearer fresh-1' } });
     expect(runner.calls).toHaveLength(1);
     expect(runner.calls[0]).toMatchObject({
@@ -65,7 +65,7 @@ spec('mcp.behavior.Use dynamic headers for custom authentication', () => {
       ],
     ] as const;
     for (const [reply, message] of replies) {
-      const result = await runMcpHeadersHelper(planned(), scriptedRunner(reply), signal);
+      const result = await runMcpHeadersHelper(planned(), scriptedRunner(reply), { signal });
       expect(result).toEqual({ severity: 'error', path: PATH, message });
     }
   });
@@ -75,8 +75,8 @@ spec('mcp.behavior.Use dynamic headers for custom authentication', () => {
       { stdout: '{"X-Token": "one"}' },
       { stdout: '{"X-Token": "two"}' },
     );
-    const first = await runMcpHeadersHelper(planned(), runner, signal);
-    const second = await runMcpHeadersHelper(planned(), runner, signal);
+    const first = await runMcpHeadersHelper(planned(), runner, { signal });
+    const second = await runMcpHeadersHelper(planned(), runner, { signal });
     expect(first).toEqual({ headers: { 'X-Token': 'one' } });
     expect(second).toEqual({ headers: { 'X-Token': 'two' } });
     expect(runner.calls).toHaveLength(2);
@@ -191,7 +191,7 @@ describe('a call that answers 401 or 403', () => {
         'call',
         async () => {
           const plan = planHeadersHelper(serverOf(), 'project', trust, contextOf());
-          return plan.run ? await runMcpHeadersHelper(plan, runner, signal) : { headers: {} };
+          return plan.run ? await runMcpHeadersHelper(plan, runner, { signal }) : { headers: {} };
         },
         (helperHeaders) => {
           sent.push(connectionHeaders({ 'X-Team': 'blue' }, helperHeaders).headers);

@@ -47,7 +47,7 @@ export function run(
     sessionCwd: '/work/app',
     ...options.setting,
   };
-  const result = runCommandSource(plan(options.plan), ports, setting, signal);
+  const result = runCommandSource(plan(options.plan), ports, setting, { signal });
   return { result, runner, directories };
 }
 

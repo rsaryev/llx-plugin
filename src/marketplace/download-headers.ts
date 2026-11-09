@@ -104,14 +104,14 @@ export async function resolveHeaders(
   layer: HeaderLayer,
   setting: HeadersSetting,
   ports: DownloadHeaderPorts,
-  signal: AbortSignal,
+  { signal }: { readonly signal: AbortSignal },
 ): Promise<ResolvedHeaders | PluginIssue> {
   const fixed = keepFiltered(layer, normalizeHeaders(layer.headers ?? {}));
   if (layer.headersHelper === undefined) return { headers: fixed };
   const verdict = helperAllowed(layer, setting);
   if (!verdict.allowed) return REFUSAL_RESULT[verdict.effect](fixed, verdict);
   const printed = await ports.cache.remember(layer, () =>
-    runHeadersHelper(layer, ports, setting, signal),
+    runHeadersHelper(layer, ports, setting, { signal }),
   );
   if ('severity' in printed) return printed;
   return { headers: mergeHeaders(fixed, keepFiltered(layer, printed.headers)) };
@@ -148,17 +148,17 @@ export async function archiveDownloadHeaders(
   request: DownloadHeaderRequest,
   setting: HeadersSetting,
   ports: DownloadHeaderPorts,
-  signal: AbortSignal,
+  { signal }: { readonly signal: AbortSignal },
 ): Promise<ResolvedHeaders | PluginIssue> {
   const { marketplace, entry } = request;
   const none: ResolvedHeaders = { headers: {} };
   const fromSource =
     marketplace !== undefined && sourceApplies(marketplace, request.archiveUrl)
-      ? await resolveHeaders(marketplace, setting, ports, signal)
+      ? await resolveHeaders(marketplace, setting, ports, { signal })
       : none;
   if ('severity' in fromSource) return fromSource;
   const fromEntry =
-    entry === undefined ? none : await resolveHeaders(entry, setting, ports, signal);
+    entry === undefined ? none : await resolveHeaders(entry, setting, ports, { signal });
   if ('severity' in fromEntry) return fromEntry;
   return { headers: mergeHeaders(fromSource.headers, fromEntry.headers) };
 }

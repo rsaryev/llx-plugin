@@ -29,7 +29,7 @@ describe('loadSettingsLayers with the managed sources', () => {
       remote: { value: { model: 'remote' } },
       file: { base: { value: { model: 'file', cleanupPeriodDays: 7 } } },
     });
-    const { layers, fatal } = await loadSettingsLayers(sources, signal);
+    const { layers, fatal } = await loadSettingsLayers(sources, { signal });
     expect(fatal).toBe(false);
     expect(sources.asked).not.toContain('managed');
     expect(layers.map((layer) => layer.scope)).toEqual(['managed']);
@@ -39,20 +39,20 @@ describe('loadSettingsLayers with the managed sources', () => {
   test('the managed layer outranks the other sources', async () => {
     const { layers } = await loadSettingsLayers(
       host({ file: { base: { value: { model: 'file' } } } }, { user: { model: 'user' } }),
-      signal,
+      { signal },
     );
     expect(layers.map((layer) => layer.scope)).toEqual(['managed', 'user']);
   });
 
   test('a machine with no managed source has no managed layer', async () => {
-    const { layers } = await loadSettingsLayers(host({}, { user: { model: 'user' } }), signal);
+    const { layers } = await loadSettingsLayers(host({}, { user: { model: 'user' } }), { signal });
     expect(layers.map((layer) => layer.scope)).toEqual(['user']);
   });
 
   test('a managed document that does not parse is fatal, even beside a valid one', async () => {
     const { layers, issues, fatal } = await loadSettingsLayers(
       host({ remote: { value: { model: 'a' } }, plist: { malformed: 'bad plist' } }),
-      signal,
+      { signal },
     );
     expect(fatal).toBe(true);
     expect(layers).toEqual([]);
@@ -65,7 +65,7 @@ describe('loadSettingsLayers with the managed sources', () => {
         { file: { base: { value: { model: 'file' } } } },
         { parent: { permissions: { deny: ['Read(./x)'] } } },
       ),
-      signal,
+      { signal },
     );
     expect(layers.map((layer) => layer.scope)).toEqual(['managed']);
   });
@@ -82,7 +82,7 @@ describe('loadSettingsLayers with the managed sources', () => {
         },
         { parent: { permissions: { deny: ['Read(./x)'], allow: ['Bash(ls)'] } } },
       ),
-      signal,
+      { signal },
     );
     const parent = layers.find((layer) => layer.scope === 'parent');
     expect(parent?.settings.permissions?.deny).toEqual(['Read(./x)']);
@@ -93,10 +93,10 @@ describe('loadSettingsLayers with the managed sources', () => {
     const hkcu = { hkcu: { value: '{"model":"user"}' } };
     const withParent = await loadSettingsLayers(
       host(hkcu, { parent: { permissions: { deny: ['Read(./x)'] } } }),
-      signal,
+      { signal },
     );
     expect(withParent.layers.some((layer) => layer.scope === 'managed')).toBe(false);
-    const alone = await loadSettingsLayers(host(hkcu), signal);
+    const alone = await loadSettingsLayers(host(hkcu), { signal });
     expect(alone.layers[0]?.settings.model).toBe('user');
   });
 
@@ -104,7 +104,7 @@ describe('loadSettingsLayers with the managed sources', () => {
     const asked: PolicyScope[] = [];
     await loadSettingsLayers(
       { read: (scope) => (asked.push(scope), Promise.resolve(undefined)) },
-      signal,
+      { signal },
     );
     expect(asked).toContain('managed');
   });

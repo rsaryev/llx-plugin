@@ -59,7 +59,7 @@ async function bareIssues(
   const scan = await scanBare(kind, files, where, signal);
   if (!READ_FRONTMATTER[kind]) return [...scan.issues];
   const shown = scan.files.map((path) => (where.report === '' ? path : `${where.report}/${path}`));
-  const found = await frontmatterIssues(kind, files, scan.files, signal);
+  const found = await frontmatterIssues(kind, files, scan.files, { signal });
   return [
     ...scan.issues,
     ...found.map((issue, index) => ({ ...issue, file: shown[index] ?? issue.file })),

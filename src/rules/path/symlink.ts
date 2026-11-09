@@ -45,7 +45,7 @@ export async function prepareCall(
   call: ToolCall,
   paths: PathContext,
   resolver: PathResolver,
-  signal?: AbortSignal,
+  { signal }: { readonly signal?: AbortSignal | undefined } = {},
 ): Promise<PreparedCall | PortFailure> {
   const requested = requestedPath(call, paths);
   if (requested === undefined) return call;
@@ -77,7 +77,7 @@ export async function resolveRuleDirectories(
   rules: readonly PermissionRule[],
   paths: PathContext,
   resolver: PathResolver,
-  signal?: AbortSignal,
+  { signal }: { readonly signal?: AbortSignal | undefined } = {},
 ): Promise<ReadonlyMap<string, string>> {
   const found = new Map<string, string>();
   if (paths.platform !== 'posix') return found;

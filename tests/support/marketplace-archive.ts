@@ -73,7 +73,7 @@ export function fetchWith(
   const sha256 = fakeSha256(options.digest ?? DIGEST);
   const archive = fakeArchive(options.scan ?? stats());
   const ports: ArchivePorts = { http, sha256, archive };
-  return { result: fetchArchive(plan(options.plan), ports, signal), http, sha256, archive };
+  return { result: fetchArchive(plan(options.plan), ports, { signal }), http, sha256, archive };
 }
 
 export async function refusal(run: ReturnType<typeof fetchWith>): Promise<PluginIssue> {

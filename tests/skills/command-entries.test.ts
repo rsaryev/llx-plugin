@@ -31,7 +31,7 @@ async function load(
   files: Readonly<Record<string, string>> = {},
 ) {
   const folder = memoryFiles(files);
-  const result = await loadCommandEntries(map, folder, { origin: PLUGIN }, signal);
+  const result = await loadCommandEntries(map, folder, { origin: PLUGIN }, { signal });
   return { ...result, folder };
 }
 

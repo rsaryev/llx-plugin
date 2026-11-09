@@ -97,7 +97,7 @@ export async function runCommandSource(
   plan: CommandFetchPlan,
   ports: CommandSourcePorts,
   setting: CommandSourceSetting,
-  signal: AbortSignal,
+  { signal }: { readonly signal: AbortSignal },
 ): Promise<FetchedCommandPlugin | PluginIssue> {
   if (setting.platform === 'windows' && LINKS_NEED_POSIX[plan.mode]) return linkOnWindowsIssue();
   const result = await execute(plan, ports, signal);

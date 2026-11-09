@@ -69,7 +69,7 @@ async function copyName(
 /** Reads the records and applies the recovery the read calls for. A name here is relative to the root. */
 export async function loadInstalledPlugins(
   ports: InstalledPluginsPorts,
-  signal: AbortSignal,
+  { signal }: { readonly signal: AbortSignal },
 ): Promise<LoadedInstalledPlugins> {
   const { store } = ports;
   const text = await store.read(STORE_NAMES.installedPlugins, signal);

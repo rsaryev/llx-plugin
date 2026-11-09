@@ -18,7 +18,7 @@ import { spec } from '../../support/spec.ts';
 const signal = new AbortController().signal;
 const UNTRACKED = { tracked: false, claudeDirIsSymlink: false } as const;
 const load = (sources: Partial<Record<PolicyScope, unknown>>) =>
-  loadSettingsLayers({ read: (scope) => Promise.resolve(sources[scope]) }, signal);
+  loadSettingsLayers({ read: (scope) => Promise.resolve(sources[scope]) }, { signal });
 
 const COMMENTED =
   '{\n  // lint without asking\n  "permissions": { "allow": ["Bash(npm run lint)"] }\n}';
@@ -128,7 +128,7 @@ spec(`${BROKEN}.Managed settings`, () => {
           read: (scope) => Promise.resolve(scope === 'managed' ? '{ nope' : { model: 'opus' }),
           label: (scope) => (scope === 'managed' ? MANAGED_FILE : undefined),
         },
-        signal,
+        { signal },
       );
       expect(result.fatal).toBe(true);
       expect(result.layers).toEqual([]);

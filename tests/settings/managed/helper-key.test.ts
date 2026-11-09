@@ -58,7 +58,9 @@ spec(['policy.key.policyHelper', 'policy.server.Current limitations'], () => {
         read: (scope: PolicyScope) => Promise.resolve(scope === 'parent' ? parent : undefined),
         managed: () => Promise.resolve(managed),
       };
-      const { layers } = await loadSettingsLayers(sources, new AbortController().signal);
+      const { layers } = await loadSettingsLayers(sources, {
+        signal: new AbortController().signal,
+      });
       expect(layers.some((layer) => layer.scope === 'parent' || layer.scope === 'managed')).toBe(
         true,
       );

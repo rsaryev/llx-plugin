@@ -179,7 +179,7 @@ spec(`${LIMITS}.60-second timeout`, () => {
 
   test('the run handed to CommandRunner carries the plan, the host environment and the abort signal, nothing added', () => {
     const signal = new AbortController().signal;
-    const run = nodeDepsRun(plan, { HOME: '/home/u', PATH: '/bin' }, signal);
+    const run = nodeDepsRun(plan, { HOME: '/home/u', PATH: '/bin' }, { signal });
     expect(run).toEqual({
       spec: plan.run.spec,
       cwd: '/tmp/kit-deps-1',

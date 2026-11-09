@@ -66,6 +66,19 @@ function pluginOf(
   return { name, id: `${name}@${ORIGINS[origin].suffix}`, ...facts };
 }
 
+type FolderFacts = Pick<FolderPlugin, 'rootSkill' | 'components'>;
+
+/** A folder without a manifest: a `--plugin-dir` plugin named after the folder, a plain skill, or nothing. */
+function probeUnnamed(folderName: string, origin: FolderOrigin, facts: FolderFacts): FolderProbe {
+  if (ORIGINS[origin].manifestRequired) {
+    return facts.rootSkill ? { ...NEITHER, plainSkill: { name: folderName } } : NEITHER;
+  }
+  if (!facts.rootSkill && facts.components.length === 0) return NEITHER;
+  const issues = nameLoadIssues(folderName);
+  if (issues.length > 0) return { ...NEITHER, issues };
+  return { ...NEITHER, plugin: pluginOf(folderName, origin, { defaultEnabled: true, ...facts }) };
+}
+
 /**
  * Probes one folder. With a manifest the folder is a plugin named by it. Without one, a `--plugin-dir`
  * folder with any component (or a root `SKILL.md`) is a plugin named after the folder, and a
@@ -75,26 +88,22 @@ export async function probeFolder(
   files: PluginFiles,
   folderName: string,
   origin: FolderOrigin,
-  signal?: AbortSignal,
+  { signal }: { readonly signal?: AbortSignal | undefined } = {},
 ): Promise<FolderProbe> {
   const names = ((await listSorted(files, '.', signal)) ?? []).map((entry) => entry.name);
-  const rootSkill = names.includes('SKILL.md');
-  const components = componentsAt(names);
+  const facts: FolderFacts = {
+    rootSkill: names.includes('SKILL.md'),
+    components: componentsAt(names),
+  };
   const step = await loadManifest(files, signal);
-  if (step.present) {
-    const { manifest } = step;
-    if (!manifest) return { ...NEITHER, issues: step.issues };
-    const facts = { defaultEnabled: manifest.defaultEnabled ?? true, rootSkill, components };
-    return { ...NEITHER, plugin: pluginOf(manifest.name, origin, facts), issues: step.issues };
-  }
-  if (ORIGINS[origin].manifestRequired) {
-    return rootSkill ? { ...NEITHER, plainSkill: { name: folderName } } : NEITHER;
-  }
-  if (!rootSkill && components.length === 0) return NEITHER;
-  const issues = nameLoadIssues(folderName);
-  if (issues.length > 0) return { ...NEITHER, issues };
-  const facts = { defaultEnabled: true, rootSkill, components };
-  return { ...NEITHER, plugin: pluginOf(folderName, origin, facts) };
+  if (!step.present) return probeUnnamed(folderName, origin, facts);
+  const { manifest } = step;
+  if (!manifest) return { ...NEITHER, issues: step.issues };
+  const plugin = pluginOf(manifest.name, origin, {
+    defaultEnabled: manifest.defaultEnabled ?? true,
+    ...facts,
+  });
+  return { ...NEITHER, plugin, issues: step.issues };
 }
 
 /**

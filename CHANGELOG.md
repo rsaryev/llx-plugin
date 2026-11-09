@@ -11,6 +11,9 @@
   `SUBSTITUTION_SURFACES` and `UI_SURFACES` for the four `SURFACES`; `readAgentSetting`,
   `readThemeSetting` and `readOutputStyleSetting` for the general setting readers;
   `PLUGIN_TELEMETRY_EVENTS` for the plugin telemetry names.
+- Every kit function that can be cancelled takes `{ signal }` as its last argument
+  (`loadSettingsLayers(sources, { signal, scopes })`, `fetchArchive(plan, ports, { signal })` and 20 more);
+  port methods keep the signal as their last parameter.
 
 
 - The folder scan is metadata-first: `ScannedEntry` and `ResolvedFolderSkill` hold the skill or command

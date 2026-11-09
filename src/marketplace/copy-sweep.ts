@@ -55,7 +55,7 @@ export interface CopySweep {
 export async function sweepAgedCopies(
   ports: { readonly store: PluginStateStore; readonly clock: Clock },
   options: { readonly cleanupPeriodDays?: number | undefined },
-  signal: AbortSignal,
+  { signal }: { readonly signal: AbortSignal },
 ): Promise<CopySweep> {
   const { store, clock } = ports;
   const names = (await store.names(signal)).filter(isDatedCopy);
