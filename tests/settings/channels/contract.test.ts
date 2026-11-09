@@ -11,6 +11,7 @@ import {
   deliversChannelEvents,
   groupChannelEvents,
   isTwoWay,
+  readChannelNotification,
   senderAllowed,
   type ChannelEntry,
 } from '../../../src/settings/channels/index.ts';
@@ -75,6 +76,17 @@ spec('channels.reference.Notification format', () => {
   });
   test('an event with no meta has only the source', () => {
     expect(channelTag('w', { content: 'x' })).toBe('<channel source="w">\nx\n</channel>');
+  });
+  test('a notification without a string content is not an event; meta keeps identifier keys with string values', () => {
+    expect(readChannelNotification(undefined)).toBeUndefined();
+    expect(readChannelNotification({ content: 1 })).toBeUndefined();
+    expect(
+      readChannelNotification({ content: 'x', meta: { ok_1: 'a', 'a-b': 'b', n: 2, source: 'z' } }),
+    ).toEqual({ content: 'x', meta: { ok_1: 'a', source: 'z' } });
+    expect(readChannelNotification({ content: 'x', meta: 'nope' })).toEqual({
+      content: 'x',
+      meta: {},
+    });
   });
   test('events that arrive together are delivered as a group, in order', () => {
     expect(groupChannelEvents(['a', 'b'])).toBe('a\nb');

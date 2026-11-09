@@ -1,7 +1,7 @@
 import type { PluginIssue } from '../format/issues.ts';
 import type { Plugin } from '../loading/index.ts';
 import type { FolderScan } from '../ports/folder-scan.ts';
-import type { EnvFileStore, HookPorts } from '../hooks/index.ts';
+import type { EnvFileStore, HookEngineOptions, HookPorts } from '../hooks/index.ts';
 import type { ParentSettingsContext } from '../settings/hooks/index.ts';
 import type { PolicyView } from '../settings/index.ts';
 import type { OptionValues } from '../settings/plugins/index.ts';
@@ -49,6 +49,11 @@ export interface PluginHostOptions {
   };
   /** The host process's id: `CLAUDE_PID` in every command hook (env-vars.md). Absent, the variable is not set. */
   readonly processId?: number;
+  /** Host execution choices, forwarded unchanged to the hook engine; not plugin policy overrides. */
+  readonly hookExecution?: Pick<
+    HookEngineOptions,
+    'defaultShell' | 'shellPaths' | 'startDirectory' | 'tempDirectory'
+  >;
   /**
    * Where `CLAUDE_ENV_FILE` lives (hooks.md, "Persist environment variables"): the files a session's
    * hooks write and the shells of the host read. Absent, hooks get no `CLAUDE_ENV_FILE`.

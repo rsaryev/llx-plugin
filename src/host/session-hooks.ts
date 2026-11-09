@@ -7,6 +7,7 @@ import {
   type EventFactsOf,
   type HookOutcome,
   type HookSession,
+  type HookSourceKind,
   type RegisteredHandler,
 } from '../hooks/index.ts';
 import type { HookEvent } from '../protocol/official.ts';
@@ -70,7 +71,11 @@ export interface HookPart {
   dispatch<E extends HookEvent>(
     event: E,
     facts: EventFactsOf<E>,
-    options: { readonly signal: AbortSignal },
+    options: {
+      readonly signal: AbortSignal;
+      /** Limit this dispatch, without removing other registered sources. */
+      readonly sourcesOnly?: readonly HookSourceKind[];
+    },
   ): Promise<HookOutcome<E>>;
 }
 
@@ -84,6 +89,7 @@ function engineOf(
   const { ports } = state.options;
   const windows = state.options.windows ?? false;
   return createHookEngine(ports, {
+    ...state.options.hookExecution,
     windows,
     settingsEnv: environment.settings.values,
     ...(environment.files === undefined ? {} : { envFiles: environment.files }),
@@ -131,23 +137,32 @@ export function createHookPart(
       },
       subprocessEnvironment: (kind) => subprocessFor(core, optionsOf(), kind),
       ...createHookScope(core, sessionNow, turn),
-      async dispatch(event, facts, { signal }) {
+      async dispatch(event, facts, { signal, sourcesOnly }) {
         const { state, gates } = currentOf(core);
         const options = optionsOf();
         const session = sessionOf(state, gates, options);
+        const registry = core.registry.get();
+        const selected =
+          sourcesOnly === undefined
+            ? registry
+            : registry.without(
+                registry.entries
+                  .filter((entry) => !sourcesOnly.includes(entry.source.kind))
+                  .map((entry) => entry.id),
+              );
         const outcome = await engineOf(
           state,
           gates,
           options,
           environmentFor(core, options),
-        ).dispatch(core.registry.get(), {
+        ).dispatch(selected, {
           event,
           facts,
           session,
           signal,
         });
         core.registry.set(core.registry.get().without(outcome.consumedOnce));
-        recordOutcome(core, outcome);
+        recordOutcome(core, outcome, selected.entries);
         return outcome;
       },
     },

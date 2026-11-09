@@ -13,6 +13,7 @@ import {
 import type { HooksSettings } from '../protocol/hook-config.ts';
 import type { HookEvent } from '../protocol/official.ts';
 import type { BackgroundListener } from './background-queue.ts';
+import { consumeBackgroundOnce } from './session-hook-once.ts';
 import { currentOf, type SessionCore } from './session-core.ts';
 
 /** Removes one registration; it does nothing once the prefix was registered again or removed. */
@@ -96,9 +97,13 @@ export function registerEntries(
  * output replaces the dynamic watch list (no other event's output carries the field), and the
  * background promises join the queue `takeBackground` reads.
  */
-export function recordOutcome(core: SessionCore, outcome: HookOutcome<HookEvent>): void {
+export function recordOutcome(
+  core: SessionCore,
+  outcome: HookOutcome<HookEvent>,
+  entries: readonly RegisteredHandler[],
+): void {
   core.watchPaths.set(mergeWatchPaths(core.watchPaths.get(), outcome.effects.watchPaths));
-  core.background.add(outcome.background);
+  core.background.add(consumeBackgroundOnce(core, outcome.background, entries));
 }
 
 /** What a lifetime does with the turn scope of the view: `turn` needs one to end it. */

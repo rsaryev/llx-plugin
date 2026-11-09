@@ -167,3 +167,11 @@ export {
 } from './scan/resolve.ts';
 export { outputStyleSystem } from './output-style-system.ts';
 export { isStrictlyBelow } from './scan/names.ts';
+export { findInjections, type Injection, type InjectionKind } from './shell-scan.ts';
+export {
+  runInjections,
+  type InjectionContext,
+  type InjectionPorts,
+  type InjectionResults,
+  type PlannedCommand,
+} from './shell-run.ts';

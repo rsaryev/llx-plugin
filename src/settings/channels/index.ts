@@ -34,6 +34,7 @@ export {
   deliversChannelEvents,
   groupChannelEvents,
   isTwoWay,
+  readChannelNotification,
   senderAllowed,
   type ChannelCapabilities,
   type ChannelNotification,

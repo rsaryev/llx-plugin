@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- `readChannelNotification(params)` reads the params of a channel notification (`content` string required, `meta` kept for identifier keys with string values), so a host does not write its own validator before `channelTag`.
+- Export `findInjections` and `runInjections` (with their context, port and result types), so a host that binds skill arguments itself, for hostile input, still finds and runs the documented `` !`command` `` placeholders through the kit.
+
 ### Fixed
 
 - Declare the MCP SDK as a peer: the public protocol declarations reference its official types,

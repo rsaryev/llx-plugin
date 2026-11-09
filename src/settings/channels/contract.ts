@@ -46,6 +46,26 @@ export interface ChannelNotification {
   readonly meta?: Readonly<Record<string, string>>;
 }
 
+/**
+ * The `notifications/claude/channel` params a server sent, read as a `ChannelNotification`: `content` is a
+ * required string ("The event body"), so a notification without one is `undefined`; `meta` keeps the
+ * entries whose key is an identifier and whose value is a string. Judgment (spec/judgments.md): the docs type
+ * `meta` as `Record<string, string>` and say nothing about a value of another type; it is dropped, as a key
+ * that is not an identifier is.
+ */
+export function readChannelNotification(params: unknown): ChannelNotification | undefined {
+  if (typeof params !== 'object' || params === null) return undefined;
+  const { content, meta } = params as { content?: unknown; meta?: unknown };
+  if (typeof content !== 'string') return undefined;
+  const kept: Record<string, string> = {};
+  if (typeof meta === 'object' && meta !== null) {
+    for (const [key, value] of Object.entries(meta)) {
+      if (IDENTIFIER.test(key) && typeof value === 'string') kept[key] = value;
+    }
+  }
+  return { content, meta: kept };
+}
+
 /** "Keys must be identifiers: letters, digits, and underscores only ... other characters are silently dropped." */
 const IDENTIFIER = /^[A-Za-z0-9_]+$/;
 
