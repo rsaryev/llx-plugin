@@ -68,27 +68,44 @@ const failed = (
   column,
 });
 
+/**
+ * `logLevel: 'error'` keeps the parser's warnings (a key that is a collection) off the host's
+ * `process.emitWarning`: a library writes nothing to the host's stderr, and the key is read as the
+ * text it is either way (judgment).
+ */
+const YAML_OPTIONS = { prettyErrors: false, uniqueKeys: false, logLevel: 'error' } as const;
+
 function relaxed(yaml: string, strict: Document): Document {
   const quoted = quotePlainScalars(yaml);
   if (quoted === yaml) return strict;
-  const retry = parseDocument(quoted, { prettyErrors: false, uniqueKeys: false });
+  const retry = parseDocument(quoted, YAML_OPTIONS);
   return retry.errors.length === 0 ? retry : strict;
 }
 
-/** The YAML text between the markers and the body after them, or `undefined` without a block. */
+/** One line of `text` from `at`, and where the next line starts (past the end on the last line). */
+function lineAt(text: string, at: number): { line: string; next: number } {
+  const end = text.indexOf('\n', at);
+  return end < 0
+    ? { line: text.slice(at), next: text.length + 1 }
+    : { line: text.slice(at, end), next: end + 1 };
+}
+
+/**
+ * The YAML text between the markers and the body after them, or `undefined` without a block. Reads
+ * line by line up to the closing marker only, so a long body is never split into lines.
+ */
 function splitBlock(text: string): { yaml: string; body: string } | undefined {
-  const lines = text.split('\n');
-  if (!isMarker(lines[0])) return undefined;
-  const closing = lines.findIndex((line, i) => i > 0 && isMarker(line));
-  if (closing < 0) return undefined;
-  const consumed = lines.slice(0, closing + 1).join('\n').length + 1;
-  return {
-    yaml: lines
-      .slice(1, closing)
-      .map((line) => line.replace(/\r$/, ''))
-      .join('\n'),
-    body: text.slice(consumed),
-  };
+  const opening = lineAt(text, 0);
+  if (!isMarker(opening.line)) return undefined;
+  for (let at = opening.next; at <= text.length;) {
+    const { line, next } = lineAt(text, at);
+    if (isMarker(line)) {
+      const yaml = text.slice(opening.next, Math.max(opening.next, at - 1));
+      return { yaml: yaml.replace(/\r(?=\n|$)/g, ''), body: text.slice(next) };
+    }
+    at = next;
+  }
+  return undefined;
 }
 
 /**
@@ -131,7 +148,7 @@ export function parseFrontmatter(text: string): Frontmatter {
   const block = splitBlock(source);
   if (!block) return none(text);
   const lineCounter = new LineCounter();
-  const strict = parseDocument(block.yaml, { prettyErrors: false, lineCounter, uniqueKeys: false });
+  const strict = parseDocument(block.yaml, { ...YAML_OPTIONS, lineCounter });
   const document = strict.errors.length === 0 ? strict : relaxed(block.yaml, strict);
   const [first] = document.errors;
   if (first) {

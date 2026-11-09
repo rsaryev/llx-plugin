@@ -53,7 +53,7 @@ describe('judgment: a handler type the event does not support is reported', () =
       {
         severity: 'warning',
         path: 'hooks.SessionStart[1]',
-        message: 'A http hook is not supported on SessionStart and is skipped',
+        message: 'A hook of type http is not supported on SessionStart and is skipped',
       },
     ]);
   });

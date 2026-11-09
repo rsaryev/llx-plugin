@@ -25,8 +25,17 @@
 - `readChannelNotification(params)` reads the params of a channel notification (`content` string required, `meta` kept for identifier keys with string values), so a host does not write its own validator before `channelTag`.
 - Export `findInjections` and `runInjections` (with their context, port and result types), so a host that binds skill arguments itself, for hostile input, still finds and runs the documented `` !`command` `` placeholders through the kit.
 
+### Performance
+
+- `parseFrontmatter` reads a file line by line up to the closing `---` instead of splitting the whole
+  file: 44% faster on the 67,907 Markdown files of claude-plugins-community, same result on each.
+
 ### Fixed
 
+- Reading frontmatter no longer writes YAML parser warnings to the host's process (a key that is a
+  collection, as in `{ SKILL_NAME }: x`); the key is read as its text, as before.
+- The warning for a hook type an event does not support reads `A hook of type http is not supported
+  on …` (was `A http hook …`).
 - An abort stops: `loadPlugin` and `validatePlugin` reject with the signal's reason and call the port no
   more once it aborts (before, a port that ignored the signal was read to the end, and one that honoured
   it was still called by the other branches); a command hook whose signal is aborted is `cancelled`

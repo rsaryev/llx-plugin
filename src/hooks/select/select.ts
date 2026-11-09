@@ -53,7 +53,7 @@ function judge<E extends HookEvent>(
   const { event, facts, modelCatalog, ifEvaluator } = request;
   const path = pathOf(event, index);
   if (!supportsHandlerType(event, entry.handler.type)) {
-    const message = `A ${entry.handler.type} hook is not supported on ${event} and is skipped`;
+    const message = `A hook of type ${entry.handler.type} is not supported on ${event} and is skipped`;
     return { selected: false, issues: [warning(path, message)] };
   }
   const matched = matcherSelects(event, facts, entry, modelCatalog);
