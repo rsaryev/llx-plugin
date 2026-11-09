@@ -8,7 +8,8 @@
  * starts, what its command resolves to) is proven in tests/loading/resolve/.
  */
 import { describe, expect, test } from 'bun:test';
-import { blocksLoading, parseMonitorTrigger, readMonitors } from '../../src/index.ts';
+import { blocksLoading } from '../../src/index.ts';
+import { parseMonitorTrigger, readMonitors } from '../../src/entry/format.ts';
 import { spec } from '../support/spec.ts';
 
 const FILE = 'monitors/monitors.json';

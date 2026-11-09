@@ -1,4 +1,4 @@
-import type { Surface } from '../../../protocol/mods-ui-names.ts';
+import type { UiSurface } from '../../../protocol/mods-ui-names.ts';
 import type { Control } from '../controls/keys.ts';
 import { isElementNode } from '../elements/node.ts';
 import { collectControls } from '../controls/keys.ts';
@@ -8,7 +8,7 @@ export interface FocusGrantInput {
   readonly requested: boolean;
   /** The pane opened "from a command or a press". */
   readonly fromUserAction: boolean;
-  readonly surface: Surface;
+  readonly surface: UiSurface;
   readonly isPromptEmpty: boolean;
   /** Something else (a dialog, another pane) has keyboard focus. */
   readonly otherHasFocus: boolean;
@@ -40,14 +40,14 @@ export function grantsFocus(input: FocusGrantInput): boolean {
  * Whether a click gives a pane focus: "in the terminal needs fullscreen rendering". Judgment: the
  * other apps take clicks as they are.
  */
-export const clickFocuses = (surface: Surface, isFullscreen: boolean): boolean =>
+export const clickFocuses = (surface: UiSurface, isFullscreen: boolean): boolean =>
   surface !== 'terminal' || isFullscreen;
 
 /**
  * The control that has the focus when a pane opens: the first with `autoFocus: true`. "In the VS
  * Code extension, `autoFocus` does nothing: the control draws as if you had left it out."
  */
-export function initialFocus(tree: unknown, surface: Surface): string | undefined {
+export function initialFocus(tree: unknown, surface: UiSurface): string | undefined {
   if (surface === 'vscode') return undefined;
   const wanted = (control: Control): boolean =>
     isElementNode(control.node) && control.node.props.autoFocus === true;

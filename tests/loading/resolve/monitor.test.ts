@@ -11,7 +11,8 @@
  * `environment` is the extra variables the host would set (none).
  */
 import { describe, expect, test } from 'bun:test';
-import { resolveMonitor, type Monitor, type ResolvedMonitor } from '../../../src/index.ts';
+import { resolveMonitor, type ResolvedMonitor } from '../../../src/entry/loading.ts';
+import { type Monitor } from '../../../src/entry/format.ts';
 import { locations } from '../../support/ports.ts';
 import { PATHS, scopeOf, userConfig } from '../../support/mcp-scope.ts';
 import { windowsLocations } from '../../support/windows-locations.ts';

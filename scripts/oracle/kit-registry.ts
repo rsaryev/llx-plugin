@@ -11,8 +11,8 @@ import {
   createPolicyView,
   loadPlugin,
   readSettingsLayer,
-  resolveOutputStyle,
 } from '../../src/index.ts';
+import { resolveOutputStyle } from '../../src/entry/skills.ts';
 import {
   fakeEnvironment,
   locations,

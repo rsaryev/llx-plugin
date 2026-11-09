@@ -14,8 +14,8 @@ import {
   limitMcpResult,
   mcpOutputLimits,
   persistedResultMessage,
-  type McpCallToolResult,
-} from '../../src/index.ts';
+} from '../../src/entry/format.ts';
+import { type McpCallToolResult } from '../../src/index.ts';
 import { spec } from '../support/spec.ts';
 
 const environment =

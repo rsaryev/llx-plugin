@@ -12,13 +12,12 @@ import { describe, expect, test } from 'bun:test';
 import {
   MCP_TOOL_NAME_LIMIT,
   mcpPromptToolAnswer,
-  mcpToolName,
   mcpToolSendCheck,
   modelVisibleMcpTool,
-  pluginMcpServerName,
   readMcpToolHints,
   requiringInteraction,
-} from '../../src/index.ts';
+} from '../../src/entry/format.ts';
+import { mcpToolName, pluginMcpServerName } from '../../src/entry/rules.ts';
 import { decision, rulesOf } from '../support/decide.ts';
 import { spec } from '../support/spec.ts';
 

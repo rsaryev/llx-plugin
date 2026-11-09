@@ -19,8 +19,8 @@ import {
   elicitationUrlChoices,
   ELICITATION_URL_ARGUMENT_CAP,
   overrideElicitationResult,
-  type ElicitationRequest,
-} from '../../src/index.ts';
+} from '../../src/entry/format.ts';
+import { type ElicitationRequest } from '../../src/index.ts';
 import { spec } from '../support/spec.ts';
 
 const BOTH = { form: {}, url: {} };

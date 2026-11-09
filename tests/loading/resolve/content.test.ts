@@ -18,7 +18,7 @@ import {
   SENSITIVE_PLACEHOLDER,
   substituteContent,
   type SubstitutionScope,
-} from '../../../src/index.ts';
+} from '../../../src/entry/loading.ts';
 import { fakeEnvironment, locations } from '../../support/ports.ts';
 import { spec } from '../../support/spec.ts';
 import { windowsLocations } from '../../support/windows-locations.ts';

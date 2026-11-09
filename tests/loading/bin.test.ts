@@ -14,7 +14,7 @@ import {
   distribution,
   DISTRIBUTION_TARGETS,
   pathWithPluginBins,
-} from '../../src/index.ts';
+} from '../../src/entry/loading.ts';
 import { locations } from '../support/ports.ts';
 import { spec } from '../support/spec.ts';
 

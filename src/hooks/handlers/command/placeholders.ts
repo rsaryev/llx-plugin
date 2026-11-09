@@ -5,7 +5,7 @@ import {
   type FieldPolicy,
   type ResolvedUserConfig,
   type Substituted,
-  type Surface,
+  type SubstitutionSurface,
   type SubstitutionScope,
 } from '../../../loading/resolve/index.ts';
 import type { RegisteredHandler } from '../../contracts.ts';
@@ -41,7 +41,11 @@ export function substitutionScope(
  * "Plugin hooks additionally substitute `${user_config.*}` values": a handler of no plugin keeps
  * the reference as written.
  */
-function policyFor(entry: RegisteredHandler, surface: Surface, context: RunContext): FieldPolicy {
+function policyFor(
+  entry: RegisteredHandler,
+  surface: SubstitutionSurface,
+  context: RunContext,
+): FieldPolicy {
   const surfaced = SURFACE_POLICY[surface];
   // `shellPaths` (judgment): a bash command keeps its path variables as references the shell reads.
   const keepReferences = surface === 'hook-shell' && context.shellPaths === 'environment-reference';
@@ -52,7 +56,7 @@ function policyFor(entry: RegisteredHandler, surface: Surface, context: RunConte
 /** Substitutes the strings of one handler on one surface, asking the host for each folder once. */
 export function handlerSubstituter(
   entry: RegisteredHandler,
-  surface: Surface,
+  surface: SubstitutionSurface,
   context: RunContext,
 ): (template: string, path: string) => Promise<Substituted> {
   const substitution = substituter(substitutionScope(entry, context));

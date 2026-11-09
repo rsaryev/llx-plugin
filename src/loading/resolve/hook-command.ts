@@ -8,7 +8,7 @@ import type { FieldPolicy, MonitorPaths, PathRendering, SubstitutionScope } from
 import { rejectUserConfigInShell } from './shell-guard.ts';
 import { HOOK_GUARD } from './shell-guard-hook.ts';
 import { substituter } from './substitute.ts';
-import { SURFACE_POLICY, type Surface } from './surfaces.ts';
+import { SURFACE_POLICY, type SubstitutionSurface } from './surfaces.ts';
 
 /** A `command` hook handler, as the official type has it. */
 export type HookCommandHandler = HookHandlerOf<'command'>;
@@ -66,7 +66,7 @@ const shellPolicy = (shell: ShellKind, options: HookCommandOptions): FieldPolicy
 };
 
 /** The surface of each shell: PowerShell rewrites the placeholders, bash gets forward slashes. */
-const SHELL_SURFACES: { readonly [S in ShellKind]: Surface } = {
+const SHELL_SURFACES: { readonly [S in ShellKind]: SubstitutionSurface } = {
   bash: 'hook-shell',
   powershell: 'hook-powershell',
 };

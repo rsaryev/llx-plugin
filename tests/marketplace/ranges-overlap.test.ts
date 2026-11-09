@@ -7,7 +7,7 @@
  * `spec(...)` (spec/judgments.md).
  */
 import { describe, expect, test } from 'bun:test';
-import { rangesOverlap } from '../../src/index.ts';
+import { rangesOverlap } from '../../src/entry/marketplace.ts';
 
 describe('judgments (outside spec)', () => {
   test('ranges that share a version overlap', () => {

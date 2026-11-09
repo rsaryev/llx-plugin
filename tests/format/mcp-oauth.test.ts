@@ -18,7 +18,7 @@ import {
   requestedOAuthScopes,
   storedTokenRecovery,
   type PluginMcpServer,
-} from '../../src/index.ts';
+} from '../../src/entry/format.ts';
 import { spec } from '../support/spec.ts';
 
 const read = (raw: unknown) => readMcpOAuth('my-server', raw, '.mcp.json');

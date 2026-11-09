@@ -1,5 +1,5 @@
 import { fakeEnvironment, locations } from './ports.ts';
-import type { ResolvedUserConfig, SubstitutionScope } from '../../src/index.ts';
+import type { ResolvedUserConfig, SubstitutionScope } from '../../src/entry/loading.ts';
 
 export const userConfig: ResolvedUserConfig = {
   declared: {

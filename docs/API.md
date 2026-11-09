@@ -21,10 +21,32 @@ or **planned** (designed here, not built yet). A planned part changes only throu
    tied to the official unions; what differs per member is a strategy in a registry typed over the
    union, so a member Anthropic adds fails the typecheck until it is handled.
 
+## Entry points
+
+The root holds what a host needs to run plugins; every domain has its whole surface at a subpath.
+A name lives in one subpath; the root re-exports the few a host loop calls.
+
+| Import                                    | What it holds                                                                                                                                     |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@rsaryev/claude-plugin-kit`              | `createPluginHost` and its sessions, `loadPlugin`, `validatePlugin`, `decide`, the permission policy, `preToolUseHookOutcome`, the port types, Claude Code's types and closed lists |
+| `@rsaryev/claude-plugin-kit/loading`      | loading, repository plugins and workspace trust, variable substitution, MCP, LSP and monitors of a plugin (`src/entry/loading.ts`)                  |
+| `@rsaryev/claude-plugin-kit/format`       | the reader of every plugin file (`src/entry/format.ts`)                                                                                            |
+| `@rsaryev/claude-plugin-kit/skills`       | skills and commands (`src/entry/skills.ts`)                                                                                                        |
+| `@rsaryev/claude-plugin-kit/hooks`        | the hook engine (`src/entry/hooks.ts`)                                                                                                             |
+| `@rsaryev/claude-plugin-kit/rules`        | permission rules and modes (`src/entry/rules.ts`)                                                                                                  |
+| `@rsaryev/claude-plugin-kit/settings`     | settings layers, merge and every policy key (`src/entry/settings.ts`)                                                                              |
+| `@rsaryev/claude-plugin-kit/marketplace`  | marketplaces, installs and updates (`src/entry/marketplace.ts`)                                                                                    |
+| `@rsaryev/claude-plugin-kit/agents`       | sub-agents, their catalog and workflows (`src/entry/agents.ts`)                                                                                    |
+| `@rsaryev/claude-plugin-kit/mods`         | mods and their test kit, `modsTesting` (`src/entry/mods.ts`)                                                                                       |
+| `@rsaryev/claude-plugin-kit/cli`          | the `claude plugin` command line (`src/entry/cli.ts`)                                                                                              |
+| `@rsaryev/claude-plugin-kit/testing`      | fakes of every port (`src/testing/index.ts`)                                                                                                       |
+| `@rsaryev/claude-plugin-kit/layout`       | the standard layout, without the plugin engine                                                                                                     |
+| `@rsaryev/claude-plugin-kit/elicitation`  | MCP elicitation shapes, without the plugin engine                                                                                                  |
+
 ## Type dependencies
 
 `@rsaryev/claude-plugin-kit/layout` exposes the same `STANDARD_LAYOUT`, `COMPONENT_KINDS`,
-`declaredKey`, `componentsAt` and layout types as the root, through a dependency-free runtime entry.
+`declaredKey`, `componentsAt` and layout types as `./format`, through a dependency-free runtime entry.
 Use it when a folder classifier needs only the standard paths, not the plugin engine.
 
 The package declares `@anthropic-ai/claude-agent-sdk` and `@modelcontextprotocol/sdk` as peers:
@@ -37,7 +59,7 @@ type-only; importing the package starts neither Claude Code nor an MCP client.
 Pure functions over parsed JSON and file text. No ports.
 
 ```ts
-import { readManifest, validateManifest } from '@rsaryev/claude-plugin-kit';
+import { readManifest, validateManifest } from '@rsaryev/claude-plugin-kit/format';
 
 const { manifest, issues } = readManifest(JSON.parse(text)); // as Claude Code loads it
 const report = validateManifest(JSON.parse(text)); // as `claude plugin validate` reports
@@ -67,7 +89,7 @@ const report = validateManifest(JSON.parse(text)); // as `claude plugin validate
 ### Skills (done: `format/skill*`, the field readers; planned: command name, commands, expansion)
 
 ```ts
-import { readSkill } from '@rsaryev/claude-plugin-kit';
+import { readSkill } from '@rsaryev/claude-plugin-kit/format';
 
 const { skill, issues } = readSkill('skills/review/SKILL.md', text, {
   origin: { kind: 'plugin', plugin: 'my-plugin' },
@@ -121,7 +143,7 @@ directory and its parents up to the repository root, and the main checkout of a 
 `directoriesBelow(start, touched)`); the fake is `folderScan(record, { managed, repositories, worktrees })`.
 
 ```ts
-import { resolveFolderSkills, scanFolders, scanNested } from '@rsaryev/claude-plugin-kit';
+import { resolveFolderSkills, scanFolders, scanNested } from '@rsaryev/claude-plugin-kit/skills';
 
 const context = { folders, request: { home, cwd, addedDirectories: ['../cli'] }, signal };
 const outcome = await scanFolders(context); // { entries, plugins, issues, watch }
@@ -200,7 +222,7 @@ substitutions"). Arguments first, then `${CLAUDE_*}` over the result, so a varia
 argument value is replaced too:
 
 ```ts
-import { buildVariables, substitute } from '@rsaryev/claude-plugin-kit';
+import { buildVariables, substitute } from '@rsaryev/claude-plugin-kit/skills';
 
 const vars = buildVariables(skill, { sessionId, effort: 'high' }, { locations, environment });
 const { text, issues } = await substitute(skill.body, {
@@ -239,7 +261,7 @@ uses `session.expandSkill` and `session.expandMessage` instead, which pass the t
 sessions").
 
 ```ts
-import { checkInvocation, modelListing, menuEntries, resolveExecution } from '@rsaryev/claude-plugin-kit';
+import { checkInvocation, modelListing, menuEntries, resolveExecution } from '@rsaryev/claude-plugin-kit/skills';
 
 checkInvocation(skill, 'model', settings.skillOverrides); // { allowed: false, reason, message } for `disable-model-invocation`
 modelListing(skills, { overrides, budget: { contextWindow: 200_000 }, usage, activated });
@@ -272,7 +294,7 @@ are found in the original text, arguments and `${CLAUDE_*}` are substituted, the
 through the `CommandRunner` port, and their output is never scanned again.
 
 ```ts
-import { expandSkill } from '@rsaryev/claude-plugin-kit';
+import { expandSkill } from '@rsaryev/claude-plugin-kit/skills';
 
 const out = await expandSkill(skill, {
   arguments: '123', sessionId, effort: 'high', permissionMode, disableShellExecution: false,
@@ -310,7 +332,7 @@ background task, and keeping `EndConversation` out of `disallowed` while another
 ### Skill visibility, access, stacking, lifecycle and forks (done: `skills/visibility`, `skill-rule`, `stack`, `lifecycle`, `fork`, `portable`)
 
 ```ts
-import { stackSkills, skillNamesOf, invokeSkill, reattachAfterCompaction, launchFork } from '@rsaryev/claude-plugin-kit';
+import { stackSkills, skillNamesOf, invokeSkill, reattachAfterCompaction, launchFork } from '@rsaryev/claude-plugin-kit/skills';
 ```
 
 | Name                                          | Does                                                                                                   |
@@ -325,7 +347,8 @@ import { stackSkills, skillNamesOf, invokeSkill, reattachAfterCompaction, launch
 ### Output styles (done: `format/output-style`, `skills/output-style-select`)
 
 ```ts
-import { readOutputStyle, resolveOutputStyle, includeCodingInstructions } from '@rsaryev/claude-plugin-kit';
+import { readOutputStyle } from '@rsaryev/claude-plugin-kit/format';
+import { resolveOutputStyle, includeCodingInstructions } from '@rsaryev/claude-plugin-kit/skills';
 
 const { style } = readOutputStyle('output-styles/terse.md', text, { plugin: 'my-plugin' });
 const active = resolveOutputStyle({ setting: 'Concise', command, styles: [style] });
@@ -343,8 +366,12 @@ it. `listOutputStyles` is the `/output-style` list. The host writes the setting 
 
 ```ts
 import {
-  readTheme, themeSlug, customThemeId, copyOfPluginTheme, themeColorToHex,
-} from '@rsaryev/claude-plugin-kit';
+  readTheme,
+  themeSlug,
+  customThemeId,
+  copyOfPluginTheme,
+  themeColorToHex,
+} from '@rsaryev/claude-plugin-kit/format';
 
 const { theme, issues } = readTheme(themeSlug('themes/dracula.json'), text);
 theme?.name; // `name`, else the slug
@@ -369,7 +396,7 @@ Colour forms are exact: `RGB(...)` and `ANSI256(...)` are not colours. The host 
 ### Workflows (done: `format/workflow-meta`, `workflow-script`, `agents/workflow`)
 
 ```ts
-import { readWorkflowMeta, rewriteWorkflowMeta, inspectWorkflowScript } from '@rsaryev/claude-plugin-kit';
+import { readWorkflowMeta, rewriteWorkflowMeta, inspectWorkflowScript } from '@rsaryev/claude-plugin-kit/agents';
 
 const { meta } = readWorkflowMeta(source); // name, description, phases, phaseEntries, whenToUse, extra
 rewriteWorkflowMeta(source, { phases: ['Scan', 'Fix'] }).source; // every other byte kept
@@ -412,7 +439,7 @@ planners and the decisions are written against that one contract. Reading and pl
 engines that download, run a command or hash take their effect through ports.
 
 ```ts
-import { readMarketplace, planPluginFetch } from '@rsaryev/claude-plugin-kit';
+import { readMarketplace, planPluginFetch } from '@rsaryev/claude-plugin-kit/marketplace';
 
 const { marketplace, issues } = readMarketplace(JSON.parse(text), { origin }); // bad entries dropped alone
 const { plan } = planPluginFetch(entry.source, { platform: 'posix' }); // data: git, npm, archive, command, local
@@ -486,7 +513,7 @@ of it is pure, in `src/marketplace/`; the only effect is the `PluginStateStore` 
 is used: a path is built with the host's `join` (`Locations.joinPath`).
 
 ```ts
-import { createStoreLayout, loadInstalledPlugins, stageReport } from '@rsaryev/claude-plugin-kit';
+import { createStoreLayout, loadInstalledPlugins, stageReport } from '@rsaryev/claude-plugin-kit/marketplace';
 
 const layout = createStoreLayout(root, (base, relative) => locations.joinPath(base, relative));
 const { read } = await loadInstalledPlugins({ store, sha256, clock }, signal); // rebuilds or sets aside on the way
@@ -544,7 +571,7 @@ does not rename a public export for another host.
 ## Updates (done: `updates`)
 
 ```ts
-import { refreshBeforeInstall, marketplaceAutoUpdate, autoUpdatePassAllowed } from '@rsaryev/claude-plugin-kit';
+import { refreshBeforeInstall, marketplaceAutoUpdate, autoUpdatePassAllowed } from '@rsaryev/claude-plugin-kit/marketplace';
 
 const decision = refreshBeforeInstall({ ref: 'formatter@acme', command: 'claude plugin install', marketplaces, lookupMissed: false, env, clock });
 // { outcome: 'refresh', marketplaces: ['acme'] } | { outcome: 'skip', reason } | { outcome: 'refuse', issue }
@@ -569,7 +596,7 @@ command source"), org.md ("Set update policy") and settings-reference.md ("Updat
 ## CLI (in progress: `cli`)
 
 ```ts
-import { startMarketplaceAdd, concludeMarketplaceAdd, startUninstall, concludeUninstall, planSessionFlags, renderCommand } from '@rsaryev/claude-plugin-kit';
+import { startMarketplaceAdd, concludeMarketplaceAdd, startUninstall, concludeUninstall, planSessionFlags, renderCommand } from '@rsaryev/claude-plugin-kit/cli';
 
 const start = startMarketplaceAdd({ source: 'your-org/your-marketplace', scope: 'project', json: true });
 // { kind: 'fetch', source, scope: 'project', json: true } | { kind: 'claudeai', name, json: false } | { kind: 'done', output }
@@ -679,7 +706,7 @@ plugins", "Check why a repository plugin didn't load"; permissions.md, "What run
 folder"; hooks.md, "Workspace trust"). All pure: the host answers the facts, the kit decides.
 
 ```ts
-import { decideRepositoryPlugin, loadRepositoryPlugin } from '@rsaryev/claude-plugin-kit';
+import { decideRepositoryPlugin, loadRepositoryPlugin } from '@rsaryev/claude-plugin-kit/loading';
 
 const verdict = decideRepositoryPlugin({ origin: 'skills-dir', folderTrusted, parentTrusted: false,
   nonInteractive: false, primaryDirIsRoot: true, worktree: false });          // { load, reason, from }
@@ -707,7 +734,7 @@ What a plugin's `${...}` references become, shared by hooks, skills, MCP, LSP an
 writes placeholder code of its own (plugins/manifest-reference.md, "Environment variables"):
 
 ```ts
-import { substituteSurface, exportedEnvironment } from '@rsaryev/claude-plugin-kit';
+import { substituteSurface, exportedEnvironment } from '@rsaryev/claude-plugin-kit/loading';
 
 const scope = { pluginId: 'fmt@acme', locations, environment, userConfig, windows: false };
 const { text, issues, referenced } = await substituteSurface('hook-exec', '${CLAUDE_PLUGIN_ROOT}/run', scope);
@@ -744,7 +771,7 @@ the caller passes `hook-powershell` there (`resolveHookCommand`, below, takes th
 ### Hook commands and Markdown content (done: `loading/resolve/hook-command`, `content`)
 
 ```ts
-import { resolveHookCommand, substituteContent } from '@rsaryev/claude-plugin-kit';
+import { resolveHookCommand, substituteContent } from '@rsaryev/claude-plugin-kit/loading';
 
 const { resolved, issues } = await resolveHookCommand(handler, scope, { defaultShell: 'bash' });
 // resolved.spec: { form: 'exec', command, args } | { form: 'shell', command, shell }: a CommandRunner `spec`
@@ -770,7 +797,8 @@ that a Windows host without Git Bash runs `powershell`.
 ### MCP servers (done: `format/mcp-*`, `loading/resolve/mcp`)
 
 ```ts
-import { collectMcpServers, resolveMcpServer } from '@rsaryev/claude-plugin-kit';
+import { collectMcpServers } from '@rsaryev/claude-plugin-kit/format';
+import { resolveMcpServer } from '@rsaryev/claude-plugin-kit/loading';
 
 const { servers, issues } = await collectMcpServers(files, manifest.mcpServers, { bundles, bundleSettings });
 const { resolved, issues: more } = await resolveMcpServer('db', servers.db, scope);
@@ -820,7 +848,7 @@ variable for `claude-code-action`.
 #### MCP `headersHelper` (done: `loading/resolve/headers-helper*`)
 
 ```ts
-import { persistedTrust, planHeadersHelper, runMcpHeadersHelper, connectionHeaders } from '@rsaryev/claude-plugin-kit';
+import { persistedTrust, planHeadersHelper, runMcpHeadersHelper, connectionHeaders } from '@rsaryev/claude-plugin-kit/loading';
 
 const trust = { source: persistedTrust(claudeJson, projectDir), key: projectDir, interactive: false };
 // `expandedVariables`: the environment variables the expansion of `url` substituted
@@ -860,7 +888,7 @@ The knob readers (`mcpTimeouts`, `mcpConnectTimeoutMs`, `mcpDescriptionLimits` a
 of `mcp-startup`) are the one place the `MCP_*` variables are read.
 
 ```ts
-import { readMcpAdd, readMcpAddJson, prepareMcpTool, limitMcpResult, mcpOutputLimits, answerElicitation } from '@rsaryev/claude-plugin-kit';
+import { readMcpAdd, readMcpAddJson, prepareMcpTool, limitMcpResult, mcpOutputLimits, answerElicitation } from '@rsaryev/claude-plugin-kit/format';
 
 const added = readMcpAdd(['--transport', 'http', 'api', 'https://x.example/mcp', '--client-id', 'abc'], lookup);
 // added.server, added.oauth (callbackPort filled from MCP_OAUTH_CALLBACK_PORT), added.secret, added.issues
@@ -896,7 +924,8 @@ the CLI itself is the host's.
 ### LSP servers (done: `format/lsp-config`, `loading/resolve/lsp*`)
 
 ```ts
-import { readLspConfig, mergeLspSources, resolveLspServer, languageIdFor, lspRestartDecision } from '@rsaryev/claude-plugin-kit';
+import { readLspConfig, mergeLspSources } from '@rsaryev/claude-plugin-kit/format';
+import { resolveLspServer, languageIdFor, lspRestartDecision } from '@rsaryev/claude-plugin-kit/loading';
 
 const root = readLspConfig(JSON.parse(lspJson), '.lsp.json'); // { servers, issues }
 const { servers } = mergeLspSources([root, readLspConfig(manifest.lspServers, 'lspServers')]);
@@ -924,7 +953,8 @@ decisions it hands over.
 ### Monitors (done: `format/monitors`, `loading/resolve/monitor*`)
 
 ```ts
-import { readMonitors, resolveMonitor, monitorsToStart } from '@rsaryev/claude-plugin-kit';
+import { readMonitors } from '@rsaryev/claude-plugin-kit/format';
+import { resolveMonitor, monitorsToStart } from '@rsaryev/claude-plugin-kit/loading';
 
 const { monitors, issues } = readMonitors(JSON.parse(monitorsJson), 'monitors/monitors.json');
 const { resolved } = await resolveMonitor(monitors[0], scope); // undefined when it must not start
@@ -1041,7 +1071,7 @@ The hook engine picks the handlers an event runs, runs them through ports, and m
 return. The first stage, selection, is pure over data: no port, no I/O.
 
 ```ts
-import { createHookRegistry, ifEvaluatorFor, selectHandlers } from '@rsaryev/claude-plugin-kit';
+import { createHookRegistry, ifEvaluatorFor, selectHandlers } from '@rsaryev/claude-plugin-kit/hooks';
 
 const registry = createHookRegistry(entries); // RegisteredHandler[]: event, matcher, official handler, source
 const { selected, issues, monitor } = selectHandlers(registry, {
@@ -1552,7 +1582,7 @@ Claude Code's rule syntax (permissions.md), used by the `if` field of hooks, `al
 skills and commands, and a host's own permission system. Pure functions over data, no ports.
 
 ```ts
-import { evaluateRules, parseRule, ruleIssues } from '@rsaryev/claude-plugin-kit';
+import { evaluateRules, parseRule, ruleIssues } from '@rsaryev/claude-plugin-kit/rules';
 
 const { rule, issues } = parseRule('Agent(model:opus)', { behavior: 'deny', source: { kind: 'user' } });
 const verdict = evaluateRules(rules, { toolName: 'Agent', input: { model: 'opus' } }, context);
@@ -1674,7 +1704,7 @@ never runs a module's source: the host evaluates it in an isolate it chooses thr
 `ModRuntime` port, and the kit runs the hooks it hands back through one chain per event.
 
 ```ts
-import { createModChain, ENGINE_ORIGIN } from '@rsaryev/claude-plugin-kit';
+import { createModChain, ENGINE_ORIGIN } from '@rsaryev/claude-plugin-kit/mods';
 
 const chain = createModChain({ clock });
 const issues = chain.register({ name: 'my-mod', api }, 'user', hooks); // [] or why the module is refused
@@ -1822,7 +1852,8 @@ each source it has; the kit never knows a file path, an MDM profile or a server-
 choosing among managed sources (`managedSourcesBehavior`, `policyHelper`) stays the host's.
 
 ```ts
-import { createPolicyView, loadSettingsLayers, mergeSettingsHooks, readSettingsLayer } from '@rsaryev/claude-plugin-kit';
+import { createPolicyView, readSettingsLayer } from '@rsaryev/claude-plugin-kit';
+import { loadSettingsLayers, mergeSettingsHooks } from '@rsaryev/claude-plugin-kit/settings';
 
 const { layer, issues } = readSettingsLayer('managed', JSON.parse(text));
 const view = createPolicyView([layer, ...other]);
@@ -1902,8 +1933,14 @@ Expand `${VAR}` references first (`expandMcpServer`), so the endpoint identity c
 as they will run.
 
 ```ts
-import { claudeJsonServers, projectFileServers, projectServerApproval, rankMcpServers,
-  readProjectToggles, applyToggles } from '@rsaryev/claude-plugin-kit';
+import {
+  claudeJsonServers,
+  projectFileServers,
+  projectServerApproval,
+  rankMcpServers,
+  readProjectToggles,
+  applyToggles,
+} from '@rsaryev/claude-plugin-kit/settings';
 
 const user = claudeJsonServers(claudeJson, '/work/app');          // user + local scope
 const file = projectFileServers(mcpJson);                          // project scope
@@ -1949,7 +1986,8 @@ elsewhere the value or entry is dropped. The aliases `allowedMarketplaces` and
 ### Permission settings (done: `settings/permissions`, `settings/locations`, `host/permission-session`)
 
 ```ts
-import { resolvePolicy, startPermissions } from '@rsaryev/claude-plugin-kit';
+import { resolvePolicy } from '@rsaryev/claude-plugin-kit/settings';
+import { startPermissions } from '@rsaryev/claude-plugin-kit';
 import { decide } from '@rsaryev/claude-plugin-kit';
 
 const { permissions } = resolvePolicy({ layers, context });
@@ -2011,7 +2049,7 @@ under `allowManagedPermissionRulesOnly` nothing is offered or saved.
 ### The `env` block (done: `settings/env`)
 
 ```ts
-import { applySettingsEnv, resolveSettingsEnv } from '@rsaryev/claude-plugin-kit';
+import { applySettingsEnv, resolveSettingsEnv } from '@rsaryev/claude-plugin-kit/settings';
 
 const { values, ignored, issues } = resolveSettingsEnv(view.layers, {
   isFolderTrusted: (scope) => trust[scope], // the project and local files wait for trust
@@ -2031,7 +2069,7 @@ reason (`repository`, `host-owned`, `untrusted`, `launch`, `not-text`), never a 
 ## Sub-agents (done: the tools a subagent gets)
 
 ```ts
-import { resolveSubagentTools } from '@rsaryev/claude-plugin-kit';
+import { resolveSubagentTools } from '@rsaryev/claude-plugin-kit/agents';
 
 const outcome = resolveSubagentTools(
   { name: agent.name, tools: agent.definition.tools, disallowedTools: agent.definition.disallowedTools },
@@ -2056,7 +2094,7 @@ host's to put in the pool.
 ### Sub-agents: the permission mode
 
 ```ts
-import { baselineDecision, resolveSubagentPermissionMode } from '@rsaryev/claude-plugin-kit';
+import { baselineDecision, resolveSubagentPermissionMode } from '@rsaryev/claude-plugin-kit/agents';
 
 const { mode, denyInsteadOfAsk } = resolveSubagentPermissionMode({
   main: 'default',                              // the main conversation's mode
@@ -2080,7 +2118,7 @@ function.
 ### Sub-agents: frontmatter hooks
 
 ```ts
-import { selectAgentHooks } from '@rsaryev/claude-plugin-kit';
+import { selectAgentHooks } from '@rsaryev/claude-plugin-kit/agents';
 
 const { groups, skipped } = selectAgentHooks(agent, {
   run: 'subagent',            // or 'main-session' for `--agent` and the `agent` setting
@@ -2106,9 +2144,14 @@ settings' hooks, so the host merges the two lists.
 
 ```ts
 import {
-  resolveSubagentModel, resolveSubagentEffort, effectiveAutoCompactWindow, turnLimitOutcome,
-  runsInBackground, claudeMdScopes, worktreeDisposition,
-} from '@rsaryev/claude-plugin-kit';
+  resolveSubagentModel,
+  resolveSubagentEffort,
+  effectiveAutoCompactWindow,
+  turnLimitOutcome,
+  runsInBackground,
+  claudeMdScopes,
+  worktreeDisposition,
+} from '@rsaryev/claude-plugin-kit/agents';
 
 const { model } = resolveSubagentModel({
   invocation: toolCall.model, definition: agent.definition.model, // the file's `model`
@@ -2140,7 +2183,7 @@ requests and creating the worktree are the host's.
 ### Sub-agents: skills, MCP servers and memory
 
 ```ts
-import { planPreloadedSkills, resolveAgentMcpServers, planAgentMemory } from '@rsaryev/claude-plugin-kit';
+import { planPreloadedSkills, resolveAgentMcpServers, planAgentMemory } from '@rsaryev/claude-plugin-kit/agents';
 
 const skills = planPreloadedSkills(agent.definition.skills, { has, isModelInvocable });
 // { load: ['api-conventions'], skipped: [{ name: 'verify', reason: 'not-model-invocable' }] }
@@ -2172,8 +2215,17 @@ scope", "Built-in subagents", "Invoke subagents explicitly"). All pure over the 
 kit read and over facts it passes; the session wires them (`reloadAgents`, `agentCatalog`).
 
 ```ts
-import { scanAgents, resolveAgents, builtinAgents, readFlagAgents, resolveSubagentType,
-  catalogAgentOf, agentMentions, selectSessionAgent, spawnableAgents } from '@rsaryev/claude-plugin-kit';
+import {
+  scanAgents,
+  resolveAgents,
+  builtinAgents,
+  resolveSubagentType,
+  catalogAgentOf,
+  agentMentions,
+  selectSessionAgent,
+  spawnableAgents,
+} from '@rsaryev/claude-plugin-kit/agents';
+import { readFlagAgents } from '@rsaryev/claude-plugin-kit/format';
 
 const scanned = await scanAgents({ folders, request: { home, cwd, addedDirectories } });
 const catalog = resolveAgents({
@@ -2243,9 +2295,9 @@ Hook output exposes classifierContext with its shared 2,000-character cap and cl
 
 Folder skills and agents share their scan state across turn views that keep the current directory. A view with an explicit different `cwd` has its own folder context and never moves the original session. `moveTo` changes the context's live cwd for later hooks and shell placeholders. `host.update` changes plugin catalogs, folder-source policy and settings environment on the next use; it preserves environment files and already-consumed hooks. Re-enabling a folder source that a scan omitted requires reloading it.
 
-### Root export names shared by modules
+### Names shared by modules
 
-At the package root, the CLI planners are `planCliInstall`, `planCliEnable`, `planCliDisable` and `planCliMarketplaceUpdate`; their names inside `cli` remain `planInstall`, `planEnable`, `planDisable` and `planMarketplaceUpdate`. Installed-state graph plans use `planInstalledPrune` and `planInstalledUninstall`, distinct from the catalog-aware dependency plans. `readTheme` and `readAgent` are file readers; `readThemeSetting` names the general-settings theme reader. Conflicting public types are qualified by responsibility (`Cli*`, `Update*`, `PolicyHelperRun`, `PolicyHelperOutput`, `WorkflowFailureCause`, `InstalledGraph*`).
+In `./cli`, the CLI planners are `planCliInstall`, `planCliEnable`, `planCliDisable` and `planCliMarketplaceUpdate`; their names inside `cli` remain `planInstall`, `planEnable`, `planDisable` and `planMarketplaceUpdate`. Installed-state graph plans use `planInstalledPrune` and `planInstalledUninstall`, distinct from the catalog-aware dependency plans. `readTheme`, `readAgent` and `readOutputStyle` are file readers of `./format`; `readThemeSetting`, `readAgentSetting` and `readOutputStyleSetting` read the general settings of `./settings`. The four lists of where something runs are named by what they list: `POLICY_SURFACES` (where a managed policy applies), `LAUNCH_SURFACES` (where a session starts), `SUBSTITUTION_SURFACES` (where a string is substituted) and `UI_SURFACES` (where a mod draws); `PLUGIN_TELEMETRY_EVENTS` are the plugin events, `TELEMETRY_EVENTS` the mods telemetry events. Conflicting public types are qualified by responsibility (`Cli*`, `Update*`, `PolicyHelperRun`, `PolicyHelperOutput`, `WorkflowFailureCause`, `InstalledGraph*`).
 
 ## Mods orchestration and settings reads
 

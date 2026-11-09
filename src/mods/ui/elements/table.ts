@@ -2,7 +2,7 @@ import {
   ELEMENT_NAMES,
   ELEMENT_SURFACES,
   type ElementName,
-  type Surface,
+  type UiSurface,
 } from '../../../protocol/mods-ui-names.ts';
 import { childrenFrom } from './children.ts';
 import { ELEMENT_DEFS } from './registry.ts';
@@ -28,7 +28,7 @@ function elementFn(name: ElementName): ElementFn {
  * app cannot draw is left out of the table, so using it fails at once in the hook, as calling
  * `undefined` does, instead of drawing nothing.
  */
-export function defaultElementTable(surface: Surface): ElementTable {
+export function defaultElementTable(surface: UiSurface): ElementTable {
   return Object.fromEntries(
     ELEMENT_NAMES.filter((name) => ELEMENT_SURFACES[name].includes(surface)).map((name) => [
       name,

@@ -5,7 +5,7 @@ import type { PolicyView } from '../view.ts';
  * `--teammate-mode` for one session are `SESSION_OVERRIDES` rows; `CLAUDE_CODE_DISABLE_AGENT_VIEW`
  * is paired with its key here.
  */
-export const readAgent = (view: PolicyView): string | undefined => view.get('agent');
+export const readAgentSetting = (view: PolicyView): string | undefined => view.get('agent');
 
 /** `CLAUDE_CODE_DISABLE_AGENT_VIEW`, equivalent to `disableAgentView` for one session. */
 export const AGENT_VIEW_ENV = 'CLAUDE_CODE_DISABLE_AGENT_VIEW';

@@ -5,7 +5,7 @@
  * in its `env`: both variables resolve in the places the page uses them.
  */
 import { expect, test } from 'bun:test';
-import { resolveMcpServer } from '../../../src/index.ts';
+import { resolveMcpServer } from '../../../src/entry/loading.ts';
 import { PATHS, hook, resolve } from '../../support/hook-scope.ts';
 import { PATHS as MCP_PATHS, scopeOf } from '../../support/mcp-scope.ts';
 import { spec } from '../../support/spec.ts';

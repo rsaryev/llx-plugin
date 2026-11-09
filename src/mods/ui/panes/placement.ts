@@ -1,5 +1,5 @@
 import { MOD_LIMITS } from '../../../protocol/mods-limits.ts';
-import type { Surface } from '../../../protocol/mods-ui-names.ts';
+import type { UiSurface } from '../../../protocol/mods-ui-names.ts';
 import type { Viewport } from '../sites/viewport.ts';
 
 /** Who caused a `$.ui.open`: something the user did (a command, a button), or the mod by itself (a timer, a `turn.start` hook). */
@@ -12,7 +12,7 @@ export type Placement =
 
 export interface PlacementInput {
   readonly origin: OpenOrigin;
-  readonly surface: Surface;
+  readonly surface: UiSurface;
   /** Absent until the app has measured its window. */
   readonly viewport: Viewport | undefined;
   /** The user has opened this pane once themselves. */

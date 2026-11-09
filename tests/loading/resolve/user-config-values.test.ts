@@ -15,7 +15,7 @@ import {
   validateUserConfigValues,
   type ResolvedUserConfig,
   type SubstitutionScope,
-} from '../../../src/index.ts';
+} from '../../../src/entry/loading.ts';
 import type { UserConfigOption } from '../../../src/format/index.ts';
 import { fakeEnvironment, locations } from '../../support/ports.ts';
 import { spec } from '../../support/spec.ts';

@@ -4,8 +4,12 @@
  * whether the plugin is from the official tier and whether `OTEL_LOG_TOOL_DETAILS=1`.
  */
 
-export const TELEMETRY_EVENTS = ['plugin_loaded', 'plugin_installed', 'skill_activated'] as const;
-export type TelemetryEvent = (typeof TELEMETRY_EVENTS)[number];
+export const PLUGIN_TELEMETRY_EVENTS = [
+  'plugin_loaded',
+  'plugin_installed',
+  'skill_activated',
+] as const;
+export type TelemetryEvent = (typeof PLUGIN_TELEMETRY_EVENTS)[number];
 
 export interface TelemetryNameFacts {
   /** The plugin is from an official-tier marketplace: its names are reported as they are. */

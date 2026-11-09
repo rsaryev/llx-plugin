@@ -1,6 +1,6 @@
 import { error, type PluginIssue } from '../../../format/issues.ts';
 import { ENGINE_ORIGIN } from '../../../protocol/mods-events.ts';
-import type { Surface } from '../../../protocol/mods-ui-names.ts';
+import type { UiSurface } from '../../../protocol/mods-ui-names.ts';
 import { messageOf } from '../../api/call.ts';
 import type { HookReport, ModChain } from '../../types.ts';
 import { isRecord } from '../elements/node.ts';
@@ -20,7 +20,7 @@ export type Gesture = keyof typeof GESTURES;
 export interface RouteOptions {
   readonly chain: ModChain;
   readonly tree: unknown;
-  readonly surface: Surface;
+  readonly surface: UiSurface;
   readonly signal: AbortSignal;
   readonly report: (report: HookReport) => void;
 }
@@ -60,7 +60,7 @@ function callbackOf(
 }
 
 /** What the callback receives: a press gets `{ surface }`, typing and picking get the value. */
-const argumentOf = (gesture: Gesture, surface: Surface, e: unknown): unknown =>
+const argumentOf = (gesture: Gesture, surface: UiSurface, e: unknown): unknown =>
   gesture === 'press' || !isRecord(e) ? { surface } : e.value;
 
 /**

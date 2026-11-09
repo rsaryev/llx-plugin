@@ -5,7 +5,9 @@
  * into `${user_config.KEY}` references in the server's `env`" (the telegram example).
  */
 import { describe, expect, test } from 'bun:test';
-import { loadPlugin, resolveChannel, type PluginChannel } from '../../src/index.ts';
+import { loadPlugin } from '../../src/index.ts';
+import { resolveChannel } from '../../src/entry/loading.ts';
+import { type PluginChannel } from '../../src/entry/format.ts';
 import { json } from '../support/plugin-folder.ts';
 import { scopeOf } from '../support/mcp-scope.ts';
 import { memoryFiles } from '../support/ports.ts';

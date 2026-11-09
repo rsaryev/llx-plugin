@@ -3,7 +3,7 @@
  * `context` has `tokens`, `window` and `percent`, and not how `percent` is rounded.
  */
 import { describe, expect, test } from 'bun:test';
-import { contextUsage } from '../../../src/index.ts';
+import { contextUsage } from '../../../src/entry/mods.ts';
 
 describe('contextUsage', () => {
   test('names the tokens, the window and the whole percent nearest to their ratio', () => {

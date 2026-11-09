@@ -8,12 +8,8 @@
  * given the names the host has started. Spawning, and remembering the set, are the host's.
  */
 import { describe, expect, test } from 'bun:test';
-import {
-  monitorsToStart,
-  readMonitors,
-  type Monitor,
-  type MonitorEvent,
-} from '../../../src/index.ts';
+import { monitorsToStart, type MonitorEvent } from '../../../src/entry/loading.ts';
+import { readMonitors, type Monitor } from '../../../src/entry/format.ts';
 import { spec } from '../../support/spec.ts';
 
 const INTERACTIVE = { interactive: true };

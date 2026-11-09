@@ -109,7 +109,7 @@ export {
   PLACES,
   SDK_SETTING_SOURCES,
   SERVER_CHANGE_TIMINGS,
-  SURFACES,
+  POLICY_SURFACES,
   claudeAiAppliesMarketplaceLists,
   fetchesRemoteSettings,
   helperRunsNow,
@@ -131,7 +131,7 @@ export {
   type ServerChangeTiming,
   type StartupFetch,
   type StartupFetchFacts,
-  type Surface,
+  type PolicySurface,
 } from './applicability.ts';
 export { approvalItems, type ApprovalItem, type ApprovalKind } from './approval.ts';
 export * from './limits.ts';

@@ -1,4 +1,4 @@
-import type { ElementName, RenderSite, Surface } from '../../src/protocol/mods-ui-names.ts';
+import type { ElementName, RenderSite, UiSurface } from '../../src/protocol/mods-ui-names.ts';
 import { createEventRules } from '../../src/mods/events/index.ts';
 import {
   createModsUi,
@@ -33,7 +33,7 @@ export const uiChain = () => harness(undefined, withUiRules(createEventRules()))
 /** The `ui.render` event Claude Code passes to a hook for `site`. */
 export const renderOf = (
   component: RenderSite,
-  surface: Surface = 'terminal',
+  surface: UiSurface = 'terminal',
   props: Props = {},
   requestId = 'id-1',
 ) => ({ component, surface, requestId, props });

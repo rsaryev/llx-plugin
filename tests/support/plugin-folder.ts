@@ -1,4 +1,5 @@
-import { readManifest, type PluginManifest } from '../../src/index.ts';
+import { readManifest } from '../../src/entry/format.ts';
+import { type PluginManifest } from '../../src/index.ts';
 
 /** A manifest as Claude Code would load it: a test never builds one the reader would reject. */
 export function manifestOf(raw: unknown): PluginManifest {

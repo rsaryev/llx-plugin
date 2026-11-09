@@ -14,9 +14,9 @@ import {
   createPluginHost,
   createPolicyView,
   loadPlugin,
-  pluginDataId,
   readSettingsLayer,
 } from '../../src/index.ts';
+import { pluginDataId } from '../../src/entry/loading.ts';
 import {
   fakeEnvironment,
   locations,

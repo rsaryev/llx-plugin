@@ -9,7 +9,7 @@
  * Wording the docs do not quote is a judgment and is asserted outside `spec(...)`.
  */
 import { describe, expect, test } from 'bun:test';
-import { readMcpAdd } from '../../src/index.ts';
+import { readMcpAdd } from '../../src/entry/format.ts';
 import { spec } from '../support/spec.ts';
 
 const none = (): undefined => undefined;

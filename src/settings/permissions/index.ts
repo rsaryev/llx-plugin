@@ -2,13 +2,13 @@ export { AUTO_MODE_LISTS, type AutoModeList, type AutoModeSettings } from './aut
 export {
   BYPASS_AS_ROOT,
   BYPASS_IGNORED_NOTICE,
-  SURFACES,
+  LAUNCH_SURFACES,
   bypassAcceptance,
   type Acceptance as BypassAcceptance,
   type StartInput,
   type StartSource,
   type StartingMode,
-  type Surface,
+  type LaunchSurface,
 } from './default-mode.ts';
 export type { SettingsDirectory, SettingsRule } from './managed-only.ts';
 export { createPermissionsPolicy, type PermissionsPolicy } from './policy.ts';

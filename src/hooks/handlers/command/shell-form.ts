@@ -1,5 +1,5 @@
 import { error, warning, type PluginIssue } from '../../../format/issues.ts';
-import { referencesUserConfig, type Surface } from '../../../loading/resolve/index.ts';
+import { referencesUserConfig, type SubstitutionSurface } from '../../../loading/resolve/index.ts';
 import type { ShellKind } from '../../../ports/index.ts';
 import type { HandlerEntry, RunContext } from '../context.ts';
 import { fieldPath, type CommandPlan } from './exec-form.ts';
@@ -11,7 +11,7 @@ import { noProgramIssue } from './powershell.ts';
  * passed to a shell that tokenizes it, expands variables and reads pipes, `&&`, redirects and globs.
  */
 
-const SURFACES: { readonly [S in ShellKind]: Surface } = {
+const SHELL_SURFACES: { readonly [S in ShellKind]: SubstitutionSurface } = {
   bash: 'hook-shell',
   powershell: 'hook-powershell',
 };
@@ -70,7 +70,7 @@ export async function planShellForm(
   if (none !== undefined) return { notStarted: none.message, issues: [none] };
   const text = await handlerSubstituter(
     entry,
-    SURFACES[shell],
+    SHELL_SURFACES[shell],
     context,
   )(command, fieldPath(entry, 'command'));
   return {

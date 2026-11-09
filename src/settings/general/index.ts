@@ -66,15 +66,15 @@ export {
 export { createGeneralView, type GeneralView } from './view.ts';
 
 export {
-  readAgent,
+  readAgentSetting,
   agentViewDisabled,
   AGENT_VIEW_ENV,
   type AgentViewDecision,
 } from './agent-keys.ts';
 export {
-  readTheme,
+  readThemeSetting,
   readTeammateMode,
-  readOutputStyle,
+  readOutputStyleSetting,
   parseTheme,
   THEME_PRESETS,
   TEAMMATE_MODES,

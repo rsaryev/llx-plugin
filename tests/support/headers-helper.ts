@@ -1,4 +1,4 @@
-import type { HelperContext, HelperServer, HelperTrust } from '../../src/index.ts';
+import type { HelperContext, HelperServer, HelperTrust } from '../../src/entry/loading.ts';
 import { locations } from './ports.ts';
 
 /** A snapshot with credential-looking names, Git's exception, a fixed-list name and ordinary ones. */

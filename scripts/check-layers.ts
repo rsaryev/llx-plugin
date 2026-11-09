@@ -31,6 +31,8 @@ const LAYERS: Readonly<Record<string, number>> = {
   host: 5,
   cli: 5,
   testing: 6,
+  /** The package's subpath entries: each re-exports one domain (docs/API.md, "Entry points"). */
+  entry: 7,
 };
 const TOP = 99;
 

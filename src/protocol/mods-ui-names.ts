@@ -6,8 +6,8 @@ import type { Assert, Equal } from './type-equality.ts';
  * apps that raise them; the elements with the apps that draw them, the props the VS Code extension
  * ignores, the `Box` border styles and spacing steps, and the `Text` values. Pure data.
  */
-export const SURFACES = ['terminal', 'desktop', 'vscode'] as const;
-export type Surface = (typeof SURFACES)[number];
+export const UI_SURFACES = ['terminal', 'desktop', 'vscode'] as const;
+export type UiSurface = (typeof UI_SURFACES)[number];
 
 /** What `e.requestId` of a `ui.render` event is. */
 export const REQUEST_KINDS = [
@@ -27,12 +27,12 @@ export interface RenderSiteDef {
    */
   readonly props: readonly string[];
   readonly request: RequestKind;
-  readonly surfaces: readonly Surface[];
+  readonly surfaces: readonly UiSurface[];
 }
 
-const ALL: readonly Surface[] = ['terminal', 'desktop', 'vscode'];
-const TERMINAL_AND_DESKTOP: readonly Surface[] = ['terminal', 'desktop'];
-const TERMINAL: readonly Surface[] = ['terminal'];
+const ALL: readonly UiSurface[] = ['terminal', 'desktop', 'vscode'];
+const TERMINAL_AND_DESKTOP: readonly UiSurface[] = ['terminal', 'desktop'];
+const TERMINAL: readonly UiSurface[] = ['terminal'];
 
 export const RENDER_SITES = {
   Pane: {
@@ -111,7 +111,7 @@ export const ELEMENT_NAMES = [
 export type ElementName = (typeof ELEMENT_NAMES)[number];
 
 /** The apps that draw each element (the check marks of the elements table). */
-export const ELEMENT_SURFACES: { readonly [N in ElementName]: readonly Surface[] } = {
+export const ELEMENT_SURFACES: { readonly [N in ElementName]: readonly UiSurface[] } = {
   Box: ALL,
   Text: ALL,
   Button: ALL,

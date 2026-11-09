@@ -7,7 +7,7 @@
  * tests/loading/resolve/lsp.test.ts, the maps and their merge in lsp-sources.test.ts.
  */
 import { describe, expect, test } from 'bun:test';
-import { LSP_FIELDS, readLspServer, type LspServer } from '../../src/index.ts';
+import { LSP_FIELDS, readLspServer, type LspServer } from '../../src/entry/format.ts';
 import { spec } from '../support/spec.ts';
 
 const gopls = { command: 'gopls', extensionToLanguage: { '.go': 'go' } };

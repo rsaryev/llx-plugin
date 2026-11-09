@@ -44,7 +44,7 @@ export {
   BYPASS_AS_ROOT,
   BYPASS_IGNORED_NOTICE,
   HIPAA_AUTO_NOTICE,
-  SURFACES,
+  LAUNCH_SURFACES,
   bypassAcceptance,
   createPermissionsPolicy,
   type BypassAcceptance,
@@ -56,7 +56,7 @@ export {
   type StartInput,
   type StartSource,
   type StartingMode,
-  type Surface,
+  type LaunchSurface,
 } from './permissions/index.ts';
 export {
   settingsLocations,

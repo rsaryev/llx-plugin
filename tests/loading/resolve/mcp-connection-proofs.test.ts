@@ -9,9 +9,9 @@ import {
   readMcpConfig,
   skipsStdioConnection,
   SKIPPING_CONNECTION,
-  validatePlugin,
   type PluginMcpServer,
-} from '../../../src/index.ts';
+} from '../../../src/entry/format.ts';
+import { validatePlugin } from '../../../src/index.ts';
 import { memoryFiles } from '../../support/ports.ts';
 import { spec } from '../../support/spec.ts';
 

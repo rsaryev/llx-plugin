@@ -4,7 +4,7 @@
  * not plain digits is ignored: a judgment (spec/judgments.md), asserted outside `spec(...)`.
  */
 import { describe, expect, test } from 'bun:test';
-import { mcpTimeouts, type McpTimeoutServer } from '../../src/index.ts';
+import { mcpTimeouts, type McpTimeoutServer } from '../../src/entry/format.ts';
 import { spec } from '../support/spec.ts';
 
 const MINUTE = 60_000;

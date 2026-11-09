@@ -6,7 +6,7 @@
  * their default (the docs' list). Which key wins when both are set is the kit's judgment.
  */
 import { describe, expect, test } from 'bun:test';
-import { COMPONENT_KINDS, STANDARD_LAYOUT, declaredKey } from '../../src/index.ts';
+import { COMPONENT_KINDS, STANDARD_LAYOUT, declaredKey } from '../../src/entry/format.ts';
 import { manifestOf } from '../support/plugin-folder.ts';
 
 describe('the standard layout registry (judgments)', () => {

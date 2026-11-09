@@ -17,7 +17,7 @@ import {
   runMcpHeadersHelper,
   type HeadersHelperPlan,
   type HelperRun,
-} from '../../../src/index.ts';
+} from '../../../src/entry/loading.ts';
 import { scriptedRunner } from '../../support/ports.ts';
 import { contextOf, serverOf, TRUSTED, trustOf } from '../../support/headers-helper.ts';
 import { spec } from '../../support/spec.ts';

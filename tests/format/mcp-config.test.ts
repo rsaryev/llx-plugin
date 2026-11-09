@@ -11,7 +11,7 @@
  * mcp-sources.test.ts through the loader.
  */
 import { describe, expect, test } from 'bun:test';
-import { isRemoteMcpServer, readMcpConfig, readMcpServer } from '../../src/index.ts';
+import { isRemoteMcpServer, readMcpConfig, readMcpServer } from '../../src/entry/format.ts';
 
 describe('transports and fields', () => {
   test('a stdio server needs a command; its type is optional', () => {

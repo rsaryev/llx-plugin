@@ -13,7 +13,7 @@ import {
   readMcpbManifest,
   requiredBundleSettings,
   type McpbManifest,
-} from '../../src/index.ts';
+} from '../../src/entry/format.ts';
 
 const manifestOf = (raw: unknown, platform = 'linux'): McpbManifest => {
   const read = readMcpbManifest(raw, platform);

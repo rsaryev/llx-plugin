@@ -4,7 +4,7 @@
  * let a host supply its own API ports without reimplementing settlement or admission.
  */
 import { expect, test } from 'bun:test';
-import { createScope, runScopedModCall, settleModApi } from '../../../src/index.ts';
+import { createScope, runScopedModCall, settleModApi } from '../../../src/entry/mods.ts';
 import { apiHarness } from '../../support/mods-api.ts';
 import { rejection } from '../../support/rejection.ts';
 import { spec } from '../../support/spec.ts';

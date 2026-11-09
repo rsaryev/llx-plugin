@@ -1,21 +1,21 @@
 import { ENGINE_ORIGIN } from '../../protocol/mods-events.ts';
 import {
   RENDER_SITE_NAMES,
-  SURFACES,
+  UI_SURFACES,
   type RenderSite,
-  type Surface,
+  type UiSurface,
 } from '../../protocol/mods-ui-names.ts';
 import { defaultElementTable, type ElementTable } from './elements/table.ts';
 import { isElementName, isRecord } from './elements/node.ts';
 import type { HookReport, ModChain } from '../types.ts';
 
-const keyOf = (plugin: string, surface: Surface, site: RenderSite): string =>
+const keyOf = (plugin: string, surface: UiSurface, site: RenderSite): string =>
   JSON.stringify([plugin, surface, site]);
 
 /** The element table of each (mod, app, render site), as `ui.resolve` left it. */
 export interface ElementTables {
-  get(plugin: string, surface: Surface, site: RenderSite): ElementTable | undefined;
-  set(plugin: string, surface: Surface, site: RenderSite, table: ElementTable): void;
+  get(plugin: string, surface: UiSurface, site: RenderSite): ElementTable | undefined;
+  set(plugin: string, surface: UiSurface, site: RenderSite, table: ElementTable): void;
   /** Forgets a mod's tables when it unloads. */
   remove(plugin: string): void;
 }
@@ -57,7 +57,7 @@ export interface ResolveOptions {
  * component }`, the docs name the three axes and no field.
  */
 export async function resolveTables(options: ResolveOptions, plugin: string): Promise<void> {
-  for (const surface of SURFACES) {
+  for (const surface of UI_SURFACES) {
     for (const site of RENDER_SITE_NAMES) {
       const answer = await options.chain.dispatch(
         'ui.resolve',

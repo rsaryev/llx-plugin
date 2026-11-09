@@ -2,7 +2,7 @@ import {
   TEXT_SIZES,
   TEXT_WEIGHTS,
   TEXT_WRAPS,
-  type Surface,
+  type UiSurface,
 } from '../../../protocol/mods-ui-names.ts';
 import { firstProblem, oneOf, type ElementDef } from './def.ts';
 import type { ElementNode, Props } from './node.ts';
@@ -35,7 +35,7 @@ export const TEXT: ElementDef = {
 };
 
 /** The typography props an app ignores: "the text as if you'd left that prop out" (reference.md, "`Text` typography props"). */
-const TYPOGRAPHY_IGNORED: { readonly [S in Surface]: readonly string[] } = {
+const TYPOGRAPHY_IGNORED: { readonly [S in UiSurface]: readonly string[] } = {
   terminal: ['size', 'mono', 'tabular'],
   desktop: [],
   vscode: ['size', 'mono', 'tabular'],
@@ -58,7 +58,7 @@ export interface TextStyle {
  * How an app draws a `Text`'s weight and typography. Judgment: the Desktop app's weights are its
  * own to draw, so its `isBold` follows the same rule and it ignores nothing the docs name.
  */
-export function textStyle(surface: Surface, props: Props): TextStyle {
+export function textStyle(surface: UiSurface, props: Props): TextStyle {
   const isBold = props.weight === undefined ? props.bold === true : BOLD_WEIGHTS.has(props.weight);
   return {
     isBold,

@@ -1,4 +1,4 @@
-import { VSCODE_IGNORED, type Surface } from '../../../protocol/mods-ui-names.ts';
+import { VSCODE_IGNORED, type UiSurface } from '../../../protocol/mods-ui-names.ts';
 import { childrenFrom } from './children.ts';
 import { isElementNode, type ElementNode, type TreeChild } from './node.ts';
 
@@ -7,18 +7,18 @@ import { isElementNode, type ElementNode, type TreeChild } from './node.ts';
  * element as if you had left them out" (reference.md, "Elements"). The other apps ignore none the
  * docs name.
  */
-export function drawnProps(surface: Surface, node: ElementNode): ElementNode['props'] {
+export function drawnProps(surface: UiSurface, node: ElementNode): ElementNode['props'] {
   if (surface !== 'vscode') return node.props;
   const ignored = new Set(VSCODE_IGNORED[node.type]);
   return Object.fromEntries(Object.entries(node.props).filter(([prop]) => !ignored.has(prop)));
 }
 
-function drawnChild(surface: Surface, child: TreeChild): TreeChild {
+function drawnChild(surface: UiSurface, child: TreeChild): TreeChild {
   return isElementNode(child) ? drawnNode(surface, child) : child;
 }
 
 /** The tree as `surface` draws it: every element without the props the app ignores. */
-export function drawnNode(surface: Surface, node: ElementNode): ElementNode {
+export function drawnNode(surface: UiSurface, node: ElementNode): ElementNode {
   return {
     type: node.type,
     props: drawnProps(surface, node),

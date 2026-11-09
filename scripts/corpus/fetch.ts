@@ -8,7 +8,7 @@
 import { existsSync } from 'node:fs';
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { planPluginFetch, readMarketplace, type FetchPlan } from '../../src/index.ts';
+import { planPluginFetch, readMarketplace, type FetchPlan } from '../../src/entry/marketplace.ts';
 import { git } from './git.ts';
 import {
   CORPUS_DIR,

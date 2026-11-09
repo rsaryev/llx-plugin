@@ -2,19 +2,19 @@ import {
   RENDER_SITES,
   type RenderSite,
   type RequestKind,
-  type Surface,
+  type UiSurface,
 } from '../../../protocol/mods-ui-names.ts';
 import type { Props } from '../elements/node.ts';
 import { viewportProblem, type Viewport } from './viewport.ts';
 
 /** Whether `site` is raised in `surface`: the "Rendered on" column of the render sites table. */
-export const decideSite = (site: RenderSite, surface: Surface): boolean =>
+export const decideSite = (site: RenderSite, surface: UiSurface): boolean =>
   RENDER_SITES[site].surfaces.includes(surface);
 
 /** What a `ui.render` hook receives as `e` (reference.md, "Render sites"). */
 export type RenderEvent = {
   readonly component: RenderSite;
-  readonly surface: Surface;
+  readonly surface: UiSurface;
   readonly props: Props;
   /** The pane's `id`, the message id, the tool call id or the agent id; absent for a site that has "One instance" (judgment). */
   readonly requestId?: string;
@@ -23,7 +23,7 @@ export type RenderEvent = {
 
 export interface RenderRequest {
   readonly site: RenderSite;
-  readonly surface: Surface;
+  readonly surface: UiSurface;
   readonly props?: Props;
   readonly requestId?: string;
   /** The window as the app measured it; absent until it has. */

@@ -12,16 +12,13 @@ import { expect, test } from 'bun:test';
 import {
   collectMcpServers,
   expandMcpServer,
-  matchesMatcher,
-  mcpServerKey,
-  mcpToolName,
   planMcpReload,
-  pluginMcpServerName,
   readMcpConfig,
   redactPluginServer,
-  resolveMcpServer,
   type PluginMcpServer,
-} from '../../../src/index.ts';
+} from '../../../src/entry/format.ts';
+import { matchesMatcher, mcpToolName, pluginMcpServerName } from '../../../src/entry/rules.ts';
+import { mcpServerKey, resolveMcpServer } from '../../../src/entry/loading.ts';
 import { PATHS, scopeOf } from '../../support/mcp-scope.ts';
 import { fakeEnvironment, memoryFiles } from '../../support/ports.ts';
 import { spec } from '../../support/spec.ts';

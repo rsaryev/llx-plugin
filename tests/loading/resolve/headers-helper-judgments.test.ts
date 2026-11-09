@@ -3,7 +3,7 @@
  * value, and the three variables over an inherited one. Outside `spec(...)`.
  */
 import { describe, expect, test } from 'bun:test';
-import { planHeadersHelper, type HeadersHelperPlan } from '../../../src/index.ts';
+import { planHeadersHelper, type HeadersHelperPlan } from '../../../src/entry/loading.ts';
 import { contextOf, SNAPSHOT, serverOf, TRUSTED } from '../../support/headers-helper.ts';
 
 type Run = Extract<HeadersHelperPlan, { run: true }>;

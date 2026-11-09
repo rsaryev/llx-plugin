@@ -1,5 +1,5 @@
 import { ENGINE_ORIGIN } from '../../../protocol/mods-events.ts';
-import type { Surface } from '../../../protocol/mods-ui-names.ts';
+import type { UiSurface } from '../../../protocol/mods-ui-names.ts';
 import type { HookReport, ModChain } from '../../types.ts';
 import type { OpenRequest } from './open.ts';
 import { placePane, type OpenOrigin, type Placement } from './placement.ts';
@@ -20,7 +20,7 @@ export const CLOSE_KINDS = ['plugin', 'person', 'unload'] as const;
 export type CloseKind = (typeof CLOSE_KINDS)[number];
 
 export interface PaneContext {
-  readonly surface: Surface;
+  readonly surface: UiSurface;
   readonly viewport: Viewport | undefined;
 }
 

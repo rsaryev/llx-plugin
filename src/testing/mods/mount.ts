@@ -6,7 +6,7 @@ import {
   type ElementNode,
 } from '../../mods/ui/index.ts';
 import { walkTree } from '../../mods/ui/elements/node.ts';
-import type { RenderSite, Surface } from '../../protocol/mods-ui-names.ts';
+import type { RenderSite, UiSurface } from '../../protocol/mods-ui-names.ts';
 import type { World } from './world.ts';
 
 /**
@@ -18,7 +18,7 @@ import type { World } from './world.ts';
 export interface MountSpec {
   readonly plugin?: string;
   readonly component: RenderSite;
-  readonly surface: Surface;
+  readonly surface: UiSurface;
   readonly requestId?: string;
   readonly viewport?: {
     readonly columns: number;

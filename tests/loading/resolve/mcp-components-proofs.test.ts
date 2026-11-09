@@ -7,16 +7,13 @@ import { describe, expect, test } from 'bun:test';
 import {
   collectMcpServers,
   configFlagApplies,
-  matchesMatcher,
-  mcpServerKey,
-  mcpToolName,
   planMcpReload,
-  pluginMcpServerName,
   readConfigFlag,
-  resolveMcpServer,
-  validatePlugin,
   type PluginMcpServer,
-} from '../../../src/index.ts';
+} from '../../../src/entry/format.ts';
+import { matchesMatcher, mcpToolName, pluginMcpServerName } from '../../../src/entry/rules.ts';
+import { mcpServerKey, resolveMcpServer } from '../../../src/entry/loading.ts';
+import { validatePlugin } from '../../../src/index.ts';
 import { bundle, fakeBundles, node } from '../../support/mcp-bundle.ts';
 import { PATHS, scopeOf } from '../../support/mcp-scope.ts';
 import { memoryFiles } from '../../support/ports.ts';

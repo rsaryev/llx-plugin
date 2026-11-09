@@ -15,7 +15,7 @@ import { expect, test } from 'bun:test';
 import {
   RENDER_SITE_NAMES,
   RENDER_SITES,
-  SURFACES,
+  UI_SURFACES,
   type RenderSite,
 } from '../../../src/protocol/mods-ui-names.ts';
 import { decideSite, renderEvent } from '../../../src/mods/ui/index.ts';
@@ -66,7 +66,7 @@ for (const site of RENDER_SITE_NAMES) {
     });
 
     test('the site is raised in the apps the table names and not in the others', () => {
-      for (const surface of SURFACES) {
+      for (const surface of UI_SURFACES) {
         const raised = RENDER_SITES[site].surfaces.includes(surface);
         expect(decideSite(site, surface)).toBe(raised);
         const built = renderEvent({

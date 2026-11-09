@@ -7,7 +7,13 @@ import { describe, expect, test } from 'bun:test';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { atom, read, STATE_LIBRARY_SOURCE, update, type StateHost } from '../../../src/index.ts';
+import {
+  atom,
+  read,
+  STATE_LIBRARY_SOURCE,
+  update,
+  type StateHost,
+} from '../../../src/entry/mods.ts';
 
 interface Helpers {
   readonly atom: typeof atom;

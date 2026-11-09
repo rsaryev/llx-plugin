@@ -12,8 +12,8 @@ import {
   isRemoteMcpServer,
   readMcpConfig,
   readMcpServer,
-  resolveMcpServer,
-} from '../../../src/index.ts';
+} from '../../../src/entry/format.ts';
+import { resolveMcpServer } from '../../../src/entry/loading.ts';
 import { PATHS, scopeOf } from '../../support/mcp-scope.ts';
 import { spec } from '../../support/spec.ts';
 

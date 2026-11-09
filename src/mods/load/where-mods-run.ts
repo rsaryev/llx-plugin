@@ -1,4 +1,4 @@
-import type { Surface } from '../../protocol/mods-ui-names.ts';
+import type { UiSurface } from '../../protocol/mods-ui-names.ts';
 
 /**
  * Where mods run (plugins/mods/overview.md, "Where mods run" and "Turn mods on or off"): for each
@@ -35,7 +35,7 @@ export interface WhereModsRun {
   /** Whether what a mod draws appears. */
   readonly draws: boolean;
   /** The app that shows it. */
-  readonly drawsOn?: Surface;
+  readonly drawsOn?: UiSurface;
   /** The Desktop app leaves out the elements the elements table marks terminal-only. */
   readonly terminalOnlyElementsHidden?: true;
 }
@@ -45,7 +45,7 @@ interface Place {
   (input: ModsWhere & { readonly reachesCloud?: boolean }): WhereModsRun;
 }
 
-const RUNS_AND_DRAWS = (on: Surface): WhereModsRun => ({
+const RUNS_AND_DRAWS = (on: UiSurface): WhereModsRun => ({
   hooksRun: true,
   draws: true,
   drawsOn: on,

@@ -5,7 +5,7 @@
  * Claude Code starts"; the on/off spellings of the page's note). Examples are the table's own.
  */
 import { describe, expect, test } from 'bun:test';
-import { scrubEnvironment, subprocessScrubEnabled } from '../../../src/index.ts';
+import { scrubEnvironment, subprocessScrubEnabled } from '../../../src/entry/loading.ts';
 import { spec } from '../../support/spec.ts';
 
 const ON = { CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1' };

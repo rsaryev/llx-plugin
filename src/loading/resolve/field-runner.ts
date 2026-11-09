@@ -1,6 +1,6 @@
 import type { PluginIssue } from '../../format/issues.ts';
 import type { Substituter, Unresolved } from './substitute.ts';
-import { SURFACE_POLICY, type Surface } from './surfaces.ts';
+import { SURFACE_POLICY, type SubstitutionSurface } from './surfaces.ts';
 
 /** A substituted value with the issues its references raised. */
 export interface Part<T> {
@@ -21,12 +21,16 @@ export const mergeUnresolved = (all: readonly Unresolved[]): Unresolved => ({
  * to. One substituter serves all fields, so the data folder is asked for once.
  */
 export function fieldRunner(run: Substituter, base: string) {
-  const one = async (surface: Surface, template: string, field: string): Promise<Part<string>> => {
+  const one = async (
+    surface: SubstitutionSurface,
+    template: string,
+    field: string,
+  ): Promise<Part<string>> => {
     const done = await run.run(template, SURFACE_POLICY[surface], `${base}.${field}`);
     return { value: done.text, issues: [...done.issues], unresolved: done.unresolved };
   };
   const list = async (
-    surface: Surface,
+    surface: SubstitutionSurface,
     templates: readonly string[],
     field: string,
   ): Promise<Part<string[]>> => {
@@ -38,7 +42,7 @@ export function fieldRunner(run: Substituter, base: string) {
     };
   };
   const table = async (
-    surface: Surface,
+    surface: SubstitutionSurface,
     entries: Readonly<Record<string, string>>,
     field: string,
   ): Promise<Part<Record<string, string>>> => {

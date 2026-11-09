@@ -8,7 +8,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
   readProcessWrapper,
-  readTheme,
+  readThemeSetting,
   resolveSessionValue,
 } from '../../../src/settings/general/index.ts';
 import { issuesOf } from '../../support/settings-layers.ts';
@@ -28,25 +28,25 @@ const PRESETS = [
 spec('settings.key.theme', () => {
   test('each of the seven presets is read as that preset', () => {
     for (const name of PRESETS) {
-      expect(readTheme(viewOf(['user', { theme: name }]))).toEqual({ preset: name });
+      expect(readThemeSetting(viewOf(['user', { theme: name }]))).toEqual({ preset: name });
     }
   });
 
   test('the docs example light-daltonized', () => {
-    expect(readTheme(viewOf(['user', { theme: 'light-daltonized' }]))).toEqual({
+    expect(readThemeSetting(viewOf(['user', { theme: 'light-daltonized' }]))).toEqual({
       preset: 'light-daltonized',
     });
   });
 
   test('the default is dark', () => {
-    expect(readTheme(viewOf())).toEqual({ preset: 'dark' });
+    expect(readThemeSetting(viewOf())).toEqual({ preset: 'dark' });
   });
 
   test('custom:<slug> names a theme of ~/.claude/themes and custom:<plugin-name>:<slug> one of a plugin', () => {
-    expect(readTheme(viewOf(['user', { theme: 'custom:dracula' }]))).toEqual({
+    expect(readThemeSetting(viewOf(['user', { theme: 'custom:dracula' }]))).toEqual({
       custom: { slug: 'dracula' },
     });
-    expect(readTheme(viewOf(['user', { theme: 'custom:my-plugin:night' }]))).toEqual({
+    expect(readThemeSetting(viewOf(['user', { theme: 'custom:my-plugin:night' }]))).toEqual({
       custom: { plugin: 'my-plugin', slug: 'night' },
     });
   });
@@ -54,26 +54,26 @@ spec('settings.key.theme', () => {
   test('a custom reference with a missing part, or a name that is neither a preset nor custom, is dropped with a warning', () => {
     for (const bad of ['custom:', 'custom::x', 'custom:a:', 'custom:a:b:c', 'solarized', 'Dark']) {
       expect(issuesOf('user', { theme: bad })[0]?.message).toContain('"theme" must be');
-      expect(readTheme(viewOf(['user', { theme: bad }]))).toEqual({ preset: 'dark' });
+      expect(readThemeSetting(viewOf(['user', { theme: bad }]))).toEqual({ preset: 'dark' });
     }
   });
 
   test('any file carries it and the highest file wins; a dropped value leaves the lower file in force', () => {
-    expect(readTheme(viewOf(['user', { theme: 'light' }], ['project', { theme: 'auto' }]))).toEqual(
-      { preset: 'auto' },
-    );
     expect(
-      readTheme(viewOf(['user', { theme: 'light' }], ['project', { theme: 'bogus' }])),
+      readThemeSetting(viewOf(['user', { theme: 'light' }], ['project', { theme: 'auto' }])),
+    ).toEqual({ preset: 'auto' });
+    expect(
+      readThemeSetting(viewOf(['user', { theme: 'light' }], ['project', { theme: 'bogus' }])),
     ).toEqual({ preset: 'light' });
   });
 
   test('a value in ~/.claude.json from an older version applies when no settings file sets it', () => {
-    expect(readTheme(viewOf(), 'light-ansi')).toEqual({ preset: 'light-ansi' });
-    expect(readTheme(viewOf(['user', { theme: 'light' }]), 'light-ansi')).toEqual({
+    expect(readThemeSetting(viewOf(), 'light-ansi')).toEqual({ preset: 'light-ansi' });
+    expect(readThemeSetting(viewOf(['user', { theme: 'light' }]), 'light-ansi')).toEqual({
       preset: 'light',
     });
-    expect(readTheme(viewOf(), 'custom:dracula')).toEqual({ custom: { slug: 'dracula' } });
-    expect(readTheme(viewOf(), 'bogus')).toEqual({ preset: 'dark' });
+    expect(readThemeSetting(viewOf(), 'custom:dracula')).toEqual({ custom: { slug: 'dracula' } });
+    expect(readThemeSetting(viewOf(), 'bogus')).toEqual({ preset: 'dark' });
   });
 });
 

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { ModsNamespaceApi } from '../types.ts';
 import { call, isRecord, parse, type Deps } from '../api/call.ts';
 import { defaultElementTable, type ElementTable } from './elements/table.ts';
-import { RENDER_SITE_NAMES, SURFACES, type Surface } from '../../protocol/mods-ui-names.ts';
+import { RENDER_SITE_NAMES, UI_SURFACES, type UiSurface } from '../../protocol/mods-ui-names.ts';
 import { parseOpen } from './panes/open.ts';
 import type { PaneRegistry } from './panes/registry.ts';
 import type { ModInterface } from './ports.ts';
@@ -33,7 +33,7 @@ export const statusLine = (plugin: string, text: string): string => `⚠ ${plugi
 export const logLine = (plugin: string, text: string): string => `● ${plugin}: ${text}`;
 
 /** The VS Code panel cuts a status line (interface.md, "Text limits"); the other apps draw it whole. */
-const shownStatus = (surface: Surface, line: string): string =>
+const shownStatus = (surface: UiSurface, line: string): string =>
   surface === 'vscode' ? clipVscodeStatus(line) : line;
 
 const asRecord = (value: unknown): Readonly<Record<string, unknown>> =>
@@ -72,7 +72,7 @@ function answerOf(question: string, settled: unknown): string {
  */
 function resolve(deps: Deps, parts: UiParts, e: unknown): ElementTable {
   const site = RENDER_SITE_NAMES.find((name) => name === asRecord(e).component);
-  const surface = SURFACES.find((name) => name === asRecord(e).surface);
+  const surface = UI_SURFACES.find((name) => name === asRecord(e).surface);
   if (!site || !surface) throw new Error('$.ui.resolve: takes the event of a ui.render hook');
   return parts.tables.get(deps.plugin, surface, site) ?? defaultElementTable(surface);
 }

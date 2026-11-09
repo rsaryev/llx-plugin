@@ -1,4 +1,4 @@
-import type { RenderSite, Surface } from '../../../protocol/mods-ui-names.ts';
+import type { RenderSite, UiSurface } from '../../../protocol/mods-ui-names.ts';
 import { drawnNode } from '../elements/surface.ts';
 import { clipText, sizeProblem } from '../elements/limits.ts';
 import {
@@ -38,7 +38,7 @@ const refusal = (site: RenderSite, reason: string, mods: number): string =>
  */
 export function foldRender(
   site: RenderSite,
-  surface: Surface,
+  surface: UiSurface,
   settled: unknown,
   options: FoldOptions = {},
 ): Drawn {

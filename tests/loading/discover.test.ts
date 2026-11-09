@@ -12,7 +12,7 @@
  * state, what is not.
  */
 import { describe, expect, test } from 'bun:test';
-import { discoverComponents } from '../../src/index.ts';
+import { discoverComponents } from '../../src/entry/loading.ts';
 import { memoryFiles } from '../support/ports.ts';
 import { json, manifestOf, namesOf, pathsOf } from '../support/plugin-folder.ts';
 import { spec } from '../support/spec.ts';

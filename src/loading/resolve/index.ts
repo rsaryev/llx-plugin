@@ -80,9 +80,9 @@ export {
 export {
   SURFACE_COMPONENT,
   SURFACE_POLICY,
-  SURFACES,
+  SUBSTITUTION_SURFACES,
   substituteSurface,
-  type Surface,
+  type SubstitutionSurface,
 } from './surfaces.ts';
 export { validateUserConfigValues } from './user-config-values.ts';
 export {

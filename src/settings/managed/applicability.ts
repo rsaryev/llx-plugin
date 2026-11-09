@@ -7,8 +7,14 @@ import type { HelperPlan } from './compose.ts';
  * which surfaces and places read which sources, what reaches a running session, and what waits for
  * the developer. Pure decisions over facts the host copies in.
  */
-export const SURFACES = ['terminal', 'vscode', 'jetbrains', 'desktopCodeTab', 'agentSdk'] as const;
-export type Surface = (typeof SURFACES)[number];
+export const POLICY_SURFACES = [
+  'terminal',
+  'vscode',
+  'jetbrains',
+  'desktopCodeTab',
+  'agentSdk',
+] as const;
+export type PolicySurface = (typeof POLICY_SURFACES)[number];
 
 /** The settings files an Agent SDK app chooses among with `settingSources`. */
 export const SDK_SETTING_SOURCES = ['user', 'project', 'local'] as const;
@@ -26,7 +32,7 @@ export interface LoadedSources {
  * local files."
  */
 const SURFACE_LOADS: {
-  readonly [S in Surface]: (
+  readonly [S in PolicySurface]: (
     settingSources: readonly SdkSettingSource[] | undefined,
   ) => LoadedSources;
 } = {
@@ -38,7 +44,7 @@ const SURFACE_LOADS: {
 };
 
 export const sourcesLoadedBy = (
-  surface: Surface,
+  surface: PolicySurface,
   settingSources?: readonly SdkSettingSource[],
 ): LoadedSources => SURFACE_LOADS[surface](settingSources);
 

@@ -9,7 +9,7 @@
  * whose `list` answers from a function: a folder that lists itself really loops.
  */
 import { describe, expect, test } from 'bun:test';
-import { discoverComponents } from '../../src/index.ts';
+import { discoverComponents } from '../../src/entry/loading.ts';
 import type { DirectoryEntry, PluginFiles } from '../../src/ports/index.ts';
 import { namesOf } from '../support/plugin-folder.ts';
 

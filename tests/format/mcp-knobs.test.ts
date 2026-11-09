@@ -16,7 +16,7 @@ import {
   mcpDescriptionLimits,
   mcpStdioEnvironment,
   mcpTimeouts,
-} from '../../src/index.ts';
+} from '../../src/entry/format.ts';
 import { spec } from '../support/spec.ts';
 
 const env =

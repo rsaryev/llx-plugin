@@ -1,5 +1,5 @@
 import { MOD_LIMITS } from '../../../protocol/mods-limits.ts';
-import type { Surface } from '../../../protocol/mods-ui-names.ts';
+import type { UiSurface } from '../../../protocol/mods-ui-names.ts';
 import { firstProblem, textOf, type ElementDef } from './def.ts';
 
 export const LINK: ElementDef = {
@@ -30,7 +30,7 @@ function isSpelledAsUrl(href: string, url: URL): boolean {
  * what `new URL(href).href` returns "apart from a missing `/` after the host" (interface.md,
  * "`Link` in the Desktop app and VS Code"). Otherwise it draws as plain text.
  */
-export function drawsAsLink(surface: Surface, href: string): boolean {
+export function drawsAsLink(surface: UiSurface, href: string): boolean {
   if (surface === 'terminal') return true;
   if (href.includes('@')) return false;
   const url = URL.canParse(href) ? new URL(href) : undefined;

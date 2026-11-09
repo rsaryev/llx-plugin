@@ -7,7 +7,11 @@
  * interactive one).
  */
 import { describe, expect, test } from 'bun:test';
-import { persistedTrust, planHeadersHelper, type HeadersHelperPlan } from '../../../src/index.ts';
+import {
+  persistedTrust,
+  planHeadersHelper,
+  type HeadersHelperPlan,
+} from '../../../src/entry/loading.ts';
 import { contextOf, serverOf, TRUSTED, trustOf } from '../../support/headers-helper.ts';
 import { spec } from '../../support/spec.ts';
 

@@ -14,9 +14,9 @@ import { describe, expect, test } from 'bun:test';
 import {
   LSP_DEFAULTS,
   resolveLspServer,
-  type LspServer,
   type ResolvedLspServer,
-} from '../../../src/index.ts';
+} from '../../../src/entry/loading.ts';
+import { type LspServer } from '../../../src/entry/format.ts';
 import { locations } from '../../support/ports.ts';
 import { PATHS, scopeOf } from '../../support/mcp-scope.ts';
 import { windowsLocations } from '../../support/windows-locations.ts';

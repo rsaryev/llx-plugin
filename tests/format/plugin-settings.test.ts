@@ -9,7 +9,7 @@
  * hands over.
  */
 import { describe, expect, test } from 'bun:test';
-import { hasAppliedSettings, readPluginSettings } from '../../src/index.ts';
+import { hasAppliedSettings, readPluginSettings } from '../../src/entry/format.ts';
 import { spec } from '../support/spec.ts';
 
 spec(['layout.Settings', 'manifest.field.settings'], () => {

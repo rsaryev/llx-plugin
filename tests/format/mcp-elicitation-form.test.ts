@@ -8,8 +8,8 @@ import {
   autoRespondElicitation,
   elicitationFieldProblems,
   elicitationFormFields,
-  type ElicitationRequest,
-} from '../../src/index.ts';
+} from '../../src/entry/format.ts';
+import { type ElicitationRequest } from '../../src/index.ts';
 
 const form: ElicitationRequest = {
   serverName: 'accounts',

@@ -6,7 +6,8 @@
  * here is a judgment (spec/judgments.md), outside `spec(...)`.
  */
 import { describe, expect, test } from 'bun:test';
-import { collectMcpServers, type PluginIssue } from '../../src/index.ts';
+import { collectMcpServers } from '../../src/entry/format.ts';
+import { type PluginIssue } from '../../src/index.ts';
 import { memoryFiles } from '../support/ports.ts';
 import { fakeBundles, node } from '../support/mcp-bundle.ts';
 

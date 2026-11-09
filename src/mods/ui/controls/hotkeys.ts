@@ -1,9 +1,9 @@
-import type { Surface } from '../../../protocol/mods-ui-names.ts';
+import type { UiSurface } from '../../../protocol/mods-ui-names.ts';
 import { isButton } from '../elements/button.ts';
 import { isElementNode, walkTree, type ElementNode } from '../elements/node.ts';
 
 export interface HotkeyContext {
-  readonly surface: Surface;
+  readonly surface: UiSurface;
   /** Whether the tree is the band above the prompt (digit hotkeys work there). */
   readonly isBand: boolean;
   /** Whether the user collapsed the band: "neither an `action` binding nor a hotkey presses a button in it". */

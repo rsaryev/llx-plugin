@@ -1,8 +1,8 @@
 import {
   RENDER_SITE_NAMES,
-  SURFACES,
+  UI_SURFACES,
   type RenderSite,
-  type Surface,
+  type UiSurface,
 } from '../../protocol/mods-ui-names.ts';
 import type { EventRules } from '../types.ts';
 import { isRecord } from './elements/node.ts';
@@ -12,8 +12,8 @@ import { tableProblem } from './tables.ts';
 
 const isSite = (value: unknown): value is RenderSite =>
   typeof value === 'string' && RENDER_SITE_NAMES.some((site) => site === value);
-const isSurface = (value: unknown): value is Surface =>
-  typeof value === 'string' && SURFACES.some((surface) => surface === value);
+const isSurface = (value: unknown): value is UiSurface =>
+  typeof value === 'string' && UI_SURFACES.some((surface) => surface === value);
 
 /** The interface events whose answer has a shape: a tree for `ui.render`, an element table for `ui.resolve`. */
 type Shaper = (result: unknown, input: unknown, inner: WeakSet<object>) => string | undefined;

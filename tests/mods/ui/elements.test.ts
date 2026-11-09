@@ -13,7 +13,7 @@ import { expect, test } from 'bun:test';
 import {
   ELEMENT_NAMES,
   ELEMENT_SURFACES,
-  SURFACES,
+  UI_SURFACES,
   type ElementName,
 } from '../../../src/protocol/mods-ui-names.ts';
 import {
@@ -50,12 +50,12 @@ const ELEMENT_IDS = {
 for (const name of ELEMENT_NAMES) {
   const row = MODS_REFERENCE.elements.find((candidate) => candidate.name === name);
   const drawn = row?.surfaces ?? [];
-  const refused = SURFACES.filter((surface) => !drawn.includes(surface));
+  const refused = UI_SURFACES.filter((surface) => !drawn.includes(surface));
   spec([ELEMENT_IDS[name], `mods.interface.Build a tree from elements.${name}`], () => {
     test(`the row of ${name} gives the apps that draw it, and the kit routes it to those`, () => {
       expect(row).toBeDefined();
       expect([...ELEMENT_SURFACES[name]]).toEqual(drawn);
-      for (const surface of SURFACES) {
+      for (const surface of UI_SURFACES) {
         expect(defaultElementTable(surface)[name] !== undefined, `${name} on ${surface}`).toBe(
           drawn.includes(surface),
         );

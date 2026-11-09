@@ -11,12 +11,8 @@ import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import {
-  createPermissionsPolicy,
-  createPolicyView,
-  loadSettingsLayers,
-  type PolicyContext,
-} from '../../src/index.ts';
+import { createPermissionsPolicy, createPolicyView, type PolicyContext } from '../../src/index.ts';
+import { loadSettingsLayers } from '../../src/entry/settings.ts';
 import { SETTINGS_CASES, type SettingsCase } from './settings-cases.ts';
 
 const scratch = await mkdtemp(join(tmpdir(), 'settings-oracle-'));

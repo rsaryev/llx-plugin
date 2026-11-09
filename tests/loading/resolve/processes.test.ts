@@ -7,7 +7,8 @@
  * Nothing here is a requirement of its own: the kit never spawns, the host starts what it is given.
  */
 import { describe, expect, test } from 'bun:test';
-import { loadPlugin, resolveProcesses } from '../../../src/index.ts';
+import { loadPlugin } from '../../../src/index.ts';
+import { resolveProcesses } from '../../../src/entry/loading.ts';
 import { json } from '../../support/plugin-folder.ts';
 import { scopeOf } from '../../support/mcp-scope.ts';
 import { memoryFiles } from '../../support/ports.ts';

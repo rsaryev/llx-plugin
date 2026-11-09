@@ -1,4 +1,4 @@
-import type { Surface } from '../../../protocol/mods-ui-names.ts';
+import type { UiSurface } from '../../../protocol/mods-ui-names.ts';
 
 /** `e.viewport`: `columns`, `rows` and `isFullscreen`. */
 export interface Viewport {
@@ -8,7 +8,7 @@ export interface Viewport {
 }
 
 /** The apps whose viewport is present from the start; the others measure their window first. */
-const ALWAYS_MEASURED: { readonly [S in Surface]: boolean } = {
+const ALWAYS_MEASURED: { readonly [S in UiSurface]: boolean } = {
   terminal: false,
   desktop: false,
   vscode: true,
@@ -19,7 +19,7 @@ const ALWAYS_MEASURED: { readonly [S in Surface]: boolean } = {
  * app, and "always present" in the VS Code extension (reference.md, "Render sites").
  */
 export const viewportProblem = (
-  surface: Surface,
+  surface: UiSurface,
   viewport: Viewport | undefined,
 ): string | undefined =>
   ALWAYS_MEASURED[surface] && viewport === undefined

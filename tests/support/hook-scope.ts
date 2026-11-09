@@ -3,8 +3,8 @@ import type {
   HookCommandHandler,
   ResolvedHookCommand,
   SubstitutionScope,
-} from '../../src/index.ts';
-import { resolveHookCommand } from '../../src/index.ts';
+} from '../../src/entry/loading.ts';
+import { resolveHookCommand } from '../../src/entry/loading.ts';
 import { fakeEnvironment, locations } from './ports.ts';
 
 export const PATHS = {

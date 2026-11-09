@@ -13,7 +13,8 @@
  * wording the docs do not quote is a judgment and is asserted outside `spec(...)`.
  */
 import { describe, expect, test } from 'bun:test';
-import { classifyMcpSource, collectMcpServers, type PluginIssue } from '../../src/index.ts';
+import { classifyMcpSource, collectMcpServers } from '../../src/entry/format.ts';
+import { type PluginIssue } from '../../src/index.ts';
 import { memoryFiles } from '../support/ports.ts';
 import { bundle, fakeBundles, node } from '../support/mcp-bundle.ts';
 import { spec } from '../support/spec.ts';

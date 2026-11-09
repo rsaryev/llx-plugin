@@ -20,6 +20,56 @@
       "bun": "./src/index.ts",
       "import": "./dist/index.js"
     },
+    "./loading": {
+      "types": "./dist/entry/loading.d.ts",
+      "bun": "./src/entry/loading.ts",
+      "import": "./dist/entry/loading.js"
+    },
+    "./format": {
+      "types": "./dist/entry/format.d.ts",
+      "bun": "./src/entry/format.ts",
+      "import": "./dist/entry/format.js"
+    },
+    "./skills": {
+      "types": "./dist/entry/skills.d.ts",
+      "bun": "./src/entry/skills.ts",
+      "import": "./dist/entry/skills.js"
+    },
+    "./hooks": {
+      "types": "./dist/entry/hooks.d.ts",
+      "bun": "./src/entry/hooks.ts",
+      "import": "./dist/entry/hooks.js"
+    },
+    "./rules": {
+      "types": "./dist/entry/rules.d.ts",
+      "bun": "./src/entry/rules.ts",
+      "import": "./dist/entry/rules.js"
+    },
+    "./settings": {
+      "types": "./dist/entry/settings.d.ts",
+      "bun": "./src/entry/settings.ts",
+      "import": "./dist/entry/settings.js"
+    },
+    "./marketplace": {
+      "types": "./dist/entry/marketplace.d.ts",
+      "bun": "./src/entry/marketplace.ts",
+      "import": "./dist/entry/marketplace.js"
+    },
+    "./agents": {
+      "types": "./dist/entry/agents.d.ts",
+      "bun": "./src/entry/agents.ts",
+      "import": "./dist/entry/agents.js"
+    },
+    "./mods": {
+      "types": "./dist/entry/mods.d.ts",
+      "bun": "./src/entry/mods.ts",
+      "import": "./dist/entry/mods.js"
+    },
+    "./cli": {
+      "types": "./dist/entry/cli.d.ts",
+      "bun": "./src/entry/cli.ts",
+      "import": "./dist/entry/cli.js"
+    },
     "./testing": {
       "types": "./dist/testing/index.d.ts",
       "bun": "./src/testing/index.ts",

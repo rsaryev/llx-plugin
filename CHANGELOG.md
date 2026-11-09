@@ -4,6 +4,15 @@
 
 ### Changed
 
+- The root exports what a host loop calls (24 values, down from 1609); every domain has its whole
+  surface at a subpath: `./loading`, `./format`, `./skills`, `./hooks`, `./rules`, `./settings`,
+  `./marketplace`, `./agents`, `./mods`, `./cli` (docs/API.md, "Entry points").
+- Names that meant different things are named by meaning: `POLICY_SURFACES`, `LAUNCH_SURFACES`,
+  `SUBSTITUTION_SURFACES` and `UI_SURFACES` for the four `SURFACES`; `readAgentSetting`,
+  `readThemeSetting` and `readOutputStyleSetting` for the general setting readers;
+  `PLUGIN_TELEMETRY_EVENTS` for the plugin telemetry names.
+
+
 - The folder scan is metadata-first: `ScannedEntry` and `ResolvedFolderSkill` hold the skill or command
   without its body (`SkillHead`, `CommandHead`, `InvocableHead`) and a `BodyReader` (`readBody(signal?)`)
   that reads the body through the host's `FolderScan` port when the skill runs, fresh each time. A port

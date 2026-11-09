@@ -48,7 +48,7 @@ export function parseTheme(value: string): ThemeChoice | undefined {
  * The theme: the highest file that sets it, else `legacy` (a value "in `~/.claude.json` from an older
  * version applies when no settings file sets it"), else `"dark"`.
  */
-export function readTheme(view: PolicyView, legacy?: string): ThemeChoice {
+export function readThemeSetting(view: PolicyView, legacy?: string): ThemeChoice {
   const set = view.get('theme');
   if (set !== undefined) return parseTheme(set) ?? DEFAULT_THEME;
   return (legacy === undefined ? undefined : parseTheme(legacy)) ?? DEFAULT_THEME;
@@ -68,4 +68,5 @@ export function readTeammateMode(view: PolicyView, legacy?: string): TeammateMod
 }
 
 /** The output style named by the highest file; `undefined` selects the default style. */
-export const readOutputStyle = (view: PolicyView): string | undefined => view.get('outputStyle');
+export const readOutputStyleSetting = (view: PolicyView): string | undefined =>
+  view.get('outputStyle');

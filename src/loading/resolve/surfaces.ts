@@ -8,7 +8,7 @@ import { readsAsEmptyInRemoteMcp } from '../../format/remote-mcp-credentials.ts'
  * exec form or shell form (or through PowerShell), and an MCP server is stdio or remote, whose
  * `headersHelper` runs through a shell.
  */
-export const SURFACES = [
+export const SUBSTITUTION_SURFACES = [
   'hook-exec',
   'hook-shell',
   'hook-powershell',
@@ -19,10 +19,10 @@ export const SURFACES = [
   'lsp',
   'markdown-content',
 ] as const;
-export type Surface = (typeof SURFACES)[number];
+export type SubstitutionSurface = (typeof SUBSTITUTION_SURFACES)[number];
 
 /** The component whose row of the table each surface belongs to. */
-export const SURFACE_COMPONENT: { readonly [S in Surface]: VariableComponent } = {
+export const SURFACE_COMPONENT: { readonly [S in SubstitutionSurface]: VariableComponent } = {
   'hook-exec': 'hook-command',
   'hook-shell': 'hook-command',
   'hook-powershell': 'hook-command',
@@ -49,7 +49,7 @@ export const SURFACE_COMPONENT: { readonly [S in Surface]: VariableComponent } =
  * - A hook with no `shell` field runs in PowerShell on Windows without Git Bash (hooks.md, "Exec
  *   form and shell form"); the kit cannot tell, so the caller picks `hook-shell` or `hook-powershell`.
  */
-export const SURFACE_POLICY: { readonly [S in Surface]: FieldPolicy } = {
+export const SURFACE_POLICY: { readonly [S in SubstitutionSurface]: FieldPolicy } = {
   'hook-exec': { userConfig: 'allow', environment: 'literal', paths: 'native' },
   'hook-shell': { userConfig: 'refuse', environment: 'literal', paths: 'normalized' },
   'hook-powershell': {
@@ -72,7 +72,7 @@ export const SURFACE_POLICY: { readonly [S in Surface]: FieldPolicy } = {
 
 /** `substituteTemplate` with the policy of a surface. */
 export const substituteSurface = (
-  surface: Surface,
+  surface: SubstitutionSurface,
   template: string,
   scope: SubstitutionScope,
   path = '',

@@ -6,7 +6,7 @@
  * a bundle) and the root `.mcp.json` are decided by `locate`, as every other component path.
  */
 import { describe, expect, test } from 'bun:test';
-import { collectMcpServers } from '../../src/index.ts';
+import { collectMcpServers } from '../../src/entry/format.ts';
 import { json } from '../support/plugin-folder.ts';
 import { memoryFiles } from '../support/ports.ts';
 import { spec } from '../support/spec.ts';

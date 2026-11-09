@@ -15,7 +15,7 @@ import {
   rejectUserConfigInShell,
   resolveMcpServer,
   type ResolvedUserConfig,
-} from '../../../src/index.ts';
+} from '../../../src/entry/loading.ts';
 import { HELPER_MESSAGE, scopeOf, userConfig } from '../../support/mcp-scope.ts';
 import { spec } from '../../support/spec.ts';
 

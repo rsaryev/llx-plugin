@@ -1,6 +1,6 @@
 import { hotkeyTable, type HotkeyContext } from '../controls/hotkeys.ts';
 import { collectControls, controlKey, type Control, type ControlType } from '../controls/keys.ts';
-import type { Surface } from '../../../protocol/mods-ui-names.ts';
+import type { UiSurface } from '../../../protocol/mods-ui-names.ts';
 import { isNamedKey, type KeyEffect, type NamedKey } from './effects.ts';
 
 export interface KeyState {
@@ -12,7 +12,7 @@ export interface KeyState {
 
 export interface KeyContext {
   readonly tree: unknown;
-  readonly surface: Surface;
+  readonly surface: UiSurface;
   /** The drawing is the band above the prompt. */
   readonly isBand: boolean;
   readonly isCollapsed: boolean;

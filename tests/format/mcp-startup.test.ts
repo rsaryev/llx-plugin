@@ -17,7 +17,7 @@ import {
   mcpDiscoveryCache,
   mcpFirstTurnWaitMs,
   mcpStartupWaitsFor,
-} from '../../src/index.ts';
+} from '../../src/entry/format.ts';
 import { spec } from '../support/spec.ts';
 
 const env =

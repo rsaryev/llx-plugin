@@ -12,13 +12,12 @@
  * components.test.ts; here the same rows are asserted through the real MCP resolver.
  */
 import { describe, expect, test } from 'bun:test';
+import { expandMcpServer, type PluginMcpServer } from '../../../src/entry/format.ts';
 import {
-  expandMcpServer,
   mcpServerKey,
   resolveMcpServer,
-  type PluginMcpServer,
   type ResolvedUserConfig,
-} from '../../../src/index.ts';
+} from '../../../src/entry/loading.ts';
 import { fakeEnvironment, locations } from '../../support/ports.ts';
 import { PATHS, scopeOf, userConfig } from '../../support/mcp-scope.ts';
 import { spec } from '../../support/spec.ts';

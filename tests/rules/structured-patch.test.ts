@@ -4,7 +4,7 @@
  * newLines, lines }` and says nothing of how a host derives them from its own diff.
  */
 import { describe, expect, test } from 'bun:test';
-import { structuredPatchOf } from '../../src/index.ts';
+import { structuredPatchOf } from '../../src/entry/rules.ts';
 
 const header = ['Index: a.txt', '='.repeat(10), '--- a.txt', '+++ a.txt'];
 

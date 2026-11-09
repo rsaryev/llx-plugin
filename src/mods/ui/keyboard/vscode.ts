@@ -1,4 +1,4 @@
-import type { RenderSite, Surface } from '../../../protocol/mods-ui-names.ts';
+import type { RenderSite, UiSurface } from '../../../protocol/mods-ui-names.ts';
 
 /**
  * The VS Code extension's differences (interface.md, "Draw in the VS Code extension"). The panel
@@ -48,7 +48,7 @@ export const isStatusStackVisible = (shown: {
  * `$.prompt.suggest` in the panel "resolves with `isShown: false` and shows nothing, because the
  * panel keeps the prompt box's dim suggestion text for Claude's own suggestions."
  */
-export const suggestionRefusedBy = (surface: Surface): { readonly isShown: false } | undefined =>
+export const suggestionRefusedBy = (surface: UiSurface): { readonly isShown: false } | undefined =>
   surface === 'vscode' ? { isShown: false } : undefined;
 
 /** The sites whose own drawing the panel keeps: "at `AskUserQuestion`, the panel keeps its own question card". */
@@ -58,5 +58,5 @@ const PANEL_KEEPS_OWN_CARD: ReadonlySet<RenderSite> = new Set<RenderSite>(['AskU
  * Whether the `props` a hook passes to `next` change what the app draws at `site`: in the panel
  * they do not change the question card, though "draws your elements above it".
  */
-export const propsReachSite = (surface: Surface, site: RenderSite): boolean =>
+export const propsReachSite = (surface: UiSurface, site: RenderSite): boolean =>
   !(surface === 'vscode' && PANEL_KEEPS_OWN_CARD.has(site));

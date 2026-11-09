@@ -10,7 +10,7 @@
  * leads outside); errors.md § Path escapes plugin directory (the symlink message).
  */
 import { describe, expect, test } from 'bun:test';
-import { COMBINE, discoverComponents } from '../../src/index.ts';
+import { COMBINE, discoverComponents } from '../../src/entry/loading.ts';
 import { memoryFiles } from '../support/ports.ts';
 import { messagesOf, namesOf, pathsOf, manifestOf } from '../support/plugin-folder.ts';
 import { spec } from '../support/spec.ts';

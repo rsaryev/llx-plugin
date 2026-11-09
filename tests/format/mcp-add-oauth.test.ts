@@ -5,7 +5,7 @@
  * The transports of `claude mcp add` are in mcp-add.test.ts.
  */
 import { describe, expect, test } from 'bun:test';
-import { mcpAddKey, readMcpAdd, readMcpAddJson } from '../../src/index.ts';
+import { mcpAddKey, readMcpAdd, readMcpAddJson } from '../../src/entry/format.ts';
 import { spec } from '../support/spec.ts';
 
 const none = (): undefined => undefined;

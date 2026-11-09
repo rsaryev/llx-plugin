@@ -16,7 +16,7 @@ import {
   resolveRename,
   validateMarketplace,
   type MarketplaceEntry,
-} from '../../../src/index.ts';
+} from '../../../src/entry/marketplace.ts';
 import { docMarketplace, withFields } from '../../support/marketplace-fixtures.ts';
 
 const SHA = 'a'.repeat(40);

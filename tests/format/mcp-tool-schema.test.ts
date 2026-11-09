@@ -16,7 +16,7 @@ import {
   refusedSchemaFallback,
   type McpToolDeclaration,
   type McpToolPolicy,
-} from '../../src/index.ts';
+} from '../../src/entry/format.ts';
 import { spec } from '../support/spec.ts';
 
 const ON: McpToolPolicy = { rewriteRootCombinators: true, excludeInvalid: true };

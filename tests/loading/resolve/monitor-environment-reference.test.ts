@@ -18,9 +18,10 @@ import {
   resolveHookCommand,
   resolveMonitor,
   substituteSurface,
-  type Surface,
+  type SubstitutionSurface,
 } from '../../../src/loading/resolve/index.ts';
-import type { Monitor, SubstitutionScope } from '../../../src/index.ts';
+import type { Monitor } from '../../../src/entry/format.ts';
+import type { SubstitutionScope } from '../../../src/entry/loading.ts';
 import { locations } from '../../support/ports.ts';
 import { PATHS, scopeOf } from '../../support/mcp-scope.ts';
 import { windowsLocations } from '../../support/windows-locations.ts';
@@ -50,8 +51,11 @@ async function sh(command: string, env: Record<string, string>, cwd: string): Pr
   return out;
 }
 
-const text = (surface: Surface, template: string, scope: SubstitutionScope): Promise<string> =>
-  substituteSurface(surface, template, scope).then((done) => done.text);
+const text = (
+  surface: SubstitutionSurface,
+  template: string,
+  scope: SubstitutionScope,
+): Promise<string> => substituteSurface(surface, template, scope).then((done) => done.text);
 
 spec('environment.rule.Quoting and path separators', () => {
   const windows = scopeOf({ locations: windowsLocations(), windows: true });

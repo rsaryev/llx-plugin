@@ -1,4 +1,4 @@
-import { SPACING_STEPS, type Surface } from '../../../protocol/mods-ui-names.ts';
+import { SPACING_STEPS, type UiSurface } from '../../../protocol/mods-ui-names.ts';
 import { isSpacingStep } from './box.ts';
 
 /** Terminal cells a spacing value is across and down. */
@@ -18,7 +18,7 @@ const ACROSS_ONLY = /^(columnGap|(padding|margin)(Left|Right|X))$/;
  * (judgment: the docs give the cells for the two apps only).
  */
 export function spacingCells(
-  surface: Surface,
+  surface: UiSurface,
   prop: string,
   value: number | keyof typeof SPACING_STEPS,
 ): SpacingCells | undefined {

@@ -14,12 +14,12 @@ import { startNotices } from './start-notices.ts';
  */
 
 /** Where the session runs: the terminal, the VS Code extension, or `claude -p` and the Agent SDK. */
-export const SURFACES = ['terminal', 'vscode', 'headless'] as const;
-export type Surface = (typeof SURFACES)[number];
+export const LAUNCH_SURFACES = ['terminal', 'vscode', 'headless'] as const;
+export type LaunchSurface = (typeof LAUNCH_SURFACES)[number];
 
 /** What the host knows of the launch and the session. */
 export interface StartInput {
-  readonly surface: Surface;
+  readonly surface: LaunchSurface;
   /** `--permission-mode <value>` as typed (`manual` is an alias for `default`). */
   readonly permissionMode?: string;
   /** `--dangerously-skip-permissions`. */
@@ -63,7 +63,7 @@ export type StartingMode =
   | { readonly outcome: 'refused'; readonly reason: string };
 
 /** The settings files each surface reads `permissions.defaultMode` from (settings-reference.md). */
-const READS: { readonly [S in Surface]: (scope: PolicyScope) => boolean } = {
+const READS: { readonly [S in LaunchSurface]: (scope: PolicyScope) => boolean } = {
   terminal: () => true,
   headless: () => true,
   // "For conversations the VS Code extension starts, Claude Code reads only user, managed, and `--settings` values."
@@ -71,7 +71,7 @@ const READS: { readonly [S in Surface]: (scope: PolicyScope) => boolean } = {
 };
 
 /** The built-in starting mode of each surface, before the HIPAA and `disableAutoMode` rows. */
-const BUILT_IN: { readonly [S in Surface]: PermissionMode } = {
+const BUILT_IN: { readonly [S in LaunchSurface]: PermissionMode } = {
   terminal: 'auto',
   vscode: 'auto',
   headless: 'default',
@@ -106,7 +106,7 @@ const settingsIssue = (scope: PolicyScope, mode: PermissionMode, outcome: string
  * default rather than a `defaultMode` from `~/.claude/settings.json`"; `bypassPermissions` from
  * those files "doesn't take effect either, and the session starts in Manual mode".
  */
-function fromSettings(view: PolicyView, surface: Surface): Chosen {
+function fromSettings(view: PolicyView, surface: LaunchSurface): Chosen {
   const holder = view
     .eachFromHighest('permissions')
     .find(

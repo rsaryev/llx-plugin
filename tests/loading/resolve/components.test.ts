@@ -19,7 +19,7 @@ import {
   substituteSurface,
   VARIABLE_FIELDS,
   type ResolvedUserConfig,
-  type Surface,
+  type SubstitutionSurface,
   type VariableComponent,
   type SubstitutionScope,
 } from '../../../src/loading/resolve/index.ts';
@@ -41,7 +41,7 @@ const scope: SubstitutionScope = {
   userConfig,
   windows: false,
 };
-const text = async (surface: Surface, template: string, on = scope) =>
+const text = async (surface: SubstitutionSurface, template: string, on = scope) =>
   (await substituteSurface(surface, template, on)).text;
 
 describe('${user_config.KEY} per surface', () => {

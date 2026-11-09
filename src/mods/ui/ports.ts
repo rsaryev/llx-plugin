@@ -1,4 +1,4 @@
-import type { Surface } from '../../protocol/mods-ui-names.ts';
+import type { UiSurface } from '../../protocol/mods-ui-names.ts';
 import type { EventData } from '../api/ports.ts';
 import type { OpenOrigin } from './panes/placement.ts';
 import type { Viewport } from './sites/viewport.ts';
@@ -24,7 +24,7 @@ export interface CopyResult {
  */
 export interface ModInterface {
   /** The app that is drawing. */
-  surface(): Surface;
+  surface(): UiSurface;
   /** The window as measured; `undefined` before the terminal or the Desktop app measured it. */
   viewport(): Viewport | undefined;
   renderer(): Renderer;

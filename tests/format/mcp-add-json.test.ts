@@ -8,7 +8,7 @@
  * `spec(...)`.
  */
 import { describe, expect, test } from 'bun:test';
-import { readMcpAddJson } from '../../src/index.ts';
+import { readMcpAddJson } from '../../src/entry/format.ts';
 import { spec } from '../support/spec.ts';
 
 const none = (): undefined => undefined;

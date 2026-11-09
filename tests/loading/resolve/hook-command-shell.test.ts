@@ -13,7 +13,7 @@
  * hands its `CommandRunner`.
  */
 import { expect, test } from 'bun:test';
-import { resolveHookCommand } from '../../../src/index.ts';
+import { resolveHookCommand } from '../../../src/entry/loading.ts';
 import { MESSAGE, hook, resolve, scopeOf, userConfig } from '../../support/hook-scope.ts';
 import { spec } from '../../support/spec.ts';
 

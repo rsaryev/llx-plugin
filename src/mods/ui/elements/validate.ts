@@ -2,7 +2,7 @@ import {
   ELEMENT_SURFACES,
   type ElementName,
   type RenderSite,
-  type Surface,
+  type UiSurface,
 } from '../../../protocol/mods-ui-names.ts';
 import { buttonKey, isButton } from './button.ts';
 import { childProblem } from './children.ts';
@@ -13,7 +13,7 @@ import { ELEMENT_DEFS } from './registry.ts';
 const NEEDS_KEY: ReadonlySet<ElementName> = new Set(['Input', 'Select']);
 
 /** Why one element is not valid for `surface`, or `undefined`: its type, its props, its children. */
-function nodeProblem(node: ElementNode, surface: Surface): string | undefined {
+function nodeProblem(node: ElementNode, surface: UiSurface): string | undefined {
   const def = ELEMENT_DEFS[node.type];
   if (!ELEMENT_SURFACES[node.type].includes(surface)) {
     return `${node.type} is not drawn by the ${surface} app`;
@@ -40,7 +40,11 @@ function keyProblem(node: ElementNode): string | undefined {
  * pane or band is empty": `a tree Pane refuses: Text prop "bogusProp" is not allowed`). The first
  * problem in document order. Size limits are not checked here: they refuse the tree at its site.
  */
-export function treeProblem(site: RenderSite, surface: Surface, tree: unknown): string | undefined {
+export function treeProblem(
+  site: RenderSite,
+  surface: UiSurface,
+  tree: unknown,
+): string | undefined {
   const refuses = (why: string): string => `a tree ${site} refuses: ${why}`;
   if (!isTree(tree)) return refuses('it is not an element tree');
   const drawnTwice = new Set<string>();

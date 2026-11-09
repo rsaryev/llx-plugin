@@ -9,7 +9,8 @@
  * reports.
  */
 import { describe, expect, test } from 'bun:test';
-import { discoverComponents, loadPlugin } from '../../src/index.ts';
+import { discoverComponents } from '../../src/entry/loading.ts';
+import { loadPlugin } from '../../src/index.ts';
 import { memoryFiles } from '../support/ports.ts';
 import { hooksFile, json, manifestOf, messagesOf, pathsOf } from '../support/plugin-folder.ts';
 import { spec } from '../support/spec.ts';

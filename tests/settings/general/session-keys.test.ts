@@ -8,8 +8,8 @@
 import { expect, test } from 'bun:test';
 import {
   agentViewDisabled,
-  readAgent,
-  readOutputStyle,
+  readAgentSetting,
+  readOutputStyleSetting,
   readTeammateMode,
   resolveSessionValue,
 } from '../../../src/settings/general/index.ts';
@@ -21,32 +21,32 @@ const NO_ENV = {};
 
 spec('settings.key.agent', () => {
   test('the docs example names the agent the main thread runs as', () => {
-    expect(readAgent(viewOf(['user', { agent: 'code-reviewer' }]))).toBe('code-reviewer');
+    expect(readAgentSetting(viewOf(['user', { agent: 'code-reviewer' }]))).toBe('code-reviewer');
   });
 
   test('any file carries it, and the highest file wins', () => {
     for (const scope of ['user', 'project', 'local', 'managed', 'flag'] as const) {
-      expect(readAgent(viewOf([scope, { agent: 'a' }]))).toBe('a');
+      expect(readAgentSetting(viewOf([scope, { agent: 'a' }]))).toBe('a');
     }
-    expect(readAgent(viewOf(['user', { agent: 'user' }], ['project', { agent: 'project' }]))).toBe(
-      'project',
-    );
-    expect(readAgent(viewOf(['managed', { agent: 'org' }], ['local', { agent: 'mine' }]))).toBe(
-      'org',
-    );
+    expect(
+      readAgentSetting(viewOf(['user', { agent: 'user' }], ['project', { agent: 'project' }])),
+    ).toBe('project');
+    expect(
+      readAgentSetting(viewOf(['managed', { agent: 'org' }], ['local', { agent: 'mine' }])),
+    ).toBe('org');
   });
 
   test('it is unset by default, so the main thread runs as the default agent', () => {
-    expect(readAgent(viewOf())).toBeUndefined();
+    expect(readAgentSetting(viewOf())).toBeUndefined();
   });
 
   test('it is a string: another type is dropped with a warning that names the key', () => {
-    expect(readAgent(viewOf(['user', { agent: 3 }]))).toBeUndefined();
+    expect(readAgentSetting(viewOf(['user', { agent: 3 }]))).toBeUndefined();
     expect(issuesOf('user', { agent: ['a'] })[0]?.message).toContain('"agent" must be a string');
   });
 
   test('--agent takes precedence over the key for one session', () => {
-    const file = readAgent(viewOf(['user', { agent: 'from-file' }]));
+    const file = readAgentSetting(viewOf(['user', { agent: 'from-file' }]));
     const input = (flags: Record<string, string>) => ({ flags, env: NO_ENV, settingsValue: file });
     expect(resolveSessionValue('agent', input({ '--agent': 'from-flag' }))).toEqual({
       value: 'from-flag',
@@ -110,28 +110,30 @@ spec('settings.key.disableAgentView', () => {
 
 spec('settings.key.outputStyle', () => {
   test('the docs example selects the built-in Explanatory style', () => {
-    expect(readOutputStyle(viewOf(['user', { outputStyle: 'Explanatory' }]))).toBe('Explanatory');
+    expect(readOutputStyleSetting(viewOf(['user', { outputStyle: 'Explanatory' }]))).toBe(
+      'Explanatory',
+    );
   });
 
   test('unset by default, so the default style is used', () => {
-    expect(readOutputStyle(viewOf())).toBeUndefined();
+    expect(readOutputStyleSetting(viewOf())).toBeUndefined();
   });
 
   test('any file carries it and the highest file wins', () => {
     expect(
-      readOutputStyle(
+      readOutputStyleSetting(
         viewOf(['user', { outputStyle: 'Learning' }], ['local', { outputStyle: 'mine' }]),
       ),
     ).toBe('mine');
     expect(
-      readOutputStyle(
+      readOutputStyleSetting(
         viewOf(['managed', { outputStyle: 'org' }], ['local', { outputStyle: 'mine' }]),
       ),
     ).toBe('org');
   });
 
   test('a value that is not a string is dropped with a warning', () => {
-    expect(readOutputStyle(viewOf(['user', { outputStyle: true }]))).toBeUndefined();
+    expect(readOutputStyleSetting(viewOf(['user', { outputStyle: true }]))).toBeUndefined();
     expect(issuesOf('user', { outputStyle: 1 })[0]?.message).toContain(
       '"outputStyle" must be a string',
     );

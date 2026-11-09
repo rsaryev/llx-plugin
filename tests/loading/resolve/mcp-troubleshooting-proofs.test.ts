@@ -11,11 +11,10 @@
 import { describe, expect, test } from 'bun:test';
 import {
   collectMcpServers,
-  resolveMcpServer,
   skipsStdioConnection,
   type PluginMcpServer,
-  type ResolvedUserConfig,
-} from '../../../src/index.ts';
+} from '../../../src/entry/format.ts';
+import { resolveMcpServer, type ResolvedUserConfig } from '../../../src/entry/loading.ts';
 import { bundle, fakeBundles } from '../../support/mcp-bundle.ts';
 import { HELPER_MESSAGE, scopeOf, userConfig } from '../../support/mcp-scope.ts';
 import { fakeEnvironment, locations, memoryFiles } from '../../support/ports.ts';

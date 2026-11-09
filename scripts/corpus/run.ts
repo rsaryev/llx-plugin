@@ -13,7 +13,8 @@
  */
 import { join } from 'node:path';
 import { z } from 'zod';
-import { loadPlugin, validatePlugin, type ValidationIssue } from '../../src/index.ts';
+import { loadPlugin, validatePlugin } from '../../src/index.ts';
+import { type ValidationIssue } from '../../src/entry/format.ts';
 import { readRequirements } from '../spec/requirements.ts';
 import { diskFiles } from './disk-files.ts';
 import { corpusPluginSchema, INDEX_FILE, REPORT_FILE, type CorpusPlugin } from './location.ts';

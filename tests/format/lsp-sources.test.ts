@@ -8,7 +8,7 @@
  * Reading a whole map and joining the maps of a plugin. The fields are in lsp-config.test.ts.
  */
 import { describe, expect, test } from 'bun:test';
-import { mergeLspSources, readLspConfig, type LspServer } from '../../src/index.ts';
+import { mergeLspSources, readLspConfig, type LspServer } from '../../src/entry/format.ts';
 
 const gopls = { command: 'gopls', extensionToLanguage: { '.go': 'go' } };
 

@@ -14,7 +14,7 @@ import {
   planHeadersHelper,
   type HeadersHelperOrigin,
   type HeadersHelperPlan,
-} from '../../../src/index.ts';
+} from '../../../src/entry/loading.ts';
 import { MCP_SCOPES } from '../../../src/settings/mcp/index.ts';
 import { locations } from '../../support/ports.ts';
 import {
