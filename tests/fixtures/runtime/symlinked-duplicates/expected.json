@@ -1,0 +1,15 @@
+{
+  "loaded": true,
+  "agents": [
+    "symlinked-duplicates:judge"
+  ],
+  "slashCommands": [
+    "symlinked-duplicates:real",
+    "symlinked-duplicates:x"
+  ],
+  "skills": [
+    "symlinked-duplicates:alias"
+  ],
+  "mcpServers": [],
+  "outputStyle": "default"
+}

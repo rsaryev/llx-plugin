@@ -1,0 +1,4 @@
+{
+  "name": "manifest-commands-files",
+  "commands": ["./one.md", "./dir/two.md"]
+}

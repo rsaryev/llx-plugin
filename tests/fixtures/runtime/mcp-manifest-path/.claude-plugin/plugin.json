@@ -1,0 +1,4 @@
+{
+  "name": "mcp-manifest-path",
+  "mcpServers": "./servers.json"
+}

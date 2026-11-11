@@ -1,0 +1,4 @@
+{
+  "name": "manifest-agents-files",
+  "agents": ["./one.md", "./dir/two.md"]
+}

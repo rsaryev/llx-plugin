@@ -1,0 +1,18 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreExportsUsedInFile": {
+    "interface": true,
+    "type": true
+  },
+  "entry": [
+    "src/index.ts",
+    "src/entry/*.ts",
+    "src/testing/index.ts",
+    "scripts/**/*.ts",
+    "config/lint/kit-rules.js"
+  ],
+  "project": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"],
+  // acorn, ignore and semver are added with the shared foundation so streams never touch bun.lock; each is removed from this list by the stream that first imports it (expected: mods acorn, marketplace and loading semver).
+  // @stryker-mutator/core is the `stryker` binary scripts/mutation/run.ts spawns, which knip cannot see.
+  "ignoreDependencies": ["oxlint-tsgolint", "eslint-plugin-sonarjs", "@stryker-mutator/core"]
+}

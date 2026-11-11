@@ -1,0 +1,42 @@
+name: A plugin behaves differently
+description: The kit loads, validates or runs a plugin differently from Claude Code, or from the docs
+labels: [bug]
+body:
+  - type: textarea
+    id: input
+    attributes:
+      label: The plugin files and settings
+      description: The smallest files that show it (plugin.json, a skill, hooks.json, settings), and the call you made.
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: seen
+    attributes:
+      label: What the kit did, and what you expected
+      description: If Claude Code does it differently, say which release and how you observed it. A link to the docs section helps most.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: llx-plugin version and runtime
+      placeholder: '@rsaryev/llx-plugin 0.1.0, Bun 1.4 or Node 22'
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where
+      options:
+        - Loading or validating a plugin
+        - Skills and commands
+        - Hooks
+        - Agents
+        - MCP, LSP or monitors
+        - Settings, policy, permissions or trust
+        - Marketplaces, installs and updates
+        - Mods
+        - Types or the package itself
+    validations:
+      required: true

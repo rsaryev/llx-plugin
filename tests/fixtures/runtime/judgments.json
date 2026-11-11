@@ -1,0 +1,35 @@
+{
+  "output-style-forced": {
+    "outputStyle": {
+      "kit": "output-style-forced:forced-name",
+      "row": "init.output_style is the outputStyle setting, not the style in force"
+    }
+  },
+  "output-style-forced-unnamed": {
+    "outputStyle": {
+      "kit": "output-style-forced-unnamed:forced-file",
+      "row": "init.output_style is the outputStyle setting, not the style in force"
+    }
+  },
+  "output-style-unknown": {
+    "outputStyle": {
+      "kit": "default",
+      "row": "init.output_style is the outputStyle setting, not the style in force"
+    }
+  },
+  "symlinked-duplicates": {
+    "slashCommands": {
+      "kit": [
+        "symlinked-duplicates:real",
+        "symlinked-duplicates:x"
+      ],
+      "row": "a skill folder and a link to it register once; Claude Code 2.1.322 names it by either in init.slash_commands and init.skills from run to run, the kit names it by the real folder"
+    },
+    "skills": {
+      "kit": [
+        "symlinked-duplicates:real"
+      ],
+      "row": "a skill folder and a link to it register once; Claude Code 2.1.322 names it by either in init.slash_commands and init.skills from run to run, the kit names it by the real folder"
+    }
+  }
+}

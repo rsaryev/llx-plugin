@@ -1,0 +1,13 @@
+{
+  "name": "manifest-commands-inline",
+  "commands": {
+    "inline-one": {
+      "description": "Inline.",
+      "content": "Do it."
+    },
+    "from-source": {
+      "description": "From a file.",
+      "source": "./src/body.md"
+    }
+  }
+}

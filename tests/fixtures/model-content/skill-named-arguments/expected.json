@@ -1,0 +1,7 @@
+{
+  "claudeCodeVersion": "2.1.319",
+  "blocks": [
+    "<command-message>mp:named</command-message>\n<command-name>/mp:named</command-name>\n<command-args>src/a.ts \"fast mode\" extra</command-args>\n",
+    "Base directory for this skill: <PLUGIN_ROOT>/skills/named\n\nFILE=src/a.ts|MODE=fast mode|A0=src/a.ts|A1=fast mode|D1=fast mode|ALL=src/a.ts \"fast mode\" extra|MISSING=$ARGUMENTS[5]\n"
+  ]
+}

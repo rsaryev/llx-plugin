@@ -1,0 +1,8 @@
+{
+  "name": "mcp-both",
+  "mcpServers": {
+    "zeta": {
+      "command": "no-such-binary-zeta"
+    }
+  }
+}

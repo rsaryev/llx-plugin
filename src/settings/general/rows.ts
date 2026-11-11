@@ -1,0 +1,216 @@
+import type { Settings } from '../../protocol/official.ts';
+import { PERMISSION_MODES } from '../../protocol/permission-modes.ts';
+import type { ValueSpec } from '../value-spec.ts';
+import { MERGES } from '../merge.ts';
+import { valueAt } from '../paths.ts';
+import {
+  FALSE_FROM_ANY_SCOPE,
+  LOWEST_CAP,
+  TRUE_FROM_ANY_SCOPE,
+  TRUE_FROM_USER_OR_FLAG,
+  type ManagedException,
+} from './exceptions.ts';
+import type { GeneralKey, GeneralValues } from './keys.ts';
+import { isDenyEntry } from './sandbox-credentials.ts';
+import { isRecord } from '../../protocol/is-record.ts';
+
+/** A row for a key inside a block: read at `path`, and written back there in the merged settings. */
+function nested<K extends GeneralKey>(
+  path: readonly string[],
+  row: Omit<ValueSpec<GeneralValues[K]>, 'read' | 'path'>,
+  isValue: (value: unknown) => value is NonNullable<GeneralValues[K]>,
+): ValueSpec<GeneralValues[K]> {
+  return {
+    ...row,
+    path,
+    read: (settings) => {
+      const found = valueAt(settings, path);
+      return isValue(found) ? found : undefined;
+    },
+  };
+}
+
+const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
+const isText = (value: unknown): value is string => typeof value === 'string';
+const isTextList = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every(isText);
+type DefaultMode = NonNullable<GeneralValues['permissions.defaultMode']>;
+const isDefaultMode = (value: unknown): value is DefaultMode =>
+  PERMISSION_MODES.some((mode) => mode === value);
+
+/** `remoteControlAtStartup`: a project or local `false` beats a managed `true`; their `true` is ignored. */
+const REMOTE_CONTROL: ManagedException<boolean> = {
+  ladder: [true, false],
+  honoredFrom: ['project', 'local'],
+  onlyWhenStricter: ['project', 'local'],
+};
+
+/** `crossSessionInbound`: a stricter project or local value applies on the `accept` < `hold` < `refuse` ladder. */
+const CROSS_SESSION: ManagedException<GeneralValues['crossSessionInbound']> = {
+  ladder: ['accept', 'hold', 'refuse'],
+  honoredFrom: ['project', 'local'],
+  onlyWhenStricter: ['project', 'local'],
+  // An unrecognized value in a user, project, local or `--settings` file holds inbound messages.
+  unreadable: { floor: 'hold', from: ['flag', 'local', 'project', 'user'] },
+};
+
+/**
+ * `sandbox.filesystem.disabled`: "When managed settings configure `sandbox.filesystem` at all, or list
+ * any `sandbox.credentials.files` entry with `"mode": "deny"`, only managed settings can set the key."
+ * A degraded entry is a `deny` entry once repaired, so it pins the key the same way.
+ */
+const pinsFilesystemDisabled = (managed: readonly Settings[]): boolean =>
+  managed.some((settings) => {
+    const files = valueAt(settings, ['sandbox', 'credentials', 'files']);
+    const denies = Array.isArray(files) && files.some(isDenyEntry);
+    return isRecord(valueAt(settings, ['sandbox', 'filesystem'])) || denies;
+  });
+
+/** A lock of the managed settings: `true` at `path` in any of them. */
+const lockedBy =
+  (path: readonly string[]) =>
+  (managed: readonly Settings[]): boolean =>
+    managed.some((settings) => valueAt(settings, path) === true);
+
+/**
+ * One row per general key, from its entry in settings-reference.md (the Scope line and the notes
+ * under it) and settings.md, "Lists merge instead of overriding" and "Exceptions to managed
+ * settings precedence". A key with no row is combined by the general rule: blocks merge, lists
+ * union, a single value comes from the highest file.
+ */
+export const GENERAL_SPECS: { readonly [K in GeneralKey]: ValueSpec<GeneralValues[K]> } = {
+  // "Any file" for the keys below; a value is whole (an object such as `statusLine` never mixes the
+  // fields of two files), so the highest file that sets it is the value.
+  agent: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  disableAgentView: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  fileSuggestion: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  outputStyle: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  // "User or managed" (settings-reference.md, `processWrapper`): a repository's file "never" supplies it.
+  processWrapper: { scopes: 'userOrManaged', merge: MERGES.highestWins },
+  statusLine: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  subagentStatusLine: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  teammateMode: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  theme: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  // "Any file"; blocks merge by the general rule (the object form of `false` takes the highest file).
+  attribution: { scopes: 'anyAndParent', merge: MERGES.deepMerge },
+  // "User or managed" (settings-reference.md, `autoMode`); `classifyAllShell` is "read wherever `autoMode` is read".
+  'autoMode.classifyAllShell': nested<'autoMode.classifyAllShell'>(
+    ['autoMode', 'classifyAllShell'],
+    { scopes: 'userManagedFlag', merge: MERGES.highestWins, exception: TRUE_FROM_USER_OR_FLAG },
+    isBoolean,
+  ),
+  // Managed settings define it: that list applies as-is and "blocks a parent-supplied list"
+  // (managed-settings.md). Otherwise "the arrays merge as usual".
+  availableModels: {
+    scopes: 'anyAndParent',
+    merge: MERGES.unionArrays,
+    admin: { owns: true },
+  },
+  crossSessionInbound: {
+    scopes: 'anyAndParent',
+    merge: MERGES.highestWins,
+    exception: CROSS_SESSION,
+  },
+  // "`disableArtifact: true` from any scope" counts as `enableArtifact: false`; its `false` is ignored.
+  enableArtifact: {
+    scopes: 'anyAndParent',
+    merge: MERGES.highestWins,
+    exception: FALSE_FROM_ANY_SCOPE,
+    read: (settings) => (settings.disableArtifact === true ? false : settings.enableArtifact),
+  },
+  env: { scopes: 'anyAndParent', merge: MERGES.deepMerge },
+  // "An ordered chain where position carries meaning": the whole value of the highest file.
+  fallbackModel: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  isolatePeerMachines: {
+    scopes: 'anyAndParent',
+    merge: MERGES.highestWins,
+    exception: TRUE_FROM_ANY_SCOPE,
+  },
+  maxEffortLevel: { scopes: 'anyAndParent', merge: MERGES.highestWins, exception: LOWEST_CAP },
+  model: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  // One lineup, "ignores the key in project and local settings"; the highest of the three wins whole.
+  modelPicker: { scopes: 'userManagedFlag', merge: MERGES.highestWins },
+  // The embedding host's parent settings may carry rules too (permissions.md, "Settings precedence").
+  'permissions.blockReadsOutsideWorkingDirectories':
+    nested<'permissions.blockReadsOutsideWorkingDirectories'>(
+      ['permissions', 'blockReadsOutsideWorkingDirectories'],
+      { scopes: 'anyAndParent', merge: MERGES.highestWins, exception: TRUE_FROM_ANY_SCOPE },
+      isBoolean,
+    ),
+  'permissions.blockWritesOutsideWorkingDirectories':
+    nested<'permissions.blockWritesOutsideWorkingDirectories'>(
+      ['permissions', 'blockWritesOutsideWorkingDirectories'],
+      { scopes: 'anyAndParent', merge: MERGES.highestWins, exception: TRUE_FROM_ANY_SCOPE },
+      isBoolean,
+    ),
+  // The value decides where it is read from (settings.md, "A value you set is ignored").
+  'permissions.defaultMode': nested<'permissions.defaultMode'>(
+    ['permissions', 'defaultMode'],
+    { scopes: 'repositoryCannotElevate', merge: MERGES.highestWins },
+    isDefaultMode,
+  ),
+  // "User or managed, and `--settings`. A repository can't set it for you" (settings-reference.md);
+  // a `true` from `~/.claude/settings.json` or `--settings` beats a managed `false` (settings.md).
+  'permissions.denyInsteadOfPrompting': nested<'permissions.denyInsteadOfPrompting'>(
+    ['permissions', 'denyInsteadOfPrompting'],
+    { scopes: 'userManagedFlag', merge: MERGES.highestWins, exception: TRUE_FROM_USER_OR_FLAG },
+    isBoolean,
+  ),
+  remoteControlAtStartup: {
+    scopes: 'anyAndParent',
+    merge: MERGES.highestWins,
+    exception: REMOTE_CONTROL,
+  },
+  sandbox: { scopes: 'anyAndParent', merge: MERGES.deepMerge },
+  // "Only managed" locks (managed-settings.md, "Keys only a managed source can set").
+  'sandbox.filesystem.allowManagedReadPathsOnly':
+    nested<'sandbox.filesystem.allowManagedReadPathsOnly'>(
+      ['sandbox', 'filesystem', 'allowManagedReadPathsOnly'],
+      { scopes: 'managed', merge: MERGES.highestWins },
+      isBoolean,
+    ),
+  // "User or managed" plus `--settings` (sandboxing.md): a project file cannot switch the isolation off.
+  'sandbox.filesystem.disabled': nested<'sandbox.filesystem.disabled'>(
+    ['sandbox', 'filesystem', 'disabled'],
+    {
+      scopes: 'userManagedFlag',
+      merge: MERGES.highestWins,
+      admin: { pinnedWhen: pinsFilesystemDisabled },
+    },
+    isBoolean,
+  ),
+  'sandbox.network.allowManagedDomainsOnly': nested<'sandbox.network.allowManagedDomainsOnly'>(
+    ['sandbox', 'network', 'allowManagedDomainsOnly'],
+    { scopes: 'managed', merge: MERGES.highestWins },
+    isBoolean,
+  ),
+  // "Honor only managed `allowedDomains`" under the lock (managed-settings.md, "Keys only a managed
+  // source can set"); without it "the host's ... sandbox allowlists still apply" and the lists merge.
+  'sandbox.network.allowedDomains': nested<'sandbox.network.allowedDomains'>(
+    ['sandbox', 'network', 'allowedDomains'],
+    {
+      scopes: 'anyAndParent',
+      merge: MERGES.unionArrays,
+      admin: { pinnedWhen: lockedBy(['sandbox', 'network', 'allowManagedDomainsOnly']) },
+    },
+    isTextList,
+  ),
+  // "Only `filesystem.allowRead` paths from managed settings are respected" under the lock.
+  'sandbox.filesystem.allowRead': nested<'sandbox.filesystem.allowRead'>(
+    ['sandbox', 'filesystem', 'allowRead'],
+    {
+      scopes: 'anyAndParent',
+      merge: MERGES.unionArrays,
+      admin: { pinnedWhen: lockedBy(['sandbox', 'filesystem', 'allowManagedReadPathsOnly']) },
+    },
+    isTextList,
+  ),
+  spinnerTipsEnabled: { scopes: 'anyAndParent', merge: MERGES.highestWins },
+  worktree: { scopes: 'anyAndParent', merge: MERGES.deepMerge },
+  // "`User`, in `~/.claude/settings.json` on the remote machine" (settings-reference.md, `worktree.location`).
+  'worktree.location': nested<'worktree.location'>(
+    ['worktree', 'location'],
+    { scopes: 'user', merge: MERGES.highestWins },
+    isText,
+  ),
+};

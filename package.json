@@ -1,0 +1,248 @@
+{
+  "name": "@rsaryev/llx-plugin",
+  "version": "0.1.0",
+  "description": "Add Claude Code plugin support to any agent: load plugins and run their skills, commands, agents and hooks through ports your host implements.",
+  "keywords": [
+    "agent",
+    "agent-sdk",
+    "agents",
+    "ai",
+    "ai-agent",
+    "claude",
+    "claude-code",
+    "claude-code-plugins",
+    "coding-agent",
+    "hooks",
+    "llm",
+    "marketplace",
+    "mcp",
+    "plugin-host",
+    "plugins",
+    "skills",
+    "slash-commands",
+    "subagents",
+    "typescript"
+  ],
+  "homepage": "https://github.com/rsaryev/llx-plugin#readme",
+  "bugs": {
+    "url": "https://github.com/rsaryev/llx-plugin/issues"
+  },
+  "license": "MIT",
+  "author": "rsaryev (https://github.com/rsaryev)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rsaryev/llx-plugin.git"
+  },
+  "files": [
+    "dist",
+    "src",
+    "!**/*.test.*"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "llx-plugin-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./loading": {
+      "llx-plugin-source": "./src/entry/loading.ts",
+      "types": "./dist/entry/loading.d.ts",
+      "bun": "./src/entry/loading.ts",
+      "import": "./dist/entry/loading.js",
+      "default": "./dist/entry/loading.js"
+    },
+    "./format": {
+      "llx-plugin-source": "./src/entry/format.ts",
+      "types": "./dist/entry/format.d.ts",
+      "bun": "./src/entry/format.ts",
+      "import": "./dist/entry/format.js",
+      "default": "./dist/entry/format.js"
+    },
+    "./sdk": {
+      "llx-plugin-source": "./src/entry/sdk.ts",
+      "types": "./dist/entry/sdk.d.ts",
+      "bun": "./src/entry/sdk.ts",
+      "import": "./dist/entry/sdk.js",
+      "default": "./dist/entry/sdk.js"
+    },
+    "./skills": {
+      "llx-plugin-source": "./src/entry/skills.ts",
+      "types": "./dist/entry/skills.d.ts",
+      "bun": "./src/entry/skills.ts",
+      "import": "./dist/entry/skills.js",
+      "default": "./dist/entry/skills.js"
+    },
+    "./hooks": {
+      "llx-plugin-source": "./src/entry/hooks.ts",
+      "types": "./dist/entry/hooks.d.ts",
+      "bun": "./src/entry/hooks.ts",
+      "import": "./dist/entry/hooks.js",
+      "default": "./dist/entry/hooks.js"
+    },
+    "./rules": {
+      "llx-plugin-source": "./src/entry/rules.ts",
+      "types": "./dist/entry/rules.d.ts",
+      "bun": "./src/entry/rules.ts",
+      "import": "./dist/entry/rules.js",
+      "default": "./dist/entry/rules.js"
+    },
+    "./settings": {
+      "llx-plugin-source": "./src/entry/settings.ts",
+      "types": "./dist/entry/settings.d.ts",
+      "bun": "./src/entry/settings.ts",
+      "import": "./dist/entry/settings.js",
+      "default": "./dist/entry/settings.js"
+    },
+    "./marketplace": {
+      "llx-plugin-source": "./src/entry/marketplace.ts",
+      "types": "./dist/entry/marketplace.d.ts",
+      "bun": "./src/entry/marketplace.ts",
+      "import": "./dist/entry/marketplace.js",
+      "default": "./dist/entry/marketplace.js"
+    },
+    "./agents": {
+      "llx-plugin-source": "./src/entry/agents.ts",
+      "types": "./dist/entry/agents.d.ts",
+      "bun": "./src/entry/agents.ts",
+      "import": "./dist/entry/agents.js",
+      "default": "./dist/entry/agents.js"
+    },
+    "./mods": {
+      "llx-plugin-source": "./src/entry/mods.ts",
+      "types": "./dist/entry/mods.d.ts",
+      "bun": "./src/entry/mods.ts",
+      "import": "./dist/entry/mods.js",
+      "default": "./dist/entry/mods.js"
+    },
+    "./cli": {
+      "llx-plugin-source": "./src/entry/cli.ts",
+      "types": "./dist/entry/cli.d.ts",
+      "bun": "./src/entry/cli.ts",
+      "import": "./dist/entry/cli.js",
+      "default": "./dist/entry/cli.js"
+    },
+    "./testing": {
+      "llx-plugin-source": "./src/testing/index.ts",
+      "types": "./dist/testing/index.d.ts",
+      "bun": "./src/testing/index.ts",
+      "import": "./dist/testing/index.js",
+      "default": "./dist/testing/index.js"
+    },
+    "./elicitation": {
+      "llx-plugin-source": "./src/entry/elicitation.ts",
+      "types": "./dist/entry/elicitation.d.ts",
+      "bun": "./src/entry/elicitation.ts",
+      "import": "./dist/entry/elicitation.js",
+      "default": "./dist/entry/elicitation.js"
+    },
+    "./layout": {
+      "llx-plugin-source": "./src/entry/layout.ts",
+      "types": "./dist/entry/layout.d.ts",
+      "bun": "./src/entry/layout.ts",
+      "import": "./dist/entry/layout.js",
+      "default": "./dist/entry/layout.js"
+    },
+    "./mods/elements": {
+      "llx-plugin-source": "./src/entry/mod-elements.ts",
+      "types": "./dist/entry/mod-elements.d.ts",
+      "bun": "./src/entry/mod-elements.ts",
+      "import": "./dist/entry/mod-elements.js",
+      "default": "./dist/entry/mod-elements.js"
+    },
+    "./mods/isolate": {
+      "llx-plugin-source": "./src/entry/mod-isolate.ts",
+      "types": "./dist/entry/mod-isolate.d.ts",
+      "bun": "./src/entry/mod-isolate.ts",
+      "import": "./dist/entry/mod-isolate.js",
+      "default": "./dist/entry/mod-isolate.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "bun test",
+    "lint": "oxlint --type-aware && oxlint -c config/lint/quality.json src",
+    "lint:fix": "oxlint --type-aware --fix",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "docs:pull": "bun scripts/docs/pull.ts",
+    "types:pull": "bun scripts/docs/pull-types.ts",
+    "types:extract": "bun scripts/spec/declarations/write.ts",
+    "spec:extract": "bun scripts/spec/extract.ts",
+    "compat": "bun scripts/compat/report.ts",
+    "corpus:fetch": "bun scripts/corpus/fetch.ts",
+    "bench": "bun scripts/bench/run.ts",
+    "bench:update": "bun scripts/bench/counts.ts",
+    "bench:validate": "bun scripts/bench/validate-compare.ts",
+    "mutation": "bun scripts/mutation/run.ts",
+    "corpus:load": "bun scripts/corpus/load-compare.ts",
+    "corpus:runtime": "bun scripts/corpus/runtime-compare.ts",
+    "corpus": "bun scripts/corpus/run.ts",
+    "oracle:runtime": "bun scripts/oracle/runtime-compare.ts",
+    "oracle:settings": "bun scripts/oracle/settings.ts",
+    "oracle:subprocess-scrub": "bun scripts/oracle/subprocess-scrub.ts",
+    "oracle:remote-mcp-env": "bun scripts/oracle/remote-mcp-env.ts",
+    "oracle:headers-helper-env": "bun scripts/oracle/headers-helper-env.ts",
+    "oracle:model-content": "bun scripts/oracle/model-content.ts",
+    "check": "bun run check:static && bun run check:example && bun run compat --check",
+    "check:example": "cd examples/ai-sdk-agent && bun install --frozen-lockfile && bun run typecheck && bun scenarios/smoke.ts",
+    "check:static": "bun run format:check && bun run lint && bun run check:size && bun run check:layers && bun run check:test-layout && bun run check:tests && bun run check:spec && bun run check:docs && bun run check:deadcode && bun run typecheck",
+    "check:size": "bun scripts/check-file-size.ts",
+    "check:layers": "bun scripts/check-layers.ts",
+    "check:test-layout": "bun scripts/check-test-layout.ts",
+    "check:tests": "bun scripts/check-focused-tests.ts",
+    "check:spec": "bun scripts/spec/check.ts",
+    "check:docs": "bun scripts/check-docs.ts",
+    "check:deadcode": "knip --no-config-hints",
+    "prepare": "lefthook install",
+    "prepack": "bun run build"
+  },
+  "dependencies": {
+    "acorn": "8.19.0",
+    "ignore": "7.0.14",
+    "semver": "7.8.6",
+    "yaml": "2.9.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.321",
+    "@anthropic-ai/sdk": "1.6.0",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "@stryker-mutator/core": "10.1.1",
+    "@types/bun": "1.4.4",
+    "@types/semver": "7.8.0",
+    "eslint-plugin-sonarjs": "4.2.2",
+    "knip": "6.44.1",
+    "lefthook": "2.2.2",
+    "oxc-parser": "0.155.0",
+    "oxfmt": "0.75.0",
+    "oxlint": "1.90.0",
+    "oxlint-tsgolint": "7.0.2005",
+    "typescript": "7.0.2"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/claude-agent-sdk": ">=0.3.321 <0.4.0",
+    "@modelcontextprotocol/sdk": ">=1.32.2 <2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/claude-agent-sdk": {
+      "optional": true
+    },
+    "@modelcontextprotocol/sdk": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "bun@1.4.4"
+}

@@ -1,0 +1,20 @@
+{
+  "loaded": true,
+  "agents": [],
+  "slashCommands": [
+    "invocation-flags:cmd-explicit",
+    "invocation-flags:cmd-hidden-from-model",
+    "invocation-flags:cmd-plain",
+    "invocation-flags:explicit",
+    "invocation-flags:hidden-from-model",
+    "invocation-flags:plain"
+  ],
+  "skills": [
+    "invocation-flags:cmd-hidden-from-model",
+    "invocation-flags:explicit",
+    "invocation-flags:hidden-from-model",
+    "invocation-flags:plain"
+  ],
+  "mcpServers": [],
+  "outputStyle": "default"
+}

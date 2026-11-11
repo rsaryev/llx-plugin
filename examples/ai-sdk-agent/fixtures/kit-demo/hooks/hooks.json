@@ -1,0 +1,42 @@
+{
+  "description": "kit-demo hooks: command, http and prompt handlers",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(curl *)",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"kit-demo forbids network access with curl\"}}'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/after-write.sh\""
+          },
+          {
+            "type": "http",
+            "url": "http://127.0.0.1:48731/hook"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You check an assistant's final message before it stops. Message: $ARGUMENTS\nIf the last_assistant_message ends with the exact word DONE, answer {\"ok\": true}. Otherwise answer {\"ok\": false, \"reason\": \"End your final message with the word DONE.\"}."
+          }
+        ]
+      }
+    ]
+  }
+}

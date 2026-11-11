@@ -1,0 +1,242 @@
+[
+  {
+    "name": "MONKEY",
+    "value": "plain"
+  },
+  {
+    "name": "AUTHOR",
+    "value": "jane"
+  },
+  {
+    "name": "KEYBOARD",
+    "value": "us"
+  },
+  {
+    "name": "KEYCHAIN",
+    "value": "q"
+  },
+  {
+    "name": "TOKENIZER",
+    "value": "bpe"
+  },
+  {
+    "name": "TOKENS",
+    "value": "s"
+  },
+  {
+    "name": "SECRETARY",
+    "value": "bob"
+  },
+  {
+    "name": "OAUTH",
+    "value": "m"
+  },
+  {
+    "name": "BEARER",
+    "value": "n"
+  },
+  {
+    "name": "MY_AUTH",
+    "value": "x"
+  },
+  {
+    "name": "AUTH",
+    "value": "x"
+  },
+  {
+    "name": "SSH_AUTH_SOCK",
+    "value": "/tmp/agent.sock"
+  },
+  {
+    "name": "KEY",
+    "value": "x"
+  },
+  {
+    "name": "FOO_KEY",
+    "value": "x"
+  },
+  {
+    "name": "GPG_KEY_ID",
+    "value": "x"
+  },
+  {
+    "name": "APIKEY",
+    "value": "x"
+  },
+  {
+    "name": "MY_APIKEY_V2",
+    "value": "x"
+  },
+  {
+    "name": "PRIVATEKEY",
+    "value": "x"
+  },
+  {
+    "name": "ACCESSKEY",
+    "value": "x"
+  },
+  {
+    "name": "MY_PASS",
+    "value": "x"
+  },
+  {
+    "name": "PASSWD",
+    "value": "x"
+  },
+  {
+    "name": "PASSWORD_FILE",
+    "value": "x"
+  },
+  {
+    "name": "SECRETS",
+    "value": "x"
+  },
+  {
+    "name": "CREDENTIAL",
+    "value": "x"
+  },
+  {
+    "name": "MY_CREDENTIALS",
+    "value": "x"
+  },
+  {
+    "name": "my_token",
+    "value": "x"
+  },
+  {
+    "name": "Db_Password",
+    "value": "x"
+  },
+  {
+    "name": "OTEL_EXPORTER_OTLP_HEADERS",
+    "value": "a=b"
+  },
+  {
+    "name": "ANTHROPIC_CUSTOM_HEADERS",
+    "value": "X-A: b"
+  },
+  {
+    "name": "gh_token",
+    "value": "k"
+  },
+  {
+    "name": "Github_Token",
+    "value": "k"
+  },
+  {
+    "name": "http_proxy",
+    "value": "http://u:pw@proxy.example:3128"
+  },
+  {
+    "name": "GIT_CONFIG_VALUE_0",
+    "value": "Authorization: Bearer abc"
+  },
+  {
+    "name": "NEUTRAL_JWT",
+    "value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig"
+  },
+  {
+    "name": "NEUTRAL_RSA",
+    "value": "-----BEGIN RSA PRIVATE KEY----- abc"
+  },
+  {
+    "name": "NEUTRAL_OPENSSH",
+    "value": "-----BEGIN OPENSSH PRIVATE KEY----- x"
+  },
+  {
+    "name": "NEUTRAL_PUBKEY",
+    "value": "-----BEGIN PUBLIC KEY----- x"
+  },
+  {
+    "name": "NEUTRAL_SKANT",
+    "value": "sk-ant-api03-abcdefghijklmnop"
+  },
+  {
+    "name": "NEUTRAL_AKIA",
+    "value": "AKIAIOSFODNN7EXAMPLE"
+  },
+  {
+    "name": "NEUTRAL_TWOURLS",
+    "value": "see https://a.example and ftp://u:pw@b.example/f"
+  },
+  {
+    "name": "SSHURL",
+    "value": "ssh://git@host.example/r"
+  },
+  {
+    "name": "TOKENURL",
+    "value": "https://tok@host.example/r"
+  },
+  {
+    "name": "MY_REGISTRY",
+    "value": "https://u:pw@reg.example/"
+  },
+  {
+    "name": "YARN_REGISTRY",
+    "value": "https://u:pw@yarn.example/"
+  },
+  {
+    "name": "pip_index_url",
+    "value": "https://u:pw@low.example/simple"
+  },
+  {
+    "name": "PIP_EXTRA_INDEX_URL",
+    "value": "https://u:pw@extra.example/simple"
+  },
+  {
+    "name": "UV_INDEX_URL",
+    "value": "https://tok@uv.example/simple"
+  },
+  {
+    "name": "ANTHROPIC_API_KEY",
+    "value": "sk-dummy"
+  },
+  {
+    "name": "AWS_SECRET_ACCESS_KEY",
+    "value": "aws"
+  },
+  {
+    "name": "NPM_TOKEN",
+    "value": "npm"
+  },
+  {
+    "name": "DB_PASSWORD",
+    "value": "pw"
+  },
+  {
+    "name": "DATABASE_URL",
+    "value": "postgres://u:pw@db.example/x"
+  },
+  {
+    "name": "NPM_CONFIG_REGISTRY",
+    "value": "https://u:pw@npm.example/"
+  },
+  {
+    "name": "HTTPS_PROXY",
+    "value": "http://u:pw@proxy.example:3128"
+  },
+  {
+    "name": "GITHUB_TOKEN",
+    "value": "ghs_x"
+  },
+  {
+    "name": "GH_TOKEN",
+    "value": "gh"
+  },
+  {
+    "name": "GIT_CONFIG_COUNT",
+    "value": "1"
+  },
+  {
+    "name": "GIT_CONFIG_KEY_0",
+    "value": "http.extraHeader"
+  },
+  {
+    "name": "PLAIN",
+    "value": "hello"
+  },
+  {
+    "name": "BUILD_NOTE",
+    "value": "the vault code is 4411"
+  }
+]

@@ -1,0 +1,7 @@
+{
+  "claudeCodeVersion": "2.1.319",
+  "blocks": [
+    "<command-message>mp:greet</command-message>\n<command-name>/mp:greet</command-name>\n<command-args>hello world</command-args>\n",
+    "Base directory for this skill: <PLUGIN_ROOT>/skills/greet\n\nROOT=<PLUGIN_ROOT>|DATA=<PLUGIN_DATA>|PROJ=<CWD>|SKILLDIR=<PLUGIN_ROOT>/skills/greet|REGION=eu|SECRET=[sensitive option 'secret' not available in skill content]|UNSET=${user_config.unset}|UNDECL=${user_config.nope}|HOME=${HOME}|ARGS=hello world|A0=hello|SID=<SESSION_ID>\n"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "loaded": true,
+  "agents": [],
+  "slashCommands": [],
+  "skills": [],
+  "mcpServers": ["plugin:mcp-file-bare:gamma"],
+  "outputStyle": "default"
+}

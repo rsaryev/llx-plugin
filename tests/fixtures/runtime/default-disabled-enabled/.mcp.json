@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "riser": {
+      "command": "no-such-binary"
+    }
+  }
+}

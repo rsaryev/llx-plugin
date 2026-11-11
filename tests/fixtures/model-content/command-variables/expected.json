@@ -1,0 +1,7 @@
+{
+  "claudeCodeVersion": "2.1.319",
+  "blocks": [
+    "<command-message>mp:hi</command-message>\n<command-name>/mp:hi</command-name>\n<command-args>one two</command-args>\n",
+    "ROOT=<PLUGIN_ROOT>|DATA=<PLUGIN_DATA>|PROJ=<CWD>|SKILLDIR=${CLAUDE_SKILL_DIR}|REGION=eu|SECRET=[sensitive option 'secret' not available in skill content]|UNSET=${user_config.unset}|ARGS=one two|A1=two|SID=<SESSION_ID>\n"
+  ]
+}

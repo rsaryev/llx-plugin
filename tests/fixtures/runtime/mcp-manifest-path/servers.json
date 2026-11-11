@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "epsilon": {
+      "command": "no-such-binary-epsilon"
+    }
+  }
+}

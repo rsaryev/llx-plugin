@@ -1,0 +1,16 @@
+{
+  "loaded": true,
+  "agents": [],
+  "slashCommands": [
+    "skill-command-clash:command-no-model",
+    "skill-command-clash:skill-hidden",
+    "skill-command-clash:skill-no-model"
+  ],
+  "skills": [
+    "skill-command-clash:command-hidden",
+    "skill-command-clash:command-no-model",
+    "skill-command-clash:skill-no-model"
+  ],
+  "mcpServers": [],
+  "outputStyle": "default"
+}

@@ -1,0 +1,16 @@
+name: A port or an export
+description: Something a host needs from the kit to run plugins, or a part of Claude Code's plugin system it does not cover
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What your host needs
+      description: The case, before the solution. What you are building and where the kit stops.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Where Claude Code documents it
+      description: The docs page and section, if the behaviour is Claude Code's. The kit implements only what is published.

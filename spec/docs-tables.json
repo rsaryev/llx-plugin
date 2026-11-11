@@ -1,0 +1,885 @@
+{
+  "events": [
+    {
+      "group": "Tools",
+      "events": [
+        "tool.call",
+        "tool.check",
+        "tool.describe"
+      ]
+    },
+    {
+      "group": "Prompts and what Claude reads",
+      "events": [
+        "prompt.submit",
+        "prompt.fill",
+        "prompt.suggest",
+        "prompt.edit",
+        "prompt.autocomplete",
+        "prompt.compose",
+        "prompt.section",
+        "prompt.context",
+        "prompt.attachment",
+        "prompt.mention",
+        "skill.prompt",
+        "attribution.text"
+      ]
+    },
+    {
+      "group": "Commands and configuration",
+      "events": [
+        "command.run",
+        "command.describe",
+        "config.set",
+        "config.describe",
+        "settings.read"
+      ]
+    },
+    {
+      "group": "Turns",
+      "events": [
+        "turn.start",
+        "turn.step",
+        "turn.complete"
+      ]
+    },
+    {
+      "group": "Session",
+      "events": [
+        "session.start",
+        "session.end",
+        "session.compact",
+        "session.receive",
+        "session.send",
+        "session.append",
+        "session.attach",
+        "session.detach",
+        "session.measure"
+      ]
+    },
+    {
+      "group": "Subagents",
+      "events": [
+        "agent.offer",
+        "agent.spawn"
+      ]
+    },
+    {
+      "group": "Interface",
+      "events": [
+        "ui.render",
+        "ui.resolve",
+        "ui.press",
+        "ui.input",
+        "ui.select",
+        "ui.focus",
+        "ui.scroll",
+        "ui.close",
+        "ui.message",
+        "ui.fault"
+      ]
+    },
+    {
+      "group": "Other mods",
+      "events": [
+        "plugin.register",
+        "engine.create"
+      ]
+    },
+    {
+      "group": "Telemetry",
+      "events": [
+        "telemetry.log",
+        "telemetry.mark"
+      ]
+    }
+  ],
+  "apiMethods": [
+    {
+      "namespace": "plugin",
+      "methods": [
+        "name",
+        "root"
+      ]
+    },
+    {
+      "namespace": "ui",
+      "methods": [
+        "resolve",
+        "invalidate",
+        "open",
+        "close",
+        "panes",
+        "place",
+        "focus",
+        "scroll",
+        "toast",
+        "notify",
+        "status",
+        "log",
+        "notice",
+        "ask",
+        "copy",
+        "selection",
+        "blit",
+        "view"
+      ]
+    },
+    {
+      "namespace": "theme",
+      "methods": [
+        "set",
+        "clear"
+      ]
+    },
+    {
+      "namespace": "command",
+      "methods": [
+        "register",
+        "run",
+        "list"
+      ]
+    },
+    {
+      "namespace": "tool",
+      "methods": [
+        "register",
+        "call",
+        "check",
+        "list"
+      ]
+    },
+    {
+      "namespace": "agent",
+      "methods": [
+        "register",
+        "spawn",
+        "list"
+      ]
+    },
+    {
+      "namespace": "model",
+      "methods": [
+        "complete",
+        "fork",
+        "classify"
+      ]
+    },
+    {
+      "namespace": "prompt",
+      "methods": [
+        "submit",
+        "read",
+        "fill",
+        "suggest",
+        "compose"
+      ]
+    },
+    {
+      "namespace": "turn",
+      "methods": [
+        "abort"
+      ]
+    },
+    {
+      "namespace": "session",
+      "methods": [
+        "messages",
+        "cwd",
+        "root",
+        "model",
+        "turns",
+        "id",
+        "repo",
+        "surfaces",
+        "usage",
+        "version",
+        "compact",
+        "send",
+        "append",
+        "authorize"
+      ]
+    },
+    {
+      "namespace": "config",
+      "methods": [
+        "list",
+        "set"
+      ]
+    },
+    {
+      "namespace": "settings",
+      "methods": [
+        "read"
+      ]
+    },
+    {
+      "namespace": "env",
+      "methods": [
+        "get",
+        "set"
+      ]
+    },
+    {
+      "namespace": "fs",
+      "methods": [
+        "read",
+        "write",
+        "list",
+        "exists",
+        "stat",
+        "ancestors"
+      ]
+    },
+    {
+      "namespace": "store",
+      "methods": [
+        "get",
+        "set",
+        "delete",
+        "keys"
+      ]
+    },
+    {
+      "namespace": "state",
+      "methods": [
+        "get",
+        "set"
+      ]
+    },
+    {
+      "namespace": "clock",
+      "methods": [
+        "now",
+        "sleep",
+        "after",
+        "every"
+      ]
+    },
+    {
+      "namespace": "http",
+      "methods": [
+        "fetch"
+      ]
+    },
+    {
+      "namespace": "process",
+      "methods": [
+        "run",
+        "spawn"
+      ]
+    },
+    {
+      "namespace": "mcp",
+      "methods": [
+        "call",
+        "connect"
+      ]
+    },
+    {
+      "namespace": "audio",
+      "methods": [
+        "play",
+        "speak"
+      ]
+    },
+    {
+      "namespace": "telemetry",
+      "methods": [
+        "log",
+        "mark"
+      ]
+    }
+  ],
+  "agentStatuses": [
+    "pending",
+    "running",
+    "waiting",
+    "idle",
+    "completed",
+    "failed",
+    "killed"
+  ],
+  "limits": [
+    {
+      "limit": "A hook's own execution time",
+      "value": "10 seconds; 50 milliseconds"
+    },
+    {
+      "limit": "A `.catch` handler's execution time",
+      "value": "1 second"
+    },
+    {
+      "limit": "All `session.end` hooks together",
+      "value": "1.5 seconds"
+    },
+    {
+      "limit": "`$.process.run` timeout",
+      "value": "30 seconds; 10 minutes"
+    },
+    {
+      "limit": "`$.process.run` `stdout` and `stderr`",
+      "value": "4 MiB"
+    },
+    {
+      "limit": "`$.model.complete` `maxTokens`",
+      "value": "1024 by default; 64,000"
+    },
+    {
+      "limit": "`$.fs.read` and `$.fs.write`",
+      "value": "4 MiB"
+    },
+    {
+      "limit": "A `$.http.fetch` request body",
+      "value": "4 MiB"
+    },
+    {
+      "limit": "A `$.http.fetch` response body",
+      "value": "4 MiB; 4 MiB; 4194304"
+    },
+    {
+      "limit": "One `$.http.fetch` call, redirects and",
+      "value": "30 seconds"
+    },
+    {
+      "limit": "Redirects one `$.http.fetch` call follows",
+      "value": "5"
+    },
+    {
+      "limit": "A hook's `drop` reason or",
+      "value": "4,096 characters"
+    },
+    {
+      "limit": "Text in one tree",
+      "value": "100,000 characters"
+    },
+    {
+      "limit": "A `Code`'s `language` or `path`,",
+      "value": "10,000 characters"
+    },
+    {
+      "limit": "A `Link`'s `href`",
+      "value": "2,048 characters"
+    },
+    {
+      "limit": "Nesting depth of one tree",
+      "value": "32 levels"
+    },
+    {
+      "limit": "Elements and text children in",
+      "value": "20,000"
+    },
+    {
+      "limit": "`Raster` cells in one tree,",
+      "value": "262,144"
+    },
+    {
+      "limit": "PNG or RGBA bytes of",
+      "value": "2 MiB"
+    },
+    {
+      "limit": "`$.store`",
+      "value": "4 MiB"
+    },
+    {
+      "limit": "`$.session.messages()`",
+      "value": "4,096 entries"
+    },
+    {
+      "limit": "`$.ui.invalidate('ui.render')` redraws",
+      "value": "10 a second; 30 in the terminal"
+    },
+    {
+      "limit": "`$.ui.toast`",
+      "value": "4 seconds"
+    },
+    {
+      "limit": "A pane opened without the",
+      "value": "144 terminal columns; 110 after"
+    },
+    {
+      "limit": "Rows from `$.ui.place` that one",
+      "value": "500; 500"
+    },
+    {
+      "limit": "Nesting depth of a mods",
+      "value": "28,000 levels; 28000 levels"
+    },
+    {
+      "limit": "Nesting depth of a changed",
+      "value": "28,000 levels; 28000 levels"
+    },
+    {
+      "limit": "Nesting depth of a hook's",
+      "value": "28,000 levels; 28000 levels"
+    },
+    {
+      "limit": "Scopes, such as functions, blocks,",
+      "value": "2,000"
+    },
+    {
+      "limit": "Command, tool, subagent type, and",
+      "value": "64 characters"
+    },
+    {
+      "limit": "One `claude plugin test` test",
+      "value": "5 seconds"
+    }
+  ],
+  "elements": [
+    {
+      "name": "Box",
+      "props": [
+        "key",
+        "gap",
+        "padding",
+        "margin",
+        "width",
+        "height",
+        "minWidth",
+        "minHeight",
+        "borderStyle",
+        "borderColor",
+        "borderDimColor",
+        "backgroundColor",
+        "position",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "overflow",
+        "display",
+        "hover"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Text",
+      "props": [
+        "color",
+        "backgroundColor",
+        "bold",
+        "italic",
+        "underline",
+        "strikethrough",
+        "dimColor",
+        "inverse",
+        "wrap",
+        "size",
+        "weight",
+        "mono",
+        "tabular",
+        "hover"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Button",
+      "props": [
+        "key",
+        "label",
+        "children",
+        "onPress",
+        "hotkey",
+        "plain",
+        "dimColor",
+        "autoFocus",
+        "action",
+        "variant",
+        "role",
+        "hover"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Link",
+      "props": [
+        "href",
+        "label"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Code",
+      "props": [
+        "source",
+        "language",
+        "path",
+        "startLine",
+        "format",
+        "wrap"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Markdown",
+      "props": [
+        "text",
+        "key",
+        "dimColor",
+        "onLinkPress",
+        "pressableLinks"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Input",
+      "props": [
+        "key",
+        "label",
+        "placeholder",
+        "value",
+        "submitLabel",
+        "rows",
+        "onSubmit",
+        "onInput",
+        "autoFocus"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Select",
+      "props": [
+        "key",
+        "label",
+        "options",
+        "value",
+        "onSelect",
+        "autoFocus"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Svg",
+      "props": [
+        "source",
+        "alt",
+        "width",
+        "height",
+        "isInteractive"
+      ],
+      "surfaces": [
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "name": "Client",
+      "props": [
+        "module",
+        "key",
+        "props",
+        "width",
+        "height",
+        "flexGrow"
+      ],
+      "surfaces": [
+        "terminal",
+        "desktop"
+      ]
+    },
+    {
+      "name": "Raster",
+      "props": [
+        "key",
+        "columns",
+        "rows",
+        "cells"
+      ],
+      "surfaces": [
+        "terminal"
+      ]
+    },
+    {
+      "name": "Image",
+      "props": [
+        "key",
+        "source",
+        "columns",
+        "rows",
+        "alt"
+      ],
+      "surfaces": [
+        "terminal"
+      ]
+    }
+  ],
+  "borderStyles": [
+    "single",
+    "double",
+    "round",
+    "bold",
+    "singleDouble",
+    "doubleSingle",
+    "classic",
+    "arrow",
+    "dashed",
+    "quote"
+  ],
+  "renderSites": [
+    {
+      "sites": [
+        "Pane"
+      ],
+      "props": [
+        "title",
+        "isFocused",
+        "bodyColumns",
+        "placement",
+        "scroll",
+        "view"
+      ],
+      "request": "pane-id",
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "sites": [
+        "AbovePrompt"
+      ],
+      "props": [
+        "hasSurvey",
+        "isWorking",
+        "maxRows",
+        "bodyColumns",
+        "scroll",
+        "view"
+      ],
+      "request": "instance",
+      "surfaces": [
+        "terminal",
+        "desktop"
+      ]
+    },
+    {
+      "sites": [
+        "Placed"
+      ],
+      "props": [
+        "id",
+        "plugin",
+        "onScreen"
+      ],
+      "request": "placed-id",
+      "surfaces": [
+        "terminal"
+      ]
+    },
+    {
+      "sites": [
+        "Backdrop"
+      ],
+      "props": [
+        "id",
+        "plugin",
+        "glass",
+        "colorScheme"
+      ],
+      "request": "backdrop",
+      "surfaces": [
+        "desktop",
+        "mobile"
+      ]
+    },
+    {
+      "sites": [
+        "UserMessage"
+      ],
+      "props": [
+        "text",
+        "origin",
+        "isExpanded",
+        "task",
+        "from"
+      ],
+      "request": "message-id",
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "sites": [
+        "AssistantMessage"
+      ],
+      "props": [],
+      "request": "message-id",
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "sites": [
+        "ToolUse",
+        "ToolResult",
+        "ToolGroup"
+      ],
+      "props": [],
+      "request": "tool-call-id",
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "sites": [
+        "CommandOutput"
+      ],
+      "props": [
+        "command",
+        "text"
+      ],
+      "request": "message-id",
+      "surfaces": [
+        "terminal",
+        "desktop"
+      ]
+    },
+    {
+      "sites": [
+        "AskUserQuestion"
+      ],
+      "props": [],
+      "request": "tool-call-id",
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "sites": [
+        "ToolProgress"
+      ],
+      "props": [
+        "kind"
+      ],
+      "request": "tool-call-id",
+      "surfaces": [
+        "terminal"
+      ]
+    },
+    {
+      "sites": [
+        "Spinner"
+      ],
+      "props": [
+        "word",
+        "message",
+        "suffix",
+        "mode"
+      ],
+      "request": "agent-id",
+      "surfaces": [
+        "terminal",
+        "desktop",
+        "vscode"
+      ]
+    },
+    {
+      "sites": [
+        "TurnDuration"
+      ],
+      "props": [
+        "word",
+        "durationMs"
+      ],
+      "request": "message-id",
+      "surfaces": [
+        "terminal"
+      ]
+    },
+    {
+      "sites": [
+        "InfoNotice"
+      ],
+      "props": [
+        "text",
+        "command"
+      ],
+      "request": "message-id",
+      "surfaces": [
+        "terminal"
+      ]
+    },
+    {
+      "sites": [
+        "SessionMode"
+      ],
+      "props": [
+        "modes"
+      ],
+      "request": "instance",
+      "surfaces": [
+        "terminal",
+        "desktop"
+      ]
+    },
+    {
+      "sites": [
+        "PromptHint"
+      ],
+      "props": [
+        "isDraft",
+        "isWorking",
+        "hint"
+      ],
+      "request": "instance",
+      "surfaces": [
+        "terminal",
+        "desktop"
+      ]
+    }
+  ],
+  "settings": [
+    "CLAUDE_CODE_PLUGIN_DIRS",
+    "CLAUDE_CODE_PLUGIN_DIR_WATCH",
+    "prependPlugins",
+    "appendPlugins",
+    "allowManagedModsOnly",
+    "allowModsToOverrideDenyRules",
+    "allowManagedHooksOnly",
+    "disableAllHooks",
+    "disableSideloadFlags",
+    "pluginConfigs"
+  ]
+}

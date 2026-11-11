@@ -1,0 +1,758 @@
+{
+  "validatePlugin": {
+    "size": "N of each component",
+    "counts": {
+      "4": {
+        "run": {
+          "cpu.JSON.parse": 3,
+          "cpu.RegExp.exec": 565,
+          "cpu.yaml.parse": 12,
+          "files.bytes": 2077,
+          "files.exists": 4,
+          "files.list": 3,
+          "files.readBytes": 2,
+          "files.readText": 13,
+          "files.stat": 24
+        }
+      },
+      "8": {
+        "run": {
+          "cpu.JSON.parse": 3,
+          "cpu.RegExp.exec": 1125,
+          "cpu.yaml.parse": 24,
+          "files.bytes": 4037,
+          "files.exists": 4,
+          "files.list": 3,
+          "files.readBytes": 2,
+          "files.readText": 25,
+          "files.stat": 40
+        }
+      },
+      "16": {
+        "run": {
+          "cpu.JSON.parse": 3,
+          "cpu.RegExp.exec": 2245,
+          "cpu.yaml.parse": 48,
+          "files.bytes": 7957,
+          "files.exists": 4,
+          "files.list": 3,
+          "files.readBytes": 2,
+          "files.readText": 49,
+          "files.stat": 72
+        }
+      }
+    }
+  },
+  "loadPlugin": {
+    "size": "N of each component",
+    "counts": {
+      "4": {
+        "run": {
+          "cpu.JSON.parse": 3,
+          "cpu.RegExp": 4,
+          "cpu.RegExp.exec": 18,
+          "files.bytes": 2077,
+          "files.exists": 7,
+          "files.list": 3,
+          "files.readText": 15,
+          "files.stat": 26
+        }
+      },
+      "8": {
+        "run": {
+          "cpu.JSON.parse": 3,
+          "cpu.RegExp": 8,
+          "cpu.RegExp.exec": 22,
+          "files.bytes": 4037,
+          "files.exists": 11,
+          "files.list": 3,
+          "files.readText": 27,
+          "files.stat": 38
+        }
+      },
+      "16": {
+        "run": {
+          "cpu.JSON.parse": 3,
+          "cpu.RegExp": 16,
+          "cpu.RegExp.exec": 30,
+          "files.bytes": 7957,
+          "files.exists": 19,
+          "files.list": 3,
+          "files.readText": 51,
+          "files.stat": 62
+        }
+      }
+    }
+  },
+  "createPluginHost.skillBody": {
+    "size": "L body lines",
+    "counts": {
+      "64": {
+        "create": {
+          "cpu.RegExp.exec": 29,
+          "cpu.yaml.parse": 1
+        }
+      },
+      "128": {
+        "create": {
+          "cpu.RegExp.exec": 29,
+          "cpu.yaml.parse": 1
+        }
+      },
+      "256": {
+        "create": {
+          "cpu.RegExp.exec": 29,
+          "cpu.yaml.parse": 1
+        }
+      }
+    }
+  },
+  "createPluginHost": {
+    "size": "P plugins",
+    "counts": {
+      "4": {
+        "create": {
+          "cpu.RegExp.exec": 1028,
+          "cpu.yaml.parse": 16
+        }
+      },
+      "8": {
+        "create": {
+          "cpu.RegExp.exec": 2056,
+          "cpu.yaml.parse": 32
+        }
+      },
+      "16": {
+        "create": {
+          "cpu.RegExp.exec": 4112,
+          "cpu.yaml.parse": 64
+        }
+      }
+    }
+  },
+  "openSession": {
+    "size": "P plugins",
+    "counts": {
+      "4": {
+        "open": {}
+      },
+      "8": {
+        "open": {}
+      },
+      "16": {
+        "open": {}
+      }
+    }
+  },
+  "session.skills": {
+    "size": "P plugins",
+    "counts": {
+      "4": {
+        "first": {
+          "cpu.RegExp.exec": 80,
+          "locations.joinPath": 20,
+          "locations.pluginRoot": 4
+        },
+        "second": {},
+        "catalog": {},
+        "mentions": {
+          "cpu.RegExp.exec": 8
+        }
+      },
+      "8": {
+        "first": {
+          "cpu.RegExp.exec": 160,
+          "locations.joinPath": 40,
+          "locations.pluginRoot": 8
+        },
+        "second": {},
+        "catalog": {},
+        "mentions": {
+          "cpu.RegExp.exec": 8
+        }
+      },
+      "16": {
+        "first": {
+          "cpu.RegExp.exec": 320,
+          "locations.joinPath": 80,
+          "locations.pluginRoot": 16
+        },
+        "second": {},
+        "catalog": {},
+        "mentions": {
+          "cpu.RegExp.exec": 8
+        }
+      }
+    }
+  },
+  "expandSkill": {
+    "size": "P plugins",
+    "counts": {
+      "4": {
+        "first": {
+          "cpu.RegExp.exec": 21,
+          "environment.get": 3,
+          "environment.snapshot": 4,
+          "locations.homeDir": 1,
+          "locations.joinPath": 1,
+          "locations.pluginRoot": 1
+        },
+        "second": {
+          "cpu.RegExp.exec": 21,
+          "environment.get": 3,
+          "environment.snapshot": 4,
+          "locations.homeDir": 1,
+          "locations.joinPath": 1,
+          "locations.pluginRoot": 1
+        }
+      },
+      "8": {
+        "first": {
+          "cpu.RegExp.exec": 21,
+          "environment.get": 3,
+          "environment.snapshot": 4,
+          "locations.homeDir": 1,
+          "locations.joinPath": 1,
+          "locations.pluginRoot": 1
+        },
+        "second": {
+          "cpu.RegExp.exec": 21,
+          "environment.get": 3,
+          "environment.snapshot": 4,
+          "locations.homeDir": 1,
+          "locations.joinPath": 1,
+          "locations.pluginRoot": 1
+        }
+      },
+      "16": {
+        "first": {
+          "cpu.RegExp.exec": 21,
+          "environment.get": 3,
+          "environment.snapshot": 4,
+          "locations.homeDir": 1,
+          "locations.joinPath": 1,
+          "locations.pluginRoot": 1
+        },
+        "second": {
+          "cpu.RegExp.exec": 21,
+          "environment.get": 3,
+          "environment.snapshot": 4,
+          "locations.homeDir": 1,
+          "locations.joinPath": 1,
+          "locations.pluginRoot": 1
+        }
+      }
+    }
+  },
+  "session.mcpServers": {
+    "size": "P plugins",
+    "counts": {
+      "4": {
+        "first": {
+          "cpu.RegExp.exec": 56,
+          "locations.pluginData": 4,
+          "locations.pluginRoot": 4,
+          "locations.projectDir": 4
+        },
+        "second": {
+          "cpu.RegExp.exec": 56,
+          "locations.pluginData": 4,
+          "locations.pluginRoot": 4,
+          "locations.projectDir": 4
+        }
+      },
+      "8": {
+        "first": {
+          "cpu.RegExp.exec": 112,
+          "locations.pluginData": 8,
+          "locations.pluginRoot": 8,
+          "locations.projectDir": 8
+        },
+        "second": {
+          "cpu.RegExp.exec": 112,
+          "locations.pluginData": 8,
+          "locations.pluginRoot": 8,
+          "locations.projectDir": 8
+        }
+      },
+      "16": {
+        "first": {
+          "cpu.RegExp.exec": 224,
+          "locations.pluginData": 16,
+          "locations.pluginRoot": 16,
+          "locations.projectDir": 16
+        },
+        "second": {
+          "cpu.RegExp.exec": 224,
+          "locations.pluginData": 16,
+          "locations.pluginRoot": 16,
+          "locations.projectDir": 16
+        }
+      }
+    }
+  },
+  "host.update": {
+    "size": "P plugins, one replaced",
+    "counts": {
+      "4": {
+        "update": {
+          "cpu.RegExp.exec": 312,
+          "cpu.yaml.parse": 5
+        },
+        "skills": {
+          "cpu.RegExp.exec": 87,
+          "locations.joinPath": 22,
+          "locations.pluginRoot": 4
+        },
+        "dispatch": {
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        }
+      },
+      "8": {
+        "update": {
+          "cpu.RegExp.exec": 312,
+          "cpu.yaml.parse": 5
+        },
+        "skills": {
+          "cpu.RegExp.exec": 167,
+          "locations.joinPath": 42,
+          "locations.pluginRoot": 8
+        },
+        "dispatch": {
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        }
+      },
+      "16": {
+        "update": {
+          "cpu.RegExp.exec": 312,
+          "cpu.yaml.parse": 5
+        },
+        "skills": {
+          "cpu.RegExp.exec": 327,
+          "locations.joinPath": 82,
+          "locations.pluginRoot": 16
+        },
+        "dispatch": {
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        }
+      }
+    }
+  },
+  "dispatch.PreToolUse.none": {
+    "size": "P plugins",
+    "counts": {
+      "4": {
+        "first": {
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        },
+        "twentieth": {}
+      },
+      "8": {
+        "first": {
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        },
+        "twentieth": {}
+      },
+      "16": {
+        "first": {
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        },
+        "twentieth": {}
+      }
+    }
+  },
+  "dispatch.PreToolUse.one": {
+    "size": "P plugins",
+    "counts": {
+      "4": {
+        "first": {
+          "environment.snapshot": 1,
+          "locations.existingDirectory": 1,
+          "locations.homeDir": 1,
+          "locations.pluginRoot": 1
+        },
+        "twentieth": {
+          "locations.existingDirectory": 1,
+          "locations.pluginRoot": 1
+        }
+      },
+      "8": {
+        "first": {
+          "environment.snapshot": 1,
+          "locations.existingDirectory": 1,
+          "locations.homeDir": 1,
+          "locations.pluginRoot": 1
+        },
+        "twentieth": {
+          "locations.existingDirectory": 1,
+          "locations.pluginRoot": 1
+        }
+      },
+      "16": {
+        "first": {
+          "environment.snapshot": 1,
+          "locations.existingDirectory": 1,
+          "locations.homeDir": 1,
+          "locations.pluginRoot": 1
+        },
+        "twentieth": {
+          "locations.existingDirectory": 1,
+          "locations.pluginRoot": 1
+        }
+      }
+    }
+  },
+  "dispatch.PreToolUse.all": {
+    "size": "P plugins",
+    "counts": {
+      "4": {
+        "first": {
+          "environment.snapshot": 1,
+          "locations.existingDirectory": 4,
+          "locations.homeDir": 1,
+          "locations.pluginRoot": 4
+        },
+        "twentieth": {
+          "locations.existingDirectory": 4,
+          "locations.pluginRoot": 4
+        }
+      },
+      "8": {
+        "first": {
+          "environment.snapshot": 1,
+          "locations.existingDirectory": 8,
+          "locations.homeDir": 1,
+          "locations.pluginRoot": 8
+        },
+        "twentieth": {
+          "locations.existingDirectory": 8,
+          "locations.pluginRoot": 8
+        }
+      },
+      "16": {
+        "first": {
+          "environment.snapshot": 1,
+          "locations.existingDirectory": 16,
+          "locations.homeDir": 1,
+          "locations.pluginRoot": 16
+        },
+        "twentieth": {
+          "locations.existingDirectory": 16,
+          "locations.pluginRoot": 16
+        }
+      }
+    }
+  },
+  "checkTool.Bash": {
+    "size": "R rules of each kind",
+    "counts": {
+      "4": {
+        "first": {
+          "cpu.RegExp": 4,
+          "cpu.RegExp.exec": 26,
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        },
+        "second": {
+          "cpu.RegExp.exec": 18
+        }
+      },
+      "8": {
+        "first": {
+          "cpu.RegExp": 8,
+          "cpu.RegExp.exec": 42,
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        },
+        "second": {
+          "cpu.RegExp.exec": 26
+        }
+      },
+      "16": {
+        "first": {
+          "cpu.RegExp": 16,
+          "cpu.RegExp.exec": 74,
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        },
+        "second": {
+          "cpu.RegExp.exec": 42
+        }
+      }
+    }
+  },
+  "checkTool.Read": {
+    "size": "R rules of each kind",
+    "counts": {
+      "4": {
+        "first": {
+          "cpu.JSON.parse": 4,
+          "cpu.RegExp": 4,
+          "cpu.RegExp.exec": 102,
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        },
+        "second": {
+          "cpu.RegExp.exec": 6
+        }
+      },
+      "8": {
+        "first": {
+          "cpu.JSON.parse": 8,
+          "cpu.RegExp": 8,
+          "cpu.RegExp.exec": 202,
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        },
+        "second": {
+          "cpu.RegExp.exec": 10
+        }
+      },
+      "16": {
+        "first": {
+          "cpu.JSON.parse": 16,
+          "cpu.RegExp": 16,
+          "cpu.RegExp.exec": 402,
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        },
+        "second": {
+          "cpu.RegExp.exec": 18
+        }
+      }
+    }
+  },
+  "checkTool.Edit": {
+    "size": "R rules of each kind",
+    "counts": {
+      "4": {
+        "first": {
+          "cpu.JSON.parse": 8,
+          "cpu.RegExp": 8,
+          "cpu.RegExp.exec": 221,
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        },
+        "second": {
+          "cpu.RegExp.exec": 9
+        }
+      },
+      "8": {
+        "first": {
+          "cpu.JSON.parse": 16,
+          "cpu.RegExp": 16,
+          "cpu.RegExp.exec": 441,
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        },
+        "second": {
+          "cpu.RegExp.exec": 17
+        }
+      },
+      "16": {
+        "first": {
+          "cpu.JSON.parse": 32,
+          "cpu.RegExp": 32,
+          "cpu.RegExp.exec": 881,
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        },
+        "second": {
+          "cpu.RegExp.exec": 33
+        }
+      }
+    }
+  },
+  "checkTool.Bash.words": {
+    "size": "W words",
+    "counts": {
+      "8": {
+        "first": {
+          "cpu.RegExp": 4,
+          "cpu.RegExp.exec": 783,
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        },
+        "second": {
+          "cpu.RegExp.exec": 31
+        }
+      },
+      "16": {
+        "first": {
+          "cpu.RegExp": 4,
+          "cpu.RegExp.exec": 1567,
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        },
+        "second": {
+          "cpu.RegExp.exec": 57
+        }
+      },
+      "32": {
+        "first": {
+          "cpu.RegExp": 4,
+          "cpu.RegExp.exec": 3135,
+          "environment.snapshot": 1,
+          "locations.homeDir": 1
+        },
+        "second": {
+          "cpu.RegExp.exec": 109
+        }
+      }
+    }
+  },
+  "settings.resolve": {
+    "size": "R rules of each kind per file",
+    "counts": {
+      "4": {
+        "resolve": {
+          "cpu.JSON.parse": 4,
+          "cpu.RegExp.exec": 72
+        }
+      },
+      "8": {
+        "resolve": {
+          "cpu.JSON.parse": 4,
+          "cpu.RegExp.exec": 144
+        }
+      },
+      "16": {
+        "resolve": {
+          "cpu.JSON.parse": 4,
+          "cpu.RegExp.exec": 288
+        }
+      }
+    }
+  },
+  "folders.skills": {
+    "size": "K skills and K commands",
+    "counts": {
+      "4": {
+        "reload": {
+          "cpu.RegExp.exec": 1347,
+          "cpu.yaml.parse": 8,
+          "environment.get": 1,
+          "environment.snapshot": 1,
+          "files.bytes": 336,
+          "files.exists": 6,
+          "files.list": 5,
+          "files.readText": 8,
+          "files.stat": 8,
+          "folders.managedDirectory": 1,
+          "folders.open": 3,
+          "folders.repository": 1,
+          "locations.homeDir": 1
+        },
+        "skills": {},
+        "expand": {
+          "cpu.RegExp.exec": 66,
+          "cpu.yaml.parse": 1,
+          "environment.get": 3,
+          "environment.snapshot": 4,
+          "files.bytes": 44,
+          "files.readText": 1,
+          "folders.open": 1,
+          "locations.homeDir": 1,
+          "locations.joinPath": 1
+        },
+        "again": {
+          "cpu.RegExp.exec": 66,
+          "cpu.yaml.parse": 1,
+          "environment.get": 3,
+          "environment.snapshot": 4,
+          "files.bytes": 44,
+          "files.readText": 1,
+          "folders.open": 1,
+          "locations.homeDir": 1,
+          "locations.joinPath": 1
+        }
+      },
+      "8": {
+        "reload": {
+          "cpu.RegExp.exec": 2563,
+          "cpu.yaml.parse": 16,
+          "environment.get": 1,
+          "environment.snapshot": 1,
+          "files.bytes": 672,
+          "files.exists": 10,
+          "files.list": 5,
+          "files.readText": 16,
+          "files.stat": 16,
+          "folders.managedDirectory": 1,
+          "folders.open": 3,
+          "folders.repository": 1,
+          "locations.homeDir": 1
+        },
+        "skills": {},
+        "expand": {
+          "cpu.RegExp.exec": 66,
+          "cpu.yaml.parse": 1,
+          "environment.get": 3,
+          "environment.snapshot": 4,
+          "files.bytes": 44,
+          "files.readText": 1,
+          "folders.open": 1,
+          "locations.homeDir": 1,
+          "locations.joinPath": 1
+        },
+        "again": {
+          "cpu.RegExp.exec": 66,
+          "cpu.yaml.parse": 1,
+          "environment.get": 3,
+          "environment.snapshot": 4,
+          "files.bytes": 44,
+          "files.readText": 1,
+          "folders.open": 1,
+          "locations.homeDir": 1,
+          "locations.joinPath": 1
+        }
+      },
+      "16": {
+        "reload": {
+          "cpu.RegExp.exec": 4995,
+          "cpu.yaml.parse": 32,
+          "environment.get": 1,
+          "environment.snapshot": 1,
+          "files.bytes": 1344,
+          "files.exists": 18,
+          "files.list": 5,
+          "files.readText": 32,
+          "files.stat": 32,
+          "folders.managedDirectory": 1,
+          "folders.open": 3,
+          "folders.repository": 1,
+          "locations.homeDir": 1
+        },
+        "skills": {},
+        "expand": {
+          "cpu.RegExp.exec": 66,
+          "cpu.yaml.parse": 1,
+          "environment.get": 3,
+          "environment.snapshot": 4,
+          "files.bytes": 44,
+          "files.readText": 1,
+          "folders.open": 1,
+          "locations.homeDir": 1,
+          "locations.joinPath": 1
+        },
+        "again": {
+          "cpu.RegExp.exec": 66,
+          "cpu.yaml.parse": 1,
+          "environment.get": 3,
+          "environment.snapshot": 4,
+          "files.bytes": 44,
+          "files.readText": 1,
+          "folders.open": 1,
+          "locations.homeDir": 1,
+          "locations.joinPath": 1
+        }
+      }
+    }
+  }
+}

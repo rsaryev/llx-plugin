@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "alpha": {
+      "command": "no-such-binary-alpha"
+    },
+    "beta": {
+      "command": "no-such-binary-beta"
+    }
+  }
+}

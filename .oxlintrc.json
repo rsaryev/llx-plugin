@@ -1,0 +1,38 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "env": {
+    "builtin": true
+  },
+  "ignorePatterns": ["**/dist/**", "**/node_modules/**", ".cache/**"],
+  "rules": {
+    // The file budget is a hard rule of this repository (AGENTS.md, S1).
+    "max-lines": ["error", { "max": 300, "skipBlankLines": false, "skipComments": false }],
+    "max-depth": ["error", 4],
+    "max-params": ["error", 4],
+    "eqeqeq": "error",
+    "no-console": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/await-thenable": "error",
+    "import/no-cycle": "error",
+    "import/no-default-export": "error",
+    "unicorn/filename-case": ["error", { "cases": { "kebabCase": true } }]
+  },
+  "overrides": [
+    {
+      // Scripts and examples are command-line tools: they talk to the person through the console.
+      "files": ["scripts/**", "examples/**"],
+      "rules": { "no-console": "off" }
+    }
+  ]
+}

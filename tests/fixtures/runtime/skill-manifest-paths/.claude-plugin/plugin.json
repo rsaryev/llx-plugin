@@ -1,0 +1,4 @@
+{
+  "name": "skill-manifest-paths",
+  "skills": ["./extra/one", "./more"]
+}

@@ -1,0 +1,8 @@
+{
+  "loaded": true,
+  "agents": [],
+  "slashCommands": ["skill-manifest-file:declared-solo", "skill-manifest-file:kept"],
+  "skills": ["skill-manifest-file:declared-solo", "skill-manifest-file:kept"],
+  "mcpServers": [],
+  "outputStyle": "default"
+}

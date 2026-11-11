@@ -1,0 +1,44 @@
+name: Release
+
+# Publishes the package to npm when a version tag is pushed: `git tag v0.1.0 && git push --tags`.
+on:
+  push:
+    tags: ['v*']
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      # npm signs the provenance statement with the workflow's identity.
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: package.json
+      - name: The tag is the package's version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: test "$TAG" = "v$(bun -e 'console.log(require("./package.json").version)')"
+      - run: bun install --frozen-lockfile
+      # The lint reads the example's types, so its dependencies are installed before the check.
+      - run: bun install --frozen-lockfile
+        working-directory: examples/ai-sdk-agent
+      - run: bun run check
+      # `prepack` builds `dist`; the token is the repository secret NPM_TOKEN.
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$RUNNER_TEMP/npmrc"
+          npm publish --provenance --access public --userconfig "$RUNNER_TEMP/npmrc"

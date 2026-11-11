@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+# Official docs, plugin corpus and test reports: pulled or produced locally, never committed.
+.cache/
+.DS_Store
+
+# The Localix app caches its plugin scan in any folder it opens.
+.localix/
+
+# Mutation testing sandboxes (bun run mutation).
+.stryker-tmp*/

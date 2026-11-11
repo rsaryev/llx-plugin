@@ -1,0 +1,8 @@
+{
+  "loaded": true,
+  "agents": [],
+  "slashCommands": ["skill-named-as-plugin:skill-named-as-plugin"],
+  "skills": ["skill-named-as-plugin:skill-named-as-plugin"],
+  "mcpServers": [],
+  "outputStyle": "default"
+}

@@ -1,0 +1,249 @@
+import { loadFiles } from '../format/load-files.ts';
+import { error, type PluginIssue } from '../format/issues.ts';
+import { STANDARD_LAYOUT } from '../format/layout.ts';
+import { readManifest } from '../format/manifest.ts';
+import type { PluginManifest } from '../format/manifest-schema.ts';
+import type { LinkRoots } from '../format/path-escape.ts';
+import type { CollectOptions } from '../format/mcp-sources.ts';
+import { nameLoadIssues } from '../format/names.ts';
+import type { PluginFiles } from '../ports/index.ts';
+import { mergeEntryWithManifest } from '../format/marketplace/entry-merge.ts';
+import type { MarketplaceEntry } from '../format/marketplace/types.ts';
+import { channelIssues } from './channels.ts';
+import { COMPONENT_READERS } from './component-readers.ts';
+import { discoverComponents, type DiscoverOptions } from './discover.ts';
+import type { LoadedPlugin, Plugin } from './plugin-model.ts';
+import { readJson } from '../format/read-json.ts';
+import type { ComponentValues, ReaderContext } from './reader-types.ts';
+import { commandDirectoryDebug } from './command-debug.ts';
+
+export interface LoadPluginInput {
+  /** Read access to the plugin folder: its root is the plugin root. */
+  readonly files: PluginFiles;
+  /**
+   * The name to load a plugin without a manifest under: "the plugin name then comes from the marketplace
+   * entry, or from the directory name when you load the plugin with `--plugin-dir`"
+   * (manifest-reference.md, "Manifest file"). The manifest's `name` wins when there is one.
+   */
+  readonly fallbackName?: string;
+  /** Opens `.mcpb` and `.dxt` bundles named by `mcpServers`; without it a bundle is a warning. */
+  readonly bundles?: CollectOptions['bundles'];
+  /** The platform the host runs on; a backslash in a declared path escapes the plugin on `posix`. Defaults to `posix`. */
+  readonly platform?: 'posix' | 'windows';
+  /** Where the plugin and its marketplace really are, so a link to another plugin of the marketplace loads. */
+  readonly roots?: LinkRoots;
+  /**
+   * The marketplace entry the plugin is installed from (`readMarketplace`), its `strict` included: the
+   * plugin loads with the manifest `mergeEntryWithManifest` gives (plugins/manifest-reference.md, "How
+   * entry fields combine with `plugin.json`"). Its name loads a plugin without `plugin.json`, ahead of
+   * `fallbackName`. Absent, the plugin's own `plugin.json` is the manifest (`--plugin-dir`).
+   */
+  readonly entry?: MarketplaceEntry;
+  readonly signal?: AbortSignal;
+}
+
+export interface ManifestStep {
+  /** Whether `.claude-plugin/plugin.json` exists. */
+  readonly present: boolean;
+  readonly manifest: PluginManifest | undefined;
+  readonly issues: readonly PluginIssue[];
+}
+
+/** Reads the optional manifest: absent is fine, unreadable JSON or a manifest with an error is not. */
+export async function loadManifest(
+  files: PluginFiles,
+  signal?: AbortSignal,
+): Promise<ManifestStep> {
+  const { location } = STANDARD_LAYOUT.manifest;
+  if (!(await files.exists(location, signal))) {
+    return { present: false, manifest: undefined, issues: [] };
+  }
+  const raw = await readJson(files, location, signal);
+  if ('problem' in raw) {
+    return {
+      present: true,
+      manifest: undefined,
+      issues: [error(location, `${location} could not be read as JSON: ${raw.problem}`)],
+    };
+  }
+  const read = readManifest(raw.value);
+  return { present: true, manifest: read.manifest, issues: read.issues };
+}
+
+/** The manifest the plugin loads with: its own, or, from a marketplace entry, the merge of the two. */
+interface MergedStep {
+  readonly manifest: PluginManifest | undefined;
+  readonly issues: readonly PluginIssue[];
+  readonly scanDefaultSkills: boolean;
+  readonly replacedHookEvents: readonly string[];
+}
+
+/**
+ * The manifest step of a load, or why the plugin does not load: a `plugin.json` that fails, or an
+ * entry whose merge with it fails (the strict conflict).
+ */
+async function manifestFor(
+  files: PluginFiles,
+  entry: MarketplaceEntry | undefined,
+  signal: AbortSignal | undefined,
+): Promise<MergedStep | { readonly failed: readonly PluginIssue[] }> {
+  const own = await loadManifest(files, signal);
+  if (own.present && !own.manifest) return { failed: own.issues };
+  const step = withEntry(own, entry);
+  return step.manifest === undefined && entry !== undefined ? { failed: step.issues } : step;
+}
+
+function withEntry(read: ManifestStep, entry: MarketplaceEntry | undefined): MergedStep {
+  if (entry === undefined) {
+    return {
+      manifest: read.manifest,
+      issues: read.issues,
+      scanDefaultSkills: true,
+      replacedHookEvents: [],
+    };
+  }
+  const merge = mergeEntryWithManifest(entry, read.manifest);
+  return {
+    manifest: merge.manifest,
+    issues: [...read.issues, ...merge.issues],
+    scanDefaultSkills: merge.scanDefaultSkills,
+    replacedHookEvents: merge.replacedHookEvents,
+  };
+}
+
+const NO_NAME =
+  'The plugin has no manifest and no name to load it under: pass the marketplace entry name or the directory name';
+
+/** The manifest's name, else the fallback; a manifest-less plugin with neither does not load (judgment). */
+function nameOf(
+  manifest: PluginManifest | undefined,
+  fallbackName: string | undefined,
+): { readonly name: string | undefined; readonly issues: readonly PluginIssue[] } {
+  if (manifest) return { name: manifest.name, issues: [] };
+  if (fallbackName === undefined) return { name: undefined, issues: [error('name', NO_NAME)] };
+  const issues = nameLoadIssues(fallbackName);
+  return { name: issues.length > 0 ? undefined : fallbackName, issues };
+}
+
+/** Runs every reader over what discovery found. */
+async function readComponents(context: ReaderContext): Promise<{
+  readonly values: ComponentValues;
+  readonly issues: readonly PluginIssue[];
+  /** A component failed so that the plugin does not load (oracle 2.1.319). */
+  readonly rejected: boolean;
+}> {
+  const run = COMPONENT_READERS;
+  const [skills, commands, agents, hooks, mcpServers, lspServers] = await Promise.all([
+    run.skills(context),
+    run.commands(context),
+    run.agents(context),
+    run.hooks(context),
+    run.mcpServers(context),
+    run.lspServers(context),
+  ]);
+  const [outputStyles, workflows, themes, monitors, bin, settings] = await Promise.all([
+    run.outputStyles(context),
+    run.workflows(context),
+    run.themes(context),
+    run.monitors(context),
+    run.bin(context),
+    run.settings(context),
+  ]);
+  return {
+    values: {
+      skills: skills.value,
+      commands: commands.value,
+      agents: agents.value,
+      hooks: hooks.value,
+      mcpServers: mcpServers.value,
+      lspServers: lspServers.value,
+      outputStyles: outputStyles.value,
+      workflows: workflows.value,
+      themes: themes.value,
+      monitors: monitors.value,
+      bin: bin.value,
+      settings: settings.value,
+    },
+    rejected: [hooks, mcpServers].some((read) => read.rejectsPlugin === true),
+    issues: [
+      skills,
+      commands,
+      agents,
+      hooks,
+      mcpServers,
+      lspServers,
+      outputStyles,
+      workflows,
+      themes,
+      monitors,
+      bin,
+      settings,
+    ].flatMap((read) => [...read.issues]),
+  };
+}
+
+/** What decides whether a declared path leaves the plugin, from the input. */
+const discoverOptionsOf = (input: LoadPluginInput): DiscoverOptions => ({
+  ...(input.platform && { platform: input.platform }),
+  ...(input.roots && { roots: input.roots }),
+  ...(input.signal && { signal: input.signal }),
+});
+
+/** MCP paths are contained by the same rule as every other component path. */
+const mcpOptions = (input: LoadPluginInput): CollectOptions => ({
+  ...discoverOptionsOf(input),
+  ...(input.bundles && { bundles: input.bundles }),
+});
+
+/**
+ * Loads a plugin folder into a typed `Plugin` (docs/API.md, "Loading"): the optional manifest, every
+ * component in the standard layout and the manifest's paths, each reader's issues collected. Never
+ * throws. The plugin is `undefined` only when it does not load at all: a manifest that is not valid
+ * JSON or fails validation, no name to load it under, a guard hook that cannot be read or an inline
+ * MCP server of the manifest that cannot be read (oracle 2.1.319, spec/judgments.md). Any other problem (a path that is missing or
+ * escapes the plugin, a file Claude Code would skip) is an issue and skips that component, as the
+ * docs say for paths ("the plugin loads without that component"); the rest loads (spec/judgments.md).
+ */
+export async function loadPlugin(input: LoadPluginInput): Promise<LoadedPlugin> {
+  const { signal } = input;
+  const files = loadFiles(input.files, signal);
+  const step = await manifestFor(files, input.entry, signal);
+  if ('failed' in step) return { plugin: undefined, issues: step.failed };
+  const named = nameOf(step.manifest, input.fallbackName);
+  const issues: PluginIssue[] = [...step.issues, ...named.issues];
+  if (named.name === undefined) return { plugin: undefined, issues };
+  const discovered = await discoverComponents(files, step.manifest, named.name, {
+    ...discoverOptionsOf(input),
+    scanDefaultSkills: step.scanDefaultSkills,
+  });
+  const context: ReaderContext = {
+    files,
+    manifest: step.manifest,
+    pluginName: named.name,
+    discovered,
+    mcp: mcpOptions(input),
+    replacedHookEvents: step.replacedHookEvents,
+    ...(signal && { signal }),
+  };
+  const read = await readComponents(context);
+  if (read.rejected) {
+    return { plugin: undefined, issues: [...issues, ...discovered.issues, ...read.issues] };
+  }
+  const plugin: Plugin = {
+    name: named.name,
+    manifest: step.manifest,
+    ...read.values,
+    mcpServers: read.values.mcpServers.servers,
+    mcpBundles: read.values.mcpServers.bundles,
+    userConfig: step.manifest?.userConfig ?? {},
+    hasBin: read.values.bin.present,
+    bin: read.values.bin.files,
+  };
+  const channels = channelIssues(step.manifest, read.values.mcpServers.servers);
+  const debug = await commandDirectoryDebug(context, read.values.commands);
+  return {
+    plugin,
+    issues: [...issues, ...discovered.issues, ...read.issues, ...channels],
+    ...(debug.length > 0 && { debug }),
+  };
+}

@@ -1,0 +1,16 @@
+{
+  "loaded": true,
+  "agents": [],
+  "slashCommands": [
+    "skill-manifest-paths:declared-one",
+    "skill-manifest-paths:three",
+    "skill-manifest-paths:two"
+  ],
+  "skills": [
+    "skill-manifest-paths:declared-one",
+    "skill-manifest-paths:three",
+    "skill-manifest-paths:two"
+  ],
+  "mcpServers": [],
+  "outputStyle": "default"
+}

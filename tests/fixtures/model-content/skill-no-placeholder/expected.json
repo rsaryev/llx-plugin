@@ -1,0 +1,7 @@
+{
+  "claudeCodeVersion": "2.1.319",
+  "blocks": [
+    "<command-message>mp:plain</command-message>\n<command-name>/mp:plain</command-name>\n<command-args>first \"second arg\"</command-args>\n",
+    "Base directory for this skill: <PLUGIN_ROOT>/skills/plain\n\nDo the plain thing.\n\n\nARGUMENTS: first \"second arg\""
+  ]
+}

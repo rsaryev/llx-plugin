@@ -1,0 +1,8 @@
+{
+  "loaded": true,
+  "agents": [],
+  "slashCommands": ["skill-command-same:pair", "skill-command-same:same"],
+  "skills": ["skill-command-same:pair", "skill-command-same:same"],
+  "mcpServers": [],
+  "outputStyle": "default"
+}

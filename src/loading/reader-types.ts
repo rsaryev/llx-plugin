@@ -1,0 +1,60 @@
+import type { PluginIssue } from '../format/issues.ts';
+import type { LspServer } from '../format/lsp-config.ts';
+import type { PluginManifest } from '../format/manifest-schema.ts';
+import type { McpBundleConfig, PluginMcpServer } from '../format/mcp-config.ts';
+import type { CollectOptions } from '../format/mcp-sources.ts';
+import type { Monitor } from '../format/monitors.ts';
+import type { PluginSettings } from '../format/plugin-settings.ts';
+import type { HooksSettings } from '../protocol/hook-config.ts';
+import type { PluginFiles } from '../ports/index.ts';
+import type { Discovered } from './discovered.ts';
+import type { PluginTextFile, PluginTheme, PluginWorkflow } from './plugin-model.ts';
+
+/** What a component reader is given: the folder, the manifest and what discovery found. */
+export interface ReaderContext {
+  readonly files: PluginFiles;
+  readonly manifest: PluginManifest | undefined;
+  readonly pluginName: string;
+  readonly discovered: Discovered;
+  /** What contains MCP paths (as every component path), and the host's MCP bundle capabilities. */
+  readonly mcp: CollectOptions;
+  /**
+   * Hook events a marketplace entry's inline hooks replace (`EntryMerge.replacedHookEvents`): a hook
+   * file's matchers for them are dropped.
+   */
+  readonly replacedHookEvents: readonly string[];
+  readonly signal?: AbortSignal;
+}
+
+export interface ComponentRead<T> {
+  readonly value: T;
+  readonly issues: readonly PluginIssue[];
+  /** Reading this component failed in a way that keeps the whole plugin from loading (oracle 2.1.319). */
+  readonly rejectsPlugin?: boolean;
+}
+
+/** What each component kind loads into. */
+export interface ComponentValues {
+  readonly skills: readonly PluginTextFile[];
+  readonly commands: readonly PluginTextFile[];
+  readonly agents: readonly PluginTextFile[];
+  readonly hooks: HooksSettings;
+  /** The servers, and the bundled ones' own settings (`Plugin.mcpBundles`). */
+  readonly mcpServers: {
+    readonly servers: Readonly<Record<string, PluginMcpServer>>;
+    readonly bundles: Readonly<Record<string, McpBundleConfig>>;
+  };
+  readonly lspServers: Readonly<Record<string, LspServer>>;
+  readonly outputStyles: readonly PluginTextFile[];
+  readonly workflows: readonly PluginWorkflow[];
+  readonly themes: readonly PluginTheme[];
+  readonly monitors: readonly Monitor[];
+  readonly bin: Discovered['bin'];
+  readonly settings: PluginSettings;
+}
+
+export type ReadKind = keyof ComponentValues;
+
+export type ComponentReader<K extends ReadKind> = (
+  context: ReaderContext,
+) => Promise<ComponentRead<ComponentValues[K]>>;

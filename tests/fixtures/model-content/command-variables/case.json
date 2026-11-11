@@ -1,0 +1,8 @@
+{
+  "prompt": "/mp:hi one two",
+  "skill": "mp:hi",
+  "arguments": "one two",
+  "settings": {
+    "pluginConfigs": { "mp@inline": { "options": { "region": "eu", "secret": "s3" } } }
+  }
+}
