@@ -398,7 +398,9 @@ includeCodingInstructions(active, 'full'); // false for a custom style without k
 
 `resolveOutputStyle` takes the `outputStyle` setting (case-sensitive, unknown gives Default), the
 argument of `/output-style` (case-insensitive) and the custom styles in precedence order; a
-`force-for-plugin` style wins over both and the first one loaded wins. `includeCodingInstructions`
+`force-for-plugin` style wins over both and the first one loaded wins. `findOutputStyle(styles,
+argument)` is the style the argument names, or `undefined` when it names none, for a host that
+answers `/output-style <style>` itself. `includeCodingInstructions`
 says whether Claude Code's software engineering section stays in the prompt: only the full prompt has
 it. `listOutputStyles` is the `/output-style` list. The host writes the setting and injects the
 `instructions` of `active.style`; the kit never sends a prompt.

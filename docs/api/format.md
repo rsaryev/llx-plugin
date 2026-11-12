@@ -79,6 +79,7 @@ One row per export; `scripts/check-docs.ts` (DOC3) keeps this table equal to the
 | `FieldReader` | type | Reads one skill frontmatter field |
 | `fileToolRuleBannerRow` | function | The startup banner row for a deny or ask rule of a file tool that file checks never consult |
 | `fileToolRuleWarning` | function | The full warning for such a rule: `source` is a settings file path or the flag |
+| `findOutputStyle` | function | The style the argument of `/output-style <style>` names, a built-in or a custom one, without regard to case; `undefined` when it names none |
 | `FIXED_CREDENTIAL_NAMES` | constant | The environment variables that always hold credentials (the OpenTelemetry and custom headers) |
 | `FlagAgentsRead` | type | What `readFlagAgents` returns |
 | `FolderSource` | type | A component read from a scope folder (`managed`, `user`, `project`...: the scopes differ per component) |

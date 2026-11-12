@@ -7,6 +7,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readOutputStyle, type OutputStyle } from '../../src/format/output-style.ts';
 import {
+  findOutputStyle,
   includeCodingInstructions,
   listOutputStyles,
   resolveOutputStyle,
@@ -155,6 +156,16 @@ describe('the outputStyle setting and the /output-style command', () => {
     expect(resolveOutputStyle({ command: 'Default', setting: 'Concise', styles: [] }).id).toBe(
       'default',
     );
+  });
+
+  test('the argument of the command names a style, a built-in or a custom one, or none', () => {
+    expect(findOutputStyle([], 'concise')?.id).toBe('Concise');
+    expect(findOutputStyle([], ' Default ')?.id).toBe('default');
+    expect(findOutputStyle([DIAGRAMS], 'diagrams FIRST')?.style).toBe(DIAGRAMS);
+    expect(findOutputStyle([DIAGRAMS], 'nope')).toBeUndefined();
+    // A forced style is still named: forcing decides the active style, not what a name means.
+    const forced = { ...DIAGRAMS, forceForPlugin: true };
+    expect(findOutputStyle([forced], 'concise')?.id).toBe('Concise');
   });
 
   test('the list always has Default, then the four built-in styles, and marks the current one', () => {

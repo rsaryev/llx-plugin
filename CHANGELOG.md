@@ -10,6 +10,10 @@
   `custom:<plugin-name>:<slug>`, the preference `/theme` stores for a plugin's theme
   (settings-reference.md, `theme`); `readThemeSetting` reads it back. Without `plugin` it is
   `custom:<slug>` as before.
+- `findOutputStyle(styles, argument)` (`./format`): the style the argument of `/output-style
+  <style>` names, a built-in or a custom one, without regard to case, or `undefined` when it names
+  none. `resolveOutputStyle` falls back to the setting and to Default, so it could not tell a host
+  that the argument matched nothing.
 
 #### settings
 

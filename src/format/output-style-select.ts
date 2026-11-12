@@ -90,6 +90,18 @@ function candidates(styles: readonly OutputStyle[]): readonly StyleSelection[] {
 }
 
 /**
+ * The style the argument of `/output-style <style>` names, a built-in or a custom one, without
+ * regard to case; `undefined` when it names none, which leaves the choice to the setting.
+ */
+export function findOutputStyle(
+  styles: readonly OutputStyle[],
+  argument: string,
+): StyleSelection | undefined {
+  const wanted = argument.trim().toLowerCase();
+  return candidates(styles).find((entry) => entry.id.toLowerCase() === wanted);
+}
+
+/**
  * The active style. A `force-for-plugin` style wins over everything ("Overrides the user's
  * `outputStyle` setting"). Otherwise `/output-style` (which ignores case) wins over the setting,
  * which is case-sensitive: "A value that doesn't match a style name exactly, such as
@@ -100,13 +112,10 @@ export function resolveOutputStyle({
   command,
   styles,
 }: OutputStyleRequest): StyleSelection {
-  const pool = candidates(styles);
   const forced = styles.find((style) => style.forceForPlugin);
   if (forced) return customSelection(forced);
-  const wanted = command?.trim().toLowerCase();
-  const byCommand =
-    wanted === undefined ? undefined : pool.find((entry) => entry.id.toLowerCase() === wanted);
-  const bySetting = pool.find((entry) => entry.id === setting);
+  const byCommand = command === undefined ? undefined : findOutputStyle(styles, command);
+  const bySetting = candidates(styles).find((entry) => entry.id === setting);
   return byCommand ?? bySetting ?? DEFAULT_SELECTION;
 }
 

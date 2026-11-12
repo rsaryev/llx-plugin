@@ -73,6 +73,7 @@ export * from './host-errors.ts';
 export {
   BUILTIN_OUTPUT_STYLES,
   DEFAULT_OUTPUT_STYLE_ID,
+  findOutputStyle,
   includeCodingInstructions,
   listOutputStyles,
   resolveOutputStyle,
