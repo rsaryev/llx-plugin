@@ -57,7 +57,7 @@ One row per export; `scripts/check-docs.ts` (DOC3) keeps this table equal to the
 | `copyOfPluginTheme` | function | "Plugin themes are read-only, so when a user edits one in `/theme`, the edit is saved as a copy in their own themes directory" |
 | `CREDENTIAL_ENV_NAMES` | constant | The credential variables of mcp.md ("Credential variables that read as empty") |
 | `credentialDebugLine` | function | The debug-log line for a covered variable the user has set and a remote server's `url` or `headers` references |
-| `customThemeId` | function | What `/theme` stores as the preference when the theme is selected: `custom:<slug>` |
+| `customThemeId` | function | What `/theme` stores as the preference when the theme is selected: `custom:<slug>`, or `custom:<plugin-name>:<slug>` for a plugin's theme |
 | `cutMcpDescription` | function | "Claude sees only the text before the cut"; the cut keeps a surrogate pair whole |
 | `DEFAULT_OUTPUT_STYLE_ID` | constant | The id Default has in the `/output-style` list |
 | `DisplayedHeader` | type | One header a surface shows: its name, and its value when the scope shows it |

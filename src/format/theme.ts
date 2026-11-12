@@ -55,8 +55,13 @@ export function themeSlug(path: string): string {
   return base.replace(/\.json$/i, '');
 }
 
-/** What `/theme` stores as the preference when the theme is selected: `custom:<slug>`. */
-export const customThemeId = (slug: string): string => `custom:${slug}`;
+/**
+ * What `/theme` stores as the preference when the theme is selected: `custom:<slug>` for a theme of
+ * `~/.claude/themes/`, `custom:<plugin-name>:<slug>` for one a plugin ships (settings-reference.md,
+ * `theme`).
+ */
+export const customThemeId = (slug: string, plugin?: string): string =>
+  plugin === undefined ? `custom:${slug}` : `custom:${plugin}:${slug}`;
 
 const channel = (text: string | undefined): number => Number(text);
 const hexPair = (text: string): number => Number.parseInt(text, 16);

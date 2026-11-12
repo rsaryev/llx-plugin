@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Added
+
+#### format
+
+- `customThemeId(slug, plugin?)` (`./format`) takes the plugin's name and writes
+  `custom:<plugin-name>:<slug>`, the preference `/theme` stores for a plugin's theme
+  (settings-reference.md, `theme`); `readThemeSetting` reads it back. Without `plugin` it is
+  `custom:<slug>` as before.
+
 ## [0.1.0] - 2026-11-12
 
 The first public release, on npm under the MIT license.

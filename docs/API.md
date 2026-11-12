@@ -421,6 +421,7 @@ theme?.overrides; // token -> { form: 'rgb' | 'ansi256' | 'ansi', ... }, only va
 theme?.extraOverrides; // unlisted tokens as written, kept so a copy or a rewrite loses none
 themeColorToHex(color, palette?); // '#rrggbb' for CSS; ansi colours from xterm's palette unless given
 customThemeId('dracula'); // 'custom:dracula', what `/theme` stores
+customThemeId('night', 'my-plugin'); // 'custom:my-plugin:night', a plugin's theme (settings-reference.md, `theme`)
 ```
 
 A theme file is `~/.claude/themes/<slug>.json`, or `themes/<slug>.json` in a plugin (`Plugin.themes`,
@@ -431,7 +432,7 @@ tokens and invalid color values are ignored", so each one is dropped with a warn
 loads, and `unknownTokens` lists the names of the tokens the reference omits ("a few single-purpose
 accents such as onboarding screen colors": `/theme` sets them), whose raw values `extraOverrides` keeps.
 `copyOfPluginTheme` is the copy a user's edit of a plugin theme is saved as, with those tokens written
-back. A plugin theme is shown under `theme.name` with `plugin` as its origin; it has no `<plugin>:` name.
+back. A plugin theme is shown under `theme.name` with `plugin` as its origin; it has no `<plugin>:` display name, and selecting it stores `customThemeId(slug, plugin)` (`custom:<plugin-name>:<slug>`), which `readThemeSetting` reads back.
 Colour forms are exact: `RGB(...)` and `ANSI256(...)` are not colours. The host applies the theme and watches the folder; the kit never renders.
 
 ### Workflows (done: `format/workflow-meta`, `workflow-script`, `agents/workflow`)

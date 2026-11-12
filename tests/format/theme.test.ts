@@ -1,13 +1,15 @@
 /**
  * terminal-config.md § Create a custom theme (the three optional fields `name`, `base` and `overrides`;
  * the colour forms; "Unknown tokens and invalid color values are ignored"; the `dracula` and `midnight`
- * files; the token reference). How a bad value is reported, which tokens the kit knows beyond the
+ * files; the token reference); settings-reference.md § `theme` (`"custom:<slug>"` or
+ * `"custom:<plugin-name>:<slug>"`: a custom theme from `~/.claude/themes/` or a plugin). How a bad value is reported, which tokens the kit knows beyond the
  * docs' tables and the colour grammar's edges are the kit's judgments (spec/judgments.md), tested
  * outside spec().
  */
 import { expect, test } from 'bun:test';
 import { customThemeId, readTheme, themeSlug } from '../../src/format/theme.ts';
 import { ANSI_COLOR_NAMES, THEME_BASES, THEME_TOKEN_NAMES } from '../../src/format/theme-tokens.ts';
+import { parseTheme } from '../../src/settings/general/look-and-feel.ts';
 import { json } from '../support/plugin-folder.ts';
 import { spec } from '../support/spec.ts';
 
@@ -98,6 +100,16 @@ spec('themes.config.Create a custom theme.name', () => {
     expect(themeSlug('C:\\Users\\me\\.claude\\themes\\night.owl.json')).toBe('night.owl');
     expect(themeSlug('themes/Night.JSON')).toBe('Night');
     expect(customThemeId('dracula')).toBe('custom:dracula');
+  });
+});
+
+spec('settings.key.theme', () => {
+  test('a plugin theme is stored as custom:<plugin-name>:<slug>, which the theme setting reads back', () => {
+    expect(customThemeId('night', 'my-plugin')).toBe('custom:my-plugin:night');
+    expect(parseTheme(customThemeId('night', 'my-plugin'))).toEqual({
+      custom: { plugin: 'my-plugin', slug: 'night' },
+    });
+    expect(parseTheme(customThemeId('dracula'))).toEqual({ custom: { slug: 'dracula' } });
   });
 });
 
