@@ -1,6 +1,6 @@
 {
   "name": "@rsaryev/llx-plugin",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Add Claude Code plugin support to any agent: load plugins and run their skills, commands, agents and hooks through ports your host implements.",
   "keywords": [
     "agent",
