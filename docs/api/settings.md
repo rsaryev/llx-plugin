@@ -385,6 +385,7 @@ One row per export; `scripts/check-docs.ts` (DOC3) keeps this table equal to the
 | `readSettingsLayer` | function | An absent source (`undefined`) is an empty layer; a document that is no JSON object is skipped |
 | `readsManagedSettingsAt` | function | Whether Claude Code reads `path` as the managed settings file of `platform` |
 | `readSubagentStatusLine` | function | `subagentStatusLine` with the plugins' defaults below every settings source, under the same gates as `statusLine`. statusline.md, "Subagent status lines" |
+| `readSubagentStatusRows` | function | The rows a `subagentStatusLine` command rewrote, by task id: each `{"id","content"}` line's body as printed (ANSI and OSC 8 kept), `''` hiding the row; a row it does not name keeps the default. statusline.md, "Subagent status lines" |
 | `readSurfaceLocks` | function | What the value of `strictPluginOnlyCustomization` locks: `true` locks all four kinds, an array locks the kinds it names, and anything unset locks nothing |
 | `readTeammateMode` | function | The teammate display mode: a file's value, else `legacy` from `~/.claude.json`, else `"in-process"` |
 | `readThemeSetting` | function | The theme: the highest file that sets it, else `legacy` (a value "in `~/.claude.json` from an older version applies when no settings file sets it"), else `"dark"` |
@@ -411,6 +412,7 @@ One row per export; `scripts/check-docs.ts` (DOC3) keeps this table equal to the
 | `retentionValueApplies` | function | At startup on the cache: an invalid retention value "stays in the cached copy and is never applied" |
 | `RuleEntry` | type | A rule as written in a settings file, with the file's scope |
 | `runPolicyHelper` | function | Runs the helper with no arguments and `CLAUDE_CODE_VERSION` set, within `timeoutMs` counted from the file check (the check and the run share one budget) |
+| `runSubagentStatusLine` | function | Runs the selected `subagentStatusLine` once through the `CommandRunner` (`bash`, from `input.cwd`, the host's env, the input on stdin) and reads its rows; a run that does not exit 0 rewrites none |
 | `ScopeRule` | type | One of `SCOPE_RULES` |
 | `ScopeTrust` | type | Whether the user trusts the folder a file of this scope belongs to (the host asks the dialog's record) |
 | `SDK_SETTING_SOURCES` | constant | The settings files an Agent SDK app chooses among with `settingSources` |
@@ -471,6 +473,10 @@ One row per export; `scripts/check-docs.ts` (DOC3) keeps this table equal to the
 | `StartupFetchFacts` | type | The `facts` argument of `startupFetchOf` |
 | `startupFetchOf` | function | What startup does about the fetch: `true` blocks until a fresh fetch and exits on failure; unset does not block, though a sign-in startup waits up to five seconds |
 | `SubagentLineRead` | type | The subagent status line that runs: a settings source's (with its scope) or a plugin's default |
+| `subagentStatusLineInput` | function | The stdin object of one refresh tick: the base hook fields, `columns` and `tasks`, each row's `tokenSamples` cut to its last 16 readings |
+| `SubagentStatusLineInput` | type | What `subagentStatusLineInput` returns: the SDK's `BaseHookInput` with `columns` and `tasks` |
+| `SubagentStatusLineRun` | type | The `run` argument of `runSubagentStatusLine`: the input and the whole environment of the process |
+| `SubagentStatusTask` | type | One entry of `tasks` (statusline.md, "Task fields"); the SDK has no type for it |
 | `suggestionMarketplaces` | function | The names of `pluginSuggestionMarketplaces` that take effect, in the order the list gives them |
 | `SurfaceLocks` | type | The kinds of customization the lock covers, and how many names in the list were no kind |
 | `SymlinkFacts` | type | The `facts` argument of `symlinkVerdict` |

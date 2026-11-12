@@ -104,4 +104,12 @@ export {
   readSubagentStatusLine,
   type SubagentLineRead,
 } from './command-lines.ts';
+export {
+  readSubagentStatusRows,
+  runSubagentStatusLine,
+  subagentStatusLineInput,
+  type SubagentStatusLineInput,
+  type SubagentStatusLineRun,
+  type SubagentStatusTask,
+} from './subagent-status-line.ts';
 export { type PluginDefaults, type PluginWithDefaults } from './plugin-defaults.ts';

@@ -11,6 +11,16 @@
   (settings-reference.md, `theme`); `readThemeSetting` reads it back. Without `plugin` it is
   `custom:<slug>` as before.
 
+#### settings
+
+- `subagentStatusLineInput(base, columns, tasks)`, `runSubagentStatusLine(line, { input, env },
+  runner, { signal })` and `readSubagentStatusRows(stdout, tasks)` (`./settings`), with the types
+  `SubagentStatusTask`, `SubagentStatusLineInput` and `SubagentStatusLineRun`: the run of the
+  `subagentStatusLine` that `session.subagentStatusLine()` selects (statusline.md, "Subagent status
+  lines"): the stdin object, one run through `CommandRunner`, and the rows it rewrote by task id
+  (`''` hides one). The refresh tick, the environment and drawing a row stay the host's. statusline.md
+  is outside the requirement set, so these are judgments (spec/judgments.md).
+
 ## [0.1.0] - 2026-11-12
 
 The first public release, on npm under the MIT license.
