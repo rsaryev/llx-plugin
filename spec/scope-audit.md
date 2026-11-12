@@ -24,7 +24,7 @@ Each page below remains in `spec/out-of-scope-pages.json`, with the existing doc
 | `claude-directory.md` | engine | Plugin paths and persistent plugin data in the manifest, components and loading references |
 | `memory.md` | engine | Customization-source policy; hook inputs that report memory files |
 | `large-codebases.md` | engine | Skill discovery, permission paths and code-intelligence plugin configuration |
-| `statusline.md` | product | Validation and managed repair of settings that contain executable commands |
+| `statusline.md` | product | Validation and managed repair of settings that contain executable commands; the `subagentStatusLine` default a plugin sets (plugins/components.md, "Default settings") and its run through `CommandRunner`, a judgment that counts for no compatibility |
 | `worktrees.md` | engine | Agent `isolation`, `WorktreeCreate` and `WorktreeRemove` hook contracts |
 | `headless.md` | engine | Plugin session flags and interactive/non-interactive guards in their own references |
 | `plugin-evals.md` | engine | Plugin validation remains in scope; the native eval/model/grader runner does not |
