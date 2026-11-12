@@ -220,6 +220,13 @@ The kit decides; the host's ports act. These are the risks no kit default remove
     writes an entry or creates a link it checks that the real path of the parent folder is inside
     the destination: names alias in ways no list shows (a short `8.3` name, a mount, a folder that
     was already there).
+  - `StagedDirectory.commit` and any other copy of a plugin tree apply a `TreePlan`. The plan
+    decides only the links of the entries it was given. A host copies a dereferenced directory
+    without following a link inside it: it lists that directory and plans it again (`planTreeCopy`
+    with its real path in `TreeRoots.copying`), or leaves its links out. A copy that follows links
+    (`cp -RL`, `fs.cp` with `dereference`) reads outside the marketplace, which the docs skip "for
+    security" (plugins/host-marketplace.md, "Share files within a marketplace with symlinks"), and
+    links that fan out over several levels multiply what is copied, so a host bounds it.
   - `Environment` answers `${VAR}` in configs. A plugin's MCP `url` or `headers` can name any
     variable it exposes, so the host decides which variables to expose. For a server of the
     local, project or user scope, `expandMcpServer(name, server, lookup, { readsAsEmpty })` adds the

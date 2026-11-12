@@ -89,7 +89,10 @@ export interface StagedDirectory {
    * Installs the directory at `destination` so a reader sees the old copy or the new, never a mix;
    * an earlier copy at `destination` is moved aside first and moved back when the install fails.
    * With a `plan`, the tree is materialized as the plan says (relink, dereference, skip) before it
-   * takes the place; without one it is moved whole. Resolves to `undefined` on success.
+   * takes the place; without one it is moved whole. The plan decides only the links of the entries
+   * it was given: a dereferenced directory is copied without following a link inside it (the host
+   * lists it and plans it again with `planTreeCopy`, or leaves its links out), never with a copy
+   * that follows links. Resolves to `undefined` on success.
    */
   commit(request: StagedCommit, signal: AbortSignal): Promise<undefined | CommitFailure>;
   /** Removes the directory; one that is already gone is removed. Resolves to `undefined` on success. */
